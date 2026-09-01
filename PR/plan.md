@@ -935,6 +935,16 @@ DONE. En `Packages/PRCore/Sources/PRDomain/UserProfile.swift`:
 - 45 tests Swift Testing verdes (`swift test`).
 - iOS Debug build verde con el paquete vinculado.
 
+### Estado PR-0105 (Gym, machine y equipment domain)
+
+DONE. `Packages/PRCore/Sources/PRDomain/Gym.swift`:
+
+- `GymProfile` (spec §6.4), `MachineProfile` (spec §6.5) + `MachineProfileID`/`loadHistoryKey` (exercise + instancia).
+- `EquipmentAvailabilityState`: `doesNotExist`/`occupied`/`unknown`/`available` (spec §6.4); `EquipmentAvailability`; `BusyPattern`/`BusyLevel`.
+- `occupied` session-scoped: `occupiedDuringSession` + `endingSession()`; no se persiste.
+- 51 tests Swift Testing verdes (`swift test`).
+- iOS Debug build verde con el paquete vinculado.
+
 ---
 
 # 25. Definition of milestone completion

@@ -233,13 +233,21 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 ## PR-0105 — Gym, machine y equipment domain
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0102
+**Dependencies:** PR-0102  
+**Status:** DONE  
+
 
 ### Criterios de aceptación
 - GymProfile con availability.
 - `occupied`, `missing`, `available`, `unknown` diferenciados.
 - MachineProfile permite historial por instancia.
 - Estado occupied es session-scoped.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/Gym.swift`: `GymProfile` (spec §6.4) con `equipmentAvailability`, `machineInstances`, `learnedBusyPatterns`; `MachineProfile` (spec §6.5) con `MachineProfileID` y `loadHistoryKey` (exercise + instancia).
+- Estados de availability: `EquipmentAvailabilityState` con `doesNotExist`, `occupied`, `unknown`, `available` (spec §6.4). `BusyPattern`/`BusyLevel`.
+- `occupied` es session-scoped: se rastrea en `occupiedDuringSession` y se limpia en `endingSession()`; no se persiste como hecho del gym.
+- 51 tests Swift Testing verdes (estados diferenciados, historial por instancia, occupied session-scoped).
 
 ---
 
