@@ -148,6 +148,15 @@ el descanso tras un working set (no warmup) con la duración recomendada desde
 `hasElapsed(at:)` perduren tras background/relaunch. Cobertura en
 `PRDomainTests/RestTimerTests.swift` (RF-008).
 
+## Workout completion summary (EPIC-06)
+
+Implementado en PR-0605 en `PRDomain/WorkoutSummary.swift` (plan §8): agrega una
+sesión en duration, working sets (`.completed`), volume (Σ weight×reps de los
+completados) y next action según lifecycle. Detecta PRs vía `PersonalRecordDetector`
+contra un baseline histórico (nunca inventa récords) y sólo propaga energía cuando
+llega reconciliada de una fuente externa (RN-008, sin doble contabilización). Cobertura
+en `PRDomainTests/WorkoutSummaryTests.swift` (RF-005, RF-006).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |

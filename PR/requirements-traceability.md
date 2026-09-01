@@ -155,6 +155,16 @@ y no bloquea la navegación (estado puro). El `endDate` anclado en wall-clock ha
 `remaining(at:)`/`hasElapsed(at:)` perduren tras background/relaunch. Cobertura en
 `Packages/PRCore/Tests/PRDomainTests/RestTimerTests.swift` (RF-008).
 
+## Workout completion summary (EPIC-06)
+
+Implementado en PR-0605 en `Packages/PRCore/Sources/PRDomain/WorkoutSummary.swift`
+(plan §8): agrega una sesión en duration, working sets (`.completed`), volume
+(Σ weight×reps de los completados) y next action según lifecycle. Detecta PRs vía
+`PersonalRecordDetector` contra un baseline histórico (nunca inventa récords) y sólo
+propaga energía cuando llega reconciliada de una fuente externa (RN-008, sin doble
+contabilización). Cobertura en
+`Packages/PRCore/Tests/PRDomainTests/WorkoutSummaryTests.swift` (RF-005, RF-006).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |

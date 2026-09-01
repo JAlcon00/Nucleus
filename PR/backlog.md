@@ -680,7 +680,8 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0605 — Workout completion summary
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0603
+**Dependencies:** PR-0603  
+**Status:** DONE
 
 ### Criterios de aceptación
 - duration;
@@ -689,6 +690,21 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 - PRs;
 - energy cuando disponible y reconciliada;
 - next action.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/WorkoutSummary.swift`: `WorkoutSummaryBuilder`
+  (con `WorkoutSummary`/`PersonalRecord`/`SummaryNextAction`/`PersonalRecordDetector`)
+  agrega una sesión de forma determinista:
+  - **duration**: `endedAt - startedAt` (`now` si no terminó);
+  - **working sets**: sets `.completed`; **volume**: Σ weight×reps de los completados
+    (skipped/planned no cuentan);
+  - **PRs**: `PersonalRecordDetector` compara cada set completado contra un baseline
+    histórico de peso por ejercicio; NO inventa récords sin referencia previa;
+  - **energy**: sólo se propaga si llega reconciliada de una fuente externa y es
+    finita/≥0; nunca se computa aquí (RN-008, no doble contabilización);
+  - **next action**: `.inProgress` / `.readyToFinish` / `.completed` según lifecycle.
+- 8 tests nuevos en `PRDomainTests/WorkoutSummaryTests.swift`; suite **212 tests /
+  57 suites** verdes (`swift test`); iOS Debug build verde.
 
 ---
 

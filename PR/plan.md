@@ -1192,6 +1192,24 @@ DONE. `Packages/PRCore/Sources/PRDomain/RestTimer.swift` (plan §8, RF-008):
   idle, extend no-positiva, inactivo → 0.
 - Suite global verde: **204 tests / 56 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0605 (Workout completion summary)
+
+DONE. `Packages/PRCore/Sources/PRDomain/WorkoutSummary.swift` (plan §8):
+
+- **`WorkoutSummaryBuilder`** (con `WorkoutSummary`/`PersonalRecord`/
+  `SummaryNextAction`/`PersonalRecordDetector`) agrega una sesión determinista:
+  duration (`endedAt - startedAt`), working sets (`.completed`), volume (Σ weight×reps
+  de completados; skipped/planned no cuentan), PRs y next action (.inProgress/
+  .readyToFinish/.completed según lifecycle).
+- **PR detector**: `PersonalRecordDetector` compara cada set completado contra un
+  baseline histórico de peso por ejercicio; nunca inventa un récord sin referencia.
+- **Energy (RN-008)**: sólo se propaga si llega reconciliada de una fuente externa y
+  es finita/≥0; nunca se computa ni se inventa aquí → no doble contabilización.
+- Tests (`Tests/PRDomainTests/WorkoutSummaryTests.swift`): basics (duration/working
+  sets/volume), ignores skipped, inProgress/readyToFinish action, PR con baseline,
+  no inventa PR sin baseline, energy reconciliada/sin inventar, Codable.
+- Suite global verde: **212 tests / 57 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion
