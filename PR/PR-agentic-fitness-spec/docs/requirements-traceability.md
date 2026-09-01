@@ -1,0 +1,52 @@
+# Requirements Traceability Matrix
+
+Esta matriz vincula requisitos maestros con épicas principales. Debe actualizarse cuando un requisito cambie de alcance.
+
+| Requirement | Primary backlog area | Verification |
+|---|---|---|
+| RF-001 Sign in with Apple | EPIC-04 | Auth integration + UI test |
+| RF-002 Use without HealthKit | EPIC-11 | denied permission test |
+| RF-003 Onboarding | EPIC-04 | UI flow |
+| RF-004 Training Block | EPIC-05 | engine tests |
+| RF-005 Today | EPIC-06 | UI test |
+| RF-006 Time adaptation | EPIC-08 | optimizer matrix |
+| RF-007 Logging | EPIC-06 | unit + UI |
+| RF-008 Rest timer | EPIC-06 | timer tests/UI |
+| RF-009 Exercise order | EPIC-07 | ordering fixtures |
+| RF-010 Occupied | EPIC-09 | integration scenario |
+| RF-011 Missing | EPIC-09 | persistence test |
+| RF-012 Substitution | EPIC-09 | scoring fixtures |
+| RF-013 Machine history | EPIC-09 | repository tests |
+| RF-014 Progression | EPIC-10 | progression fixtures |
+| RF-015 PRs | EPIC-10 | PR detector tests |
+| RF-016 Consistency | EPIC-17 | adherence tests |
+| RF-017 HealthKit workout | EPIC-11 | fake + physical device |
+| RF-018 Watch | EPIC-12 | watch UI/device test |
+| RF-019 Calories reconciliation | EPIC-11 | reconciliation matrix |
+| RF-020 External workout | EPIC-11 | import tests |
+| RF-021 Recovery | EPIC-13 | decision fixtures |
+| RF-022 Deload | EPIC-13 | deload policy tests |
+| RF-023 Restrictions | EPIC-14 | CRUD + policy tests |
+| RF-024 Pain | EPIC-14 | progression safety test |
+| RF-025 Explainability | EPIC-16 | DecisionRecord/explanation tests |
+| RF-026 Coaching detail | EPIC-15 | UI/model tests |
+| RF-027 Agent input | EPIC-16 | schema/validator tests |
+| RF-028 Offline workout | EPIC-02/06 | airplane-mode scenario |
+| RF-029 Sync | EPIC-02 | idempotency tests |
+| RF-030 Export | EPIC-02 | exported schema tests |
+| RF-031 Bodybuilding domain | EPIC-18 | domain tests |
+| RF-032 Gym switching | EPIC-09 | integration tests |
+| RF-033 Goal change | EPIC-05 | block transition tests |
+
+## Safety-critical traceability
+
+| Rule | Components that MUST enforce it |
+|---|---|
+| RN-003 no progression with moderate/high pain | RestrictionPolicyEngine + ProgressionEngine + ActionPolicyValidator |
+| RN-004 restriction not auto-resolved | RestrictionRepository + Restrictions feature |
+| RN-008 no calorie double count | WorkoutReconciliationEngine + summary aggregation |
+| RN-009 no invented external sets | Health import mapping |
+| RN-015 no diagnosis | Agent policy + copy review |
+| RN-017 agent actions validated | AgentCore/ActionPolicyValidator |
+| RN-018 measured vs estimated | Domain metadata + UI formatting |
+

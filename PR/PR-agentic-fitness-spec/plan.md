@@ -1,0 +1,898 @@
+# plan.md — Plan de implementación PR
+
+> Este plan convierte la visión de `promptMaster.md` y el backlog en una secuencia de implementación verificable. Las fases son gates técnicos: no se avanza sólo por calendario.
+
+---
+
+# 1. Estrategia general
+
+## Principio
+
+Construir de adentro hacia afuera:
+
+```text
+Domain
+  ↓
+Deterministic Training Engine
+  ↓
+Local Persistence / Offline Workout
+  ↓
+Simple UX
+  ↓
+Gym Adaptation
+  ↓
+HealthKit / watchOS
+  ↓
+Agentic Language Layer
+  ↓
+Advanced Learning / Bodybuilding
+```
+
+No invertir el orden.
+
+## Desarrollo obligatorio
+
+Cada slice sigue:
+
+```text
+DESARROLLAR
+    ↓
+TESTEAR
+    ↓
+PROBAR
+    ↓
+INTEGRAR
+```
+
+“Probar” significa ejecutar el comportamiento en una app/simulator/device apropiado, no sólo leer el código.
+
+---
+
+# 2. Milestones
+
+| Milestone | Resultado |
+|---|---|
+| M0 | Repo compilable, arquitectura y tests base |
+| M1 | Entrenador offline completo sin IA |
+| M2 | Adaptación real al gym y tiempo |
+| M3 | HealthKit + Apple Watch coherentes |
+| M4 | Agente conversacional seguro sobre engine determinista |
+| M5 | Recovery, lesiones, educación, gamificación |
+| M6 | Release candidate V1 |
+| M7 | Bodybuilding / self-knowledge V2 |
+
+---
+
+# 3. Fase 0 — Repository discovery y baseline
+
+## Objetivo
+No modificar arquitectura a ciegas.
+
+## Acciones
+
+1. `git status`.
+2. inventariar archivos/targets/schemes.
+3. `xcodebuild -list`.
+4. compilar baseline.
+5. ejecutar tests existentes.
+6. registrar errores preexistentes.
+7. verificar bundle IDs/entitlements existentes sin cambiarlos innecesariamente.
+8. decidir si `PRCore` será local package o targets existentes.
+
+## Gate de salida
+
+- baseline documentado;
+- build reproducible;
+- tests baseline conocidos;
+- ningún trabajo previo sobrescrito.
+
+---
+
+# 4. Fase 1 — Core Domain
+
+## Objetivo
+Construir el vocabulario estable del producto antes de UI.
+
+## Implementar
+
+- typed IDs;
+- user profile;
+- goals/phases;
+- Exercise ontology;
+- ExerciseFamily;
+- TrainingBlock;
+- SessionTemplate;
+- WorkoutSessionRecord;
+- SetPrescription/SetRecord;
+- GymProfile/MachineProfile;
+- TrainingRestriction;
+- DecisionRecord;
+- EvidenceRule.
+
+## Decisiones técnicas
+
+- Domain no depende de SwiftUI, HealthKit, SwiftData o networking.
+- Todos los modelos adecuados son `Sendable`.
+- Evitar protocol proliferation para value objects simples.
+- Validación en initializers/factories/domain services.
+
+## Pruebas
+
+- Codable roundtrip;
+- value bounds;
+- lifecycle transitions;
+- goal + phase combinations;
+- gym state semantics;
+- restriction lifecycle.
+
+## Gate
+
+- PRCore Domain compila independientemente;
+- tests de dominio pasan;
+- ninguna View contiene business rule.
+
+---
+
+# 5. Fase 2 — Persistence y offline-first
+
+## Objetivo
+Garantizar que una sesión jamás dependa de internet.
+
+## Implementar
+
+- repository protocols;
+- SwiftData adapters;
+- in-memory fakes;
+- atomic local set save;
+- pending operation queue;
+- schema/version baseline.
+
+## Flujo crítico
+
+```text
+Tap ✓ Set
+  ↓
+validate SetRecord
+  ↓
+write local transaction
+  ↓ SUCCESS
+update UI
+  ↓
+enqueue remote sync (optional)
+```
+
+Nunca:
+
+```text
+Tap ✓ → API → wait → save
+```
+
+## Pruebas
+
+- simulate network unavailable;
+- app restart with active workout;
+- duplicate retry;
+- persistence mapping;
+- transactional failure.
+
+## Gate
+
+Se puede crear y recuperar un workout completo sin red.
+
+---
+
+# 6. Fase 3 — Exercise Knowledge + Evidence Registry
+
+## Objetivo
+Dar al engine información suficiente para decidir.
+
+## Implementar
+
+- catálogo inicial versionado;
+- import/seed idempotente;
+- search;
+- aliases;
+- movement patterns;
+- muscle contributions;
+- substitution families;
+- fatigue/skill/stability/loadability;
+- evidence rules versionadas.
+
+## Revisión de calidad de datos
+
+Para cada ejercicio del MVP verificar:
+
+- nombre canonical;
+- equipment;
+- movement pattern;
+- primary muscles;
+- secondary muscles;
+- role candidates;
+- family;
+- restriction tags.
+
+## Gate
+
+Ninguna feature de substitution/order depende de strings o heurísticas de nombre.
+
+---
+
+# 7. Fase 4 — Training Engine v1
+
+## Objetivo
+Ser capaz de generar una sesión sensata sin LLM.
+
+## Subfases
+
+### 4A SplitSelector
+Entrada:
+
+```text
+goal
+experience
+days/week
+usual time
+```
+
+Salida: split.
+
+### 4B VolumeAllocator
+Entrada:
+
+```text
+goal
+phase
+priorities
+experience
+time
+EvidenceRules
+```
+
+Salida: weekly muscle targets.
+
+### 4C ExerciseAssignment
+Respeta:
+
+- equipment;
+- restrictions;
+- priorities;
+- anchor/rotatable policy.
+
+### 4D ExerciseOrderEngine
+Ordena por:
+
+- priority;
+- role;
+- skill;
+- fatigue interference.
+
+### 4E ProgressionEngine
+Implementar primero double progression.
+
+## Testing matrix
+
+| Fixture | Goal | Phase | Experience | Expected |
+|---|---|---|---|---|
+| A | hypertrophy | surplus | novice | simple full body |
+| B | hypertrophy | deficit | intermediate | preserved anchors, conservative volume |
+| C | strength | maintenance | advanced | priority lifts first |
+| D | bodybuilding | surplus | advanced | muscle priorities influence order/volume |
+| E | generalHealth | maintenance | beginner | manageable frequency/time |
+
+## Gate
+
+Given fixture → block/session reproducible + explainable.
+
+---
+
+# 8. Fase 5 — First-user experience
+
+## Objetivo
+Pasar de cero a workout real rápidamente.
+
+## Implementar
+
+- Sign in with Apple boundary/flow;
+- onboarding;
+- local profile;
+- block generation;
+- Today.
+
+## UX constraints
+
+- no giant dashboard;
+- first plan visible inmediatamente después de onboarding;
+- HealthKit puede skip;
+- lenguaje según coaching detail.
+
+## Gate
+
+Un usuario nuevo puede llegar a `Start Workout` sin configurar parámetros avanzados.
+
+---
+
+# 9. Fase 6 — Workout tracker v1
+
+## Objetivo
+Crear una UX de logging más simple que la complejidad interna.
+
+## Pantalla principal
+
+```text
+Exercise
+Suggested Weight × Reps
+Set X / Y
+[✓]
+```
+
+## Implementar
+
+- active workout state machine;
+- edit weight;
+- edit reps;
+- complete set;
+- skip;
+- rest timer;
+- resume after relaunch;
+- finish summary.
+
+## Performance target
+
+Set completion local <100 ms perceptual target.
+
+## Manual test obligatorio
+
+Simular una sesión de 20+ sets completa en simulator/device.
+
+## Gate
+
+Workout de principio a fin sin red y sin pérdida de datos.
+
+---
+
+# 10. Fase 7 — Time-aware engine
+
+## Objetivo
+Resolver el caso “normalmente 1 h, hoy 30 min, mañana 3 h”.
+
+## Implementar
+
+### DurationEstimator v1
+Defaults por:
+
+- sets;
+- rest;
+- transition;
+- exercise category.
+
+### Personal timing
+Actualizar EWMA con historial.
+
+### Hard optimizer
+Ejemplo:
+
+```text
+plan = 65 min
+available = 35 min
+```
+
+Debe:
+
+1. preservar priority anchor;
+2. eliminar optional;
+3. reducir accessory;
+4. compatible supersets;
+5. redistribuir si aplica.
+
+### Extra time
+No añadir volumen sin límites.
+
+## Tests
+
+- 30, 45, 60, 90, 180 min;
+- priority muscle;
+- strength anchor;
+- restrictions;
+- no feasible plan.
+
+## Gate
+
+Todos los outputs respetan time constraint y no violan safety/priority invariants.
+
+---
+
+# 11. Fase 8 — Gym intelligence
+
+## Objetivo
+Resolver la fricción principal del gimnasio real.
+
+## Implementar
+
+- gym profiles;
+- machine profiles;
+- select current gym;
+- occupied;
+- missing;
+- substitution;
+- reorder-before-replace;
+- per-machine history.
+
+## Flujo ocupado
+
+```text
+User taps OCCUPIED
+  ↓
+mark temporary state
+  ↓
+OrderEngine evaluates remaining session
+  ↓
+if safe reorder exists → suggest/perform reorder
+else → SubstitutionEngine ranks candidates
+```
+
+## Flujo missing
+
+```text
+User taps DOESN'T EXIST
+  ↓
+persist gym equipment missing
+  ↓
+recompute current session
+  ↓
+future block generation excludes equipment
+```
+
+## Gate
+
+Un usuario puede entrenar en un gym incompleto sin entrar manualmente a un catálogo de ejercicios.
+
+---
+
+# 12. Fase 9 — Progression, PR y consistency
+
+## Objetivo
+Hacer progreso visible y accionable.
+
+## Implementar
+
+- double progression;
+- PR detector;
+- e1RM versioned formula;
+- weekly adherence;
+- block completion;
+- consistency streak.
+
+## Regla
+
+No daily streak pressure.
+
+## Gate
+
+Descanso programado no rompe consistency; pain blocks progression.
+
+---
+
+# 13. Fase 10 — HealthKit iPhone layer
+
+## Objetivo
+Usar Apple Health como contexto y workout source sin duplicar datos.
+
+## Implementar
+
+- HealthWorkoutStore protocol;
+- authorization coordinator;
+- requested types mínimos;
+- workout lifecycle;
+- summary;
+- external workout read;
+- reconciliation engine.
+
+## Reconciliation algorithm v1
+
+Inputs:
+
+```text
+start
+end
+duration
+activityType
+source/device
+energy
+```
+
+Candidate duplicate if:
+
+```text
+overlap >= 0.80
+AND compatible activity type
+AND temporal tolerance satisfied
+```
+
+Decision uses canonical priority.
+
+## Tests
+
+- exact duplicate;
+- 90% overlap;
+- adjacent workouts;
+- two legitimate separate strength workouts same day;
+- missing energy;
+- denied permissions.
+
+## Gate
+
+No scenario de fixture suma dos veces el mismo workout.
+
+---
+
+# 14. Fase 11 — watchOS
+
+## Objetivo
+Poder completar el workout sin usar constantemente el iPhone.
+
+## Implementar en orden
+
+1. Watch workout UI con fake data.
+2. HealthKit workout lifecycle real.
+3. set logging local/watch coordination.
+4. phone/watch synchronization.
+5. failure handling.
+6. Digital Crown refinements.
+
+## Reglas
+
+- verificar APIs reales en Xcode/Apple docs;
+- no asumir network constante entre phone/watch;
+- commands idempotentes;
+- duplicate set prevention.
+
+## Device testing
+
+HealthKit workout behavior debe probarse en hardware físico antes de release.
+
+## Gate
+
+Workout completo desde Watch, con sets reflejados correctamente y HealthKit workout finalizado.
+
+---
+
+# 15. Fase 12 — Recovery & restrictions
+
+## Objetivo
+Que el coach también sepa frenar.
+
+## Implementar
+
+- check-in;
+- RecoveryDecisionEngine;
+- rest/adjust/recovery session;
+- restrictions CRUD;
+- RestrictionPolicyEngine;
+- pain feedback;
+- progression gate;
+- review date.
+
+## Safety tests obligatorios
+
+- overhead forbidden → no overhead substitutions;
+- pain high → no load increase;
+- resolved restriction only after explicit action;
+- restriction conflict → safe no-plan response.
+
+## Gate
+
+No fixture de restriction puede ser bypassed por substitution, agent o progression.
+
+---
+
+# 16. Fase 13 — Agentic layer
+
+## Objetivo
+Agregar lenguaje natural SIN ceder el control del Training Engine.
+
+## Implementar primero sin proveedor real
+
+- AgentIntent;
+- AgentAction;
+- ActionPolicyValidator;
+- fake AgentGateway;
+- templated explainability.
+
+Después integrar backend.
+
+## Agent pipeline
+
+```text
+User text
+  ↓
+AgentGateway.interpret
+  ↓
+AgentIntent
+  ↓
+ActionPolicyValidator
+  ↓
+Training Engine
+  ↓
+DecisionRecord
+  ↓
+AgentGateway.explain OR local template
+```
+
+## Primeras intents
+
+1. time constraint;
+2. equipment occupied/missing;
+3. request swap;
+4. fatigue;
+5. ask why;
+6. goal/phase change.
+
+No comenzar por un “general purpose chat”.
+
+## Security
+
+- no provider key in client;
+- minimize context;
+- validate schema;
+- timeout;
+- bounded retries;
+- malformed output = no mutation.
+
+## Gate
+
+Desconectar backend y verificar que workout core sigue funcionando.
+
+---
+
+# 17. Fase 14 — Education
+
+## Objetivo
+Que la app cambie según experiencia.
+
+## Implementar
+
+- CoachingDetailLevel;
+- contextual cards;
+- progressive RIR disclosure;
+- “Why?”;
+- advanced mode.
+
+## Regla
+
+No usar expertise gamificado como autoridad. Usuario controla detail level.
+
+---
+
+# 18. Fase 15 — V1 release hardening
+
+## Checklist
+
+### Functional
+- onboarding;
+- block;
+- Today;
+- time adjustment;
+- offline tracking;
+- occupied/missing;
+- substitution;
+- progression;
+- PR;
+- recovery;
+- restriction;
+- HealthKit;
+- Watch;
+- agent explanation.
+
+### Security/privacy
+- HealthKit permission audit;
+- no secrets;
+- log audit;
+- delete/export paths;
+- privacy copy reviewed.
+
+### Accessibility
+- VoiceOver;
+- Dynamic Type;
+- Reduce Motion;
+- contrast;
+- Watch touch targets.
+
+### Reliability
+- force quit active workout;
+- airplane mode;
+- Watch disconnect;
+- Health authorization denied;
+- agent backend timeout;
+- SwiftData migration test.
+
+### Performance
+- launch;
+- exercise search;
+- set completion;
+- Today load;
+- Watch workout battery sanity.
+
+## Release gate
+
+No P0 bug conocido que pueda:
+
+- perder workout data;
+- duplicar workout/energy;
+- ignorar restriction;
+- recomendar invalid load;
+- romper active workout state.
+
+---
+
+# 19. Fase 16 — Bodybuilding V2
+
+## Orden
+
+1. BodybuildingPhase.
+2. muscle specialization.
+3. volume redistribution.
+4. body measurements.
+5. posing.
+6. progress photos.
+7. competition timeline.
+8. self-knowledge insights.
+
+## Mantener fuera
+
+- medical contest prep;
+- drug protocols;
+- dangerous dehydration/electrolyte advice.
+
+---
+
+# 20. Arquitectura de testing
+
+## Pirámide
+
+```text
+          UI / Device E2E
+             few
+        ─────────────
+       Integration tests
+          targeted
+    ───────────────────
+      Domain/Engine tests
+          extensive
+```
+
+## Domain tests
+Swift Testing, deterministic fixtures.
+
+## Persistence
+In-memory SwiftData integration.
+
+## HealthKit
+Protocol fakes para automation + physical-device smoke validation.
+
+## Agent
+Recorded JSON fixtures; ningún unit test depende de una API LLM real.
+
+## UI
+XCUITest sólo flujos críticos, no cada detalle visual.
+
+---
+
+# 21. Branch/commit strategy recomendada
+
+Branches cortas:
+
+```text
+feat/PR-0802-hard-time-optimizer
+fix/PR-1105-energy-reconciliation
+```
+
+Commits enfocados:
+
+```text
+feat(training): add hard time session optimizer
+
+test(training): cover priority preservation under 30m constraint
+```
+
+No mezclar refactor masivo con feature salvo necesidad demostrable.
+
+---
+
+# 22. ADRs requeridos
+
+Crear Architecture Decision Record cuando cambie:
+
+- persistence technology;
+- module boundaries;
+- deployment target;
+- HealthKit strategy;
+- sync conflict policy;
+- LLM provider/backend contract;
+- analytics/telemetry;
+- photo storage/privacy.
+
+ADR mínimo:
+
+```text
+Context
+Decision
+Alternatives
+Consequences
+Rollback
+```
+
+---
+
+# 23. Riesgos principales y mitigaciones
+
+## Riesgo A — IA impredecible
+Mitigación: LLM interpret/explain only + validator + deterministic engine.
+
+## Riesgo B — Science-based se vuelve hardcode frágil
+Mitigación: Evidence Registry versionado.
+
+## Riesgo C — Demasiada complejidad UX
+Mitigación: progressive disclosure + Today minimal + advanced controls opt-in.
+
+## Riesgo D — HealthKit doble conteo
+Mitigación: canonical workout + reconciliation tests.
+
+## Riesgo E — Watch state conflicts
+Mitigación: idempotent IDs, clear ownership, recovery tests.
+
+## Riesgo F — Substitution mala
+Mitigación: rich ontology + safety gate + role/pattern scoring.
+
+## Riesgo G — “recovery score” falso
+Mitigación: categorical decisions + explainable facts.
+
+## Riesgo H — lesiones convierten app en producto médico
+Mitigación: restrictions not diagnosis; conservative messaging; professional guidance capture only.
+
+## Riesgo I — overengineering
+Mitigación: one PRCore package first; split only with measured reason.
+
+## Riesgo J — no data for personalization
+Mitigación: defaults science-based; confidence attached to learned insights.
+
+---
+
+# 24. Secuencia recomendada de los primeros 20 PRs
+
+1. PR-0001 project structure.
+2. PR-0101 identifiers/value objects.
+3. PR-0102 exercise domain.
+4. PR-0103 training domain.
+5. PR-0104 user profile.
+6. PR-0105 gym domain.
+7. PR-0106 restrictions domain.
+8. PR-0201 repositories.
+9. PR-0202 SwiftData.
+10. PR-0301 exercise seed.
+11. PR-0303 evidence registry.
+12. PR-0501 split selector.
+13. PR-0502 volume allocator.
+14. PR-0503 exercise assignment.
+15. PR-0701 ordering.
+16. PR-0504 block generation.
+17. PR-0401 Sign in with Apple.
+18. PR-0402 onboarding.
+19. PR-0601 Today.
+20. PR-0602 active workout state machine.
+
+Después seguir backlog por dependencies.
+
+---
+
+# 25. Definition of milestone completion
+
+Un milestone se cierra sólo cuando:
+
+- historias relevantes `DONE`;
+- suite verde;
+- build iOS verde;
+- build watchOS verde si aplica;
+- manual scenario ejecutado;
+- bugs P0/P1 bloqueantes resueltos;
+- documentación actualizada.
+
