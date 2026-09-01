@@ -866,12 +866,27 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0804 — Extra time behavior
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0802
+**Dependencies:** PR-0802  
+**Status:** DONE
 
 ### Criterios de aceptación
 - 180 min disponibles no multiplican volumen automáticamente.
 - opcionales separados visualmente.
 - cardio/mobility/posing sólo si corresponden.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/ExtraTimeBehavior.swift`: `ExtraTimeBehavior` (con
+  `ExtraTimePlan`/`ExtraTimeActivity`) decide el uso del tiempo extra:
+  - **no multiplica volumen**: nunca añade working sets; a lo sumo rellena con
+    actividades de extensión dentro del tiempo disponible (plan §388);
+  - **opcionales separados**: `optionalsAreSeparate = true` (se muestran fuera del
+    plan núcleo);
+  - **sólo si corresponden**: `mobility` siempre aplica; `cardio` según objetivo/fase
+    (`cardioApplies`: generalHealth/recomposition/powerbuilding, o déficit); `posing`
+    sólo para `bodybuilding`. Nunca se excede el tiempo extra y se explica el sobrante
+    sin más volumen.
+- 7 tests nuevos en `PRDomainTests/ExtraTimeBehaviorTests.swift`; suite **241 tests /
+  61 suites** verdes (`swift test`); iOS Debug build verde.
 
 ---
 

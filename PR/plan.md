@@ -1264,6 +1264,25 @@ DONE. `Packages/PRCore/Sources/PRDomain/FlexibleTimeOptimizer.swift` (plan §8, 
   ventana estrecha, preserva anchors al recortar.
 - Suite global verde: **234 tests / 60 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0804 (Extra time behavior)
+
+DONE. `Packages/PRCore/Sources/PRDomain/ExtraTimeBehavior.swift` (plan §8):
+
+- **`ExtraTimeBehavior`** (con `ExtraTimePlan`/`ExtraTimeActivity`) decide el uso del
+  tiempo extra: NUNCA multiplica el volumen de trabajo automáticamente (plan §388: no
+  añadir volumen sin límites) — a lo sumo rellena con actividades de extensión dentro
+  del tiempo disponible, sin excederlo.
+- **Opcionales separados**: `optionalsAreSeparate = true` (se presentan fuera del plan
+  núcleo).
+- **Sólo si corresponden**: `mobility` siempre; `cardio` vía `cardioApplies(goal:
+ phase:)` (generalHealth/recomposition/powerbuilding, o déficit); `posing` sólo para
+  `bodybuilding`. Explica el sobrante sin añadir más volumen cuando no corresponde
+  ninguna actividad.
+- Tests (`Tests/PRDomainTests/ExtraTimeBehaviorTests.swift`): no multiplica volumen con
+  180 min, opcionales separados, mobility siempre, cardioApplies por objetivo/fase,
+  cardio/posing gated en bodybuilding, nunca excede el tiempo, explica sobrante.
+- Suite global verde: **241 tests / 61 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion

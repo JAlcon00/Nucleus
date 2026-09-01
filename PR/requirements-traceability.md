@@ -193,6 +193,16 @@ no añade volumen (invariante) y explica la no-factibilidad cuando sobrepasa aun
 anchors/prioridades o la ventana es demasiado estrecha. Cobertura en
 `Packages/PRCore/Tests/PRDomainTests/FlexibleTimeOptimizerTests.swift` (RF-006).
 
+## Extra time behavior (EPIC-08, RF-006)
+
+Implementado en PR-0804 en `Packages/PRCore/Sources/PRDomain/ExtraTimeBehavior.swift`
+(plan §8): con tiempo extra no multiplica el volumen de trabajo automáticamente
+(plan §388), mantiene los opcionales separados del plan núcleo y sólo ofrece
+cardio/mobility/posing cuando corresponden al objetivo/fase (`mobility` siempre;
+`cardio` por objetivo o déficit; `posing` sólo `bodybuilding`), sin exceder el tiempo
+disponible. Cobertura en
+`Packages/PRCore/Tests/PRDomainTests/ExtraTimeBehaviorTests.swift` (RF-006).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |
