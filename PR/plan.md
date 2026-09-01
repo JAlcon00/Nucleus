@@ -882,6 +882,21 @@ Mitigación: defaults science-based; confidence attached to learned insights.
 
 Después seguir backlog por dependencies.
 
+### Estado PR-0001 (Bootstrap)
+
+Implementado y verificado:
+
+- **Targets:** `PR` (iOS) y `PRWatch` (watchOS companion) en `PR.xcodeproj` (filesystem-synchronized groups).
+- **Core local:** paquete Swift `Packages/PRCore` con productos `PRCore` y `PRDomain` (platforms iOS 18 / watchOS 11 / macOS 15), Swift tools 6.0.
+- **Dominio inicial en `PRDomain`:** identificadores tipados (`ExerciseID`, `TrainingBlockID`, `WorkoutID`, `SetRecordID`, `GymID`, `RestrictionID`, `DecisionID`, `EvidenceRuleID`), `LoadAndTime` (`Load`, `LoadUnit`, `TimeConstraint`, `DomainValidationError`) y `UserProfile` (`ExperienceLevel`, `TrainingGoal`, `BodyCompositionPhase`, `VarietyPreference`, `CoachingDetailLevel`, `PriorityTier`, `UserTrainingProfile`).
+- **Strict Concurrency:** `SWIFT_VERSION = 6.0`, `SWIFT_STRICT_CONCURRENCY = complete`, `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`.
+- **Composition root:** `AppEnvironment` (`@MainActor`, `@Observable`) inyectado al entorno de contenido. `PRApp.swift` y `PRWatchApp.swift` sin lógica de negocio.
+- **Compilación:** iOS Debug `BUILD SUCCEEDED`. watchOS definido pero **no compilable en este entorno** por ausencia del runtime watchOS (solo iOS 26.5 instalado).
+- **Tests `PRCore`:** 12 tests Swift Testing, todos verdes (`swift test`).
+- **Schemes:** `xcodebuild -list` documenta `PR`, `PRWatch`, `PRCore`, `PRDomain`.
+
+**Fix de build:** los `.md`/spec dentro de la carpeta sincronizada `PR/` se excluyen del target vía `PBXFileSystemSynchronizedBuildFileExceptionSet` para evitar el error "Multiple commands produce".
+
 ---
 
 # 25. Definition of milestone completion

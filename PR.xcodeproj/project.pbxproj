@@ -8,6 +8,7 @@
 
 /* Begin PBXFileReference section */
 		87DD72A230464C7100D2DF71 /* PR.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PR.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B7DC0010304CFC7100D2DF71 /* PRWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PRWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -17,6 +18,11 @@
 				B7DC00050000000000000005 /* Exceptions for "PR" folder in "PR" target */,
 			);
 			path = PR;
+			sourceTree = "<group>";
+		};
+		B7DC0020304CFC7100D2DF71 /* PRWatch */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PRWatch;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -30,6 +36,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B7DC0012304CFC7100D2DF71 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -37,6 +50,7 @@
 			isa = PBXGroup;
 			children = (
 				87DD72A430464C7100D2DF71 /* PR */,
+				B7DC0020304CFC7100D2DF71 /* PRWatch */,
 				87DD72A330464C7100D2DF71 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -45,6 +59,7 @@
 			isa = PBXGroup;
 			children = (
 				87DD72A230464C7100D2DF71 /* PR.app */,
+				B7DC0010304CFC7100D2DF71 /* PRWatch.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -75,6 +90,26 @@
 			productReference = 87DD72A230464C7100D2DF71 /* PR.app */;
 			productType = "com.apple.product-type.application";
 		};
+		B7DC0013304CFC7100D2DF71 /* PRWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B7DC001F304CFC7100D2DF71 /* Build configuration list for PBXNativeTarget "PRWatch" */;
+			buildPhases = (
+				B7DC0021304CFC7100D2DF71 /* Sources */,
+				B7DC0012304CFC7100D2DF71 /* Frameworks */,
+				B7DC0011304CFC7100D2DF71 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				B7DC0020304CFC7100D2DF71 /* PRWatch */,
+			);
+			name = PRWatch;
+			productName = PRWatch;
+			productReference = B7DC0010304CFC7100D2DF71 /* PRWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -86,6 +121,9 @@
 				LastUpgradeCheck = 2660;
 				TargetAttributes = {
 					87DD72A130464C7100D2DF71 = {
+						CreatedOnToolsVersion = 26.6;
+					};
+					B7DC0013304CFC7100D2DF71 = {
 						CreatedOnToolsVersion = 26.6;
 					};
 				};
@@ -108,6 +146,7 @@
 			projectRoot = "";
 			targets = (
 				87DD72A130464C7100D2DF71 /* PR */,
+				B7DC0013304CFC7100D2DF71 /* PRWatch */,
 			);
 		};
 /* End PBXProject section */
@@ -120,10 +159,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B7DC0011304CFC7100D2DF71 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		87DD729E30464C7100D2DF71 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B7DC0021304CFC7100D2DF71 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -316,6 +369,66 @@
 			};
 			name = Release;
 		};
+		B7DC001C304CFC7100D2DF71 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = PR;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = creadevs.PR.watch;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Debug;
+		};
+		B7DC001D304CFC7100D2DF71 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = PR;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = creadevs.PR.watch;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -333,6 +446,15 @@
 			buildConfigurations = (
 				87DD72AE30464C7300D2DF71 /* Debug */,
 				87DD72AF30464C7300D2DF71 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B7DC001F304CFC7100D2DF71 /* Build configuration list for PBXNativeTarget "PRWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B7DC001C304CFC7100D2DF71 /* Debug */,
+				B7DC001D304CFC7100D2DF71 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

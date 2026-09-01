@@ -41,7 +41,9 @@ Además de los criterios particulares, todas las historias heredan el DoD de `pr
 ## PR-0001 — Bootstrap de proyecto y targets
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** none
+**Dependencies:** none  
+**Status:** IN_PROGRESS (iOS DONE; smoke build watchOS pendiente de runtime)  
+
 
 ### Historia
 Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core para que las features no crezcan dentro de un monolito de Views.
