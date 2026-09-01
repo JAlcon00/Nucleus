@@ -310,6 +310,8 @@ public struct WorkoutSessionRecord: Identifiable, Codable, Sendable, Hashable {
     public var endedAt: Date?
     public var lifecycle: WorkoutLifecycleState
     public var sets: [SetRecord]
+    /// Referencia estable al workout de HealthKit asociado (para reconciliar, §14.2/§15.2).
+    public var healthWorkoutReferenceID: UUID?
 
     public init(
         id: WorkoutID = WorkoutID(),
@@ -317,7 +319,8 @@ public struct WorkoutSessionRecord: Identifiable, Codable, Sendable, Hashable {
         startedAt: Date = Date(),
         endedAt: Date? = nil,
         lifecycle: WorkoutLifecycleState = .planned,
-        sets: [SetRecord] = []
+        sets: [SetRecord] = [],
+        healthWorkoutReferenceID: UUID? = nil
     ) {
         self.id = id
         self.templateID = templateID
@@ -325,6 +328,7 @@ public struct WorkoutSessionRecord: Identifiable, Codable, Sendable, Hashable {
         self.endedAt = endedAt
         self.lifecycle = lifecycle
         self.sets = sets
+        self.healthWorkoutReferenceID = healthWorkoutReferenceID
     }
 
     /// Aplica una transición de lifecycle validada.
