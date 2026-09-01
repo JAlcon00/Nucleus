@@ -34,6 +34,26 @@ public enum AssignmentRole: String, Codable, Sendable, CaseIterable, Hashable {
     case optional
 }
 
+/// Regla de evidencia por defecto que documenta la política de anchors/rotatables.
+public enum ExerciseAssignmentDefaults {
+    public static let ruleID = EvidenceRuleID(rawValue: "assignment.anchorRotatable")
+
+    public static func makeRule(version: Int = 1) throws -> EvidenceRule {
+        try EvidenceRule(
+            id: ruleID,
+            name: "Anchor/rotatable assignment policy",
+            category: .ordering,
+            confidence: .emerging,
+            version: version,
+            parameters: [
+                "stableRotatables": 1,
+                "balancedRotatables": 2,
+                "variedRotatables": 3,
+            ]
+        )
+    }
+}
+
 /// Resultado de la asignación para un grupo muscular: su familia + assignments.
 public struct MuscleExerciseAssignment: Codable, Sendable, Hashable {
     public let muscleGroupID: MuscleGroup.ID

@@ -543,13 +543,27 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0504 — 4–8 week block generation
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-0503
+**Dependencies:** PR-0503  
+**Status:** DONE
 
 ### Criterios de aceptación
 - genera bloque completo persistible.
 - semanas dentro de 4...8.
 - se puede explicar estructura.
 - rebuild no borra historial anterior.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/BlockPlanner.swift`: `BlockPlanner` (
+  `BlockPlanningInput`/`BlockPlanningResult`/`BlockExplanation`) orquesta de forma
+  determinista SplitSelector → VolumeAllocator → ExerciseAssigner →
+  ExerciseOrderEngine → FatigueInterferenceEngine para producir un `TrainingBlock`
+  persistible 4–8 semanas. `block.status == .planned`, `sessions`, `muscleTargets` y
+  `priorities` poblados; estructura explicable vía facts + referencias versionadas.
+  Siempre genera un bloque NUEVO (ID distinto): rebuild NO muta ni borra historial.
+  Valida semanas 4...8 y prioridades no vacías (no inventa músculos).
+- `ExerciseAssignmentDefaults.makeRule()` añadido en `ExerciseAssignment.swift`.
+- 7 tests nuevos en `PRDomainTests/BlockPlannerTests.swift`; suite **177 tests /
+  53 suites** verdes (`swift test`); iOS Debug build verde.
 
 ---
 

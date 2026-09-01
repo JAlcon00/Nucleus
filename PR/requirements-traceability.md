@@ -116,6 +116,16 @@ compatibles, con configuración versionada vía `EvidenceRule` (`FatigueInterfer
 y reorder determinista que no mueve un movimiento prioritario después de uno menor.
 Cobertura en `Packages/PRCore/Tests/PRDomainTests/FatigueInterferenceTests.swift` (RF-009).
 
+## Block generation (EPIC-05)
+
+Implementado en PR-0504 en `Packages/PRCore/Sources/PRDomain/BlockPlanner.swift`
+(plan §4F): orquesta de forma determinista SplitSelector → VolumeAllocator →
+ExerciseAssigner → ExerciseOrderEngine → FatigueInterferenceEngine para producir un
+`TrainingBlock` persistible de 4–8 semanas, explicable (`BlockExplanation` con facts y
+referencias versionadas) y reproducible; cada `plan` genera un bloque NUEVO sin mutar
+ni borrar historial previo. Cobertura en
+`Packages/PRCore/Tests/PRDomainTests/BlockPlannerTests.swift` (RF-004, RF-009).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |

@@ -1117,6 +1117,27 @@ promptMaster §9.2):
   parámetros y error con <2 ejercicios.
 - Suite global verde: **170 tests / 52 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0504 (4–8 week block generation)
+
+DONE. `Packages/PRCore/Sources/PRDomain/BlockPlanner.swift` (plan §4F):
+
+- **`BlockPlanner`** orquesta de forma determinista el pipeline completo:
+  `SplitSelector` (estructura por días/objetivo) → `VolumeAllocator` (sets
+  semanales/músculo) → `ExerciseAssigner` (anchor/rotatables) →
+  `ExerciseOrderEngine` + `FatigueInterferenceEngine` (orden de sesión) → produce
+  un **`TrainingBlock`** persistible 4–8 semanas.
+- **Determinista y explicable**: `BlockExplanation` con `[DecisionFact]` (goal,
+  phase, weeks, split, days, músculos, volumen total) + referencias versionadas
+  (`VolumeDefaults`, `ExerciseAssignmentDefaults`).
+- **Rebuild sin borrar historial**: cada `plan` genera un bloque NUEVO (ID distinto);
+  el planificador no muta ni borra bloques previos.
+- **Validación**: semanas fuera de 4...8 y prioridades vacías (no inventa músculos)
+  lanzan `BlockPlanningError`.
+- Tests (`Tests/PRDomainTests/BlockPlannerTests.swift`): bloque completo persistible
+  (Codable round-trip), rechazo de semanas/prioridades inválidas, explicabilidad,
+  rebuild → ID nuevo sin borrar, determinismo y exclusión por restricciones.
+- Suite global verde: **177 tests / 53 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion
