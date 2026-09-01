@@ -1003,6 +1003,17 @@ DONE. Catálogo inicial versionado con import idempotente.
 - Tests (`Tests/PRCoreTests/ExerciseCatalogTests.swift`): carga del bundle, determinismo (mismo dataset → mismos IDs), cobertura de los 18 patrones MVP con ≥1 ejercicio, well-formedness, idempotencia del seeder.
 - Suite global verde: **93 tests / 37 suites** (`swift test`); iOS Debug build verde (resource incluido).
 
+### Estado PR-0303 (Evidence Registry)
+
+DONE. `Packages/PRCore/Sources/PRDomain/Evidence.swift` (promptMaster §22):
+
+- **`EvidenceRule` versionada**: id, name, `EvidenceCategory`, `EvidenceConfidence`, `version` (≥1), `parameters: [String: Double]` (rechaza non-finite), `references` y `active`.
+- **`EvidenceRegistry`**: registro centralizado de reglas — source única de parámetros ajustables (sin constantes dispersas). Registrar un cambio exige incrementar versión (`ruleVersionNotAdvanced`); `deactivate` excluye reglas de parámetros/referencias; listado en orden estable de id.
+- **`EvidenceRuleReference`** (id + versión): `DecisionRecord` guarda la referencia de la regla usada, de modo que un cambio de regla no re escribe el pasado (auditable, §22.2). Sin cambios se mantiene `ruleIDs` como view conveniente.
+- Tipos de apoyo: `EvidenceCategory` (volume/progression/recovery/ordering/rest/safety), `EvidenceConfidence` (established/emerging/expertConsensus/anecdotal), `EvidenceReference` (título + fuente/año/URL).
+- Tests (`Tests/PRDomainTests/EvidenceTests.swift`): codable round-trip, validación de versión/parámetros, centralización de parámetros, rechazo de cambio sin bump, bump aceptado, deactivate, orden estable, y referencia versionada persistida en `DecisionRecord`.
+- Suite global verde: **109 tests / 41 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion

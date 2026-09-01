@@ -46,6 +46,8 @@ public struct DecisionActionSummary: Codable, Sendable, Hashable {
 }
 
 /// Registro persistible de una decisión automática (promptMaster §21).
+/// Guarda la referencia versionada de cada regla usada para auditar el coaching
+/// cuando una regla cambia (§22.2, PR-0303).
 public struct DecisionRecord: Identifiable, Codable, Sendable, Hashable {
     public typealias ID = DecisionID
 
@@ -54,8 +56,11 @@ public struct DecisionRecord: Identifiable, Codable, Sendable, Hashable {
     public let type: DecisionType
     public let inputFacts: [DecisionFact]
     public let action: DecisionActionSummary
-    public let ruleIDs: [EvidenceRuleID]
+    public let ruleReferences: [EvidenceRuleReference]
     public let userOverrideAllowed: Bool
+
+    /// IDs de las reglas usadas (comodidad; la versión vive en `ruleReferences`).
+    public var ruleIDs: [EvidenceRuleID] { ruleReferences.map(\.ruleID) }
 
     public init(
         id: DecisionID = DecisionID(),
@@ -63,7 +68,7 @@ public struct DecisionRecord: Identifiable, Codable, Sendable, Hashable {
         type: DecisionType,
         inputFacts: [DecisionFact] = [],
         action: DecisionActionSummary,
-        ruleIDs: [EvidenceRuleID] = [],
+        ruleReferences: [EvidenceRuleReference] = [],
         userOverrideAllowed: Bool = false
     ) {
         self.id = id
@@ -71,7 +76,7 @@ public struct DecisionRecord: Identifiable, Codable, Sendable, Hashable {
         self.type = type
         self.inputFacts = inputFacts
         self.action = action
-        self.ruleIDs = ruleIDs
+        self.ruleReferences = ruleReferences
         self.userOverrideAllowed = userOverrideAllowed
     }
 }

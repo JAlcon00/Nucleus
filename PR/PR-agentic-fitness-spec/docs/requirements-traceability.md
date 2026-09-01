@@ -38,6 +38,7 @@ Esta matriz vincula requisitos maestros con épicas principales. Debe actualizar
 | RF-032 Gym switching | EPIC-09 | integration tests |
 | RF-033 Goal change | EPIC-05 | block transition tests |
 | RF-034 Exercise catalog | EPIC-03 | catalog seed + MVP coverage tests (PR-0301) |
+| RF-025 Explainability (versioned) | EPIC-03/16 | EvidenceRegistry + versioned rule references in DecisionRecord (PR-0303) |
 
 ## Persistencia local (EPIC-02)
 
@@ -54,6 +55,14 @@ curado a 678 ejercicios y mapeado de forma determinista a la ontología `Exercis
 de PRDomain (ver `adr/ADR-0002`). Cobertura en `PRCoreTests/ExerciseCatalogTests.swift`:
 carga del bundle, determinismo de IDs, cobertura de patrones MVP e idempotencia
 del seed (RF-034).
+
+## Evidence Registry (EPIC-03)
+
+Implementado en PR-0303 en `PRDomain/Evidence.swift` (promptMaster §22): `EvidenceRule`
+versionada + `EvidenceRegistry` centralizado (el cambio de una regla exige bump de
+versión) + `EvidenceRuleReference` (id + versión). `DecisionRecord` persiste la
+referencia versionada de la regla usada, haciendo auditable qué versión de regla
+soportó cada decisión (RF-025). Cobertura en `PRDomainTests/EvidenceTests.swift`.
 
 ## Safety-critical traceability
 

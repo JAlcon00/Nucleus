@@ -60,7 +60,7 @@ enum RepoFixtures {
         DecisionRecord(
             type: .loadChange,
             action: DecisionActionSummary(title: "Subir carga", detail: "2.5kg"),
-            ruleIDs: []
+            ruleReferences: []
         )
     }
 

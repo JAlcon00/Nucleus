@@ -115,4 +115,11 @@ public enum DomainValidationError: Error, Equatable, Sendable {
     case invalidRIR(value: Int)
     case invalidSeverity(value: Int)
     case invalidStateTransition(from: String, to: String)
+    case emptyRuleName
+    case emptyEvidenceReferenceTitle
+    case invalidRuleVersion(value: Int)
+    case nonFiniteRuleParameter(name: String, value: Double)
+    case duplicateRuleID(id: String, existingVersion: Int, newVersion: Int)
+    case ruleVersionNotAdvanced(id: String, current: Int, proposed: Int)
+    case ruleNotFound(id: String)
 }

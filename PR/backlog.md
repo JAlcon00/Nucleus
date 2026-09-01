@@ -383,13 +383,25 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0303 — Evidence Registry
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0101
+**Dependencies:** PR-0101  
+**Status:** DONE
 
 ### Criterios de aceptación
 - EvidenceRule versionada.
 - DecisionRecord puede guardar rule ID/version.
 - parámetros centralizados.
 - cambios de reglas son testeables.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/Evidence.swift`: `EvidenceRule` versionada +
+  `EvidenceRegistry` (registro centralizado; cambiar una regla exige bump de
+  versión) + `EvidenceRuleReference` (id + versión) que `DecisionRecord` persiste
+  para auditar qué versión de regla se usó (§22.2). Validación de versión,
+  non-finite parameters, títulos de referencia y duplicados.
+- `DecisionRecord.ruleReferences` reemplaza al campo `ruleIDs` (que queda como
+  view derivada); los registros persisten la referencia versionada.
+- 16 tests nuevos en `PRDomainTests/EvidenceTests.swift`; suite **109 tests /
+  41 suites** verdes (`swift test`); iOS Debug build verde.
 
 ---
 
