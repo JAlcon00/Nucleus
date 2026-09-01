@@ -30,6 +30,7 @@ public struct Load: Codable, Sendable, Hashable {
 }
 
 /// Restricción temporal de una sesión (promptMaster §11.1).
+/// Valida límites no negativos: minutos y tolerancias deben ser >= 0.
 public enum TimeConstraint: Codable, Sendable, Hashable, Equatable {
     case hard(minutes: Int)
     case flexible(targetMinutes: Int, toleranceMinutes: Int)
@@ -38,12 +39,28 @@ public enum TimeConstraint: Codable, Sendable, Hashable, Equatable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let raw = try container.decode(String.self)
-        self = Self.parse(raw)
+        self = try Self.parse(raw)
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         try container.encode(encodedValue)
+    }
+
+    /// Valida los límites de la restricción (valor no negativo).
+    public func validated() throws -> TimeConstraint {
+        switch self {
+        case .hard(let minutes):
+            guard minutes >= 0 else { throw DomainValidationError.invalidMinutes(value: minutes) }
+            return self
+        case .flexible(let target, let tolerance):
+            guard target >= 0, tolerance >= 0 else {
+                throw DomainValidationError.invalidMinutes(value: min(target, tolerance))
+            }
+            return self
+        case .unconstrained:
+            return self
+        }
     }
 
     private var encodedValue: String {
@@ -57,18 +74,18 @@ public enum TimeConstraint: Codable, Sendable, Hashable, Equatable {
         }
     }
 
-    private static func parse(_ raw: String) -> TimeConstraint {
+    private static func parse(_ raw: String) throws -> TimeConstraint {
         let parts = raw.split(separator: ":")
         guard let kind = parts.first else { return .unconstrained }
         switch kind {
         case "hard":
-            if parts.count > 1, let m = Int(parts[1]) { return .hard(minutes: m) }
-            return .unconstrained
+            guard parts.count > 1, let m = Int(parts[1]) else { return .unconstrained }
+            return try TimeConstraint.hard(minutes: m).validated()
         case "flexible":
-            if parts.count > 2, let t = Int(parts[1]), let tol = Int(parts[2]) {
-                return .flexible(targetMinutes: t, toleranceMinutes: tol)
+            guard parts.count > 2, let t = Int(parts[1]), let tol = Int(parts[2]) else {
+                return .unconstrained
             }
-            return .unconstrained
+            return try TimeConstraint.flexible(targetMinutes: t, toleranceMinutes: tol).validated()
         default:
             return .unconstrained
         }

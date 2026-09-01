@@ -897,6 +897,15 @@ Implementado y verificado:
 
 **Fix de build:** los `.md`/spec dentro de la carpeta sincronizada `PR/` se excluyen del target vía `PBXFileSystemSynchronizedBuildFileExceptionSet` para evitar el error "Multiple commands produce".
 
+### Estado PR-0101 (Core identifiers y value objects)
+
+DONE. Implementado en `Packages/PRCore/Sources/PRDomain/`:
+
+- `Identifiers.swift`: `ExerciseID`, `TrainingBlockID`, `WorkoutID`, `SetRecordID`, `GymID`, `RestrictionID`, `DecisionID`, `EvidenceRuleID` — tipados, `Codable`/`Hashable`/`Sendable`/`Identifiable`.
+- `LoadAndTime.swift`: `LoadUnit` (kg/lb), `Load` (rechaza negativos y NaN), `TimeConstraint` (rechaza minutos/tolerancia negativos).
+- 15 tests Swift Testing verdes (`swift test`): round trip Codable, equality/hash, invalid load/time boundaries.
+- iOS Debug build sigue verde con el paquete vinculado.
+
 ---
 
 # 25. Definition of milestone completion

@@ -88,6 +88,29 @@ struct TimeConstraintTests {
             #expect(decoded == constraint)
         }
     }
+
+    @Test("Negative hard minutes are rejected on decode")
+    func negativeHardMinutesRejected() {
+        #expect(throws: DomainValidationError.self) {
+            let data = Data("\"hard:-5\"".utf8)
+            _ = try JSONDecoder().decode(TimeConstraint.self, from: data)
+        }
+    }
+
+    @Test("Negative tolerance is rejected on decode")
+    func negativeToleranceRejected() {
+        #expect(throws: DomainValidationError.self) {
+            let data = Data("\"flexible:30:-10\"".utf8)
+            _ = try JSONDecoder().decode(TimeConstraint.self, from: data)
+        }
+    }
+
+    @Test("validated() rejects negative direct construction")
+    func validatedRejectsNegativeConstruction() {
+        #expect(throws: DomainValidationError.self) {
+            _ = try TimeConstraint.hard(minutes: -1).validated()
+        }
+    }
 }
 
 @Suite("UserTrainingProfile validation")

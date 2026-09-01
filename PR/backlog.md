@@ -107,7 +107,9 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 ## PR-0101 — Core identifiers y value objects
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0001
+**Dependencies:** PR-0001  
+**Status:** DONE  
+
 
 ### Implementar
 - ExerciseID
@@ -124,6 +126,11 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - `Codable`, `Hashable`, `Sendable` donde corresponda.
 - No usar UUID/String raw sueltos en APIs de dominio críticas.
 - Validación de kg/lb y valores no negativos.
+
+### Notas de implementación
+- Identificadores tipados en `Packages/PRCore/Sources/PRDomain/Identifiers.swift` (`ExerciseID`, `TrainingBlockID`, `WorkoutID`, `SetRecordID`, `GymID`, `RestrictionID`, `DecisionID`, `EvidenceRuleID`).
+- Value objects en `LoadAndTime.swift`: `LoadUnit` (kg/lb), `Load` (rechaza negativos y NaN), `TimeConstraint` (rechaza minutos/tolerancia negativos vía `validated()` y decode).
+- 15 tests Swift Testing verdes en `PRDomainTests/DomainTests.swift` (round trip Codable, equality/hash, invalid load/time boundaries).
 
 ### Tests
 - round trip Codable;
