@@ -94,6 +94,14 @@ dejando candidatos para pregunta si `unknown`, sin programar ejercicios bloquead
 por `TrainingRestriction` (excluye patrones/IDs prohibidos y respeta la lista
 permitida). Cobertura en `PRDomainTests/ExerciseAssignmentTests.swift` (RF-004).
 
+## Exercise order (EPIC-07)
+
+Implementado en PR-0701 en `PRDomain/ExerciseOrder.swift` (plan §4D, promptMaster §9):
+orden base determinista de una sesión por prioridad muscular, rol funcional y demanda
+técnica (`orderScore` §9.3), con compuestos antes de accesorios y priority isolation
+adelantable según prioridad del bloque. Cobertura en
+`PRDomainTests/ExerciseOrderTests.swift` (RF-009).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |

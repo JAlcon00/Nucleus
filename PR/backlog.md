@@ -638,7 +638,8 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0701 — Base ordering rules
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-0301, PR-0503
+**Dependencies:** PR-0301, PR-0503  
+**Status:** DONE
 
 ### Criterios de aceptación
 - prioridad > role > fatigue/skill según reglas.
@@ -651,6 +652,18 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 - bodybuilding side-delt priority;
 - novice full body;
 - conflicting accessory fatigue.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/ExerciseOrder.swift`: `ExerciseOrderEngine` +
+  `ExerciseOrderInput` + `OrderedExercise` (exercise + orderScore + rank).
+  Orden base determinista siguiendo §9: rol funcional (`primaryCompound` >
+  `secondaryCompound` > `priorityIsolation` > `accessoryIsolation` > warmup/mobility
+  > conditioning/posing), bonus de prioridad muscular (specialize 60 / emphasize 45 /
+  normal 20 / maintain 0) y bonus de demanda técnica (`skillDemand` high 30 /
+  moderate 15). Empates resueltos por nombre canónico. `ExerciseOrderEngine.order`
+  devuelve `[OrderedExercise]` rankeado 1...N.
+- 7 tests nuevos en `PRDomainTests/ExerciseOrderTests.swift`; suite **161 tests /
+  51 suites** verdes (`swift test`); iOS Debug build verde.
 
 ---
 

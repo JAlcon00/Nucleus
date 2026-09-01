@@ -1077,6 +1077,24 @@ DONE. `Packages/PRCore/Sources/PRDomain/ExerciseAssignment.swift` (plan §4C):
   error explícito sin candidatos.
 - Suite global verde: **154 tests / 50 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0701 (Base ordering rules)
+
+DONE. `Packages/PRCore/Sources/PRDomain/ExerciseOrder.swift` (plan §4D):
+
+- **`ExerciseOrderEngine`** determinista: ordena los ejercicios de una sesión por
+  score §9.3 — rol funcional (`primaryCompound` 100 > `secondaryCompound` 80 >
+  `priorityIsolation` 70 > `accessoryIsolation` 50 > warmup/mobility > optional/
+  conditioning/posing), bonus de prioridad muscular (specialize 60 / emphasize 45 /
+  normal 20 / maintain 0) y bonus de demanda técnica (`skillDemand` high 30 /
+  moderate 15). Determinista: empates resueltos por `canonicalName`.
+- **`OrderedExercise`** (exercise + `orderScore` + `rank` 1...N); `order` lanza
+  `ExerciseOrderError.emptyInput` con lista vacía.
+- Tests (`Tests/PRDomainTests/ExerciseOrderTests.swift`): compuestos antes de
+  aislados, técnica alta antes, priority isolation de músculo specialized antes que
+  accessories, conditioning/posing al final, determinismo, ranks contiguos y error
+  sin entrada.
+- Suite global verde: **161 tests / 51 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion
