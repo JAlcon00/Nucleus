@@ -839,11 +839,27 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0803 — Flexible time optimizer
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0802
+**Dependencies:** PR-0802  
+**Status:** DONE
 
 ### Criterios de aceptación
 - session cae dentro de target ± tolerance cuando sea factible.
 - explica cuando no es factible.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/FlexibleTimeOptimizer.swift`: `FlexibleTimeOptimizer`
+  (con `FlexibleTimeResult`/`FlexibleStatus`) ajusta una sesión a una ventana
+  `target ± tolerance`:
+  - `inWindow`: si la sesión ya cae dentro de la ventana, no recorta nada;
+  - sobre el límite: reusa `HardTimeOptimizer` para recortar SÓLO lo necesario y entrar
+    por el borde superior (no recorta de más);
+  - `under`: por debajo del umbral, NO añade volumen (invariante; extra-time en
+    PR-0804) y lo explica;
+  - `notFeasible`: explica cuando no es factible — sobre el límite aun conservando
+    todos los anchors/prioridades, o ventana demasiado estrecha para la granularidad
+    de los sets.
+- 6 tests nuevos en `PRDomainTests/FlexibleTimeOptimizerTests.swift`; suite
+  **234 tests / 60 suites** verdes (`swift test`); iOS Debug build verde.
 
 ---
 

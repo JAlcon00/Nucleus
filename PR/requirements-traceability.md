@@ -184,6 +184,15 @@ antes de descartar) y nunca agregando supersets incompatibles (sólo los disjunt
 tolerancia queda documentada en `withinLimit` y `notes`. Cobertura en
 `Packages/PRCore/Tests/PRDomainTests/HardTimeOptimizerTests.swift` (RF-006).
 
+## Flexible time optimizer (EPIC-08, RF-006)
+
+Implementado en PR-0803 en `Packages/PRCore/Sources/PRDomain/FlexibleTimeOptimizer.swift`
+(plan §8): ajusta una sesión a `target ± tolerance`, recortando SÓLO lo necesario
+(reusando `HardTimeOptimizer`) para entrar por el borde superior; por debajo del umbral
+no añade volumen (invariante) y explica la no-factibilidad cuando sobrepasa aun con
+anchors/prioridades o la ventana es demasiado estrecha. Cobertura en
+`Packages/PRCore/Tests/PRDomainTests/FlexibleTimeOptimizerTests.swift` (RF-006).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |

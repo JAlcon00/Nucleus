@@ -1246,6 +1246,24 @@ DONE. `Packages/PRCore/Sources/PRDomain/HardTimeOptimizer.swift` (plan §8, RF-0
   imposible, tolerancia documentada.
 - Suite global verde: **228 tests / 59 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0803 (Flexible time optimizer)
+
+DONE. `Packages/PRCore/Sources/PRDomain/FlexibleTimeOptimizer.swift` (plan §8, RF-006):
+
+- **`FlexibleTimeOptimizer`** (con `FlexibleTimeResult`/`FlexibleStatus`) ajusta una
+  sesión a una ventana `target ± tolerance`: si ya cabe (`inWindow`) no recorta; si la
+  excede, reusa `HardTimeOptimizer` para recortar SÓLO lo necesario y entrar por el
+  borde superior (nunca recorta de más).
+- **under**: por debajo del umbral NO añade volumen (invariante; extra-time en
+  PR-0804) y lo explica.
+- **Explica no-factible**: `notFeasible` cuando sobrepasa el límite aun conservando
+  todos los anchors/prioridades, o cuando la ventana es demasiado estrecha para la
+  granularidad de los sets.
+- Tests (`Tests/PRDomainTests/FlexibleTimeOptimizerTests.swift`): ya-en-ventana,
+  recorte justo para entrar, under sin añadir volumen, no-factible sobre el límite,
+  ventana estrecha, preserva anchors al recortar.
+- Suite global verde: **234 tests / 60 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion
