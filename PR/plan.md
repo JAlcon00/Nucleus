@@ -1300,6 +1300,21 @@ DONE. `Packages/PRCore/Sources/PRDomain/GymProfileManager.swift` (plan §9, RF-0
   unknown, occupied rechazado + session-scoped, transiciones de disponibilidad.
 - Suite global verde: **248 tests / 62 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0902 (Mark occupied)
+
+DONE. `Packages/PRCore/Sources/PRDomain/OccupancyController.swift` (plan §9, RF-010):
+
+- **`OccupancyController`** (con `OccupancyChange`/`OrderedEquipmentUse`) marca un
+  equipo como ocupado durante la sesión activa:
+  - **sólo sesión actual**: `GymProfile.occupiedDuringSession` (session-scoped); al
+    finalizar (`endingSession`) vuelve al estado persistente del gym;
+  - **dispara reorder**: `shouldReorder == true` si algún `OrderedEquipmentUse` del
+    plan usa el equipo ocupado → el orden se reevalúa ANTES de sustituir (RF-010).
+- Tests (`Tests/PRDomainTests/OccupancyControllerTests.swift`): marca ocupado, reorder
+  cuando el plan usa el equipo, no-reorder si irrelevante, session-scoped + limpieza al
+  finalizar, acumula varias ocupaciones.
+- Suite global verde: **253 tests / 63 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion

@@ -202,6 +202,14 @@ como session-scoped; no obliga a un formulario inicial de todas las máquinas (s
 confirmar → `.unknown`, progressive disclosure). Cobertura en
 `PRDomainTests/GymProfileManagerTests.swift` (RF-010, RF-011).
 
+## Mark occupied (EPIC-09, RF-010)
+
+Implementado en PR-0902 en `PRDomain/OccupancyController.swift` (plan §9): marca un
+equipo como ocupado durante la sesión activa (session-scoped, no persistido como hecho
+del gym) y dispara una señal de reevaluación del orden (`shouldReorder`) cuando un ítem
+ordenado del plan usa el equipo ocupado, para reordenar ANTES de sustituir. Cobertura en
+`PRDomainTests/OccupancyControllerTests.swift` (RF-010).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |

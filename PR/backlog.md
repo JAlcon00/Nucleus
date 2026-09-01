@@ -922,12 +922,25 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0902 — Mark occupied
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0602, PR-0901
+**Dependencies:** PR-0602, PR-0901  
+**Status:** DONE
 
 ### Criterios de aceptación
 - action disponible durante active workout.
 - estado sólo sesión actual.
 - dispara reorder evaluation.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/OccupancyController.swift`: `OccupancyController`
+  (con `OccupancyChange`/`OrderedEquipmentUse`) marca un equipo como ocupado en la
+  sesión activa:
+  - **sólo sesión actual**: `occupiedDuringSession` (session-scoped); al finalizar la
+    sesión (`endingSession`) vuelve al estado persistente del gym;
+  - **dispara reorder**: `shouldReorder == true` si algún ítem ordenado del plan usa
+    el equipo ocupado (`OrderedEquipmentUse`), señalando que el orden debe reevaluarse
+    ANTES de sustituir (RF-010).
+- 5 tests nuevos en `PRDomainTests/OccupancyControllerTests.swift`; suite **253 tests /
+  63 suites** verdes (`swift test`); iOS Debug build verde.
 
 ---
 

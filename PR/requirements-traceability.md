@@ -212,6 +212,15 @@ equipamiento (`.unknown`/`.available`/`.doesNotExist`) de forma persistente, dej
 máquinas (sin confirmar → `.unknown`, progressive disclosure). Cobertura en
 `Packages/PRCore/Tests/PRDomainTests/GymProfileManagerTests.swift` (RF-010, RF-011).
 
+## Mark occupied (EPIC-09, RF-010)
+
+Implementado en PR-0902 en `Packages/PRCore/Sources/PRDomain/OccupancyController.swift`
+(plan §9): marca un equipo como ocupado durante la sesión activa (session-scoped, no
+persistido como hecho del gym) y dispara una señal de reevaluación del orden
+(`shouldReorder`) cuando un ítem ordenado del plan usa el equipo ocupado, para reordenar
+ANTES de sustituir. Cobertura en
+`Packages/PRCore/Tests/PRDomainTests/OccupancyControllerTests.swift` (RF-010).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |
