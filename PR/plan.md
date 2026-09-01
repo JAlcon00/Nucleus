@@ -1040,6 +1040,22 @@ DONE. `Packages/PRCore/Sources/PRDomain/SplitSelector.swift` (promptMaster §8.2
 - Tests (`Tests/PRDomainTests/SplitSelectorTests.swift`): meses por días, caso especializado, matriz del plan (fixture A full body), determinismo y explicabilidad.
 - Suite global verde: **135 tests / 47 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0502 (Volume allocator)
+
+DONE. `Packages/PRCore/Sources/PRDomain/VolumeAllocator.swift` (plan §4B):
+
+- **`VolumeConfig`**: regla de evidencia versionada (`EvidenceRule`) con rangos de
+  sets semanales por tier (`maintain` 4–6, `normal` 8–12, `emphasize` 12–16,
+  `specialize` 16–20). Centraliza constantes científicas (SKILL.md: no magic numbers).
+- **`VolumeAllocator`** determinista: distribuye targets por músculo según
+  `PriorityTier`; nunca genera volumen negativo; sin prioridades no inventa músculos.
+- **`VolumeAllocation`** (`MuscleVolumeAssignment` por grupo con `priority` +
+  `ruleReference`): reporta presupuesto global [min, max] y total.
+- Tests (`Tests/PRDomainTests/VolumeAllocatorTests.swift`): orden de tiers,
+  presupuesto agregado, determinismo, ausencia de negativo, referencia versionada
+  y validación de `VolumeConfig` (params obligatorios).
+- Suite global verde: **144 tests / 49 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion

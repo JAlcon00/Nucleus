@@ -78,6 +78,13 @@ selección determinista y explicable de la estructura de bloques por días/objet
 experiencia (fullBody 2–3, upperLower 4, pushPullLegs 5+), sin depender de LLM.
 Cobertura en `PRDomainTests/SplitSelectorTests.swift` (RF-004).
 
+## Volume allocator (EPIC-05)
+
+Implementado en PR-0502 en `PRDomain/VolumeAllocator.swift` (plan §4B): distribución
+determinista de sets semanales por músculo según `PriorityTier`, con límites
+versionados vía `EvidenceRule` (`VolumeConfig`), sin volumen negativo y sin inventar
+músculos. Cobertura en `PRDomainTests/VolumeAllocatorTests.swift` (RF-004).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |

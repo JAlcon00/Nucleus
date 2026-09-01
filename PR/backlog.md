@@ -495,7 +495,8 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0502 — Volume allocator
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-0501, PR-0303
+**Dependencies:** PR-0501, PR-0303  
+**Status:** DONE
 
 ### Criterios de aceptación
 - distribuye targets por músculo/semana.
@@ -503,6 +504,14 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 - no genera volumen negativo.
 - respeta time budget aproximado.
 - límites vienen de configuración/evidence rules versionadas.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/VolumeAllocator.swift`: `VolumeAllocator` +
+  `VolumeConfig` (regla `EvidenceRule` con rangos por tier) + `VolumeAllocation`
+  (`MuscleVolumeAssignment` con priority y ruleReference). Determinista, sin
+  volumen negativo, sin inventar músculos, límites versionados.
+- 9 tests nuevos en `PRDomainTests/VolumeAllocatorTests.swift`; suite **144 tests /
+  49 suites** verdes (`swift test`); iOS Debug build verde.
 
 ---
 

@@ -81,6 +81,14 @@ por días/objetivo/experiencia (fullBody 2–3, upperLower 4, pushPullLegs 5+), 
 depender de LLM. Cobertura en `Packages/PRCore/Tests/PRDomainTests/SplitSelectorTests.swift`
 (RF-004).
 
+## Volume allocator (EPIC-05)
+
+Implementado en PR-0502 en `Packages/PRCore/Sources/PRDomain/VolumeAllocator.swift`
+(plan §4B): distribución determinista de sets semanales por músculo según
+`PriorityTier`, con límites versionados vía `EvidenceRule` (`VolumeConfig`), sin
+volumen negativo y sin inventar músculos. Cobertura en
+`Packages/PRCore/Tests/PRDomainTests/VolumeAllocatorTests.swift` (RF-004).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |
