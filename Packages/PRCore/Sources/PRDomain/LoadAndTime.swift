@@ -109,4 +109,5 @@ public enum DomainValidationError: Error, Equatable, Sendable {
     case invalidLoad(value: Double)
     case invalidReps(value: Int)
     case invalidMinutes(value: Int)
+    case invalidNormalized(value: Double)
 }

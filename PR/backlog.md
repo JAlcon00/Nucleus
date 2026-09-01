@@ -142,7 +142,9 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 ## PR-0102 — Exercise knowledge domain
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-0101
+**Dependencies:** PR-0101  
+**Status:** DONE  
+
 
 ### Implementar
 - Exercise
@@ -160,6 +162,11 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - Cada ejercicio tiene `substitutionFamilyID`.
 - No existe un único campo `muscle: String` como modelo principal.
 - El dominio permite distinguir DB Bench, Smith Bench y machine press.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/Exercise.swift`: `Exercise`, `ExerciseFamily` (+`ID`/`ExerciseFamilyID`), `MovementPattern` (22), `ExerciseRole`, `EquipmentType` (distingue `dumbbell`/`smithMachine`/`machine`), `MovementAngle`, `Laterality`, `JointClass`, `DemandLevel`, `FatigueCost` (0...1 validado), `Loadability`, `RestrictionTag`, `MuscleGroup` (+`ID`), `MuscleContribution` (activación 0...1 validada).
+- `Exercise` modela biomecánica + función (muscles estructurados, no `muscle: String`); `substitutionFamilyID` presente; variantes distinguibles por `equipment`/`id`.
+- 23 tests Swift Testing verdes (fixtures press/pull/squat/isolation, encode/decode, family validation, validación de valores).
 
 ### Tests
 - fixtures de press/pull/squat/isolations;

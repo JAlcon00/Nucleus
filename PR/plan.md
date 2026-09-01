@@ -906,6 +906,15 @@ DONE. Implementado en `Packages/PRCore/Sources/PRDomain/`:
 - 15 tests Swift Testing verdes (`swift test`): round trip Codable, equality/hash, invalid load/time boundaries.
 - iOS Debug build sigue verde con el paquete vinculado.
 
+### Estado PR-0102 (Exercise knowledge domain)
+
+DONE. Implementado en `Packages/PRCore/Sources/PRDomain/Exercise.swift`:
+
+- `Exercise` (biomecánica + función programática), `ExerciseFamily` (+`substitutionFamilyID`), `MovementPattern` (22 casos del spec), `ExerciseRole`, `EquipmentType` (distingue DB/Smith/machine), `MovementAngle`, `Laterality`, `JointClass`, `DemandLevel`, `FatigueCost`, `Loadability`, `RestrictionTag`, `MuscleGroup`, `MuscleContribution`.
+- Musculatura modelada vía `primaryMuscles`/`secondaryMuscles` estructurados (sin `muscle: String`); un ejercicio admite varios músculos secundarios.
+- 23 tests Swift Testing verdes (`swift test`): fixtures press/pull/squat/isolation, encode/decode, family validation, validación de valores.
+- iOS Debug build verde con el paquete vinculado.
+
 ---
 
 # 25. Definition of milestone completion
