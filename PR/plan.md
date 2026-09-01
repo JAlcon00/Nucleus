@@ -1210,6 +1210,23 @@ DONE. `Packages/PRCore/Sources/PRDomain/WorkoutSummary.swift` (plan §8):
   no inventa PR sin baseline, energy reconciliada/sin inventar, Codable.
 - Suite global verde: **212 tests / 57 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0801 (Duration estimator)
+
+DONE. `Packages/PRCore/Sources/PRDomain/DurationEstimator.swift` (plan §8, RF-006):
+
+- **`DurationEstimator`** (con `DurationDefaults`/`ExerciseDurationProfile`) estima la
+  duración de una sesión determinista desde defaults por set/rest/transición, con
+  override por ejercicio (`perExerciseSeconds`) y multiplicador de calentamiento.
+- **Perfil personal EWMA**: `averageSeconds` + `sampleCount` + `confidence`
+  (logística `n/(n+k)`). `record(observation:current:)` se actualiza con workouts
+  completados; `shouldPreferPersonal` favorece el tiempo personal sobre el default
+  cuando la confianza es suficiente (`>= personalThreshold`).
+- Tests (`Tests/PRDomainTests/DurationEstimatorTests.swift`): suma de componentes
+  (set+rest+transición), warmup más rápido, preferencia personal con confianza,
+  defaults con poca confianza, override por ejercicio, crecimiento de confianza,
+  EWMA/record, convergencia a la media.
+- Suite global verde: **220 tests / 58 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion

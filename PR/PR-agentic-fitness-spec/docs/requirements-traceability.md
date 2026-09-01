@@ -157,6 +157,15 @@ contra un baseline histórico (nunca inventa récords) y sólo propaga energía 
 llega reconciliada de una fuente externa (RN-008, sin doble contabilización). Cobertura
 en `PRDomainTests/WorkoutSummaryTests.swift` (RF-005, RF-006).
 
+## Duration estimator (EPIC-08, RF-006)
+
+Implementado en PR-0801 en `PRDomain/DurationEstimator.swift` (plan §8): estima la
+duración de una sesión desde defaults por set/rest/transición con override por
+ejercicio y multiplicador de calentamiento; mantiene un perfil personal EWMA
+(`averageSeconds`+`sampleCount`+`confidence`) que se actualiza con workouts completados
+y favorece los tiempos personales frente a los defaults cuando la confianza es
+suficiente. Cobertura en `PRDomainTests/DurationEstimatorTests.swift` (RF-006).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |

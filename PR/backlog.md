@@ -783,12 +783,26 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0801 — Duration estimator
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0603
+**Dependencies:** PR-0603  
+**Status:** DONE
 
 ### Criterios de aceptación
 - default estimates por exercise/set/rest.
 - actualiza perfil personal con completed workouts.
 - confidence aumenta con muestras.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/DurationEstimator.swift`: `DurationEstimator` (con
+  `DurationDefaults`/`ExerciseDurationProfile`) estima la duración de una sesión de
+  forma determinista a partir de defaults por set/rest/transición y opcionalmente por
+  ejercicio (`perExerciseSeconds`), aplicando un multiplicador de calentamiento a los
+  warmups y sumando descanso (`restSeconds`) + transición entre sets.
+- **Perfil personal**: `ExerciseDurationProfile` mantiene una media EWMA
+  (`averageSeconds`) + `sampleCount` + `confidence` (logística `n/(n+k)`). `record`
+  aprende con workouts completados; el motor favorece el tiempo personal sobre el
+  default cuando `confidence >= personalThreshold` (`shouldPreferPersonal`).
+- 8 tests nuevos en `PRDomainTests/DurationEstimatorTests.swift`; suite **220 tests /
+  58 suites** verdes (`swift test`); iOS Debug build verde.
 
 ---
 
