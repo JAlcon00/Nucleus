@@ -206,7 +206,9 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 ## PR-0104 — User training profile
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0101
+**Dependencies:** PR-0101  
+**Status:** DONE  
+
 
 ### Implementar
 - ExperienceLevel
@@ -220,6 +222,11 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 ### Criterios de aceptación
 - Goal y phase independientes.
 - Usuario puede modificar goal sin perder historial.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/UserProfile.swift`: enums existentes + `MusclePriority` (spec §3.4) y preferencias schedule/time: `WeekDay`, `PreferredDayTime` (ventana validada), `SchedulePreference` (días 2...7, minutos 20...240).
+- Goal y phase son campos independientes; modificar goal no afecta phase ni el historial de `SetRecord`/`WorkoutSessionRecord`.
+- 45 tests Swift Testing verdes (MusclePriority, SchedulePreference, perfil independiente del historial).
 
 ---
 

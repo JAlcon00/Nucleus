@@ -926,6 +926,15 @@ DONE. Implementado en `Packages/PRCore/Sources/PRDomain/Training.swift`:
 - 37 tests Swift Testing verdes (`swift test`): lifecycle transitions, invalid sets, planned vs performed integrity.
 - iOS Debug build verde con el paquete vinculado.
 
+### Estado PR-0104 (User training profile)
+
+DONE. En `Packages/PRCore/Sources/PRDomain/UserProfile.swift`:
+
+- Enums existentes (`ExperienceLevel`, `TrainingGoal`, `BodyCompositionPhase`, `VarietyPreference`, `CoachingDetailLevel`, `PriorityTier`) + `MusclePriority` (spec §3.4) + schedule/time preferences: `WeekDay`, `PreferredDayTime` (ventana validada 0...1439 / duración > 0), `SchedulePreference` (días 2...7, minutos 20...240).
+- Goal y phase independientes; cambiar goal no afecta phase ni borra historial.
+- 45 tests Swift Testing verdes (`swift test`).
+- iOS Debug build verde con el paquete vinculado.
+
 ---
 
 # 25. Definition of milestone completion
