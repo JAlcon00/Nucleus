@@ -1227,6 +1227,25 @@ DONE. `Packages/PRCore/Sources/PRDomain/DurationEstimator.swift` (plan §8, RF-0
   EWMA/record, convergencia a la media.
 - Suite global verde: **220 tests / 58 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0802 (Hard time optimizer)
+
+DONE. `Packages/PRCore/Sources/PRDomain/HardTimeOptimizer.swift` (plan §8, RF-006):
+
+- **`HardTimeOptimizer`** (con `SessionItem`/`CompatibleSuperset`/`TimeOptimizerResult`)
+  recorta una sesión a un límite duro determinista: preserva anchors (`role == .anchor`)
+  y prioridades (`isPriorityMuscle`), elimina opcionales primero, reduce accesorios
+  (set-count a la mitad antes de descartar) y ofrece supersets sólo si los grupos
+  musculares son disjuntos (`CompatibleSuperset` devuelve nil ante solape) → nunca
+  agrega supersets incompatibles.
+- **Tolerancia documentada**: `withinLimit = estimated <= limit + tolerance`; `notes`
+  explica lo eliminado/reducido y cuándo el límite no es alcanzable aun conservando
+  todos los anchors/prioridades.
+- Tests (`Tests/PRDomainTests/HardTimeOptimizerTests.swift`): dentro del límite sin
+  cambios, preserva anchors/prioridades, elimina opcionales primero, reduce antes de
+  descartar, nunca superset incompatible, sólo compatibles, best-effort cuando es
+  imposible, tolerancia documentada.
+- Suite global verde: **228 tests / 59 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion

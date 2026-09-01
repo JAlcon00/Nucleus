@@ -809,13 +809,30 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0802 — Hard time optimizer
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-0801, PR-0502, PR-0701
+**Dependencies:** PR-0801, PR-0502, PR-0701  
+**Status:** DONE
 
 ### Criterios de aceptación
 - session estimated duration <= hard limit con tolerancia documentada.
 - preserva prioridades.
 - elimina/reduce opcionales primero.
 - no agrega supersets incompatibles.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/HardTimeOptimizer.swift`: `HardTimeOptimizer` (con
+  `SessionItem`/`CompatibleSuperset`/`TimeOptimizerResult`) recorta una sesión a un
+  límite duro de forma determinista:
+  - **preserva anchors y prioridades**: `role == .anchor` o `isPriorityMuscle` nunca
+    se recortan;
+  - **opcionales primero**: elimina `role == .optional` antes de tocar accesorios;
+  - **reduce accesorios**: reduce set-count a la mitad antes de descartar, y sólo
+    descarta si aun así no cabe;
+  - **supersets compatibles**: `CompatibleSuperset` sólo existe si los grupos
+    musculares son disjuntos; nunca agrega supersets incompatibles;
+  - **tolerancia documentada**: `withinLimit` = `estimated <= limit + tolerance`, con
+    `notes` explicando lo eliminado/reducido.
+- 8 tests nuevos en `PRDomainTests/HardTimeOptimizerTests.swift`; suite **228 tests /
+  59 suites** verdes (`swift test`); iOS Debug build verde.
 
 ---
 

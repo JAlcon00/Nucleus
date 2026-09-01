@@ -166,6 +166,15 @@ ejercicio y multiplicador de calentamiento; mantiene un perfil personal EWMA
 y favorece los tiempos personales frente a los defaults cuando la confianza es
 suficiente. Cobertura en `PRDomainTests/DurationEstimatorTests.swift` (RF-006).
 
+## Hard time optimizer (EPIC-08, RF-006)
+
+Implementado en PR-0802 en `PRDomain/HardTimeOptimizer.swift` (plan §8): recorta una
+sesión a un límite duro determinista preservando anchors y prioridades, eliminando
+opcionales primero, reduciendo accesorios (mitad del set-count antes de descartar) y
+nunca agregando supersets incompatibles (sólo los disjuntos). La tolerancia queda
+documentada en `withinLimit` y `notes`. Cobertura en
+`PRDomainTests/HardTimeOptimizerTests.swift` (RF-006).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |
