@@ -915,6 +915,17 @@ DONE. Implementado en `Packages/PRCore/Sources/PRDomain/Exercise.swift`:
 - 23 tests Swift Testing verdes (`swift test`): fixtures press/pull/squat/isolation, encode/decode, family validation, validación de valores.
 - iOS Debug build verde con el paquete vinculado.
 
+### Estado PR-0103 (Training block/session/set domain)
+
+DONE. Implementado en `Packages/PRCore/Sources/PRDomain/Training.swift`:
+
+- Separación plan/ejecución: `SessionTemplate` vs `WorkoutSessionRecord`; `SetPrescription` vs `SetRecord` distintos; `PlannedSet`.
+- Lifecycle validado: `WorkoutLifecycleState` (7 estados) y `SetLifecycleState` (5 estados) con transiciones rechazadas en dominio.
+- Validación: no reps negativas/cero, no weight negativo, rangos de reps/descanso válidos, RIR/target load no negativos. Warmup vía `isWarmup`.
+- Feedback: `DifficultyFeedback`, `PainFeedback` (severidad 1...5).
+- 37 tests Swift Testing verdes (`swift test`): lifecycle transitions, invalid sets, planned vs performed integrity.
+- iOS Debug build verde con el paquete vinculado.
+
 ---
 
 # 25. Definition of milestone completion

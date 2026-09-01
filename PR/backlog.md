@@ -178,7 +178,9 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 ## PR-0103 — Training block/session/set domain
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-0101, PR-0102
+**Dependencies:** PR-0101, PR-0102  
+**Status:** DONE  
+
 
 ### Criterios de aceptación
 - Separación entre plan (`SessionTemplate`) y ejecución (`WorkoutSessionRecord`).
@@ -186,6 +188,13 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - Workout lifecycle tiene transiciones validadas.
 - No se pueden registrar reps negativas o weight negativo.
 - Warmup sets distinguibles.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/Training.swift`: `SessionTemplate` (planeado) vs `WorkoutSessionRecord`/`SetRecord` (ejecución); `SetPrescription` vs `SetRecord` distintos; `PlannedSet`.
+- Lifecycle validado: `WorkoutLifecycleState` (7 estados, transiciones rechazadas en dominio) y `SetLifecycleState` (5 estados).
+- Validación: no reps negativas/cero, no weight negativo, rango de reps/descanso válido, RIR y target load no negativos. Warmup distinguible vía `isWarmup`.
+- Feedback: `DifficultyFeedback`, `PainFeedback` (severidad 1...5 validada).
+- 37 tests Swift Testing verdes (lifecycle transitions, invalid sets, planned vs performed integrity).
 
 ### Tests
 - lifecycle transitions;

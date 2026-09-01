@@ -110,4 +110,9 @@ public enum DomainValidationError: Error, Equatable, Sendable {
     case invalidReps(value: Int)
     case invalidMinutes(value: Int)
     case invalidNormalized(value: Double)
+    case invalidRepRange(lower: Int, upper: Int)
+    case invalidRestRange(lower: Int, upper: Int)
+    case invalidRIR(value: Int)
+    case invalidSeverity(value: Int)
+    case invalidStateTransition(from: String, to: String)
 }
