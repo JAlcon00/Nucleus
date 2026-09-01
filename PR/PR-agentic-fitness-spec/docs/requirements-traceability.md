@@ -102,6 +102,15 @@ técnica (`orderScore` §9.3), con compuestos antes de accesorios y priority iso
 adelantable según prioridad del bloque. Cobertura en
 `PRDomainTests/ExerciseOrderTests.swift` (RF-009).
 
+## Fatigue interference (EPIC-07)
+
+Implementado en PR-0702 en `PRDomain/FatigueInterference.swift` (plan §4D, promptMaster
+§9.2): penaliza la pre-fatiga de musculatura necesaria para un movimiento prioritario
+posterior (acumulando fatiga previa), sin penalizar supersets compatibles, con
+configuración versionada vía `EvidenceRule` (`FatigueInterferenceConfig`) y reorder
+determinista que no mueve un movimiento prioritario después de uno menor. Cobertura
+en `PRDomainTests/FatigueInterferenceTests.swift` (RF-009).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |

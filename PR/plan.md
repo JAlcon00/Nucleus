@@ -1095,6 +1095,28 @@ DONE. `Packages/PRCore/Sources/PRDomain/ExerciseOrder.swift` (plan §4D):
   sin entrada.
 - Suite global verde: **161 tests / 51 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0702 (Fatigue interference model)
+
+DONE. `Packages/PRCore/Sources/PRDomain/FatigueInterference.swift` (plan §4D,
+promptMaster §9.2):
+
+- **`FatigueInterferenceEngine`** determinista: acumula la fatiga local de todos los
+  ejercicios previos y penaliza cuando pre-fatigan musculatura que necesita un
+  movimiento prioritario posterior (compound/anchor/priorityIsolation). Un superset
+  compatible (solapamiento bajo) NO se penaliza. `reorder` minimiza la interferencia
+  preservando la prioridad base: nunca mueve un movimiento prioritario después de uno
+  menos prioritario.
+- **`FatigueInterferenceConfig`**: regla de evidencia versionada (categoría
+  `.ordering`) con `penaltyWeight`, `minOverlap` y `compatibleThreshold`; sin
+  constantes dispersas, con `ruleReference()` auditable.
+- **`InterferenceAssessment`** (`orderedExercises` + `penalties` + `totalPenalty` +
+  `ruleReference`) y `InterferencePenalty` (`overFatiguedMuscles` + `penalty`).
+- Tests (`Tests/PRDomainTests/FatigueInterferenceTests.swift`): penaliza pre-fatiga a
+  prioridad, orden inverso sin penalización, superset compatible sin penalización,
+  reorder preserva prioridad, configuración versionada/auditable, validación de
+  parámetros y error con <2 ejercicios.
+- Suite global verde: **170 tests / 52 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion

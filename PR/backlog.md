@@ -670,12 +670,26 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0702 — Fatigue interference model
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-0701
+**Dependencies:** PR-0701  
+**Status:** DONE
 
 ### Criterios de aceptación
 - penaliza pre-fatiga de musculatura necesaria para movimiento prioritario.
 - no impide supersets compatibles.
 - configuración versionada.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/FatigueInterference.swift`: `FatigueInterferenceEngine` +
+  `FatigueInterferenceConfig` (regla `EvidenceRule` categoría `.ordering` con
+  `penaltyWeight`, `minOverlap`, `compatibleThreshold`) + `InterferenceAssessment`/
+  `InterferencePenalty`. Acumula la fatiga local de todos los ejercicios previos y
+  penaliza cuando pre-fatigan musculatura de un movimiento prioritario posterior
+  (compound/anchor/priorityIsolation); supersets compatibles (solapamiento bajo) no
+  se penalizan. `reorder` minimiza interferencia preservando prioridad base (nunca
+  mueve un movimiento prioritario después de uno menor). Sin constantes dispersas:
+  parámetros versionados vía regla de evidencia.
+- 9 tests nuevos en `PRDomainTests/FatigueInterferenceTests.swift`; suite **170 tests /
+  52 suites** verdes (`swift test`); iOS Debug build verde.
 
 ---
 
