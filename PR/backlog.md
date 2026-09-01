@@ -895,12 +895,27 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0901 — Gym profile UI
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0105, PR-0202
+**Dependencies:** PR-0105, PR-0202  
+**Status:** DONE
 
 ### Criterios de aceptación
 - create/rename/select gym.
 - equipment can be unknown/available/missing.
 - no formulario inicial obligatorio de 100 máquinas.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/GymProfileManager.swift`: `GymProfileManager` (con
+  `GymProfileManagerError`/`persistentAvailabilityStates`) gestiona el perfil del gym
+  de forma determinista:
+  - **create/rename/select**: crea un gym vacío, lo renombra (nombre no vacío) y lo
+    selecciona como activo (`activeGymID`);
+  - **equipment unknown/available/missing**: `setAvailability(type, to:, on:)` fija
+    disponibilidad persistente sólo entre `.unknown`/`.available`/`.doesNotExist`;
+    `.occupied` es session-scoped y se rechaza (se marca vía `GymProfile.markingOccupied`);
+  - **sin onboarding obligatorio**: el equipamiento no confirmado queda `.unknown`
+    (progressive disclosure); `knownEquipmentTypes` reporta sólo lo confirmado.
+- 7 tests nuevos en `PRDomainTests/GymProfileManagerTests.swift`; suite **248 tests /
+  62 suites** verdes (`swift test`); iOS Debug build verde.
 
 ---
 

@@ -193,6 +193,15 @@ corresponden al objetivo/fase (`mobility` siempre; `cardio` por objetivo o défi
 `posing` sólo `bodybuilding`), sin exceder el tiempo disponible. Cobertura en
 `PRDomainTests/ExtraTimeBehaviorTests.swift` (RF-006).
 
+## Gym profile (EPIC-09, RF-011)
+
+Implementado en PR-0901 en `PRDomain/GymProfileManager.swift` (plan §9): crea/renombra/
+selecciona el perfil de gym y gestiona la disponibilidad del equipamiento
+(`.unknown`/`.available`/`.doesNotExist`) de forma persistente, dejando `.occupied`
+como session-scoped; no obliga a un formulario inicial de todas las máquinas (sin
+confirmar → `.unknown`, progressive disclosure). Cobertura en
+`PRDomainTests/GymProfileManagerTests.swift` (RF-010, RF-011).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |

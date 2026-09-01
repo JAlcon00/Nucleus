@@ -1283,6 +1283,23 @@ DONE. `Packages/PRCore/Sources/PRDomain/ExtraTimeBehavior.swift` (plan §8):
   cardio/posing gated en bodybuilding, nunca excede el tiempo, explica sobrante.
 - Suite global verde: **241 tests / 61 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0901 (Gym profile)
+
+DONE. `Packages/PRCore/Sources/PRDomain/GymProfileManager.swift` (plan §9, RF-011):
+
+- **`GymProfileManager`** (con `GymProfileManagerError`/`persistentAvailabilityStates`):
+  - **create/rename/select**: crea un gym vacío, lo renombra (nombre no vacío) y lo
+    selecciona como activo (`activeGymID`);
+  - **equipment unknown/available/missing**: `setAvailability(type,to:on:)` persiste
+    sólo `.unknown`/`.available`/`.doesNotExist`; `.occupied` es session-scoped y se
+    rechaza (se marca con `GymProfile.markingOccupied`);
+  - **sin onboarding obligatorio**: el equipamiento no confirmado queda `.unknown`
+    (progressive disclosure); `knownEquipmentTypes` sólo reporta lo confirmado.
+- Tests (`Tests/PRDomainTests/GymProfileManagerTests.swift`): create vacío sin forzar
+  equipo, rechazo de nombre vacío, rename, select activo, set available/doesNotExist/
+  unknown, occupied rechazado + session-scoped, transiciones de disponibilidad.
+- Suite global verde: **248 tests / 62 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion

@@ -203,6 +203,15 @@ cardio/mobility/posing cuando corresponden al objetivo/fase (`mobility` siempre;
 disponible. Cobertura en
 `Packages/PRCore/Tests/PRDomainTests/ExtraTimeBehaviorTests.swift` (RF-006).
 
+## Gym profile (EPIC-09, RF-011)
+
+Implementado en PR-0901 en `Packages/PRCore/Sources/PRDomain/GymProfileManager.swift`
+(plan §9): crea/renombra/selecciona el perfil de gym y gestiona la disponibilidad del
+equipamiento (`.unknown`/`.available`/`.doesNotExist`) de forma persistente, dejando
+`.occupied` como session-scoped; no obliga a un formulario inicial de todas las
+máquinas (sin confirmar → `.unknown`, progressive disclosure). Cobertura en
+`Packages/PRCore/Tests/PRDomainTests/GymProfileManagerTests.swift` (RF-010, RF-011).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |
