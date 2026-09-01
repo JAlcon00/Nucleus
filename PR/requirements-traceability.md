@@ -65,6 +65,14 @@ Implementado en PR-0303 en `Packages/PRCore/Sources/PRDomain/Evidence.swift`
 usada, haciendo auditable qué versión de regla soportó cada decisión (RF-025).
 Cobertura en `Packages/PRCore/Tests/PRDomainTests/EvidenceTests.swift`.
 
+## Búsqueda de ejercicios (EPIC-03)
+
+Implementado en PR-0302 en `Packages/PRCore/Sources/PRDomain/ExerciseSearch.swift`:
+`ExerciseSearchEngine` offline determinista (nombre/aliases normalizados, filtros por
+equipment/patrón/músculos) con objetivo <100 ms sobre el catálogo MVP. Cobertura en
+`Packages/PRCore/Tests/PRDomainTests/ExerciseSearchTests.swift` +
+`Packages/PRCore/Tests/PRCoreTests/ExerciseSearchPerfTests.swift`.
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |

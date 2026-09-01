@@ -64,6 +64,13 @@ versión) + `EvidenceRuleReference` (id + versión). `DecisionRecord` persiste l
 referencia versionada de la regla usada, haciendo auditable qué versión de regla
 soportó cada decisión (RF-025). Cobertura en `PRDomainTests/EvidenceTests.swift`.
 
+## Búsqueda de ejercicios (EPIC-03)
+
+Implementado en PR-0302 en `PRDomain/ExerciseSearch.swift`: `ExerciseSearchEngine`
+offline determinista (nombre/aliases normalizados, filtros por equipment/patrón/
+músculos) con objetivo <100 ms sobre el catálogo MVP. Cobertura en
+`PRDomainTests/ExerciseSearchTests.swift` + `PRCoreTests/ExerciseSearchPerfTests.swift`.
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |

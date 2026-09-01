@@ -370,13 +370,23 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0302 — Exercise search
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0301
+**Dependencies:** PR-0301  
+**Status:** DONE
 
 ### Criterios de aceptación
 - Buscar por canonical name y aliases.
 - Filtrar por equipment, pattern y muscles.
 - búsqueda offline.
 - respuesta <100 ms para catálogo MVP en hardware representativo.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/ExerciseSearch.swift`: `ExerciseSearchEngine`
+  (índice value-type determinista y sin IO), `ExerciseSearchQuery` (filtros AND),
+  `ExerciseSearchHit` (relevancia) con normalización case/diacritic-insensitive.
+- Tests de comportamiento en `PRDomainTests/ExerciseSearchTests.swift` y test de
+  rendimiento <100 ms sobre el catálogo real en
+  `PRCoreTests/ExerciseSearchPerfTests.swift`.
+- Suite **125 tests / 45 suites** verdes (`swift test`); iOS Debug build verde.
 
 ---
 

@@ -1014,6 +1014,18 @@ DONE. `Packages/PRCore/Sources/PRDomain/Evidence.swift` (promptMaster §22):
 - Tests (`Tests/PRDomainTests/EvidenceTests.swift`): codable round-trip, validación de versión/parámetros, centralización de parámetros, rechazo de cambio sin bump, bump aceptado, deactivate, orden estable, y referencia versionada persistida en `DecisionRecord`.
 - Suite global verde: **109 tests / 41 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0302 (Exercise search)
+
+DONE. Búsqueda offline del catálogo (`Packages/PRCore/Sources/PRDomain/ExerciseSearch.swift`):
+
+- **`ExerciseSearchEngine`**: índice value-type puro y determinista (sin IO). Normaliza nombre/aliases (minúsculas + diacríticos, locale fijo) y tokeniza; mismas entradas → mismo orden de resultados.
+- **`ExerciseSearchQuery`**: filtros AND por `text`, `equipment`, `movementPatterns` y `muscleGroups`; sin filtros se listan todos ordenados por nombre.
+- **Relevancia de texto** (score): nombre canónico exacto > prefijo > subconjunto de tokens > subcadena; aliases similares con menor peso. Con texto, sólo entran matches con score > 0; sin texto los filtros devuelven todos los que cumplen.
+- **`ExerciseSearchHit`** (exercise + textScore): resultados ordenados por score descendente y luego nombre.
+- Tests de comportamiento (`Tests/PRDomainTests/ExerciseSearchTests.swift`): matching por nombre/alias, tokens desordenados, case/diacritic insensitivo, filtros por equipment/patrón/músculos, combinación AND, determinismo y orden por relevancia.
+- Test de rendimiento sobre el catálogo real (`Tests/PRCoreTests/ExerciseSearchPerfTests.swift`): **<100 ms** sobre los 678 ejercicios del bundle (cumple criterio PR-0302).
+- Suite global verde: **125 tests / 45 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion
