@@ -1,6 +1,6 @@
 # PR — Agentic Fitness Coach
 
-PR es una aplicación nativa para iPhone y Apple Watch diseñada para comportarse como **un entrenador experto de gimnasio de élite**: science-based, adaptable, honesto con la recuperación y capaz de aprender cómo entrena cada usuario.
+PR es una aplicación nativa para **iPhone y Apple Watch** diseñada para comportarse como **un entrenador experto de gimnasio de élite**: science-based, adaptable, honesto con la recuperación y capaz de aprender cómo entrena cada usuario.
 
 > **Tú entrenas. PR administra el resto.**
 
@@ -13,6 +13,7 @@ Documentos principales:
 - [`promptMaster.md`](./promptMaster.md) — contrato funcional/técnico maestro.
 - [`backlog.md`](./backlog.md) — backlog ejecutable y priorizado.
 - [`plan.md`](./plan.md) — secuencia de implementación y gates.
+- [`requirements-traceability.md`](./requirements-traceability.md) — trazabilidad requisito ↔ historia.
 - [`AGENTS.md`](./AGENTS.md) — instrucciones rápidas para agentes.
 - [`.agents/skills/swift-elite-coach/SKILL.md`](./.agents/skills/swift-elite-coach/SKILL.md) — skill de desarrollo Swift.
 
@@ -135,35 +136,46 @@ LLM/template explains
 
 ---
 
-# Estructura objetivo
+# Estructura del repositorio
+
+Estructura estándar Swift/Xcode (grupos sincronizados con el sistema de archivos):
 
 ```text
 PR/
-├── App/
-├── Features/
-├── Infrastructure/
+├── PR.xcodeproj               ← proyecto iOS + watchOS
+├── PR/                        ← target iOS (grupo sincronizado)
+│   ├── App/
+│   │   ├── PRApp.swift
+│   │   ├── AppEnvironment.swift
+│   │   └── ContentView.swift
+│   └── Resources/
+│       └── Assets.xcassets
+├── PRWatch/                   ← target watchOS (grupo sincronizado)
+│   ├── App/
+│   │   ├── PRWatchApp.swift
+│   │   └── WatchContentView.swift
+│   └── Resources/
+│       └── Assets.xcassets
 ├── Packages/
-│   └── PRCore/
+│   └── PRCore/                ← paquete Swift Package Manager
+│       ├── Package.swift
 │       ├── Sources/
-│       │   ├── Domain/
-│       │   ├── TrainingEngine/
-│       │   ├── ExerciseKnowledge/
-│       │   ├── AgentCore/
-│       │   ├── PersistenceContracts/
-│       │   ├── HealthContracts/
-│       │   └── SharedUtilities/
+│       │   ├── PRCore/        ← boundary/portes públicos (sin HealthKit real)
+│       │   └── PRDomain/      ← dominio puro
 │       └── Tests/
-├── PRWatch/
-├── PRTests/
-├── PRUITests/
-├── Resources/
+│           ├── PRCoreTests/
+│           └── PRDomainTests/
 ├── promptMaster.md
 ├── backlog.md
 ├── plan.md
-└── AGENTS.md
+├── requirements-traceability.md
+├── AGENTS.md
+├── .agents/
+│   └── skills/swift-elite-coach/SKILL.md
+└── install_to_repo.sh
 ```
 
-Adaptar al repo existente en vez de duplicar estructuras.
+Regla clave: `PRCore` y `PRDomain` NO importan HealthKit/SwiftUI/SwiftData. Son la frontera pública; la app produce los adaptadores reales (p. ej. `HKWorkoutConfiguration`, `HKWorkoutSession`) y los tests usan fakes.
 
 ---
 
@@ -381,6 +393,14 @@ git status
 xcodebuild -list
 ```
 
+## Tests del paquete
+
+```bash
+cd Packages/PRCore
+swift build
+swift test
+```
+
 Después ejecutar el scheme real, por ejemplo:
 
 ```bash
@@ -391,19 +411,6 @@ xcodebuild \
 ```
 
 No asumir que ese simulator existe; listar destinations si falla.
-
-## Tests
-
-Ejemplo conceptual:
-
-```bash
-xcodebuild \
-  -scheme PR \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
-  test
-```
-
-Usar el destination realmente instalado.
 
 ---
 
@@ -475,23 +482,6 @@ No saltar al chatbot/LLM antes de tener Training Engine funcional.
 
 ---
 
-# Destination objetivo
-
-La ruta indicada por el Product Owner para este proyecto es:
-
-```text
-/Volumes/YisusSSD/Develop/Swift/PR/PR
-```
-
-Estos archivos deben vivir en la raíz de ese repositorio, manteniendo la skill bajo:
-
-```text
-.agents/skills/swift-elite-coach/SKILL.md
-```
-
----
-
 # Product mantra
 
 > **PR no debe reemplazar el criterio del atleta: debe desarrollarlo.**
-

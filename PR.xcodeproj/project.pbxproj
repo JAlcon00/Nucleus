@@ -6,10 +6,24 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		B7DC00010000000000000001 /* PRCore in Frameworks */ = {isa = PBXBuildFile; productRef = B7DC00020000000000000002 /* PRCore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		87DD72A230464C7100D2DF71 /* PR.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PR.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B7DC0010304CFC7100D2DF71 /* PRWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PRWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		B7DC00050000000000000005 /* Exceptions for "PR" folder in "PR" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				PR-agentic-fitness-spec,
+			);
+			target = 87DD72A130464C7100D2DF71 /* PR */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		87DD72A430464C7100D2DF71 /* PR */ = {
@@ -138,7 +152,7 @@
 			mainGroup = 87DD729930464C7100D2DF71;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				B7DC00030000000000000003 /* XCLocalSwiftPackageReference "PRCore" */,
+				B7DC00030000000000000003 /* XCLocalSwiftPackageReference "Packages/PRCore" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 87DD72A330464C7100D2DF71 /* Products */;
@@ -328,9 +342,9 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -360,9 +374,9 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -390,9 +404,9 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 4;
 				WATCHOS_DEPLOYMENT_TARGET = 11.0;
@@ -420,9 +434,9 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 4;
 				WATCHOS_DEPLOYMENT_TARGET = 11.0;
@@ -462,7 +476,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		B7DC00030000000000000003 /* XCLocalSwiftPackageReference "PRCore" */ = {
+		B7DC00030000000000000003 /* XCLocalSwiftPackageReference "Packages/PRCore" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/PRCore;
 		};
@@ -471,35 +485,10 @@
 /* Begin XCSwiftPackageProductDependency section */
 		B7DC00020000000000000002 /* PRCore */ = {
 			isa = XCSwiftPackageProductDependency;
+			package = B7DC00030000000000000003 /* XCLocalSwiftPackageReference "Packages/PRCore" */;
 			productName = PRCore;
-			package = B7DC00030000000000000003 /* XCLocalSwiftPackageReference "PRCore" */;
 		};
 /* End XCSwiftPackageProductDependency section */
-
-/* Begin PBXBuildFile section */
-		B7DC00010000000000000001 /* PRCore in Frameworks */ = {
-			isa = PBXBuildFile;
-			productRef = B7DC00020000000000000002 /* PRCore */;
-		};
-/* End PBXBuildFile section */
-
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		B7DC00050000000000000005 /* Exceptions for "PR" folder in "PR" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				"AGENTS.md",
-				README.md,
-				SKILL.md,
-				backlog.md,
-				install_to_repo.sh,
-				plan.md,
-				promptMaster.md,
-				requirements-traceability.md,
-				PR-agentic-fitness-spec,
-			);
-			target = 87DD72A130464C7100D2DF71 /* PR */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 	};
 	rootObject = 87DD729A30464C7100D2DF71 /* Project object */;
 }
