@@ -1138,6 +1138,25 @@ DONE. `Packages/PRCore/Sources/PRDomain/BlockPlanner.swift` (plan §4F):
   rebuild → ID nuevo sin borrar, determinismo y exclusión por restricciones.
 - Suite global verde: **177 tests / 53 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0602 (Active workout state machine)
+
+DONE. `Packages/PRCore/Sources/PRDomain/ActiveWorkout.swift` (plan §8):
+
+- **`ActiveWorkoutController`** gestiona el ciclo de vida de un entrenamiento activo:
+  `start(from:)` abre un workout nuevo y rechaza sobrescribir uno activo;
+  `pause`/`resume`/`finish`/`complete`/`abandon` validan cada transición contra la
+  tabla de `WorkoutLifecycleState`, lanzando `ActiveWorkoutError.invalidTransition`
+  ante movimientos inválidos (`finish` → `.finishing`, `complete` → `.completed`).
+- **Sin mutar historial**: abandonar no borra los sets ya realizados; el registro de
+  lo realizado permanece intacto.
+- **Kill/relaunch**: `snapshot()` produce un `ActiveWorkoutSnapshot` persistible
+  (Codable) y `restore(from:)` lo recupera; los snapshots en estado terminal
+  (`.completed`/`.abandoned`) no son restaurables (`ActiveWorkoutError.notRestorable`).
+- Tests (`Tests/PRDomainTests/ActiveWorkoutTests.swift`): start/start-duplicado,
+  pause+resume, finish→complete, abandon preserva sets, snapshot sin activo, restore,
+  no-restaurable de terminal, Codable round-trip.
+- Suite global verde: **187 tests / 54 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion

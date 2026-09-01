@@ -126,6 +126,16 @@ referencias versionadas) y reproducible; cada `plan` genera un bloque NUEVO sin 
 ni borrar historial previo. Cobertura en
 `Packages/PRCore/Tests/PRDomainTests/BlockPlannerTests.swift` (RF-004, RF-009).
 
+## Active workout state machine (EPIC-06)
+
+Implementado en PR-0602 en `Packages/PRCore/Sources/PRDomain/ActiveWorkout.swift`
+(plan §8, promptMaster §6.7): `ActiveWorkoutController` gestiona el ciclo de vida de
+un entrenamiento activo (start/pause/resume/finish/complete/abandon) validando cada
+transición contra `WorkoutLifecycleState` y rechazando movimientos inválidos; no muta
+el historial de lo realizado. Persiste/restaura el workout activo tras kill/relaunch
+vía `ActiveWorkoutSnapshot` Codable, sin restaurar estados terminales. Cobertura en
+`Packages/PRCore/Tests/PRDomainTests/ActiveWorkoutTests.swift` (RF-005).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |

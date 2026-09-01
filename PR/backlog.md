@@ -597,12 +597,28 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0602 — Active workout state machine
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-0103, PR-0202
+**Dependencies:** PR-0103, PR-0202  
+**Status:** DONE
 
 ### Criterios de aceptación
 - start/pause/resume/finish/abandon.
 - state transitions validadas.
 - app kill/relaunch puede restaurar workout activo.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/ActiveWorkout.swift`: `ActiveWorkoutController`
+  (con `ActiveWorkoutState`/`ActiveWorkoutSnapshot`/`ActiveWorkoutError`) gestiona el
+  ciclo de vida de un entrenamiento activo. `start(from:)` abre un workout nuevo y
+  rechaza sobrescribir uno activo; `pause`/`resume`/`finish`/`complete`/`abandon`
+  validan cada transición contra la tabla de `WorkoutLifecycleState` y lanzan
+  `ActiveWorkoutError.invalidTransition` ante movimientos inválidos. `finish` pasa a
+  `.finishing` y `complete` a `.completed`. Abandonar no borra los sets ya realizados
+  (no se muta el historial).
+- Restauración tras kill/relaunch: `snapshot()` devuelve un `ActiveWorkoutSnapshot`
+  persistible (Codable) y `ActiveWorkoutController.restore(from:)` lo recupera;
+  los snapshots en estado terminal (`.completed`/`.abandoned`) no son restaurables.
+- 10 tests nuevos en `PRDomainTests/ActiveWorkoutTests.swift`; suite **187 tests /
+  54 suites** verdes (`swift test`); iOS Debug build verde.
 
 ---
 
