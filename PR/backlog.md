@@ -947,11 +947,25 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0903 — Mark missing
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0901
+**Dependencies:** PR-0901  
+**Status:** DONE
 
 ### Criterios de aceptación
 - persiste missing en gym profile.
 - futuras sessions no programan esa máquina salvo usuario revierta.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/MissingEquipment.swift`: `MissingEquipmentGuard`
+  (con `MissingEquipmentFilter`/`EquipmentRequiringItem`) garantiza que las futuras
+  sesiones no programen máquinas marcadas inexistentes:
+  - **persiste missing**: usa `GymProfile` estado `.doesNotExist` (`setAvailability`);
+  - **filtra programación futura**: `filter(_:in:)` devuelve sólo los ítems cuya
+    maquinaria existe (`allowed`) y bloquea los que requieren equipo inexistente
+    (`blocked` + `missingTypes`); available/unknown no bloquean;
+  - **revertir**: `revert(_:in:)` vuelve el equipo a `.unknown` para que el usuario
+    pueda volver a programar esa máquina.
+- 5 tests nuevos en `PRDomainTests/MissingEquipmentTests.swift`; suite **258 tests /
+  64 suites** verdes (`swift test`); iOS Debug build verde.
 
 ---
 

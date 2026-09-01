@@ -1315,6 +1315,22 @@ DONE. `Packages/PRCore/Sources/PRDomain/OccupancyController.swift` (plan §9, RF
   finalizar, acumula varias ocupaciones.
 - Suite global verde: **253 tests / 63 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0903 (Mark missing)
+
+DONE. `Packages/PRCore/Sources/PRDomain/MissingEquipment.swift` (plan §9, RF-011):
+
+- **`MissingEquipmentGuard`** (con `MissingEquipmentFilter`/`EquipmentRequiringItem`):
+  - **persiste missing**: estado `.doesNotExist` del `GymProfile` (`setAvailability`);
+  - **filtra futuras sesiones**: `filter(_:in:)` permite sólo ítems cuya maquinaria
+    existe; bloquea los que requieren equipo inexistente; available/unknown no
+    bloquean;
+  - **revertir**: `revert(_:in:)` vuelve a `.unknown` para volver a programar esa
+    máquina.
+- Tests (`Tests/PRDomainTests/MissingEquipmentTests.swift`): persiste missing, bloquea
+  ítems que lo requieren, sólo bloquea su propio equipo, revert permite programar de
+  nuevo, available/unknown no bloquean.
+- Suite global verde: **258 tests / 64 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion

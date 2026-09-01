@@ -221,6 +221,14 @@ persistido como hecho del gym) y dispara una señal de reevaluación del orden
 ANTES de sustituir. Cobertura en
 `Packages/PRCore/Tests/PRDomainTests/OccupancyControllerTests.swift` (RF-010).
 
+## Mark missing (EPIC-09, RF-011)
+
+Implementado en PR-0903 en `Packages/PRCore/Sources/PRDomain/MissingEquipment.swift`
+(plan §9): persiste el equipamiento inexistente en el perfil del gym (`.doesNotExist`)
+y filtra las sesiones futuras para que no programen máquinas marcadas inexistentes,
+salvo que el usuario revierta (`revert` → `.unknown`). Cobertura en
+`Packages/PRCore/Tests/PRDomainTests/MissingEquipmentTests.swift` (RF-011).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |

@@ -210,6 +210,14 @@ del gym) y dispara una señal de reevaluación del orden (`shouldReorder`) cuand
 ordenado del plan usa el equipo ocupado, para reordenar ANTES de sustituir. Cobertura en
 `PRDomainTests/OccupancyControllerTests.swift` (RF-010).
 
+## Mark missing (EPIC-09, RF-011)
+
+Implementado en PR-0903 en `PRDomain/MissingEquipment.swift` (plan §9): persiste el
+equipamiento inexistente en el perfil del gym (`.doesNotExist`) y filtra las sesiones
+futuras para que no programen máquinas marcadas inexistentes, salvo que el usuario
+revierta (`revert` → `.unknown`). Cobertura en `PRDomainTests/MissingEquipmentTests.swift`
+(RF-011).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |
