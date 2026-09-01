@@ -130,6 +130,15 @@ realizado. Persiste/restaura el workout activo tras kill/relaunch vía
 `ActiveWorkoutSnapshot` Codable, sin restaurar estados terminales. Cobertura en
 `PRDomainTests/ActiveWorkoutTests.swift` (RF-005).
 
+## One-tap set completion (EPIC-06)
+
+Implementado en PR-0603 en `PRDomain/SetCompleter.swift` (plan §8): precarga target
+weight/reps desde la prescripción (`targetLoad`) o desde el último peso realizado
+(`weightFromHistory`); registra con un tap si el input coincide exactamente, y ofrece
+edición accesible vía `recordSet`. Ambos persisten el set en la sesión activa ANTES de
+cualquier transición UI, de forma append-only sin mutar el plan ni el historial.
+Cobertura en `PRDomainTests/SetCompleterTests.swift` (RF-005).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |

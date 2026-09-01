@@ -625,13 +625,28 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0603 — One-tap set completion
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0602
+**Dependencies:** PR-0602  
+**Status:** DONE
 
 ### Criterios de aceptación
 - target weight/reps precargados.
 - si coinciden, un tap registra.
 - edición de peso/reps accesible.
 - set persiste antes de transición UI final.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/SetCompleter.swift`: `SetCompleter` (con
+  `SetCompletionDraft`/`SetCompletionInput`/`SetCompletionError`) precarga el target
+  de peso/reps desde la prescripción (`targetLoad`) o, si no hay targetLoad, desde el
+  último peso realizado del ejercicio (progresión), con reps del rango inferior.
+- `oneTap(...)` registra el set sólo si el input coincide exactamente con el target
+  (mismo peso+unidad+reps); si difiere devuelve `nil` para que la UI abra la edición
+  sin forzar un registro erróneo. `recordSet(...)` permite editar peso/reps de forma
+  accesible y registra un working set `.completed`. Ambos persisten el set en la
+  sesión activa (`WorkoutSessionRecord.performedSet`) ANTES de cualquier transición
+  UI, de forma append-only (no mutan sets previos ni el plan).
+- 9 tests nuevos en `PRDomainTests/SetCompleterTests.swift`; suite **196 tests /
+  55 suites** verdes (`swift test`); iOS Debug build verde.
 
 ---
 

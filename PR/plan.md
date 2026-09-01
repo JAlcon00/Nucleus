@@ -1157,6 +1157,24 @@ DONE. `Packages/PRCore/Sources/PRDomain/ActiveWorkout.swift` (plan §8):
   no-restaurable de terminal, Codable round-trip.
 - Suite global verde: **187 tests / 54 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0603 (One-tap set completion)
+
+DONE. `Packages/PRCore/Sources/PRDomain/SetCompleter.swift` (plan §8):
+
+- **`SetCompleter`** con `SetCompletionDraft`/`SetCompletionInput`: precarga target
+  weight/reps desde la prescripción (`targetLoad`) o, si no hay, desde el último peso
+  realizado del ejercicio; reps desde el rango inferior.
+- **Un tap si coincide**: `oneTap` registra el set sólo si el input coincide
+  exactamente (`SetCompletionDraft.matches`); si difiere devuelve `nil` para ofrecer
+  edición sin forzar registro erróneo.
+- **Edición accesible**: `recordSet` valida peso≥0 y reps≥1 y registra un working set
+  `.completed`. Ambas persisten el set (`session.performedSet`) ANTES de cualquier
+  transición UI, append-only sin mutar historial ni plan.
+- Tests (`Tests/PRDomainTests/SetCompleterTests.swift`): preload desde targetLoad/
+  último realizado/placeholder, one-tap match, one-tap mismatch → nil, matching exacto
+  de unidad/reps, recordSet editable, validación de peso/reps, append-only.
+- Suite global verde: **196 tests / 55 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion
