@@ -146,6 +146,15 @@ sesión activa ANTES de cualquier transición UI, de forma append-only sin mutar
 plan ni el historial. Cobertura en
 `Packages/PRCore/Tests/PRDomainTests/SetCompleterTests.swift` (RF-005).
 
+## Rest timer (EPIC-06, RF-008)
+
+Implementado en PR-0604 en `Packages/PRCore/Sources/PRDomain/RestTimer.swift`
+(plan §8): inicia automáticamente el descanso tras un working set (no warmup) con la
+duración recomendada desde `SetPrescription.restSeconds`; permite `skip`/`extend(by:)`
+y no bloquea la navegación (estado puro). El `endDate` anclado en wall-clock hace que
+`remaining(at:)`/`hasElapsed(at:)` perduren tras background/relaunch. Cobertura en
+`Packages/PRCore/Tests/PRDomainTests/RestTimerTests.swift` (RF-008).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |

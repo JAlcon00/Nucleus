@@ -1175,6 +1175,23 @@ DONE. `Packages/PRCore/Sources/PRDomain/SetCompleter.swift` (plan §8):
   de unidad/reps, recordSet editable, validación de peso/reps, append-only.
 - Suite global verde: **196 tests / 55 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0604 (Rest timer)
+
+DONE. `Packages/PRCore/Sources/PRDomain/RestTimer.swift` (plan §8, RF-008):
+
+- **`RestTimer`/`RestTimerState`**: inicia automáticamente el descanso tras completar
+  un working set con la duración recomendada desde `SetPrescription.restSeconds`
+  (`autoStart(afterCompletedWarmup:prescription:)`); los warmups NO inician descanso.
+- **Skip/extend**: `skip` cancela el descanso; `extend(by:)` prolonga `endDate` (no-op
+  si está inactivo o duración no positiva).
+- **No bloquea**: el timer es un valor con `endDate` anclado en wall-clock; la UI
+  consulta `remaining(at:)`/`hasElapsed(at:)` contra `Date()`, por lo que sobrevive
+  background/relaunch sin ticks en memoria.
+- Tests (`Tests/PRDomainTests/RestTimerTests.swift`): auto-start tras working set, no
+  tras warmup, remaining wall-clock tras relaunch, elapsed flag, skip, extend activo/
+  idle, extend no-positiva, inactivo → 0.
+- Suite global verde: **204 tests / 56 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion

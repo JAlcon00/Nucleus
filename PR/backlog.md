@@ -653,13 +653,27 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0604 — Rest timer
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0603
+**Dependencies:** PR-0603  
+**Status:** DONE
 
 ### Criterios de aceptación
 - inicia automáticamente tras working set cuando corresponde.
 - puede skip/extend.
 - no bloquea navegación.
 - sobrevive background razonablemente según plataforma.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/RestTimer.swift`: `RestTimer` (con
+  `RestTimerState`) inicia automáticamente el descanso tras un working set con la
+  duración recomendada desde `SetPrescription.restSeconds`; los warmups NO inician
+  descanso (`autoStart(afterCompletedWarmup:prescription:)`).
+- `extend(by:)` prolonga el `endDate` (no-op si el timer está inactivo o con duración
+  no positiva); `skip` cancela el descanso.
+- No bloquea navegación: el timer es un valor con `endDate` anclado en wall-clock;
+  `remaining(at:)`/`hasElapsed(at:)` se computan contra `Date()` en lectura, por lo
+  que sobrevive background/relaunch sin depender de ticks en memoria.
+- 8 tests nuevos en `PRDomainTests/RestTimerTests.swift`; suite **204 tests /
+  56 suites** verdes (`swift test`); iOS Debug build verde.
 
 ---
 
