@@ -254,12 +254,19 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 ## PR-0106 — Restrictions domain
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0102
+**Dependencies:** PR-0102  
+**Status:** DONE  
+
 
 ### Criterios de aceptación
 - body region, side, source, reviewDate, forbidden patterns/exercises.
 - restricción no se autoelimina al llegar reviewDate.
 - estado active/reviewNeeded/resolved.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/Restriction.swift`: `TrainingRestriction` (spec §16.1) con `BodyRegion`, `BodySide`, `RestrictionSource` (userReported/professionalGuidance), `reviewDate`, `forbiddenPatterns`, `forbiddenExerciseIDs`, `allowedExerciseIDs`, `restrictionTags`.
+- `RestrictionStatus` (active/reviewNeeded/resolved) con transiciones validadas; `refreshed(asOf:)` pasa a `reviewNeeded` cuando pasa el `reviewDate` (nunca autoelimina); resolución solo por acción explícita.
+- 58 tests Swift Testing verdes.
 
 ---
 

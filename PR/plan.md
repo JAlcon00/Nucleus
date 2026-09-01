@@ -945,6 +945,15 @@ DONE. `Packages/PRCore/Sources/PRDomain/Gym.swift`:
 - 51 tests Swift Testing verdes (`swift test`).
 - iOS Debug build verde con el paquete vinculado.
 
+### Estado PR-0106 (Restrictions domain)
+
+DONE. `Packages/PRCore/Sources/PRDomain/Restriction.swift`:
+
+- `TrainingRestriction` (spec §16.1) con `BodyRegion`, `BodySide`, `RestrictionSource`, `reviewDate`, `forbiddenPatterns`, `forbiddenExerciseIDs`, `allowedExerciseIDs`, `restrictionTags`.
+- `RestrictionStatus` (active/reviewNeeded/resolved) con transiciones validadas; `refreshed(asOf:)` pasa a `reviewNeeded` al pasar el `reviewDate` (no autoelimina); resolución por acción explícita.
+- 58 tests Swift Testing verdes (`swift test`).
+- iOS Debug build verde con el paquete vinculado.
+
 ---
 
 # 25. Definition of milestone completion
