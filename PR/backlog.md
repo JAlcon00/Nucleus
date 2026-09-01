@@ -297,7 +297,13 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 ## PR-0202 — SwiftData persistence adapters
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-0201
+**Dependencies:** PR-0201  
+**Status:** DONE
+
+> **Nota tecnológica (ver `ADR-0001`):** los `@Model` de SwiftData no pueden vivir
+> en una librería SPM compartida (crash SIGTRAP). PR-0202 se implementa con un
+> almacén Codable/JSON de escritura atómica dentro de PRCore; SwiftData queda
+> reservado para la capa de app.
 
 ### Criterios de aceptación
 - Persistencia de profile, blocks, workouts, sets, gyms, restrictions, decisions.
@@ -306,10 +312,10 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - Error de sync remoto no revierte local save.
 
 ### Tests
-- round-trip integration con in-memory ModelContainer;
-- relaciones;
+- round-trip integration con in-memory `RepositoryStore`;
+- relaciones (sets dentro de una sesión);
 - delete policies;
-- migration baseline.
+- persistencia atómica a disco (escritura temp + rename).
 
 ---
 
@@ -344,7 +350,8 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 ## PR-0301 — Seed exercise catalog
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-0102, PR-0202
+**Dependencies:** PR-0102, PR-0202  
+**Status:** DONE
 
 ### Criterios de aceptación
 - Catálogo mínimo cubre todos los patrones del MVP.
@@ -352,6 +359,11 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - Dataset incluye versión.
 - Import es idempotente.
 - Licencias/source metadata documentadas si se importa dataset externo.
+
+**Nota técnica:** dataset público *free-exercise-db* (Unlicense) curado a 678
+ejercicios (strength/powerlifting/olympic/strongman) como resource del paquete;
+mapeo determinista a la ontología `Exercise` de PRDomain documentado en
+`ADR-0002`; IDs/familias derivadas por SHA-256 del slug (idempotente).
 
 ---
 

@@ -821,6 +821,16 @@ Consequences
 Rollback
 ```
 
+### ADRs registrados
+
+- **`ADR-0001`** (PR-0202): SwiftData y la capa de persistencia local → almacén
+  Codable/JSON de escritura atómica en PRCore. Los `@Model` de SwiftData no pueden
+  vivir en una librería SPM compartida (SIGTRAP); SwiftData queda reservado a la
+  capa de app. Ubicación: `PR-agentic-fitness-spec/docs/adr/ADR-0001-*.md`.
+- **`ADR-0002`** (PR-0301): seed del catálogo de ejercicios — dataset
+  *free-exercise-db* (Unlicense) + mapeo determinista a la ontología `Exercise`
+  de PRDomain. Ubicación: `PR-agentic-fitness-spec/docs/adr/ADR-0002-*.md`.
+
 ---
 
 # 23. Riesgos principales y mitigaciones
@@ -953,6 +963,45 @@ DONE. `Packages/PRCore/Sources/PRDomain/Restriction.swift`:
 - `RestrictionStatus` (active/reviewNeeded/resolved) con transiciones validadas; `refreshed(asOf:)` pasa a `reviewNeeded` al pasar el `reviewDate` (no autoelimina); resolución por acción explícita.
 - 58 tests Swift Testing verdes (`swift test`).
 - iOS Debug build verde con el paquete vinculado.
+
+### Estado PR-0201 (Repository protocols)
+
+DONE. `Packages/PRCore/Sources/PRCore/PersistenceContracts.swift`:
+
+- `ExerciseRepository`, `TrainingBlockRepository`, `WorkoutRepository`, `GymRepository`, `RestrictionRepository`, `DecisionRepository`, `UserProfileRepository` — async, `Sendable`.
+- `PRCore` no importa SwiftData; los contratos son la frontera de persistencia.
+- Tests con fakes in-memory (`Tests/PRCoreTests/InMemoryRepositories.swift`).
+
+### Estado PR-0202 (Local persistence adapters)
+
+DONE. Persistencia local offline-first detrás de los protocolos `Repository`.
+
+> **Decisión tecnológica (ver `ADR-0001`):** los `@Model` de SwiftData **no pueden
+> vivir en un target de librería SPM compartido** — el runtime de SwiftData aborta
+> con SIGTRAP al ejercitar el modelo (reproducido y documentado). PRCore es un
+> paquete compartido por iOS + watchOS y se valida vía `swift test`; por tanto PR-0202
+> se implementa con un **almacén Codable/JSON de escritura atómica** en lugar de
+> SwiftData. SwiftData queda reservado para la capa de app si un día se desea (con
+> sus `@Model` en el target ejecutable de la app).
+
+- `Sources/PRCore/RepositoryStore.swift`: protocolo `RepositoryStore` + `MemoryRepositoryStore` (tests) + `AtomicFileRepositoryStore` (archivos JSON, escritura temp + rename).
+- `Sources/PRCore/CodableRepositories.swift`: `FileExerciseRepository`, `FileTrainingBlockRepository`, `FileWorkoutRepository`, `FileGymRepository`, `FileRestrictionRepository`, `FileDecisionRepository`, `FileUserProfileRepository`.
+- Cada agregado se persiste como blob JSON tras su clave tipada (`id.rawValue.persistenceKey`); el save local es inmediato y autoritativo (un fallo de sync jamás lo revierte). Al confirmar un set se persiste la sesión completa (incluye sus sets) de forma atómica.
+- Perfil único bajo clave fija: el save reemplaza, nunca duplica.
+- Tests de integración (`Tests/PRCoreTests/CodableRepositoriesTests.swift`): round-trip por entidad, relaciones (sets dentro de sesión), delete policies, perfil único, persistencia atómica a disco.
+- Suite global verde: **82 tests / 33 suites** (`swift test`); iOS Debug build verde; watchOS no compilable en este entorno (runtime no instalado, como en PR-0001).
+
+### Estado PR-0301 (Exercise catalog seed)
+
+DONE. Catálogo inicial versionado con import idempotente.
+
+- **Fuente:** dataset público *free-exercise-db* (`exercises.json`, repo `yuhonas/free-exercise-db`), licencia **Unlicense (public domain)**.
+- **Subset curado:** 678 ejercicios (categorías `strength`, `powerlifting`, `olympic weightlifting`, `strongman`), incrustado como resource del paquete (`Packages/PRCore/Sources/PRCore/Resources/exercises.json`).
+- `Sources/PRCore/ExerciseCatalog.swift`: DTO del dataset + `ExerciseCatalogLoader` (bundle y JSON crudo) + `ExerciseInflector` (reglas deterministas de mapeo a la ontología `Exercise`) + `ExerciseCatalogSeeder` (import idempotente a `ExerciseRepository`).
+- **IDs deterministas:** hash SHA-256(namespace+slug) → UUID estable; **una familia por patrón de movimiento** con ID también determinista. Re-importar no duplica (criterio PR-0301).
+- Decisiones de mapeo (equipment, músculos, jointClass, fatiga, loadability, roles, ángulo, laterality) centralizadas y versionadas; ver `ADR-0002`.
+- Tests (`Tests/PRCoreTests/ExerciseCatalogTests.swift`): carga del bundle, determinismo (mismo dataset → mismos IDs), cobertura de los 18 patrones MVP con ≥1 ejercicio, well-formedness, idempotencia del seeder.
+- Suite global verde: **93 tests / 37 suites** (`swift test`); iOS Debug build verde (resource incluido).
 
 ---
 

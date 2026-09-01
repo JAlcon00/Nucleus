@@ -29,7 +29,12 @@ let package = Package(
         // Agregador de alto nivel que la app importa.
         .target(
             name: "PRCore",
-            dependencies: ["PRDomain"]
+            dependencies: ["PRDomain"],
+            resources: [
+                // Ejercicios curados del catálogo inicial (PR-0301). Dataset
+                // "free-exercise-db" (Unlicense); ver ADR-0002.
+                .copy("Resources/exercises.json")
+            ]
         ),
         .testTarget(
             name: "PRDomainTests",

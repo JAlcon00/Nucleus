@@ -37,6 +37,23 @@ Esta matriz vincula requisitos maestros con épicas principales. Debe actualizar
 | RF-031 Bodybuilding domain | EPIC-18 | domain tests |
 | RF-032 Gym switching | EPIC-09 | integration tests |
 | RF-033 Goal change | EPIC-05 | block transition tests |
+| RF-034 Exercise catalog | EPIC-03 | catalog seed + MVP coverage tests (PR-0301) |
+
+## Persistencia local (EPIC-02)
+
+Implementada en PR-0202 detrás de los protocolos `Repository` con un almacén
+Codable/JSON de escritura atómica (no SwiftData; ver `PR-agentic-fitness-spec/docs/adr/ADR-0001`). Cobertura en
+`Packages/PRCore/Tests/PRCoreTests/CodableRepositoriesTests.swift`: round-trip por entidad, relaciones,
+delete policies, perfil único y persistencia atómica a disco. El save local es
+inmediato y autoritativo para proteger los datos de workout (RF-028/RF-029).
+
+## Catálogo de ejercicios (EPIC-03)
+
+Implementado en PR-0301 con el dataset público *free-exercise-db* (Unlicense)
+curado a 678 ejercicios y mapeado de forma determinista a la ontología `Exercise`
+de PRDomain (ver `PR-agentic-fitness-spec/docs/adr/ADR-0002`). Cobertura en
+`Packages/PRCore/Tests/PRCoreTests/ExerciseCatalogTests.swift`: carga del bundle,
+determinismo de IDs, patrones MVP e idempotencia del seed (RF-034).
 
 ## Safety-critical traceability
 
