@@ -85,6 +85,15 @@ determinista de sets semanales por músculo según `PriorityTier`, con límites
 versionados vía `EvidenceRule` (`VolumeConfig`), sin volumen negativo y sin inventar
 músculos. Cobertura en `PRDomainTests/VolumeAllocatorTests.swift` (RF-004).
 
+## Exercise assignment (EPIC-05)
+
+Implementado en PR-0503 en `PRDomain/ExerciseAssignment.swift` (plan §4C): asignación
+de `anchors` (estables para medir progreso) y `rotatables` (rotación dentro de la
+familia según `varietyPreference`), usando sólo equipment disponible/conocido o
+dejando candidatos para pregunta si `unknown`, sin programar ejercicios bloqueados
+por `TrainingRestriction` (excluye patrones/IDs prohibidos y respeta la lista
+permitida). Cobertura en `PRDomainTests/ExerciseAssignmentTests.swift` (RF-004).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |

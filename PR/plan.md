@@ -1056,6 +1056,27 @@ DONE. `Packages/PRCore/Sources/PRDomain/VolumeAllocator.swift` (plan §4B):
   y validación de `VolumeConfig` (params obligatorios).
 - Suite global verde: **144 tests / 49 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0503 (Exercise assignment)
+
+DONE. `Packages/PRCore/Sources/PRDomain/ExerciseAssignment.swift` (plan §4C):
+
+- **`ExerciseAssigner`** determinista: asigna **anchors** (candidato más estable de
+  la familia, para medir progreso) y **rotatables** (resto de la familia según
+  variedad: stable 1, balanced 2, varied 3 — límite configurable; los anchors no
+  rotan sólo por variedad).
+- **Equipment**: con disponibilidad conocida excluye ejercicios no disponibles; si
+  es `unknown` no descarta nada y la UI pregunta, no programa a ciegas.
+- **Restricciones** (`TrainingRestriction`): excluye ejercicios con patrón o ID
+  prohibido y respeta la lista explícitamente permitida; nunca programa ejercicios
+  bloqueados.
+- **`MuscleExerciseAssignment`** por grupo (`muscleGroupID` + `familyID` +
+  `[AssignedExercise]` con `assignmentRole`).
+- Tests (`Tests/PRDomainTests/ExerciseAssignmentTests.swift`): anchor/rotatable,
+  exclusión por equipment conocido, política unknown, restricciones por patrón e ID,
+  precedencia de lista permitida, número de rotatables por variedad, determinismo y
+  error explícito sin candidatos.
+- Suite global verde: **154 tests / 50 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion

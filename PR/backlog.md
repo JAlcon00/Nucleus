@@ -518,13 +518,25 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0503 — Exercise assignment
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-0502, PR-0301
+**Dependencies:** PR-0502, PR-0301  
+**Status:** DONE
 
 ### Criterios de aceptación
 - asigna anchors y rotatables.
 - sólo usa equipment disponible/conocido o pregunta si unknown.
 - prioriza variedad según profile sin romper anchors.
 - no programa ejercicios bloqueados por restrictions.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/ExerciseAssignment.swift`: `ExerciseAssigner` +
+  `ExerciseAssignmentInput` + `MuscleExerciseAssignment`/`AssignedExercise`
+  (`assignmentRole` anchor/rotatable). Asigna el candidato más estable de la familia
+  como anchor y el resto como rotatables según variedad (stable 1, balanced 2,
+  varied 3, configurable). Equipment: sólo usa disponibles si son conocidos, o deja
+  sugerencias si `unknown` (la UI pregunta). Restricciones: excluye patrones/ID
+  prohibidos y respeta la lista explícitamente permitida.
+- 10 tests nuevos en `PRDomainTests/ExerciseAssignmentTests.swift`; suite **154 tests /
+  50 suites** verdes (`swift test`); iOS Debug build verde.
 
 ---
 

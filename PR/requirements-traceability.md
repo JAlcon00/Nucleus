@@ -89,6 +89,16 @@ Implementado en PR-0502 en `Packages/PRCore/Sources/PRDomain/VolumeAllocator.swi
 volumen negativo y sin inventar músculos. Cobertura en
 `Packages/PRCore/Tests/PRDomainTests/VolumeAllocatorTests.swift` (RF-004).
 
+## Exercise assignment (EPIC-05)
+
+Implementado en PR-0503 en `Packages/PRCore/Sources/PRDomain/ExerciseAssignment.swift`
+(plan §4C): asignación de `anchors` (estables para medir progreso) y `rotatables`
+(rotación dentro de la familia según `varietyPreference`), usando sólo equipment
+disponible/conocido o dejando candidatos para pregunta si `unknown`, sin programas
+ejercicios bloqueados por `TrainingRestriction` (excluye patrones/IDs prohibidos y
+respeta la lista permitida). Cobertura en
+`Packages/PRCore/Tests/PRDomainTests/ExerciseAssignmentTests.swift` (RF-004).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |
