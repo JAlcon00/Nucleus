@@ -73,6 +73,14 @@ equipment/patrón/músculos) con objetivo <100 ms sobre el catálogo MVP. Cobert
 `Packages/PRCore/Tests/PRDomainTests/ExerciseSearchTests.swift` +
 `Packages/PRCore/Tests/PRCoreTests/ExerciseSearchPerfTests.swift`.
 
+## Split selector (EPIC-05)
+
+Implementado en PR-0501 en `Packages/PRCore/Sources/PRDomain/SplitSelector.swift`
+(promptMaster §8.2): selección determinista y explicable de la estructura de bloques
+por días/objetivo/experiencia (fullBody 2–3, upperLower 4, pushPullLegs 5+), sin
+depender de LLM. Cobertura en `Packages/PRCore/Tests/PRDomainTests/SplitSelectorTests.swift`
+(RF-004).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |

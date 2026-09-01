@@ -472,7 +472,8 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0501 — Split selector
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0104, PR-0301
+**Dependencies:** PR-0104, PR-0301  
+**Status:** DONE
 
 ### Criterios de aceptación
 - 2–3 días considera full body.
@@ -480,6 +481,14 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 - 3–6 días permite PPL cuando tenga sentido.
 - selección es determinista y explicable.
 - split no depende de LLM.
+
+### Notas de implementación
+- `Packages/PRCore/Sources/PRDomain/SplitSelector.swift`: `SplitSelector` +
+  `TrainingSplit` (fullBody/upperLower/pushPullLegs) + `SplitSelection` con
+  facts explicables. 2–3 días fullBody; 4 días upperLower (salvo bodybuilding
+  avanzado surplus → PPL); 5+ días PPL por adherencia. Determinista.
+- 10 tests nuevos en `PRDomainTests/SplitSelectorTests.swift`; suite **135 tests /
+  47 suites** verdes (`swift test`); iOS Debug build verde.
 
 ---
 

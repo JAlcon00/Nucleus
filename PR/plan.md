@@ -1026,6 +1026,20 @@ DONE. Búsqueda offline del catálogo (`Packages/PRCore/Sources/PRDomain/Exercis
 - Test de rendimiento sobre el catálogo real (`Tests/PRCoreTests/ExerciseSearchPerfTests.swift`): **<100 ms** sobre los 678 ejercicios del bundle (cumple criterio PR-0302).
 - Suite global verde: **125 tests / 45 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0501 (Split selector)
+
+DONE. `Packages/PRCore/Sources/PRDomain/SplitSelector.swift` (promptMaster §8.2):
+
+- **`TrainingSplit`**: `fullBody` / `upperLower` / `pushPullLegs` (estructuras MVP del spec).
+- **`SplitSelector`** determinista y explicable (nunca LLM):
+  - 2–3 días → `fullBody`;
+  - 4 días → `upperLower` (salvo bodybuilding avanzado en surplus → `pushPullLegs`);
+  - 5 días → `pushPullLegs`;
+  - 6–7 días → `pushPullLegs` por adherencia.
+- **`SplitSelection`** (split + días + goal + experiencia + `SplitReason`) con `explanationFacts` (DecisionFact) para el "por qué". Valida días 2...7.
+- Tests (`Tests/PRDomainTests/SplitSelectorTests.swift`): meses por días, caso especializado, matriz del plan (fixture A full body), determinismo y explicabilidad.
+- Suite global verde: **135 tests / 47 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion

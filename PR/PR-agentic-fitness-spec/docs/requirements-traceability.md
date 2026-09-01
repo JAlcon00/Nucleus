@@ -71,6 +71,13 @@ offline determinista (nombre/aliases normalizados, filtros por equipment/patrón
 músculos) con objetivo <100 ms sobre el catálogo MVP. Cobertura en
 `PRDomainTests/ExerciseSearchTests.swift` + `PRCoreTests/ExerciseSearchPerfTests.swift`.
 
+## Split selector (EPIC-05)
+
+Implementado en PR-0501 en `PRDomain/SplitSelector.swift` (promptMaster §8.2):
+selección determinista y explicable de la estructura de bloques por días/objetivo/
+experiencia (fullBody 2–3, upperLower 4, pushPullLegs 5+), sin depender de LLM.
+Cobertura en `PRDomainTests/SplitSelectorTests.swift` (RF-004).
+
 ## Safety-critical traceability
 
 | Rule | Components that MUST enforce it |
