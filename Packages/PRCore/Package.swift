@@ -35,5 +35,10 @@ let package = Package(
             name: "PRDomainTests",
             dependencies: ["PRDomain"]
         ),
+        // Tests de contratos de persistencia con fakes in-memory (PR-0201).
+        .testTarget(
+            name: "PRCoreTests",
+            dependencies: ["PRCore"]
+        ),
     ]
 )

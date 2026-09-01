@@ -275,7 +275,8 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 ## PR-0201 — Repository protocols
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** EPIC-01
+**Dependencies:** EPIC-01  
+**Status:** DONE
 
 ### Implementar contratos
 - ExerciseRepository

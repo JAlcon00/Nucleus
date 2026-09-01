@@ -339,3 +339,107 @@ public struct WorkoutSessionRecord: Identifiable, Codable, Sendable, Hashable {
         return copy
     }
 }
+
+// MARK: - TrainingBlock aggregate (promptMaster §6.6)
+
+/// Estado de un bloque de entrenamiento.
+public enum BlockStatus: String, Codable, Sendable, CaseIterable, Hashable {
+    case planned
+    case active
+    case deloading
+    case completed
+}
+
+/// Política de progresión del bloque.
+public enum ProgressionPolicy: String, Codable, Sendable, CaseIterable, Hashable {
+    case loadProgression
+    case repRangeProgression
+    case doubleProgression
+}
+
+/// Política de deload del bloque.
+public enum DeloadPolicy: String, Codable, Sendable, CaseIterable, Hashable {
+    case none
+    case afterSixWeeks
+    case afterEightWeeks
+}
+
+/// Objetivo de volumen por grupo muscular (sets por semana).
+public struct MuscleVolumeTarget: Codable, Sendable, Hashable {
+    public var muscleGroupID: MuscleGroup.ID
+    /// Series semanales objetivo (>= 0).
+    public var targetSetsPerWeek: Int
+
+    public init(muscleGroupID: MuscleGroup.ID, targetSetsPerWeek: Int) throws {
+        guard targetSetsPerWeek >= 0 else {
+            throw DomainValidationError.invalidReps(value: targetSetsPerWeek)
+        }
+        self.muscleGroupID = muscleGroupID
+        self.targetSetsPerWeek = targetSetsPerWeek
+    }
+}
+
+/// Política de variedad del bloque: proporción de ejercicios estables.
+public struct VarietyPolicy: Codable, Sendable, Hashable {
+    /// Proporción (0...1) de ejercicios que permanecen dentro del bloque.
+    public var percentStable: Double
+
+    public init(percentStable: Double) throws {
+        guard percentStable.isFinite, (0...1).contains(percentStable) else {
+            throw DomainValidationError.invalidNormalized(value: percentStable)
+        }
+        self.percentStable = percentStable
+    }
+}
+
+/// Bloque de entrenamiento persistible (spec §6.6).
+public struct TrainingBlock: Identifiable, Codable, Sendable, Hashable {
+    public typealias ID = TrainingBlockID
+
+    public let id: TrainingBlockID
+    public var name: String
+    public var goal: TrainingGoal
+    public var phase: BodyCompositionPhase
+    public var startDate: Date
+    public var plannedWeeks: Int
+    public var sessions: [SessionTemplate]
+    public var muscleTargets: [MuscleVolumeTarget]
+    public var priorities: [MusclePriority]
+    public var progressionPolicy: ProgressionPolicy
+    public var deloadPolicy: DeloadPolicy
+    public var varietyPolicy: VarietyPolicy
+    public var status: BlockStatus
+
+    public init(
+        id: TrainingBlockID = TrainingBlockID(),
+        name: String,
+        goal: TrainingGoal,
+        phase: BodyCompositionPhase,
+        startDate: Date = Date(),
+        plannedWeeks: Int,
+        sessions: [SessionTemplate] = [],
+        muscleTargets: [MuscleVolumeTarget] = [],
+        priorities: [MusclePriority] = [],
+        progressionPolicy: ProgressionPolicy,
+        deloadPolicy: DeloadPolicy,
+        varietyPolicy: VarietyPolicy,
+        status: BlockStatus = .planned
+    ) throws {
+        guard (4...8).contains(plannedWeeks) else {
+            throw DomainValidationError.invalidMinutes(value: plannedWeeks)
+        }
+        self.id = id
+        self.name = name
+        self.goal = goal
+        self.phase = phase
+        self.startDate = startDate
+        self.plannedWeeks = plannedWeeks
+        self.sessions = sessions
+        self.muscleTargets = muscleTargets
+        self.priorities = priorities
+        self.progressionPolicy = progressionPolicy
+        self.deloadPolicy = deloadPolicy
+        self.varietyPolicy = varietyPolicy
+        self.status = status
+    }
+}
