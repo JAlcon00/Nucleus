@@ -122,4 +122,5 @@ public enum DomainValidationError: Error, Equatable, Sendable {
     case duplicateRuleID(id: String, existingVersion: Int, newVersion: Int)
     case ruleVersionNotAdvanced(id: String, current: Int, proposed: Int)
     case ruleNotFound(id: String)
+    case invalidAgentGatewayTiming
 }

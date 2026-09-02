@@ -1190,6 +1190,20 @@ Etiquetar correlaciones como observadas, no causales.
 - timeout/retry bounded.
 - backend failure has local fallback.
 
+### Estado (2026-09-01)
+- PRDomain `AgentGateway.swift` (§20.5, PR-1603): protocolo puro de dominio, SIN networking
+  ni claves (la app cliente no almacena secretos y conserva capacidad completa sin backend).
+  - `AgentBackendTransport` (async `interpret`/`explain`): la capa de app lo implementa con HTTP.
+  - `AgentGatewayTiming` ACOTADA y configurable (timeout/maxRetries/backoff), valida entradas.
+  - `AgentGateway` coordinador con retry acotado (`totalAttempts = 1 + maxRetries`) y fallback
+    local determinista ante fallo/timeout del backend o ausencia de transporte (offline-first).
+  - `LocalFallbackInterpreter`: reconoce SÓLO formas cortas deterministas (tiempo, goal, fase,
+    gym) y ante cualquier duda devuelve `needsClarification` (seguro, no inventa intents). Reusa
+    `AgentIntent` de PR-1601.
+  - `LocalFallbackExplainer`: plantilla offline de 1–4 razones SÓLO desde los facts (PR-1606).
+  + tests (12) en `AgentGatewayTests.swift`. swift test 0 fallos; iOS build limpio.
+  Desbloquea PR-1604/PR-1605/PR-1606.
+
 ---
 
 ## PR-1604 — Natural language: time constraint
