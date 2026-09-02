@@ -57,6 +57,8 @@ public enum NVIDIAProviderError: Error, Sendable, Equatable {
     case malformedResponse
     /// La respuesta no trae `choices` válido.
     case emptyChoices
+    /// El streaming fue cancelado por el cliente/tarea (no es un fallo de red).
+    case cancelled
 }
 
 /// Presets de sampling/razonamiento por execution mode (spec §40, §23).
@@ -210,6 +212,94 @@ public struct NVIDIAHostedProvider: LLMProvider {
         )
     }
 
+    // MARK: - Streaming (Phase N5)
+
+    /// Emite eventos incrementales usando Server-Sent-Events (`stream: true`).
+    /// La cancelación de la tarea de consumo finaliza el stream; una red faltante o un
+    /// cierre inesperado se traduce a errores tipados.
+    public func stream(_ request: AgentRequest) -> AsyncThrowingStream<AgentStreamEvent, Error> {
+        let preset = NVIDIAProviderPreset.forMode(request.mode)
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    guard let apiKey = self.config.apiKeyProvider(), !apiKey.isEmpty else {
+                        throw NVIDIAProviderError.missingAPIKey
+                    }
+
+                    let endpoint = self.config.baseURL.appendingPathComponent("chat/completions")
+                    let chatRequest = NVIDIAChatRequest(
+                        model: self.config.model,
+                        messages: request.messages.map { NVIDIAChatMessage(role: $0.role, content: $0.content) },
+                        temperature: preset.temperature,
+                        maxTokens: preset.maxTokens,
+                        stream: true,
+                        reasoningBudget: preset.reasoningBudget,
+                        chatTemplateKwargs: ChatTemplateKwargs(enableThinking: preset.enableThinking),
+                        tools: request.tools.isEmpty ? nil : request.tools.map(Self.wireTool),
+                        toolChoice: request.tools.isEmpty ? nil : "auto"
+                    )
+
+                    var urlRequest = URLRequest(url: endpoint)
+                    urlRequest.httpMethod = "POST"
+                    urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+                    urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    urlRequest.httpBody = try JSONEncoder().encode(chatRequest)
+
+                    let (bytes, response): (URLSession.AsyncBytes, URLResponse)
+                    do {
+                        (bytes, response) = try await self.session.bytes(for: urlRequest)
+                    } catch {
+                        if self.isCancellation(error) { throw NVIDIAProviderError.cancelled }
+                        throw NVIDIAProviderError.network
+                    }
+
+                    guard let http = response as? HTTPURLResponse else {
+                        throw NVIDIAProviderError.invalidResponse
+                    }
+                    guard (200..<300).contains(http.statusCode) else {
+                        throw self.mapStatus(http.statusCode)
+                    }
+
+                    // Parsea SSE de forma síncrona y determinista por fragmento.
+                    var decoder = SSEEventDecoder()
+                    for try await byte in bytes {
+                        if Task.isCancelled { throw NVIDIAProviderError.cancelled }
+                        let events = NVIDIAStreamEventParser.parse(
+                            decoder: &decoder,
+                            fragment: String(decoding: [byte], as: UTF8.self)
+                        )
+                        for event in events {
+                            continuation.yield(event)
+                        }
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    private func isCancellation(_ error: Error) -> Bool {
+        if let urlError = error as? URLError, urlError.code == .cancelled { return true }
+        return false
+    }
+
+    private func mapStatus(_ statusCode: Int) -> NVIDIAProviderError {
+        switch statusCode {
+        case 400: return .validation
+        case 401: return .authentication
+        case 403: return .forbidden
+        case 404: return .notFound
+        case 408: return .timeout
+        case 422: return .validation
+        case 429: return .rateLimited
+        case 500..<600: return .providerError(status: statusCode)
+        default: return .providerError(status: statusCode)
+        }
+    }
+
     // MARK: - Tool mapping (Phase N3)
 
     private static func wireTool(_ definition: AgentToolDefinition) -> NVIDIATool {
@@ -246,7 +336,8 @@ public struct NVIDIAHostedProvider: LLMProvider {
         case .providerError:
             return true
         case .authentication, .forbidden, .notFound, .validation,
-             .missingAPIKey, .invalidResponse, .malformedResponse, .emptyChoices:
+             .missingAPIKey, .invalidResponse, .malformedResponse, .emptyChoices,
+             .cancelled:
             return false
         }
     }

@@ -159,3 +159,47 @@ public struct AgentResponse: Sendable {
 public protocol LLMProvider: Sendable {
     func complete(_ request: AgentRequest) async throws -> AgentResponse
 }
+
+// MARK: - Streaming (Phase N5)
+
+/// Evento incremental de una respuesta en streaming. El proving solo emite delta de
+/// contenido visible y del reasoning, y en último término un `.finish`. El cliente
+/// reconcilia los deltas en texto final; NUNCA muestra el reasoning trace interno.
+public enum AgentStreamEvent: Sendable, Equatable {
+    /// Delta de contenido visible (`content`).
+    case text(String)
+    /// Delta de reasoning (`reasoning_content`) — NO mostrar al usuario.
+    case reasoning(String)
+    /// Llamada a tool completa emitida por el modelo (finalizada).
+    case toolCall(AgentToolCall)
+    /// Fin de la generación.
+    case finish(AgentFinishReason)
+}
+
+extension LLMProvider {
+    /// Streaming con fallback: si el provider no lo implementa, se emite el contenido
+    /// completo de `complete` como un único delta. Determínistico y no rompe contratos.
+    public func stream(_ request: AgentRequest) -> AsyncThrowingStream<AgentStreamEvent, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    let response = try await self.complete(request)
+                    if let text = response.text {
+                        continuation.yield(.text(text))
+                    }
+                    for call in response.toolCalls {
+                        continuation.yield(.toolCall(call))
+                    }
+                    continuation.yield(.finish(response.finishReason))
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
+    }
+}
+

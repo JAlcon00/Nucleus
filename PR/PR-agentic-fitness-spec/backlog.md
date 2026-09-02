@@ -1365,6 +1365,16 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
   `ActionPolicyValidator` (PR-1602) → `AgentWriteCommand` ESTRECHO auditable (nunca handle de
   DB; la app despacha a managers). Decisiones `execute`/`confirm`/`rejected` + audit trail por
   etapa (intent→actionValidation→result). +10 tests (`AgentActionWriterTests`). 145 tests green.
+- **N5 — Streaming SSE (nuevo):** `AgentStreaming.swift` con `SSEEventDecoder` (parser puro
+  incremental, líneas parciales + CRLF + en blanco, agrupa `data:` por línea en blanco),
+  DTOs `NVIDIAStreamDelta/Choice/Chunk`, `NVIDIAStreamEventMapper` (delta→eventos
+  content/reasoning/tool_calls/finish) y `NVIDIAStreamEventParser` síncrono y determinista.
+  `AgentProvider.swift` gana `AgentStreamEvent` (text/reasoning/toolCall/finish) + extensión
+  por defecto `stream` (fallback a `complete` → un `.text` + `.finish`). `NVIDIAHostedProvider.swift`
+  gana `stream(_:)` (loop SSE sobre `bytes`, `Task.isCancelled` → `.cancelled`, mapa de estado,
+  retry excluye `.cancelled`) + `NVIDIAProviderError.cancelled`. +9 tests
+  (`AgentStreamingTests`). Suite global 412 tests/84 suites green. El `reasoning` se emite
+  como `.reasoning` (NUNCA visible al usuario); `[DONE]` termina el stream sin finish duplicado.
 
 ---
 
