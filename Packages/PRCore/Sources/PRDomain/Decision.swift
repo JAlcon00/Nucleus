@@ -21,6 +21,7 @@ public enum DecisionType: String, Codable, Sendable, CaseIterable, Hashable {
     case reorder
     case blockChange
     case intensityChange
+    case policyValidation
 }
 
 /// Hecho de entrada usado por la regla para decidir.

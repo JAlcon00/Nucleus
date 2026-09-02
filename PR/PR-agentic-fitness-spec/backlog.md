@@ -1161,6 +1161,22 @@ Etiquetar correlaciones como observadas, no causales.
 - no load progression when pain gate active.
 - logs DecisionRecord.
 
+### Estado (2026-09-01)
+- PRDomain `ActionPolicyValidator.swift` (§20.3, PR-1602): `AgentAction` (10 casos) +
+  `ActionPolicyValidator.validate(_:context:)` determinista que devuelve `ActionPolicyVerdict`
+  (`allowed(command)` / `rejected` / `requiresConfirmation`).
+  - No evita restricciones: `replaceExercise` con sustituto prohibido (PR-1402) ⇒ rejected;
+    `saveRestriction` que debilita una restricción profesional ⇒ `requiresConfirmation` (y
+    `rejected` no aplica: requiere confirmación explícita).
+  - Sin escritura directa a repo: el validator NUNCA recibe handle de DB (sólo `AgentAction`
+    + `ActionPolicyContext` estructurados) y devuelve comandos estrechos auditables.
+  - Pain gate (PR-1403): `painGateActive` + aumento de carga/volumen ⇒ rejected; reducción/
+    neutral permitida.
+  - Auditabilidad: toda validación emite `DecisionRecord` (nuevo tipo `.policyValidation`).
+- Policy versionada `.safety` (`safety.actionPolicy`) con `ActionPolicyKeys`/`Config`.
+  + tests (13) en `ActionPolicyValidatorTests.swift`. swift test 0 fallos; iOS build limpio.
+  Desbloquea PR-1603/PR-1607.
+
 ---
 
 ## PR-1603 — Agent gateway protocol
