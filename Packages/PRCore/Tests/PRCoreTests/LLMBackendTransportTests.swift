@@ -138,6 +138,36 @@ struct LLMBackendTransportTests {
         #expect(!(response.text?.isEmpty ?? true))
     }
 
+    @Test("Quita bullets y numeración de cada razón")
+    func explainStripsBulletsAndNumbers() async throws {
+        let t = transport(returning: "- Fatiga alta\n2. Sin recuperación\n")
+        let response = try await t.explain(ExplainRequest(facts: [
+            DecisionFact(key: "nivel_fatiga", value: "alto"),
+            DecisionFact(key: "recuperacion", value: "baja"),
+        ]))
+        #expect(response.reasons == ["Fatiga alta", "Sin recuperación"])
+    }
+
+    @Test("Limpia CRLF y limita a 4 razones")
+    func explainLimitsToFourReasons() async throws {
+        let raw = (1...6).map { "razón \($0)" }.joined(separator: "\r\n")
+        let t = transport(returning: raw)
+        let response = try await t.explain(ExplainRequest(facts: [
+            DecisionFact(key: "k1", value: "v1"),
+        ]))
+        #expect(response.reasons.count == 4)
+    }
+
+    @Test("Sin razones parseables devuelve texto vacío (el gateway cae a fallback local)")
+    func explainUnparseableFallsEmpty() async throws {
+        let t = transport(returning: "\n   \n")
+        let response = try await t.explain(ExplainRequest(facts: [
+            DecisionFact(key: "a", value: "b"),
+        ]))
+        #expect(response.reasons.isEmpty)
+        #expect(response.text == nil)
+    }
+
     // MARK: - Determinismo: failure en transporte → error (el gateway cae a fallback local)
 
     @Test("Si el provider falla, interpret lanza y el gateway cae a fallback")

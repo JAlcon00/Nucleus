@@ -54,28 +54,57 @@ public struct LLMBackendTransport: AgentBackendTransport, Sendable {
 
     public func explain(_ request: ExplainRequest) async throws -> ExplainResponse {
         let factsText = request.facts.map { "\($0.key): \($0.value)" }.joined(separator: "\n")
-        let system = """
-        Eres el explicador de PR. Explica por qué se tomó una decisión de entrenamiento.
-        Devuelve UN texto breve en español con 1-4 razones concretas, separadas por líneas,
-        y solo usando los facts provistos. No inventes razones.
-        """
-        let prompt = "Facts:\n\(factsText.isEmpty ? "(ninguno)" : factsText)"
+        let prompt = "Facts (únicos datos disponibles):\n\(factsText.isEmpty ? "(ninguno)" : factsText)"
         let response = try await provider.complete(
             AgentRequest(
-                messages: [AgentMessage(role: "system", content: system), AgentMessage(role: "user", content: prompt)],
+                messages: [AgentMessage(role: "system", content: explainerSystemPrompt), AgentMessage(role: "user", content: prompt)],
                 mode: .fast
             )
         )
         guard let text = response.text, !text.isEmpty else {
             return ExplainResponse(text: nil, reasons: [])
         }
+        let parsed = parseReasons(from: text)
+        return ExplainResponse(text: parsed.isEmpty ? nil : text, reasons: parsed)
+    }
+
+    /// Divide la salida del explicador en razones individuales (1–4, no vacías).
+    private func parseReasons(from raw: String) -> [String] {
         var parsed: [String] = []
-        for line in text.split(separator: "\n") {
-            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !trimmed.isEmpty { parsed.append(trimmed) }
+        let lines = raw
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .split(separator: "\n")
+        for line in lines {
+            var trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            trimmed = Self.stripReasonPrefix(trimmed)
+            if !trimmed.isEmpty {
+                parsed.append(trimmed)
+            }
             if parsed.count == 4 { break }
         }
-        return ExplainResponse(text: text, reasons: parsed)
+        return parsed
+    }
+
+    /// Quita marcadores de lista: `- `, `* ` y numeración `1.` / `2)` al inicio.
+    private static func stripReasonPrefix(_ line: String) -> String {
+        var rest = Substring(line)
+        if let first = rest.first, first == "-" || first == "*" {
+            rest = rest.dropFirst()
+        } else {
+            var digits = 0
+            while rest.dropFirst(digits).first?.isNumber == true {
+                digits += 1
+            }
+            if digits > 0 {
+                let afterDigits = rest.dropFirst(digits)
+                if afterDigits.first == "." || afterDigits.first == ")" {
+                    rest = afterDigits.dropFirst()
+                } else {
+                    rest = line[...]
+                }
+            }
+        }
+        return rest.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Schema y parseo seguro
@@ -224,6 +253,41 @@ public struct LLMBackendTransport: AgentBackendTransport, Sendable {
         - Un mensaje vago, sin un pedido concreto y accionable (p. ej. "haz lo que sea mejor", "sorpréndeme",
           "una rutina buena") NO corresponde a ningún intent: devuelve {"intent":"needsClarification","payload":{"value":null}}.
         - Sé preciso: un solo intent por mensaje.
+        """
+    }
+
+    // MARK: - System prompt del explicador (EliteCoachAgent, "why" sobre facts)
+
+    private var explainerSystemPrompt: String {
+        """
+        # SYSTEM — ELITE COACH AGENT · EXPLICADOR DE DECISIONES
+
+        Eres `EliteCoachAgent` en modo EXPLICACIÓN. El usuario pregunta POR QUÉ se tomó una
+        decisión de entrenamiento (intento `askWhy`). NO decides nada nuevo: una decisión ya
+        fue tomada por el `TrainingEngine` y validada por el `PolicyValidator`. Tu única tarea
+        es TRADUCIR los facts de esa decisión a razones claras para el usuario.
+
+        ## Autoridad e invariantes (crítico)
+
+        - NUNCA re-decidas, no recomiendes cambios, no propongas cargas/volumen/frecuencia.
+        - Explica SÓLO lo que está en los `Facts` provistos. Escribe "por el objetivo X",
+          "por el nivel de fatiga Y" — NUNCA inventes números, reglas, equivalencias o datos.
+        - NUNCA diagnostiques lesiones ni inventes gravedad clínica. Si un fact menciona dolor,
+          descríbelo como el usuario lo reportó, sin interpretación médica.
+        - Si hay un gate de dolor o restricción activa entre los facts, la razón de respetarlo
+          es seguridad; menciónalo como control, no como imposición.
+
+        ## Formato de salida (§59, JSON no — líneas)
+
+        Devuelve EXCLUSIVAMENTE 1 a 4 razones, UNA POR LÍNEA, en español, concretas y directas,
+        sin numeración forzada, sin Markdown, sin texto de relleno ni intro/cierre. Cada razón
+        debe ser una frase corta legible por el usuario. Si no hay facts suficientes, devuelve
+        UNA sola línea honesta como "Sin datos suficientes para explicar esta decisión."
+
+        Ejemplo:
+        Fatiga reportada alta.
+        El gate de dolor está activo por el reporte.
+        Se mantiene la carga actual para no progresar en estas condiciones.
         """
     }
 

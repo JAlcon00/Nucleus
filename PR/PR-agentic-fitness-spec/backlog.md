@@ -1242,6 +1242,19 @@ Etiquetar correlaciones como observadas, no causales.
 - fallback template funciona offline.
 - 1–4 razones concretas.
 
+### Estado (2026-09-02)
+- PR-1606 DONE. El camino `askWhy` completo: `AgentIntent.askWhy(DecisionID)` (PR-1601) →
+  `DecisionRecordRepository` recupera los `inputFacts` → `AgentGateway.explain([DecisionFact])`
+  (PR-1603) con `LocalFallbackExplainer` OFFLINE determinista (plantilla 1–4 razones SÓLO desde
+  los facts) y `LLMBackendTransport.explain` cuando hay backend.
+- Explainer LLM ahora a nivel Elite Coach (`explainerSystemPrompt`): identidad/autoridad (llama a
+  NO re-decidir ni proponer cargas), usa SÓLO los `Facts` provistos, no diagnostica, y devuelve
+  1–4 razones UNA POR LÍNEA en español, sin Markdown; razón honesta única si no hay facts.
+- `parseReasons` robusto: quita bullets (`-`/`*`) y numeración (`1.`/`2)`), limpia CRLF, limita a
+  4 y devuelve texto vacío si no hay razones parseables → el gateway cae al fallback local (fail-safe).
+- +4 tests (15 en `LLMBackendTransportTests`); suite global 399 tests/82 suites green; iOS build OK.
+- Cumple las 3 criterios: sólo facts ✓, offline ✓, 1–4 razones ✓.
+
 ---
 
 ## PR-1607 — Agent audit trail
