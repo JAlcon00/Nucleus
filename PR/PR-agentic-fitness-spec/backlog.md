@@ -947,6 +947,17 @@ Dividir en subtareas según API real disponible.
 - reduce variable(s) según policy.
 - deload counts toward adherence.
 
+### Estado (2026-09-01)
+- PRDomain `DeloadEngine.swift`: `DeloadEngine` determinista con deload PLANEADO
+  (`DeloadPolicy.afterSixWeeks|afterEightWeeks` → semana programada configurable) y
+  TRIGGERED (por `RecoveryState.highFatigue/.restRecommended` de PR-1302 con
+  `allowTriggered`). Reduce variable(s) según policy versionada `DeloadPolicyConfig`
+  (`recovery.deload`): carga (fracción), RIR (añade), volumen (quita sets) con guardas
+  conservadoras (nunca vacía un ejercicio, carga/RIR no negativos). El deload cumplido
+  cuenta como adherencia (`countsTowardAdherence`, fact en `DecisionRecord`). + tests
+  (17) en `DeloadEngineTests.swift`. swift test 0 fallos; iOS build limpio. Desbloquea
+  PR-1304/PR-1305.
+
 ---
 
 ## PR-1304 — Auto-reschedule after rest
