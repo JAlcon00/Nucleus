@@ -116,7 +116,9 @@ public struct NVIDIAHostedProvider: LLMProvider {
             maxTokens: preset.maxTokens,
             stream: false,
             reasoningBudget: preset.reasoningBudget,
-            chatTemplateKwargs: ChatTemplateKwargs(enableThinking: preset.enableThinking)
+            chatTemplateKwargs: ChatTemplateKwargs(enableThinking: preset.enableThinking),
+            tools: request.tools.isEmpty ? nil : request.tools.map(Self.wireTool),
+            toolChoice: request.tools.isEmpty ? nil : "auto"
         )
 
         let totalAttempts = max(1, config.maxRetries + 1)
@@ -194,12 +196,44 @@ public struct NVIDIAHostedProvider: LLMProvider {
         case "tool_calls": finish = .toolCalls
         default: finish = .unknown
         }
+        let toolCalls = (message.toolCalls ?? []).compactMap { call -> AgentToolCall? in
+            guard let name = call.function?.name else { return nil }
+            return AgentToolCall(id: call.id, name: name, arguments: call.function?.arguments ?? "")
+        }
         return AgentResponse(
             text: message.content,
             reasoning: message.reasoningContent,
             finishReason: finish,
             promptTokens: response.usage?.promptTokens,
-            completionTokens: response.usage?.completionTokens
+            completionTokens: response.usage?.completionTokens,
+            toolCalls: toolCalls
+        )
+    }
+
+    // MARK: - Tool mapping (Phase N3)
+
+    private static func wireTool(_ definition: AgentToolDefinition) -> NVIDIATool {
+        NVIDIATool(
+            function: NVIDIAToolFunction(
+                name: definition.name,
+                description: definition.description,
+                parameters: definition.parameters.map { params in
+                    NVIDIAToolParameters(
+                        type: "object",
+                        properties: params.properties.mapValues(Self.wireParameter),
+                        required: params.required,
+                        additionalProperties: false
+                    )
+                }
+            )
+        )
+    }
+
+    private static func wireParameter(_ property: AgentToolProperty) -> NVIDIAToolParameter {
+        NVIDIAToolParameter(
+            type: property.type,
+            description: property.description,
+            enumValues: property.enumValues
         )
     }
 

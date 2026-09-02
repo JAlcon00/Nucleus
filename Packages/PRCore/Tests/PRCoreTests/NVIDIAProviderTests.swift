@@ -273,4 +273,93 @@ struct NVIDIAProviderTests {
         #expect(!bodyString.contains("super-secreta"))
         #expect(authHeader == "Bearer nvapi-super-secreta")
     }
+
+    // MARK: - Tool gateway (Phase N3)
+
+    @Test("Mapea herramientas al payload tools con tool_choice auto")
+    func toolsPayloadMapping() async throws {
+        MockURLProtocol.requestCount = 0
+        MockURLProtocol.statusCode = 200
+        MockURLProtocol.responseData = Data("""
+        {"choices":[{"message":{"content":"ok"},"finish_reason":"stop"}]}
+        """.utf8)
+
+        let provider = NVIDIAHostedProvider(
+            config: NVIDIAHostedConfig(apiKeyProvider: { "k" }),
+            session: makeSession()
+        )
+        let tool = AgentToolDefinition(
+            name: "getTodayContext",
+            description: "Contexto de hoy",
+            parameters: AgentToolParameters(properties: ["limit": AgentToolProperty(type: "integer")])
+        )
+        let request = AgentRequest(
+            messages: [AgentMessage(role: "user", content: "x")],
+            mode: .fast,
+            tools: [tool]
+        )
+        _ = try await provider.complete(request)
+
+        let json = try JSONSerialization.jsonObject(with: MockURLProtocol.capturedBody!) as! [String: Any]
+        #expect(json["tool_choice"] as? String == "auto")
+        let tools = json["tools"] as! [[String: Any]]
+        #expect(tools.count == 1)
+        let funcDef = tools[0]["function"] as! [String: Any]
+        #expect(tools[0]["type"] as? String == "function")
+        #expect(funcDef["name"] as? String == "getTodayContext")
+        #expect(funcDef["description"] as? String == "Contexto de hoy")
+        let params = funcDef["parameters"] as! [String: Any]
+        #expect(params["type"] as? String == "object")
+        #expect(params["additionalProperties"] as? Bool == false)
+        let props = params["properties"] as! [String: Any]
+        #expect((props["limit"] as! [String: Any])["type"] as? String == "integer")
+    }
+
+    @Test("Sin tools no se envía la clave tools")
+    func noToolsMeansNoToolsKey() async throws {
+        MockURLProtocol.requestCount = 0
+        MockURLProtocol.statusCode = 200
+        MockURLProtocol.responseData = Data("{\"choices\":[{\"message\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}]}".utf8)
+        let provider = NVIDIAHostedProvider(
+            config: NVIDIAHostedConfig(apiKeyProvider: { "k" }),
+            session: makeSession()
+        )
+        _ = try await provider.complete(AgentRequest(messages: [AgentMessage(role: "user", content: "x")]))
+        let json = try JSONSerialization.jsonObject(with: MockURLProtocol.capturedBody!) as! [String: Any]
+        #expect(json["tools"] == nil)
+        #expect(json["tool_choice"] == nil)
+    }
+
+    @Test("Parsea tool_calls del assistant message a AgentToolCall")
+    func toolCallsDecoding() async throws {
+        MockURLProtocol.requestCount = 0
+        MockURLProtocol.statusCode = 200
+        MockURLProtocol.responseData = Data("""
+        {
+          "choices": [{
+            "message": {
+              "content": null,
+              "tool_calls": [{
+                "id": "call_1",
+                "type": "function",
+                "function": { "name": "getTodayContext", "arguments": "{\\"limit\\": 1}" }
+              }]
+            },
+            "finish_reason": "tool_calls"
+          }]
+        }
+        """.utf8)
+
+        let provider = NVIDIAHostedProvider(
+            config: NVIDIAHostedConfig(apiKeyProvider: { "k" }),
+            session: makeSession()
+        )
+        let response = try await provider.complete(AgentRequest(messages: [AgentMessage(role: "user", content: "x")]))
+
+        #expect(response.finishReason == .toolCalls)
+        #expect(response.toolCalls.count == 1)
+        #expect(response.toolCalls[0].id == "call_1")
+        #expect(response.toolCalls[0].name == "getTodayContext")
+        #expect(response.toolCalls[0].arguments.contains("limit"))
+    }
 }

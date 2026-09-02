@@ -41,14 +41,59 @@ public struct AgentMessage: Codable, Sendable, Hashable {
     }
 }
 
-/// Definición de tool (Phase N3 ampliará el schema; aquí sólo nombre+descripción).
+/// Schema JSON de un parámetro de tool (provider-agnostic; el provider lo traduce).
+public struct AgentToolProperty: Codable, Sendable, Hashable {
+    public var type: String
+    public var description: String?
+    public var enumValues: [String]?
+
+    public init(type: String, description: String? = nil, enumValues: [String]? = nil) {
+        self.type = type
+        self.description = description
+        self.enumValues = enumValues
+    }
+}
+
+public struct AgentToolParameters: Codable, Sendable, Hashable {
+    public var type: String
+    public var properties: [String: AgentToolProperty]
+    public var required: [String]
+
+    public init(
+        type: String = "object",
+        properties: [String: AgentToolProperty],
+        required: [String] = []
+    ) {
+        self.type = type
+        self.properties = properties
+        self.required = required
+    }
+}
+
+/// Definición de tool (Phase N3: nombre + descripción + schema de parámetros opcional).
 public struct AgentToolDefinition: Codable, Sendable, Hashable {
     public var name: String
     public var description: String
+    public var parameters: AgentToolParameters?
 
-    public init(name: String, description: String) {
+    public init(name: String, description: String, parameters: AgentToolParameters? = nil) {
         self.name = name
         self.description = description
+        self.parameters = parameters
+    }
+}
+
+/// Una llamada a tool emitida por el modelo (Phase N3). `arguments` es el JSON crudo
+/// que el proveedor devuelve; el gateway lo valida/decodifica antes de ejecutar.
+public struct AgentToolCall: Codable, Sendable, Hashable {
+    public var id: String?
+    public var name: String
+    public var arguments: String
+
+    public init(id: String? = nil, name: String, arguments: String) {
+        self.id = id
+        self.name = name
+        self.arguments = arguments
     }
 }
 
@@ -88,19 +133,23 @@ public struct AgentResponse: Sendable {
     public var finishReason: AgentFinishReason
     public var promptTokens: Int?
     public var completionTokens: Int?
+    /// Llamadas a tool emitidas por el modelo (Phase N3).
+    public var toolCalls: [AgentToolCall]
 
     public init(
         text: String? = nil,
         reasoning: String? = nil,
         finishReason: AgentFinishReason = .stop,
         promptTokens: Int? = nil,
-        completionTokens: Int? = nil
+        completionTokens: Int? = nil,
+        toolCalls: [AgentToolCall] = []
     ) {
         self.text = text
         self.reasoning = reasoning
         self.finishReason = finishReason
         self.promptTokens = promptTokens
         self.completionTokens = completionTokens
+        self.toolCalls = toolCalls
     }
 
     public var isComplete: Bool { finishReason != .length }
