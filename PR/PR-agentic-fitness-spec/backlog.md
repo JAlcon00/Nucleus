@@ -1399,12 +1399,15 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
   no interferir entre suites en paralelo). +13 tests. Suite global 447 tests/88 suites green
   (3 runs seguidos) + build iOS OK sin warnings. El proveedor es infraestructura sin reglas de
   negocio: cada provider traduce al dialecto de su servicio.
+- **PR-1701 — Weekly adherence engine (DONE):** `WeeklyAdherenceEngine` en PRDomain
+  (epic plan §12, promptMaster RF-016). Ver comentarios de estado de la story para detalle.
+  Suite global 455 tests/89 suites green + build iOS OK sin warnings.
 
 ---
 
 # EPIC-17 — Consistency & Gamification
 
-## PR-1701 — Weekly adherence engine
+## PR-1701 — Weekly adherence engine — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0605
@@ -1413,6 +1416,23 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
 - planned sessions vs completed/adjusted/rest.
 - planned rest no rompe consistency.
 - rescheduled workout se cuenta correctamente.
+
+### Implementación
+- `PRCore/Sources/PRDomain/WeeklyAdherence.swift`: motor determinista
+  `WeeklyAdherenceEngine` + `AdherenceRecordKind` (`completed`/`adjusted`/`rest`/`missed`),
+  `PlannedAdherenceSession`, `SessionAdherenceRecord`, `WeeklyAdherenceResult`
+  (`adherence` 0...1, `fulfilledCount` = completed+adjusted). Match por `templateID`
+  dentro de la ventana `[weekStart, weekStart+7d)` (NO mismo día → rescheduled se cuenta
+  bien); una ejecución satisface UNA sesión planeada (no doble cuenta); entrada `isRest`
+  nunca es `missed` y queda fuera del denominador; semana de solo descanso → `adherence 1.0`
+  sin penalizar. `DomainValidationError.invalidAdherencePlannedSets` para working sets negativo.
+- `PRCore/Tests/PRDomainTests/WeeklyAdherenceTests.swift`: 8 tests (3 aceptación + edge cases:
+  no doble cuenta, cross-week no cuenta, abandoned → adjusted, semana deload).
+
+### Verificación (Prove)
+- `swift test`: 455 tests / 89 suites green (447/88 previos + 8 nuevos).
+- `swift build -c release`: sin warnings.
+- `xcodebuild -scheme PR` (iOS): build OK, 0 warnings.
 
 ---
 

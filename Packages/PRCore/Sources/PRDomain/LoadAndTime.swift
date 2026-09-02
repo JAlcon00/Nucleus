@@ -123,4 +123,5 @@ public enum DomainValidationError: Error, Equatable, Sendable {
     case ruleVersionNotAdvanced(id: String, current: Int, proposed: Int)
     case ruleNotFound(id: String)
     case invalidAgentGatewayTiming
+    case invalidAdherencePlannedSets
 }
