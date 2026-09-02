@@ -1405,6 +1405,9 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
 - **PR-1702 — Consistency streak (DONE):** `ConsistencyStreakEngine` en PRDomain. Racha POR
   SEMANAS (no daily-streak-as-primary); descanso programado no rompe; dolor pausa, no rompe.
   Suite global 463 tests/90 suites green + build iOS OK sin warnings.
+- **PR-1703 — Achievement framework (DONE):** `AchievementEngine` en PRDomain sobre señales
+  declarativas (PR detector/consistency/working sets/sustitución/bloques/deload). 10 logros.
+  Suite global 473 tests/91 suites green + build iOS OK sin warnings.
 
 ---
 
@@ -1466,7 +1469,7 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
 
 ---
 
-## PR-1703 — Achievement framework
+## PR-1703 — Achievement framework — **DONE**
 **Priority:** P1  
 **Size:** M  
 **Dependencies:** PR-1003, PR-1701
@@ -1480,6 +1483,22 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
 - deload complete;
 - first smart substitution;
 - 100/500/1000 working sets.
+
+### Implementación
+- `PRCore/Sources/PRDomain/Achievements.swift`: `AchievementEngine` (determinista, idempotente,
+  auditable) sobre `AchievementSnapshot` declarativo (señales ya calculadas por otros motores:
+  PR-1003 → hasAnyPR, PR-1702 → longestConsistencyWeeks, WorkoutSummary → working sets,
+  PR-0904 → smart substitutions, BlockPlanner/DeloadEngine → bloques/deloads). `AchievementID`
+  (10 logros), `AchievementDefinition`/`AchievementStatus`/`AchievementEngineResult`
+  (statuses + `newlyUnlocked`); `alreadyUnlocked` evita re-desbloqueos. Dependencias PR-1003
+  (PRDetector, ya presente con tests) y PR-1701 DONE.
+- `PRCore/Tests/PRDomainTests/AchievementTests.swift`: 10 tests (cada umbral + idempotencia +
+  validación).
+
+### Verificación (Prove)
+- `swift test`: 473 tests / 91 suites green (463/90 previos + 10 nuevos), 3 runs seguidos.
+- `swift build -c release`: sin warnings.
+- `xcodebuild -scheme PR` (iOS): build OK, 0 warnings.
 
 ---
 

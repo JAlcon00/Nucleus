@@ -125,4 +125,5 @@ public enum DomainValidationError: Error, Equatable, Sendable {
     case invalidAgentGatewayTiming
     case invalidAdherencePlannedSets
     case invalidStreakWeek
+    case invalidAchievementSnapshot
 }

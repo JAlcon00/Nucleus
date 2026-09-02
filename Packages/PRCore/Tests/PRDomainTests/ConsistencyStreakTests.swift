@@ -110,9 +110,9 @@ struct ConsistencyStreakTests {
     }
 
     @Test("fulfillment fuera de rango lanza error")
-    func invalidRatioThrows() async throws {
+    func invalidRatioThrows() {
         let engine = ConsistencyStreakEngine()
-        await #expect(throws: DomainValidationError.invalidStreakWeek) {
+        #expect(throws: DomainValidationError.invalidStreakWeek) {
             _ = try engine.streak(weeks: [week(0, fulfillment: 1.2)])
         }
     }
