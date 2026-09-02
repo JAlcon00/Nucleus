@@ -1408,6 +1408,9 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
 - **PR-1703 — Achievement framework (DONE):** `AchievementEngine` en PRDomain sobre señales
   declarativas (PR detector/consistency/working sets/sustitución/bloques/deload). 10 logros.
   Suite global 473 tests/91 suites green + build iOS OK sin warnings.
+- **PR-1801 — Bodybuilding phase domain (DONE):** `BodybuildingPhase` + `BodybuildingPhaseController`
+  en PRDomain (promptMaster §18.1). Fase de competición separada del `TrainingGoal`.
+  Suite global 479 tests/92 suites green + build iOS OK sin warnings.
 
 ---
 
@@ -1504,7 +1507,7 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
 
 # EPIC-18 — Bodybuilding Mode
 
-## PR-1801 — Bodybuilding phase domain
+## PR-1801 — Bodybuilding phase domain — **DONE**
 **Priority:** P1  
 **Size:** S  
 **Dependencies:** PR-0104
@@ -1512,6 +1515,22 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
 ### Criterios
 - offSeason/cut/contestPrep/recovery.
 - TrainingGoal bodybuilding remains separate from phase.
+
+### Implementación
+- `PRCore/Sources/PRDomain/BodybuildingPhase.swift`: `BodybuildingPhase`
+  (`offSeason`/`cut`/`contestPrep`/`recovery`, promptMaster §18.1) con displayName, ciclo
+  estándar (`next`) e `isCompetitionActive` (solo contestPrep). `BodybuildingPhaseProfile`
+  (guarda solo la fase) y `BodybuildingPhaseController` (transición determinista que valida
+  el ciclo y aplica SOLO a la fase — la API ni recibe `TrainingGoal`, así el goal queda
+  intacto por construcción → criterio "bodybuilding remains separate from phase", PR-0104).
+  Dependencia PR-0104 ya presente (`TrainingGoal`/`BodyCompositionPhase` en UserProfile.swift).
+- `PRCore/Tests/PRDomainTests/BodybuildingPhaseTests.swift`: 6 tests (4 fases, ciclo,
+  competición activa, transiciones válidas, advance, goal separado de fase).
+
+### Verificación (Prove)
+- `swift test`: 479 tests / 92 suites green (473/91 previos + 6 nuevos), 3 runs seguidos.
+- `swift build -c release`: sin warnings.
+- `xcodebuild -scheme PR` (iOS): build OK, 0 warnings.
 
 ---
 
