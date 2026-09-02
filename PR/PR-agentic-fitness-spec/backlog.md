@@ -1017,6 +1017,18 @@ Dividir en subtareas según API real disponible.
 - substitution never bypasses restriction.
 - safety tests exhaustivos.
 
+### Estado (2026-09-01)
+- PRDomain `RestrictionPolicyEngine.swift`: engine determinista que decide si un ejercicio
+  o sustituto queda excluido por las restricciones activas (PR-0106/PR-1401). Precedencia:
+  prohibición explícita por ID > permiso explícito (refina) > patrón de movimiento
+  prohibido > solape de tags de contraindicación (gate de sustitución). `safeSubstitutes`
+  filtra candidatos para que la sustitución NUNCA evada una restricción (§16.2). Estados
+  `resolved` se ignoran; un `active` vencido pasa a `reviewNeeded` pero sigue aplicando
+  (sin auto-resolución). Policy versionada `.safety` (`safety.restrictionPolicy`); genera
+  `DecisionRecord` (`.exerciseSubstitution`). + tests (11) exhaustivos en
+  `RestrictionPolicyEngineTests.swift`. swift test 0 fallos; iOS build limpio. Desbloquea
+  PR-1403.
+
 ---
 
 ## PR-1403 — Pain feedback during workout
