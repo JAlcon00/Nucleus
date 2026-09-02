@@ -1132,6 +1132,22 @@ Etiquetar correlaciones como observadas, no causales.
 - Codable wire representation independiente si backend.
 - unknown intent seguro.
 
+### Estado (2026-09-01)
+- PRDomain `AgentIntent.swift` (§20.2): enum `AgentIntent` con los 11 intents usando
+  tipos de dominio ya existentes (`TimeConstraint`, `ExerciseID`, `TrainingGoal`,
+  `BodyCompositionPhase`, `GymID`, `DecisionID`).
+- Wire types de soporte nuevos (Codable/Sendable/Hashable, puro dominio): 
+  `EquipmentReference`, `UnavailabilityReason` (mapea a `.doesNotExist`/`.occupied`),
+  `UserFatigueFeedback` (severity 1-5), `PainReport` (reusa `PainLevel` de PR-1403),
+  `TrainingRestrictionDraft`, `PlanAdjustmentRequest`.
+- Codable custom con tag estable por caso (independiente de orden) → representación
+  wire autocontenida, sin dependencia de backend. Intento con tag desconocido falla
+  con `AgentIntentError.unsupported` (unknown intent seguro → el caller pide
+  reformulación/degrade seguro en PR-1603).
+- `displayName` legible por caso para log/auditoría. + tests (14) en
+  `AgentIntentTests.swift` (round-trip por caso, unknown safe, displayName, no-diagnosis).
+  swift test 0 fallos; iOS build limpio. Desbloquea PR-1602/PR-1603/PR-1606/PR-1404.
+
 ---
 
 ## PR-1602 — ActionPolicyValidator
