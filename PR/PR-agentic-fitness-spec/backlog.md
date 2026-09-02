@@ -1402,6 +1402,9 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
 - **PR-1701 — Weekly adherence engine (DONE):** `WeeklyAdherenceEngine` en PRDomain
   (epic plan §12, promptMaster RF-016). Ver comentarios de estado de la story para detalle.
   Suite global 455 tests/89 suites green + build iOS OK sin warnings.
+- **PR-1702 — Consistency streak (DONE):** `ConsistencyStreakEngine` en PRDomain. Racha POR
+  SEMANAS (no daily-streak-as-primary); descanso programado no rompe; dolor pausa, no rompe.
+  Suite global 463 tests/90 suites green + build iOS OK sin warnings.
 
 ---
 
@@ -1436,7 +1439,7 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
 
 ---
 
-## PR-1702 — Consistency streak
+## PR-1702 — Consistency streak — **DONE**
 **Priority:** P1  
 **Size:** S  
 **Dependencies:** PR-1701
@@ -1444,6 +1447,22 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
 ### Criterios de aceptación
 - streak por semanas de cumplimiento.
 - no streak de entrenar todos los días como métrica principal.
+
+### Implementación
+- `PRCore/Sources/PRDomain/ConsistencyStreak.swift`: `ConsistencyStreakEngine` + `StreakWeek`
+  (weekStart, fulfillmentRatio, isPainBlocked), `StreakWeekState` (`fulfilled`/`paused`/`missed`)
+  y `ConsistencyStreakResult` (currentStreakWeeks/longestStreakWeeks/isFulfilledThisWeek/weeks).
+  Racha POR SEMANAS (no daily-streak-as-primary, plan §12): fulfillment >= requiredAdherence
+  (default 1.0) => `fulfilled`; descanso programado (fulfillment 1.0) NO rompe; semana bloqueada
+  por dolor ("pain blocks progression") es `paused` (ni rompe ni extiende); semana no cumplida
+  = `missed` (reinicia). `DomainValidationError.invalidStreakWeek` para ratio fuera de 0...1.
+- `PRCore/Tests/PRDomainTests/ConsistencyStreakTests.swift`: 8 tests (2 aceptación + borde:
+  rest no rompe, pain pausa, missed reinicia, vacío→0, longo máximo).
+
+### Verificación (Prove)
+- `swift test`: 463 tests / 90 suites green (455/89 previos + 8 nuevos).
+- `swift build -c release`: sin warnings.
+- `xcodebuild -scheme PR` (iOS): build OK, 0 warnings.
 
 ---
 
