@@ -1350,6 +1350,22 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
   changePhase, askWhy, updateRestriction y needsClarification producen JSON decodificable.
   Pendiente N2+: tool-calls multi-intent, streaming y capas posteriores del roadmap NEMOTRON.
 
+### Estado (2026-09-02) — N3 tool gateway DONE + N4 deterministic writes (en progreso)
+
+- **N3 — Tool gateway (DONE, commit 8fb4214):** tool definitions + strict allow-list +
+  read-only tools. `AgentReadOnlyTools.swift` (PRDomain): `AgentReadOnlyToolGateway` con
+  allow-list estricta de 4 tools read-only (`getTodayContext`/`getTrainingHistory`/
+  `getActiveRestrictions`/`getGymProfile`), rechazo fail-safe de tools fuera de la lista y
+  de argumentos inválidos. `AgentProvider.swift` + `NVIDIAHostedProvider.swift` mapean las
+  definiciones al payload OpenAI `tools`, y decodifican `tool_calls` del assistant →
+  `AgentResponse.toolCalls`. + tests (provider tools payload/tool_calls + 9 gateway). 135 tests green.
+- **N4 — Deterministic writes (nuevo):** `AgentActionWriter.swift` (PRDomain) cierra el
+  pipeline: `AgentIntent` → mapeo DETERMINISTA a `AgentAction` (el LLM nunca elige acción) →
+  `AgentActionPreview` legible ANTES de escribir (preview tools) → validación con
+  `ActionPolicyValidator` (PR-1602) → `AgentWriteCommand` ESTRECHO auditable (nunca handle de
+  DB; la app despacha a managers). Decisiones `execute`/`confirm`/`rejected` + audit trail por
+  etapa (intent→actionValidation→result). +10 tests (`AgentActionWriterTests`). 145 tests green.
+
 ---
 
 # EPIC-17 — Consistency & Gamification
