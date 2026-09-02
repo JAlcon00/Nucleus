@@ -7,8 +7,10 @@
 //  Proveedor NVIDIA Hosted (NEMOTRON_3_5_LIGHTNING_API.md §23, Phase N1, PR-1608).
 //
 //  Mapea un `AgentRequest` provider-agnostic al payload de Chat Completions del hosted
-//  endpoint (`https://integrate.api.nvidia.com/v1/chat/completions`), ejecuta la llamada,
-//  mapea errores (§34) y aplica retry acotado (§35).
+//  endpoint (`https://integrate.api.nvidia.com/v1`), ejecuta la llamada, mapea errores (§34)
+//  y aplica retry acotado (§35). Delega el wire OpenAI-compatible en
+//  `NVIDIAOpenAICompatibleClient` (compartido con `NVIDIANIMProvider`, Phase N7) para
+//  garantizar contratos de proveedor idénticos (§23/§47).
 //
 //  SEGURIDAD (spec §22/§42, AGENTS "no store secrets in client"): esta clase NUNCA
 //  embebe la API key. La key se inyecta en runtime desde el entorno del host vía
@@ -59,6 +61,8 @@ public enum NVIDIAProviderError: Error, Sendable, Equatable {
     case emptyChoices
     /// El streaming fue cancelado por el cliente/tarea (no es un fallo de red).
     case cancelled
+    /// El endpoint de salud de NIM no devolvió un estado esperado (Phase N7).
+    case healthUnavailable(status: Int)
 }
 
 /// Presets de sampling/razonamiento por execution mode (spec §40, §23).
@@ -105,261 +109,34 @@ public struct NVIDIAProviderPreset: Sendable, Equatable {
 /// Proveedor que habla con el endpoint hosted de NVIDIA (Phase N1).
 public struct NVIDIAHostedProvider: LLMProvider {
     public let config: NVIDIAHostedConfig
-    private let session: URLSession
+    private let client: NVIDIAOpenAICompatibleClient
 
     public init(config: NVIDIAHostedConfig = NVIDIAHostedConfig(), session: URLSession? = nil) {
         self.config = config
-        let cfg = URLSessionConfiguration.ephemeral
-        cfg.timeoutIntervalForRequest = config.timeoutSeconds
-        self.session = session ?? URLSession(configuration: cfg)
+        self.client = NVIDIAOpenAICompatibleClient(
+            baseURL: config.baseURL,
+            model: config.model,
+            apiKeyProvider: config.apiKeyProvider,
+            timeoutSeconds: config.timeoutSeconds,
+            maxRetries: config.maxRetries,
+            session: session
+        )
     }
 
     public func complete(_ request: AgentRequest) async throws -> AgentResponse {
-        let preset = NVIDIAProviderPreset.forMode(request.mode, output: request.output)
         let apiKey = config.apiKeyProvider()
         guard let apiKey, !apiKey.isEmpty else {
             throw NVIDIAProviderError.missingAPIKey
         }
-
-        let endpoint = config.baseURL.appendingPathComponent("chat/completions")
-        let chatRequest = NVIDIAChatRequest(
-            model: config.model,
-            messages: request.messages.map { NVIDIAChatMessage(role: $0.role, content: $0.content) },
-            temperature: preset.temperature,
-            maxTokens: preset.maxTokens,
-            stream: false,
-            reasoningBudget: preset.reasoningBudget,
-            chatTemplateKwargs: ChatTemplateKwargs(enableThinking: preset.enableThinking),
-            tools: request.tools.isEmpty ? nil : request.tools.map(Self.wireTool),
-            toolChoice: request.tools.isEmpty ? nil : "auto"
-        )
-
-        let totalAttempts = max(1, config.maxRetries + 1)
-        var lastAttempt = 0
-        for attempt in 0..<totalAttempts {
-            lastAttempt = attempt
-            if attempt > 0 {
-                // Backoff acotado con jitter (§35). 0 en tests.
-                let jitterMs = UInt32.random(in: 0...200)
-                let base = UInt64(exp2(Double(attempt - 1)) * 0.25 * 1_000_000_000)
-                try? await Task.sleep(nanoseconds: base + UInt64(jitterMs) * 1_000_000)
-            }
-            do {
-                return try await send(endpoint: endpoint, payload: chatRequest)
-            } catch let error as NVIDIAProviderError {
-                if shouldRetry(error), attempt < totalAttempts - 1 { continue }
-                throw error
-            } catch {
-                if lastAttempt < totalAttempts - 1 { continue }
-                throw error
-            }
-        }
-        throw NVIDIAProviderError.network
+        return try await client.complete(request)
     }
 
-    // MARK: - HTTP
-
-    private func send(endpoint: URL, payload: NVIDIAChatRequest) async throws -> AgentResponse {
-        var urlRequest = URLRequest(url: endpoint)
-        urlRequest.httpMethod = "POST"
-        urlRequest.setValue("Bearer \(config.apiKeyProvider() ?? "")", forHTTPHeaderField: "Authorization")
-        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.httpBody = try JSONEncoder().encode(payload)
-
-        let data: Data
-        let response: URLResponse
-        let started = Date()
-        do {
-            (data, response) = try await session.data(for: urlRequest)
-        } catch {
-            throw NVIDIAProviderError.network
-        }
-        let elapsedMs = Int(Date().timeIntervalSince(started) * 1000)
-
-        guard let http = response as? HTTPURLResponse else {
-            throw NVIDIAProviderError.invalidResponse
-        }
-
-        switch http.statusCode {
-        case 200..<300:
-            return try decode(data: data, durationMilliseconds: elapsedMs)
-        case 400: throw NVIDIAProviderError.validation
-        case 401, 403: throw (http.statusCode == 403 ? NVIDIAProviderError.forbidden : NVIDIAProviderError.authentication)
-        case 404: throw NVIDIAProviderError.notFound
-        case 408: throw NVIDIAProviderError.timeout
-        case 422: throw NVIDIAProviderError.validation
-        case 429: throw NVIDIAProviderError.rateLimited
-        case 500..<600: throw NVIDIAProviderError.providerError(status: http.statusCode)
-        default: throw NVIDIAProviderError.providerError(status: http.statusCode)
-        }
-    }
-
-    private func decode(data: Data, durationMilliseconds: Int? = nil) throws -> AgentResponse {
-        let response: NVIDIAChatResponse
-        do {
-            response = try JSONDecoder().decode(NVIDIAChatResponse.self, from: data)
-        } catch {
-            throw NVIDIAProviderError.malformedResponse
-        }
-        guard let choice = response.choices?.first, let message = choice.message else {
-            throw NVIDIAProviderError.emptyChoices
-        }
-        let finish: AgentFinishReason
-        switch choice.finishReason {
-        case "stop": finish = .stop
-        case "length": finish = .length
-        case "tool_calls": finish = .toolCalls
-        default: finish = .unknown
-        }
-        let toolCalls = (message.toolCalls ?? []).compactMap { call -> AgentToolCall? in
-            guard let name = call.function?.name else { return nil }
-            return AgentToolCall(id: call.id, name: name, arguments: call.function?.arguments ?? "")
-        }
-        let usage: AgentUsage? = {
-            guard let u = response.usage else { return nil }
-            return AgentUsage(
-                promptTokens: u.promptTokens,
-                completionTokens: u.completionTokens,
-                reasoningTokens: u.reasoningTokens,
-                durationMilliseconds: durationMilliseconds
-            )
-        }()
-        return AgentResponse(
-            text: message.content,
-            reasoning: message.reasoningContent,
-            finishReason: finish,
-            toolCalls: toolCalls,
-            usage: usage
-        )
-    }
-
-    // MARK: - Streaming (Phase N5)
-
-    /// Emite eventos incrementales usando Server-Sent-Events (`stream: true`).
-    /// La cancelación de la tarea de consumo finaliza el stream; una red faltante o un
-    /// cierre inesperado se traduce a errores tipados.
     public func stream(_ request: AgentRequest) -> AsyncThrowingStream<AgentStreamEvent, Error> {
-        let preset = NVIDIAProviderPreset.forMode(request.mode, output: request.output)
-        return AsyncThrowingStream { continuation in
-            let task = Task {
-                do {
-                    guard let apiKey = self.config.apiKeyProvider(), !apiKey.isEmpty else {
-                        throw NVIDIAProviderError.missingAPIKey
-                    }
-
-                    let endpoint = self.config.baseURL.appendingPathComponent("chat/completions")
-                    let chatRequest = NVIDIAChatRequest(
-                        model: self.config.model,
-                        messages: request.messages.map { NVIDIAChatMessage(role: $0.role, content: $0.content) },
-                        temperature: preset.temperature,
-                        maxTokens: preset.maxTokens,
-                        stream: true,
-                        reasoningBudget: preset.reasoningBudget,
-                        chatTemplateKwargs: ChatTemplateKwargs(enableThinking: preset.enableThinking),
-                        tools: request.tools.isEmpty ? nil : request.tools.map(Self.wireTool),
-                        toolChoice: request.tools.isEmpty ? nil : "auto"
-                    )
-
-                    var urlRequest = URLRequest(url: endpoint)
-                    urlRequest.httpMethod = "POST"
-                    urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-                    urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                    urlRequest.httpBody = try JSONEncoder().encode(chatRequest)
-
-                    let (bytes, response): (URLSession.AsyncBytes, URLResponse)
-                    do {
-                        (bytes, response) = try await self.session.bytes(for: urlRequest)
-                    } catch {
-                        if self.isCancellation(error) { throw NVIDIAProviderError.cancelled }
-                        throw NVIDIAProviderError.network
-                    }
-
-                    guard let http = response as? HTTPURLResponse else {
-                        throw NVIDIAProviderError.invalidResponse
-                    }
-                    guard (200..<300).contains(http.statusCode) else {
-                        throw self.mapStatus(http.statusCode)
-                    }
-
-                    // Parsea SSE de forma síncrona y determinista por fragmento.
-                    var decoder = SSEEventDecoder()
-                    for try await byte in bytes {
-                        if Task.isCancelled { throw NVIDIAProviderError.cancelled }
-                        let events = NVIDIAStreamEventParser.parse(
-                            decoder: &decoder,
-                            fragment: String(decoding: [byte], as: UTF8.self)
-                        )
-                        for event in events {
-                            continuation.yield(event)
-                        }
-                    }
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
-                }
+        guard let apiKey = config.apiKeyProvider(), !apiKey.isEmpty else {
+            return AsyncThrowingStream { continuation in
+                continuation.finish(throwing: NVIDIAProviderError.missingAPIKey)
             }
-            continuation.onTermination = { _ in task.cancel() }
         }
-    }
-
-    private func isCancellation(_ error: Error) -> Bool {
-        if let urlError = error as? URLError, urlError.code == .cancelled { return true }
-        return false
-    }
-
-    private func mapStatus(_ statusCode: Int) -> NVIDIAProviderError {
-        switch statusCode {
-        case 400: return .validation
-        case 401: return .authentication
-        case 403: return .forbidden
-        case 404: return .notFound
-        case 408: return .timeout
-        case 422: return .validation
-        case 429: return .rateLimited
-        case 500..<600: return .providerError(status: statusCode)
-        default: return .providerError(status: statusCode)
-        }
-    }
-
-    // MARK: - Tool mapping (Phase N3)
-
-    private static func wireTool(_ definition: AgentToolDefinition) -> NVIDIATool {
-        NVIDIATool(
-            function: NVIDIAToolFunction(
-                name: definition.name,
-                description: definition.description,
-                parameters: definition.parameters.map { params in
-                    NVIDIAToolParameters(
-                        type: "object",
-                        properties: params.properties.mapValues(Self.wireParameter),
-                        required: params.required,
-                        additionalProperties: false
-                    )
-                }
-            )
-        )
-    }
-
-    private static func wireParameter(_ property: AgentToolProperty) -> NVIDIAToolParameter {
-        NVIDIAToolParameter(
-            type: property.type,
-            description: property.description,
-            enumValues: property.enumValues
-        )
-    }
-
-    // MARK: - Retry (§35)
-
-    private func shouldRetry(_ error: NVIDIAProviderError) -> Bool {
-        switch error {
-        case .timeout, .rateLimited, .network:
-            return true
-        case .providerError:
-            return true
-        case .authentication, .forbidden, .notFound, .validation,
-             .missingAPIKey, .invalidResponse, .malformedResponse, .emptyChoices,
-             .cancelled:
-            return false
-        }
+        return client.stream(request)
     }
 }

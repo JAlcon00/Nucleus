@@ -1385,6 +1385,20 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
   diagnóstico, NO doble conteo calórico, NO triplicar volumen, NO aprobar carga a ciegas) +
   presets + budget. +22 tests. Suite global 434 tests/87 suites green + build iOS OK sin
   warnings. El LLM nunca decide: la medición de tokens/razonamiento es determinista local.
+- **N7 — NIM migration readiness (nuevo):** `NVIDIAOpenAICompatibleClient.swift` centraliza el
+  wire OpenAI-compatible (payload building, HTTP, error mapping §34, retry §35, streaming N5,
+  tools N3) y `NVIDIAHostedProvider` pasa a delegar en él sin cambiar su API ni comportamiento.
+  `NVIDIANIMProvider.swift` implementa el MISMO `LLMProvider` para el NIM self-hosted (§24):
+  baseURL propio (`http://localhost:8000/v1`), model servido, auth de NUESTRA infraestructura
+  (token opcional, keyless dev; nunca la key NVIDIA) + health endpoints `GET /v1/health/live`
+  y `/v1/health/ready` → `NIMHealthStatus` tipado (`live`/`ready`/`notLive(status:)`/`unreachable`)
+  y body `NIMHealthResponse` (§24). `NVIDIAProviderError.healthUnavailable`. `NIMProviderTests`
+  + provider contract tests prueban que hosted y NIM producen payload IDÉNTICO (sin model),
+  mismo error mapping/retry, mismo decoding y mismo streaming → migrar `hosted → NIM` sin tocar
+  dominio/transporte (§47). Mock URLProtocol aislado por suite (estado estático separado para
+  no interferir entre suites en paralelo). +13 tests. Suite global 447 tests/88 suites green
+  (3 runs seguidos) + build iOS OK sin warnings. El proveedor es infraestructura sin reglas de
+  negocio: cada provider traduce al dialecto de su servicio.
 
 ---
 
