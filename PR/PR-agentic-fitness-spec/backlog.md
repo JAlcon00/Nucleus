@@ -1266,6 +1266,25 @@ Etiquetar correlaciones como observadas, no causales.
 - intent/action/result traceable.
 - datos sensibles minimizados.
 
+### Estado (2026-09-02)
+- PR-1607 DONE. `AgentAuditTrail.swift` (PRDomain §20): traza el pipeline del agente
+  con las TRES etapas trazables:
+  - `AgentAuditStage` (inboundIntent / actionValidation / result) + `AgentAuditRecord`
+    (id, fecha, `conversationID` opaco, etapa, y las columnas pertinentes: intentTag/
+    intentDisplayName, actionName/outcome, resultCommand, ruleReference versionado, notes).
+  - Constructores redactados: `AgentAuditRecord.intent(_:)`, `.needsClarification()`,
+    `.validation(_:verdict:)`, `.result(command:)` — guardan TAG estable + nombre legible,
+    NUNCA el payload crudo (p. ej. notas de dolor), texto del usuario ni reasoning trace
+    (datos sensibles minimizados ✓).
+  - `AgentAuditJournal` append-only (sin borrado/edición), orden estable y queries de
+    trazabilidad (`records(conversationID:)`, `latest(limit:)`, `traceSummary`).
+- Persistencia durable (invar. "local persistence protects"): `AgentAuditRepository`
+  protocol + `FileAgentAuditRepository` (append-only por UUID) en PRCore/PersistenceContracts
+  + CodableRepositories, y `InMemoryAgentAuditRepository` para tests/offline.
+- +9 tests (8 `AgentAuditTrailTests` + 1 `FileAgentAuditRepository persistence`); suite
+  global 400 Swift Testing/83 suites + 126 XCTest green; iOS build OK sin warnings.
+- Cumple las 2 criterios: intent/action/result traceable ✓, datos sensibles minimizados ✓.
+
 ---
 
 ## PR-1608 — LLM provider abstraction + NVIDIA Hosted transport (Phase N1)

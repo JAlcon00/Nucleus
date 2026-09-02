@@ -60,6 +60,16 @@ public protocol DecisionRepository: Sendable {
     func save(_ record: DecisionRecord) async throws
 }
 
+/// Repositorio del audit trail del agente (PR-1607). Append-only: guarda filas
+/// con datos mínimos (sin PII) y permite recuperar la trazabilidad por turno.
+public protocol AgentAuditRepository: Sendable {
+    func allAuditRecords() async throws -> [AgentAuditRecord]
+    func auditRecords(conversationID: UUID) async throws -> [AgentAuditRecord]
+    func auditRecords(stage: AgentAuditStage) async throws -> [AgentAuditRecord]
+    func save(_ record: AgentAuditRecord) async throws
+    func save(contentsOf records: [AgentAuditRecord]) async throws
+}
+
 /// Repositorio del perfil del usuario (single source of truth del perfil).
 public protocol UserProfileRepository: Sendable {
     func loadProfile() async throws -> UserTrainingProfile?

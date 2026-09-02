@@ -143,6 +143,35 @@ struct CodableDecisionRepositoryTests {
     }
 }
 
+@Suite("FileAgentAuditRepository persistence (PR-1607)")
+struct CodableAgentAuditRepositoryTests {
+    @Test("Persists audit rows, append-only, and groups by conversation")
+    func roundTripAndGrouping() async throws {
+        let repo = FileAgentAuditRepository(store: MemoryRepositoryStore())
+        let conversation = UUID()
+        let rows = [
+            AgentAuditRecord.intent(.setTimeConstraint(.hard(minutes: 30)), conversationID: conversation),
+            AgentAuditRecord.result(command: "recomputeSession", conversationID: conversation),
+            AgentAuditRecord.needsClarification(conversationID: UUID()),
+        ]
+        try await repo.save(contentsOf: rows)
+
+        // Append-only: las tres persisten.
+        let all = try await repo.allAuditRecords()
+        #expect(all.count == 3)
+
+        // Trazabilidad por turno.
+        let chain = try await repo.auditRecords(conversationID: conversation)
+        #expect(chain.count == 2)
+        #expect(chain.contains { $0.intentTag == "setTimeConstraint" })
+        #expect(chain.contains { $0.resultCommand == "recomputeSession" })
+
+        // Filtro por etapa.
+        let intents = try await repo.auditRecords(stage: .inboundIntent)
+        #expect(intents.count == 2)
+    }
+}
+
 @Suite("FileUserProfileRepository persistence (PR-0202)")
 struct CodableUserProfileRepositoryTests {
     @Test("Nil profile before any save")

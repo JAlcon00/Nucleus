@@ -152,6 +152,37 @@ final class InMemoryDecisionRepository: DecisionRepository, @unchecked Sendable 
     }
 }
 
+final class InMemoryAgentAuditRepository: AgentAuditRepository, @unchecked Sendable {
+    private var store: [UUID: AgentAuditRecord]
+
+    init(_ seed: [AgentAuditRecord] = []) {
+        self.store = Dictionary(uniqueKeysWithValues: seed.map { ($0.id, $0) })
+    }
+
+    func allAuditRecords() async throws -> [AgentAuditRecord] {
+        store.values.sorted { $0.date < $1.date }
+    }
+
+    func auditRecords(conversationID: UUID) async throws -> [AgentAuditRecord] {
+        try await allAuditRecords()
+            .filter { $0.conversationID == conversationID }
+    }
+
+    func auditRecords(stage: AgentAuditStage) async throws -> [AgentAuditRecord] {
+        try await allAuditRecords().filter { $0.stage == stage }
+    }
+
+    func save(_ record: AgentAuditRecord) async throws {
+        store[record.id] = record
+    }
+
+    func save(contentsOf records: [AgentAuditRecord]) async throws {
+        for record in records {
+            try await save(record)
+        }
+    }
+}
+
 final class InMemoryUserProfileRepository: UserProfileRepository, @unchecked Sendable {
     private var profile: UserTrainingProfile?
 

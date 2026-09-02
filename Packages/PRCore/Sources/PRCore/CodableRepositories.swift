@@ -193,6 +193,45 @@ public final class FileDecisionRepository: DecisionRepository, @unchecked Sendab
     }
 }
 
+// MARK: - AgentAuditRepository (audit trail PR-1607)
+
+/// Implementación persistente (append-only) del audit trail del agente. Cada fila
+/// se guarda bajo su propio UUID, de modo que añadir nunca reemplaza ni borra.
+/// Los datos retenidos son mínimos (ver `AgentAuditRecord`): sin PII cruda.
+public final class FileAgentAuditRepository: AgentAuditRepository, @unchecked Sendable {
+    private let store: any RepositoryStore
+
+    public init(store: some RepositoryStore) {
+        self.store = store
+    }
+
+    public func allAuditRecords() async throws -> [AgentAuditRecord] {
+        try store.readAll().map { try JSONBlob.decode(AgentAuditRecord.self, from: $0) }
+    }
+
+    public func auditRecords(conversationID: UUID) async throws -> [AgentAuditRecord] {
+        try await allAuditRecords()
+            .filter { $0.conversationID == conversationID }
+            .sorted { $0.date < $1.date }
+    }
+
+    public func auditRecords(stage: AgentAuditStage) async throws -> [AgentAuditRecord] {
+        try await allAuditRecords()
+            .filter { $0.stage == stage }
+            .sorted { $0.date > $1.date }
+    }
+
+    public func save(_ record: AgentAuditRecord) async throws {
+        try store.write(key: record.id.persistenceKey, data: JSONBlob.encode(record))
+    }
+
+    public func save(contentsOf records: [AgentAuditRecord]) async throws {
+        for record in records {
+            try await save(record)
+        }
+    }
+}
+
 // MARK: - UserProfileRepository
 
 /// Implementación persistente de `UserProfileRepository` (perfil único).
