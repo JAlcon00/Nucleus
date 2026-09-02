@@ -844,6 +844,17 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - start/pause/resume/end.
 - errores manejados.
 
+### Estado (2026-09-01)
+- Prueba/Slice verificado en PRCore: `HealthLiveWorkout.swift` (state machine
+  start/pause/resume/end, `HealthLiveMetrics` con origen measured/estimated,
+  protocolo `LiveWorkoutBuilder`, `HealthLiveWorkoutCoordinator` con value semantics)
+  + `HealthLiveWorkoutTests` (fake builder, sin HealthKit real). `swift test`: 349/77 green.
+- **Pendiente (requiere toolchain watchOS + device físico, plan §14 "Device testing")**:
+  el adaptador de producción en el target `PRWatch` que mapea
+  `HKWorkoutSession`/`HKLiveWorkoutBuilder` reales al protocolo. En esta máquina no
+  hay SDK watchOS instalado, por lo que ese target no se puede compilar/probar aquí;
+  no se afirma que compile hasta verificarse con el toolchain watchOS.
+
 ---
 
 ## PR-1203 — Multidevice workout coordination
