@@ -133,26 +133,138 @@ public struct HealthWorkoutSummary: Codable, Sendable, Hashable {
     }
 }
 
-/// Workout de HealthKit de terceros (para reconciliación / lectura externa).
+/// Workout de HealthKit de terceros (para reconciliación / lectura externa, PR-1102/PR-1104).
+/// Sólo metadata autorizada: NUNCA incluye sets/reps/peso — esos son dominio propio de PR
+/// (promptMaster §14.1) y nunca se inventan a partir de un workout externo.
 public struct ExternalWorkout: Codable, Sendable, Hashable {
     public var referenceID: HealthWorkoutHandle.ID
     public var start: Date
     public var end: Date
     public var activityType: HealthWorkoutActivityType
     public var activeKilocalories: Double?
+    /// Origen de la energy (measured/estimated/unavailable).
+    public var energyOrigin: MeasurementOrigin
+    /// Fuente (p. ej. "Apple Watch") y nombre del device cuando el store lo autorice.
+    public var sourceName: String?
+    public var deviceName: String?
 
     public init(
         referenceID: HealthWorkoutHandle.ID,
         start: Date,
         end: Date,
         activityType: HealthWorkoutActivityType,
-        activeKilocalories: Double? = nil
+        activeKilocalories: Double? = nil,
+        energyOrigin: MeasurementOrigin? = nil,
+        sourceName: String? = nil,
+        deviceName: String? = nil
     ) {
         self.referenceID = referenceID
         self.start = start
         self.end = end
         self.activityType = activityType
         self.activeKilocalories = activeKilocalories
+        self.energyOrigin = energyOrigin ?? (activeKilocalories == nil ? .unavailable : .measured)
+        self.sourceName = sourceName
+        self.deviceName = deviceName
+    }
+}
+
+/// Consulta de workouts externos (PR-1104). Intervalo de fechas con filtros opcionales.
+public struct ExternalWorkoutQuery: Codable, Sendable, Hashable {
+    public var since: Date
+    public var until: Date
+    /// Filtro de actividad; nil = todas.
+    public var activityType: HealthWorkoutActivityType?
+
+    public init(since: Date, until: Date, activityType: HealthWorkoutActivityType? = nil) {
+        self.since = since
+        self.until = until
+        self.activityType = activityType
+    }
+}
+
+/// Origen de un vínculo workout externo ↔ plan (PR-1104).
+public enum LinkDecision: String, Codable, Sendable, CaseIterable, Hashable {
+    /// Sugerido automáticamente (nunca aplicado sin confirmación).
+    case suggestion
+    /// Elegido manualmente por el usuario.
+    case manual
+}
+
+/// Vínculo entre un workout externo del día y un plantilla/sesión del plan (PR-1104).
+/// NUNCA fabrica set data: sólo asocia metadata autorizada a una plantilla.
+public struct WorkoutPlanLink: Codable, Sendable, Hashable {
+    public var externalWorkoutReferenceID: HealthWorkoutHandle.ID
+    public var templateID: SessionTemplate.ID?
+    public var decision: LinkDecision
+
+    public init(
+        externalWorkoutReferenceID: HealthWorkoutHandle.ID,
+        templateID: SessionTemplate.ID? = nil,
+        decision: LinkDecision = .suggestion
+    ) {
+        self.externalWorkoutReferenceID = externalWorkoutReferenceID
+        self.templateID = templateID
+        self.decision = decision
+    }
+}
+
+/// Sugerencia de vínculo workout externo → plantilla del plan (PR-1104).
+///
+/// Determinista: dado un workout externo y las plantillas candidatas del día, sugiere la
+/// primera compatible (o ninguna). Es una SUGERENCIA: devuelve `decision == .suggestion`
+/// y nunca aplica el vínculo por sí mismo; el usuario mantiene el control manual.
+public struct WorkoutPlanLinker: Sendable {
+    public init() {}
+
+    /// Devuelve la plantilla más plausible para el workout externo, o nil si no hay
+    /// candidata clara (no inventa un vínculo forzado).
+    public func suggestTemplate(
+        for workout: ExternalWorkout,
+        candidates: [SessionTemplate],
+        day: DayInterval
+    ) -> SessionTemplate.ID? {
+        // El workout debe caer dentro del día considerado.
+        guard workout.start >= day.start && workout.end <= day.end else { return nil }
+        // Determinista: primera candidata por título/orden estable del plan.
+        return candidates.first?.id
+    }
+
+    /// Crea un vínculo por sugerencia (si hay plantilla) o manual, respetando que un
+    /// vínculo manual con plantilla real prevalece.
+    public func link(
+        _ workout: ExternalWorkout,
+        to templateID: SessionTemplate.ID?,
+        manual: Bool
+    ) -> WorkoutPlanLink {
+        WorkoutPlanLink(
+            externalWorkoutReferenceID: workout.referenceID,
+            templateID: templateID,
+            decision: manual ? .manual : .suggestion
+        )
+    }
+
+    /// Aplica manualmente un vínculo (override de sugerencia). Soporta desvincular (nil).
+    public func manualLink(
+        _ workout: ExternalWorkout,
+        to templateID: SessionTemplate.ID?
+    ) -> WorkoutPlanLink {
+        WorkoutPlanLink(
+            externalWorkoutReferenceID: workout.referenceID,
+            templateID: templateID,
+            decision: .manual
+        )
+    }
+}
+
+/// Intervalo de un día (para agrupar workouts del mismo día).
+public struct DayInterval: Codable, Sendable, Hashable {
+    public var start: Date
+    public var end: Date
+
+    public init(start: Date, end: Date) {
+        self.start = start
+        self.end = end
     }
 }
 
@@ -164,8 +276,8 @@ public protocol HealthWorkoutStore: Sendable {
     func startWorkout(configuration: HealthWorkoutConfiguration) async throws -> HealthWorkoutHandle
     /// Finaliza el workout referenciado.
     func finishWorkout(_ handle: HealthWorkoutHandle, with input: HealthWorkoutFinishInput) async throws -> HealthWorkoutSummary
-    /// Lee workouts recientes de terceros (para reconciliación).
-    func recentWorkouts() async throws -> [ExternalWorkout]
+    /// Lee workouts externos de la consulta (sólo metadata autorizada, PR-1104).
+    func recentWorkouts(in query: ExternalWorkoutQuery) async throws -> [ExternalWorkout]
 }
 
 /// Problemas del coordinador de workouts de HealthKit.
@@ -256,19 +368,23 @@ public actor FakeHealthWorkoutStore: HealthWorkoutStore {
     public let heartRate: HealthWorkoutHeartRate?
     /// Origen de la energy a forzar en el resumen; nil = derivar (PR-1103).
     public let energyOrigin: MeasurementOrigin?
+    /// Workouts externos que devuelve `recentWorkouts` (PR-1104).
+    public let externalWorkouts: [ExternalWorkout]
 
     public init(
         provider: any HealthKitProvider = InMemoryHealthKitProvider(),
         failOnStart: Bool = false,
         failOnFinish: Bool = false,
         heartRate: HealthWorkoutHeartRate? = nil,
-        energyOrigin: MeasurementOrigin? = nil
+        energyOrigin: MeasurementOrigin? = nil,
+        externalWorkouts: [ExternalWorkout] = []
     ) {
         self.provider = provider
         self.failOnStart = failOnStart
         self.failOnFinish = failOnFinish
         self.heartRate = heartRate
         self.energyOrigin = energyOrigin
+        self.externalWorkouts = externalWorkouts
     }
 
     public func requestAuthorization() async throws -> HealthPermissionOutcome {
@@ -305,7 +421,15 @@ public actor FakeHealthWorkoutStore: HealthWorkoutStore {
         return summary
     }
 
-    public func recentWorkouts() async throws -> [ExternalWorkout] {
-        []
+    public func recentWorkouts(in query: ExternalWorkoutQuery) async throws -> [ExternalWorkout] {
+        let provider = self.provider
+        // Sólo se importa metadata cuando el permiso .workout está concedido.
+        guard case .granted = await provider.authorizationStatus(for: .workout) else {
+            return []
+        }
+        return externalWorkouts.filter {
+            $0.start >= query.since && $0.end <= query.until
+                && (query.activityType == nil || $0.activityType == query.activityType)
+        }
     }
 }
