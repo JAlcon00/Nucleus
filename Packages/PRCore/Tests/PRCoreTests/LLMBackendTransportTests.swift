@@ -84,6 +84,39 @@ struct LLMBackendTransportTests {
         #expect(response.intent != nil)
     }
 
+    @Test("Repara comas finales sobrantes en la salida del LLM")
+    func interpretTrailingCommaRepair() async throws {
+        // Artefacto común: coma antes del cierre `}` al final del objeto.
+        let t = transport(returning: #"{"intent":"reportPain","payload":{"value":{"level":3,"notes":"x"}},}"#)
+        let response = try await t.interpret(
+            InterpretRequest(text: "me duele", context: AgentContext())
+        )
+        #expect(!response.needsClarification)
+        #expect(response.intent != nil)
+    }
+
+    @Test("Repara comas finales dentro del payload")
+    func interpretTrailingCommaInsidePayload() async throws {
+        // Coma dentro del objeto interno del payload.
+        let t = transport(returning: #"{"intent":"reportPain","payload":{"value":{"level":3,}}}"#)
+        let response = try await t.interpret(
+            InterpretRequest(text: "dolor fuerte", context: AgentContext())
+        )
+        #expect(!response.needsClarification)
+        #expect(response.intent != nil)
+    }
+
+    @Test("Falla segura si ni siquiera el payload reparado decodifica")
+    func interpretUnrepairableMalformed() async throws {
+        // Coma final + valor fuera de rango de PainLevel → sigue siendo needsClarification.
+        let t = transport(returning: #"{"intent":"reportPain","payload":{"value":{"level":9,}}}"#)
+        let response = try await t.interpret(
+            InterpretRequest(text: "dolor", context: AgentContext())
+        )
+        #expect(response.needsClarification)
+        #expect(response.intent == nil)
+    }
+
     // MARK: - explain
 
     @Test("Explica a partir de los facts provistos")

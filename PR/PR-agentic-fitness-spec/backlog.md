@@ -1307,10 +1307,16 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
   salida se valida contra schema local y ante cualquier fallo → `needsClarification` (falla
   segura). Driver `.fast` (thinking OFF) + ejemplos de formato múltiple + restricciones de
   valor (pain 0-3, fatigue 1-5) para evitar anclaje/eco y valores fuera de rango.
-- 24 tests (Swift Testing) + suite global 393 tests/82 suites green + build iOS OK.
+- System prompt `EliteCoachAgent`: identidad + arquitectura de autoridad (interpreta, no
+  decide), el enum completo de intents con semántica, restricciones de valor con literales
+  exactos de enum, reglas de ambigüedad (`needsClarification`) y output estricto (§59 JSON
+  sin Markdown). Parser robusto: repara comas finales sobrantes (artefacto LLM) y cae seguro
+  cuando ni aun reparado decodifica.
+- 27 tests (Swift Testing) + suite global 396 tests/82 suites green + build iOS OK.
   VALIDADO EN VIVO contra el endpoint hosted (key real, `.env`): setTimeConstraint,
-  changeGoal, reportPain y needsClarification producen JSON decodificable. Pendiente N2+:
-  tool-calls multi-intent, streaming y capas posteriores del roadmap NEMOTRON.
+  changeGoal, reportPain (extrae bodyRegion/side/notes), reportFatigue, requestExerciseSwap,
+  changePhase, askWhy, updateRestriction y needsClarification producen JSON decodificable.
+  Pendiente N2+: tool-calls multi-intent, streaming y capas posteriores del roadmap NEMOTRON.
 
 ---
 
