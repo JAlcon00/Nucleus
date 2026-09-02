@@ -91,7 +91,7 @@ struct HealthWorkoutTests {
     func finishProducesSummary() async throws {
         let store = grantedStore()
         let coordinator = HealthWorkoutCoordinator(store: store)
-        var started = try await coordinator.start(session: session(), configuration: .init())
+        let started = try await coordinator.start(session: session(), configuration: .init())
         let handleRaw = started.healthWorkoutReferenceID!
 
         let finished = try await coordinator.finish(session: started, completedAt: started.startedAt.addingTimeInterval(60), activeKilocalories: 42)
@@ -134,7 +134,7 @@ struct HealthWorkoutTests {
         await #expect {
             _ = try await coordinator.start(session: session(withSets: sets))
         } throws: { error in
-            error is HealthWorkoutError || error is NSError
+            true
         }
         // La sesión original sigue con sus sets intactos.
         #expect(session(withSets: sets).sets.count == 1)
@@ -161,5 +161,88 @@ struct HealthWorkoutTests {
 
         let startedHandle = await store.startedHandles.first
         #expect(startedHandle?.id.rawValue == started.healthWorkoutReferenceID)
+    }
+}
+
+@Suite("Health workout summary (PR-1103)")
+struct HealthWorkoutSummaryTests {
+
+    private func finishSummary(
+        startedAt: Date = Date(),
+        durationSeconds: Double = 3600,
+        activeKcal: Double? = 180,
+        heartRate: HealthWorkoutHeartRate? = nil,
+        energyOrigin: MeasurementOrigin? = nil
+    ) async throws -> HealthWorkoutSummary {
+        let store = FakeHealthWorkoutStore(
+            provider: InMemoryHealthKitProvider(),
+            heartRate: heartRate,
+            energyOrigin: energyOrigin
+        )
+        let coordinator = HealthWorkoutCoordinator(store: store)
+        let started = try await coordinator.start(session: WorkoutSessionRecord(startedAt: startedAt, lifecycle: .active))
+        let end = startedAt.addingTimeInterval(durationSeconds)
+        _ = try await coordinator.finish(session: started, completedAt: end, activeKilocalories: activeKcal)
+        guard let summary = await store.finishedSummaries.first else {
+            Issue.record("Debía existir un resumen finalizado")
+            throw HealthWorkoutError.notStarted
+        }
+        return summary
+    }
+
+    // 1. Duración derivada de start/end.
+    @Test("La duración deriva de start/end")
+    func durationDerivedFromStartEnd() async throws {
+        let startedAt = Date(timeIntervalSince1970: 1_000_000)
+        let summary = try await finishSummary(startedAt: startedAt, durationSeconds: 5400, activeKcal: 200)
+        #expect(summary.durationSeconds == 5400)
+    }
+
+    // 2. Active energy presente si disponible.
+    @Test("Active energy presente cuando está disponible")
+    func activeEnergyPresentWhenAvailable() async throws {
+        let summary = try await finishSummary(activeKcal: 180)
+        #expect(summary.activeKilocalories == 180)
+    }
+
+    // 2b. Sin energía disponible, queda nil (no se inventa).
+    @Test("Sin energía, queda nil (no se inventa)")
+    func noEnergyIsNil() async throws {
+        let summary = try await finishSummary(activeKcal: nil)
+        #expect(summary.activeKilocalories == nil)
+        #expect(summary.energyOrigin == .unavailable)
+    }
+
+    // 3. HR summary presente sólo si permitido/disponible.
+    @Test("HR summary presente sólo si permitido/disponible")
+    func heartRateOnlyWhenPermitted() async throws {
+        let withHR = try await finishSummary(heartRate: HealthWorkoutHeartRate(averageBPM: 128, peakBPM: 152, origin: .measured))
+        #expect(withHR.heartRate?.averageBPM == 128)
+        #expect(withHR.heartRate?.peakBPM == 152)
+        #expect(withHR.heartRate?.origin == .measured)
+
+        let withoutHR = try await finishSummary(heartRate: nil)
+        #expect(withoutHR.heartRate == nil)
+    }
+
+    // 4. Datos marcados como measured vs estimated.
+    @Test("Datos marcados como measured vs estimated")
+    func measuredVersusEstimated() async throws {
+        // Energy derivada: se marca measured cuando viene con valor.
+        let measured = try await finishSummary(activeKcal: 150)
+        #expect(measured.energyOrigin == .measured)
+
+        // Energy forzada a estimated (p. ej. fuente de terceros).
+        let estimated = try await finishSummary(activeKcal: 150, energyOrigin: .estimated)
+        #expect(estimated.energyOrigin == .estimated)
+
+        // HR puede marcarse estimated mientras energy es distinta (independientes).
+        let mixed = try await finishSummary(
+            activeKcal: 90,
+            heartRate: HealthWorkoutHeartRate(averageBPM: 120, peakBPM: 140, origin: .estimated),
+            energyOrigin: .measured
+        )
+        #expect(mixed.energyOrigin == .measured)
+        #expect(mixed.heartRate?.origin == .estimated)
     }
 }

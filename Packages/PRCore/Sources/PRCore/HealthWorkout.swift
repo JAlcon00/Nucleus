@@ -73,18 +73,63 @@ public struct HealthWorkoutFinishInput: Codable, Sendable, Hashable {
     }
 }
 
-/// Resumen de un workout de HealthKit finalizado.
+/// Origen de un dato del workout: marcado como medido por sensor o estimado (PR-1103).
+public enum MeasurementOrigin: String, Codable, Sendable, CaseIterable, Hashable {
+    /// Medido por sensor real (p. ej. energy activa del Apple Watch).
+    case measured
+    /// Estimado por una heurística/otra fuente local/móvil (NO debe sumarse como medida).
+    case estimated
+    /// No disponible o no autorizado.
+    case unavailable
+}
+
+/// Resumen de HR del workout, sólo si está permitido/disponible (PR-1103).
+/// Sólo contexto; nunca diagnóstico (§14.1).
+public struct HealthWorkoutHeartRate: Codable, Sendable, Hashable {
+    public var averageBPM: Double?
+    public var peakBPM: Double?
+    public var origin: MeasurementOrigin
+
+    public init(averageBPM: Double? = nil, peakBPM: Double? = nil, origin: MeasurementOrigin = .unavailable) {
+        self.averageBPM = averageBPM
+        self.peakBPM = peakBPM
+        self.origin = origin
+    }
+}
+
+/// Resumen de un workout de HealthKit finalizado (PR-1103).
+///
+/// Incluye: duración, energy activa (sólo si disponible), resumen de HR (sólo si
+/// permitido/disponible) y, para cada dato, origen `measured` vs `estimated` vs
+/// `unavailable`. Determinista: la duración se deriva de `start`/`end`; la energy y
+/// HR se propagan tal cual llegan del store. No se inventa ningún número.
 public struct HealthWorkoutSummary: Codable, Sendable, Hashable {
     public var referenceID: HealthWorkoutHandle.ID
     public var start: Date
     public var end: Date
+    /// Duración en segundos (derivada de start/end).
+    public var durationSeconds: Int
     public var activeKilocalories: Double?
+    /// Origen de la energy: measured/estimated/unavailable.
+    public var energyOrigin: MeasurementOrigin
+    /// Resumen de HR, nil si no permitido/disponible.
+    public var heartRate: HealthWorkoutHeartRate?
 
-    public init(referenceID: HealthWorkoutHandle.ID, start: Date, end: Date, activeKilocalories: Double? = nil) {
+    public init(
+        referenceID: HealthWorkoutHandle.ID,
+        start: Date,
+        end: Date,
+        activeKilocalories: Double? = nil,
+        energyOrigin: MeasurementOrigin? = nil,
+        heartRate: HealthWorkoutHeartRate? = nil
+    ) {
         self.referenceID = referenceID
         self.start = start
         self.end = end
+        self.durationSeconds = Int(max(0, end.timeIntervalSince(start)))
         self.activeKilocalories = activeKilocalories
+        self.energyOrigin = energyOrigin ?? (activeKilocalories == nil ? .unavailable : .measured)
+        self.heartRate = heartRate
     }
 }
 
@@ -207,15 +252,23 @@ public actor FakeHealthWorkoutStore: HealthWorkoutStore {
     public var finishedSummaries: [HealthWorkoutSummary] = []
     public let failOnStart: Bool
     public let failOnFinish: Bool
+    /// HR del resumen; nil si no permitido/disponible (PR-1103).
+    public let heartRate: HealthWorkoutHeartRate?
+    /// Origen de la energy a forzar en el resumen; nil = derivar (PR-1103).
+    public let energyOrigin: MeasurementOrigin?
 
     public init(
         provider: any HealthKitProvider = InMemoryHealthKitProvider(),
         failOnStart: Bool = false,
-        failOnFinish: Bool = false
+        failOnFinish: Bool = false,
+        heartRate: HealthWorkoutHeartRate? = nil,
+        energyOrigin: MeasurementOrigin? = nil
     ) {
         self.provider = provider
         self.failOnStart = failOnStart
         self.failOnFinish = failOnFinish
+        self.heartRate = heartRate
+        self.energyOrigin = energyOrigin
     }
 
     public func requestAuthorization() async throws -> HealthPermissionOutcome {
@@ -244,7 +297,9 @@ public actor FakeHealthWorkoutStore: HealthWorkoutStore {
             referenceID: handle.id,
             start: input.start,
             end: input.end,
-            activeKilocalories: input.activeKilocalories
+            activeKilocalories: input.activeKilocalories,
+            energyOrigin: energyOrigin,
+            heartRate: heartRate
         )
         finishedSummaries.append(summary)
         return summary
