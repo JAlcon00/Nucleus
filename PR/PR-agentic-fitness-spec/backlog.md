@@ -1302,9 +1302,15 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
 - `MockLLMProvider.swift`: mock determinista para tests/offline (§23).
 - `NVIDIAKeyLoader.swift`: key en RUNTIME desde entorno `NVIDIA_API_KEY` o `.env` (gitignored);
   NUNCA embebida en el binario (§22/§42).
-- 15 tests (Swift Testing) + suite global 384 tests/81 suites green + build iOS OK.
-  Pendiente N1: adaptador a `AgentBackendTransport` (puente a PR-1603). El `.env` raíz
-  (gitignored) inyecta `NVIDIA_API_KEY`; `AppEnvironment.llmProvider` expone el provider.
+- `AgentSchema.swift` + `LLMBackendTransport.swift`: adaptador que une `LLMProvider` con el
+  contrato del dominio `AgentBackendTransport` (PR-1603). El LLM SÓLO interpreta/explica; la
+  salida se valida contra schema local y ante cualquier fallo → `needsClarification` (falla
+  segura). Driver `.fast` (thinking OFF) + ejemplos de formato múltiple + restricciones de
+  valor (pain 0-3, fatigue 1-5) para evitar anclaje/eco y valores fuera de rango.
+- 24 tests (Swift Testing) + suite global 393 tests/82 suites green + build iOS OK.
+  VALIDADO EN VIVO contra el endpoint hosted (key real, `.env`): setTimeConstraint,
+  changeGoal, reportPain y needsClarification producen JSON decodificable. Pendiente N2+:
+  tool-calls multi-intent, streaming y capas posteriores del roadmap NEMOTRON.
 
 ---
 
