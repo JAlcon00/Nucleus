@@ -8,19 +8,20 @@
 //
 
 import SwiftUI
+import PRDomain
 
 struct WatchContentView: View {
     var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "figure.strengthtraining.traditional")
-                .imageScale(.large)
-            Text("PR")
-                .font(.headline.bold())
-            Text("Entrena.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .padding()
+        // Shell PR-1201: sin sesión activa aún, la vista de workout opera en
+        // estado idle. El cableado con la sesión viva llega en historias posteriores.
+        WatchWorkoutView(
+            template: nil,
+            performedSets: [],
+            lastCompletedPrescription: nil,
+            now: Date(),
+            onCompleteSet: {},
+            onSkipRest: {}
+        )
     }
 }
 

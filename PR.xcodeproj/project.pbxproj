@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		B7DC00010000000000000001 /* PRCore in Frameworks */ = {isa = PBXBuildFile; productRef = B7DC00020000000000000002 /* PRCore */; };
+		B7DC00060000000000000001 /* PRCore in Frameworks */ = {isa = PBXBuildFile; productRef = B7DC00020000000000000002 /* PRCore */; };
+		B7DC00080000000000000001 /* PRDomain in Frameworks */ = {isa = PBXBuildFile; productRef = B7DC00070000000000000001 /* PRDomain */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -54,6 +56,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B7DC00060000000000000001 /* PRCore in Frameworks */,
+				B7DC00080000000000000001 /* PRDomain in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -120,6 +124,10 @@
 				B7DC0020304CFC7100D2DF71 /* PRWatch */,
 			);
 			name = PRWatch;
+			packageProductDependencies = (
+				B7DC00020000000000000002 /* PRCore */,
+				B7DC00070000000000000001 /* PRDomain */,
+			);
 			productName = PRWatch;
 			productReference = B7DC0010304CFC7100D2DF71 /* PRWatch.app */;
 			productType = "com.apple.product-type.application";
@@ -487,6 +495,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B7DC00030000000000000003 /* XCLocalSwiftPackageReference "Packages/PRCore" */;
 			productName = PRCore;
+		};
+		B7DC00070000000000000001 /* PRDomain */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B7DC00030000000000000003 /* XCLocalSwiftPackageReference "Packages/PRCore" */;
+			productName = PRDomain;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
