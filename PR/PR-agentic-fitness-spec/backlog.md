@@ -1375,6 +1375,16 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
   retry excluye `.cancelled`) + `NVIDIAProviderError.cancelled`. +9 tests
   (`AgentStreamingTests`). Suite global 412 tests/84 suites green. El `reasoning` se emite
   como `.reasoning` (NUNCA visible al usuario); `[DONE]` termina el stream sin finish duplicado.
+- **N6 — Advanced reasoning (nuevo):** `AgentBudget.swift` con `AgentUsage` (token usage +
+  latencia + reasoning tokens consumidos, provider-agnostic), `AgentResponse.usage`, y
+  `ReasoningBudgetPolicy` (rango seguro §35: rechaza 16384 por rutina; detecta overrun del
+  reasoning budget). `NVIDIAChatUsage` decodifica `completion_tokens_details.reasoning_tokens`.
+  Presets output-aware: `forMode(_:output:)` elige `FAST_STRUCTURED` (0.0) para `.fast`+JSON
+  y `FAST_AGENT` (0.1) para routing; el interprete pide salida JSON → structured. Corpus de
+  evals permanente `AgentAdvancedReasoningTests` (§44: time constraint, ocupación, NO
+  diagnóstico, NO doble conteo calórico, NO triplicar volumen, NO aprobar carga a ciegas) +
+  presets + budget. +22 tests. Suite global 434 tests/87 suites green + build iOS OK sin
+  warnings. El LLM nunca decide: la medición de tokens/razonamiento es determinista local.
 
 ---
 

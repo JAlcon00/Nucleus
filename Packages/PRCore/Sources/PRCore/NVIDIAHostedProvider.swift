@@ -83,10 +83,21 @@ public struct NVIDIAProviderPreset: Sendable, Equatable {
 
     /// Preset aplicado según el modo de ejecución (§23).
     public static func forMode(_ mode: AgentExecutionMode) -> NVIDIAProviderPreset {
+        // Por defecto el modo `.fast` se usa para routing simple de tools → fastAgent.
+        forMode(mode, output: .text)
+    }
+
+    /// Preset según modo + requerimiento de salida (Phase N6, §40). El spec separa
+    /// `FAST_STRUCTURED` (intent/entidad/JSON, temp 0.0) de `FAST_AGENT` (routing simple,
+    /// temp 0.1): `.fast` + salida JSON requiere machine determinista → fastStructured.
+    public static func forMode(_ mode: AgentExecutionMode, output: AgentOutputRequirement) -> NVIDIAProviderPreset {
         switch mode {
-        case .fast: return fastAgent
-        case .reasoning: return reasoning
-        case .deepReasoning: return deep
+        case .fast:
+            return output == .json ? fastStructured : fastAgent
+        case .reasoning:
+            return reasoning
+        case .deepReasoning:
+            return deep
         }
     }
 }
@@ -104,7 +115,7 @@ public struct NVIDIAHostedProvider: LLMProvider {
     }
 
     public func complete(_ request: AgentRequest) async throws -> AgentResponse {
-        let preset = NVIDIAProviderPreset.forMode(request.mode)
+        let preset = NVIDIAProviderPreset.forMode(request.mode, output: request.output)
         let apiKey = config.apiKeyProvider()
         guard let apiKey, !apiKey.isEmpty else {
             throw NVIDIAProviderError.missingAPIKey
@@ -157,11 +168,13 @@ public struct NVIDIAHostedProvider: LLMProvider {
 
         let data: Data
         let response: URLResponse
+        let started = Date()
         do {
             (data, response) = try await session.data(for: urlRequest)
         } catch {
             throw NVIDIAProviderError.network
         }
+        let elapsedMs = Int(Date().timeIntervalSince(started) * 1000)
 
         guard let http = response as? HTTPURLResponse else {
             throw NVIDIAProviderError.invalidResponse
@@ -169,7 +182,7 @@ public struct NVIDIAHostedProvider: LLMProvider {
 
         switch http.statusCode {
         case 200..<300:
-            return try decode(data: data)
+            return try decode(data: data, durationMilliseconds: elapsedMs)
         case 400: throw NVIDIAProviderError.validation
         case 401, 403: throw (http.statusCode == 403 ? NVIDIAProviderError.forbidden : NVIDIAProviderError.authentication)
         case 404: throw NVIDIAProviderError.notFound
@@ -181,7 +194,7 @@ public struct NVIDIAHostedProvider: LLMProvider {
         }
     }
 
-    private func decode(data: Data) throws -> AgentResponse {
+    private func decode(data: Data, durationMilliseconds: Int? = nil) throws -> AgentResponse {
         let response: NVIDIAChatResponse
         do {
             response = try JSONDecoder().decode(NVIDIAChatResponse.self, from: data)
@@ -202,13 +215,21 @@ public struct NVIDIAHostedProvider: LLMProvider {
             guard let name = call.function?.name else { return nil }
             return AgentToolCall(id: call.id, name: name, arguments: call.function?.arguments ?? "")
         }
+        let usage: AgentUsage? = {
+            guard let u = response.usage else { return nil }
+            return AgentUsage(
+                promptTokens: u.promptTokens,
+                completionTokens: u.completionTokens,
+                reasoningTokens: u.reasoningTokens,
+                durationMilliseconds: durationMilliseconds
+            )
+        }()
         return AgentResponse(
             text: message.content,
             reasoning: message.reasoningContent,
             finishReason: finish,
-            promptTokens: response.usage?.promptTokens,
-            completionTokens: response.usage?.completionTokens,
-            toolCalls: toolCalls
+            toolCalls: toolCalls,
+            usage: usage
         )
     }
 
@@ -218,7 +239,7 @@ public struct NVIDIAHostedProvider: LLMProvider {
     /// La cancelación de la tarea de consumo finaliza el stream; una red faltante o un
     /// cierre inesperado se traduce a errores tipados.
     public func stream(_ request: AgentRequest) -> AsyncThrowingStream<AgentStreamEvent, Error> {
-        let preset = NVIDIAProviderPreset.forMode(request.mode)
+        let preset = NVIDIAProviderPreset.forMode(request.mode, output: request.output)
         return AsyncThrowingStream { continuation in
             let task = Task {
                 do {

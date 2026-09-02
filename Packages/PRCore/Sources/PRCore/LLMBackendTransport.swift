@@ -40,7 +40,8 @@ public struct LLMBackendTransport: AgentBackendTransport, Sendable {
         let response = try await provider.complete(
             AgentRequest(
                 messages: [AgentMessage(role: "system", content: system), AgentMessage(role: "user", content: prompt)],
-                mode: .fast
+                mode: .fast,
+                output: .json
             )
         )
 

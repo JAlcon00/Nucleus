@@ -131,10 +131,10 @@ public struct AgentResponse: Sendable {
     public var text: String?
     public var reasoning: String?
     public var finishReason: AgentFinishReason
-    public var promptTokens: Int?
-    public var completionTokens: Int?
     /// Llamadas a tool emitidas por el modelo (Phase N3).
     public var toolCalls: [AgentToolCall]
+    /// Uso del run (tokens + latencia + reasoning), Phase N6 budget measurements.
+    public var usage: AgentUsage?
 
     public init(
         text: String? = nil,
@@ -142,15 +142,22 @@ public struct AgentResponse: Sendable {
         finishReason: AgentFinishReason = .stop,
         promptTokens: Int? = nil,
         completionTokens: Int? = nil,
-        toolCalls: [AgentToolCall] = []
+        toolCalls: [AgentToolCall] = [],
+        usage: AgentUsage? = nil
     ) {
         self.text = text
         self.reasoning = reasoning
         self.finishReason = finishReason
-        self.promptTokens = promptTokens
-        self.completionTokens = completionTokens
         self.toolCalls = toolCalls
+        // Si no hay `usage` pero sí vienen tokens sueltos (legado), construimos uno.
+        self.usage = usage ?? (promptTokens != nil || completionTokens != nil
+            ? AgentUsage(promptTokens: promptTokens, completionTokens: completionTokens)
+            : nil)
     }
+
+    // Conveniencia legado: accesso directo a los tokens sin requerir `usage`.
+    public var promptTokens: Int? { usage?.promptTokens }
+    public var completionTokens: Int? { usage?.completionTokens }
 
     public var isComplete: Bool { finishReason != .length }
 }

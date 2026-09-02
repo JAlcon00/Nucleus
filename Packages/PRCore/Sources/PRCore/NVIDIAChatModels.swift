@@ -202,11 +202,46 @@ public struct NVIDIAChatUsage: Decodable, Sendable {
     public var promptTokens: Int?
     public var completionTokens: Int?
     public var totalTokens: Int?
+    /// Tokens de reasoning consumidos (Phase N6, budget measurements). No siempre los
+    /// expone el provider: se deduce de `completion_tokens_details` o quedan nil.
+    public var reasoningTokens: Int?
 
     public enum CodingKeys: String, CodingKey {
         case promptTokens = "prompt_tokens"
         case completionTokens = "completion_tokens"
         case totalTokens = "total_tokens"
+        case completionDetails = "completion_tokens_details"
+    }
+
+    public init(
+        promptTokens: Int? = nil,
+        completionTokens: Int? = nil,
+        totalTokens: Int? = nil,
+        reasoningTokens: Int? = nil
+    ) {
+        self.promptTokens = promptTokens
+        self.completionTokens = completionTokens
+        self.totalTokens = totalTokens
+        self.reasoningTokens = reasoningTokens
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        promptTokens = try container.decodeIfPresent(Int.self, forKey: .promptTokens)
+        completionTokens = try container.decodeIfPresent(Int.self, forKey: .completionTokens)
+        totalTokens = try container.decodeIfPresent(Int.self, forKey: .totalTokens)
+        // `completion_tokens_details: {"reasoning_tokens": N}` cuando el provider lo expone.
+        if let details = try container.decodeIfPresent(CompletionDetails.self, forKey: .completionDetails) {
+            reasoningTokens = details.reasoningTokens
+        }
+    }
+}
+
+private struct CompletionDetails: Decodable, Sendable {
+    public var reasoningTokens: Int?
+
+    public enum CodingKeys: String, CodingKey {
+        case reasoningTokens = "reasoning_tokens"
     }
 }
 
