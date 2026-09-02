@@ -1041,6 +1041,16 @@ Dividir en subtareas según API real disponible.
 - moderate/high suspende load progression.
 - UI recomienda detener/modificar sin diagnosticar.
 
+### Estado (2026-09-01)
+- PRDomain `PainFeedbackEngine.swift`: `PainLevel` (none/mild/moderate/high, Int 0-3,
+  §16.3) y `PainFeedbackEngine` determinista que traduce el nivel a un flujo seguro.
+  `moderate/high` suspenden la progresión automática de carga (`suspendsLoadProgression`,
+  gate compatible con `ProgressionEngine`) y disparan `reduceIntensityAndMonitor` /
+  `stopAndRest`; nunca dispositivo ni prescribe rehabilitación. Con restricción activa
+  relacionada (PR-1402) refuerza precaución como contexto. Policy versionada `.safety`
+  (`safety.painFeedback`); genera `DecisionRecord` (`.intensityChange`). + tests (10) en
+  `PainFeedbackEngineTests.swift`. swift test 0 fallos; iOS build limpio. Desbloquea PR-1404/PR-1405.
+
 ---
 
 ## PR-1404 — Parse professional restriction text via agent
