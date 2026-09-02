@@ -30,7 +30,7 @@ public struct NVIDIAHostedConfig: Sendable {
     public init(
         baseURL: URL = URL(string: "https://integrate.api.nvidia.com/v1")!,
         model: String = "nvidia/nemotron-3.5-lightning-30b-a3b",
-        apiKeyProvider: @escaping @Sendable () -> String? = { nil },
+        apiKeyProvider: @escaping @Sendable () -> String? = { NVIDIAKeyLoader.load() },
         timeoutSeconds: TimeInterval = 15,
         maxRetries: Int = 2
     ) {

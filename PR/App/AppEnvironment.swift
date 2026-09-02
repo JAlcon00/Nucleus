@@ -20,6 +20,13 @@ public final class AppEnvironment {
     /// Version del core embebido (para diagnóstico sin datos sensibles).
     public let coreVersion: String
 
+    /// Proveedor LLM con la API key inyectada en runtime (NVIDIAKeyLoader).
+    /// NUNCA embebe la key: se lee de entorno/.env en runtime (§22/§42). Es un shim
+    /// de prototipado; en producción la app habla con nuestro backend.
+    public var llmProvider: any LLMProvider {
+        NVIDIAHostedProvider()
+    }
+
     public init(coreVersion: String = PRCore.version) {
         self.coreVersion = coreVersion
     }

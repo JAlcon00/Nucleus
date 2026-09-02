@@ -1300,9 +1300,11 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
   §34 tipado; retry acotado con backoff/jitter (§35); key en header Authorization inyectada en
   runtime — NUNCA en el body ni en el cliente (§22/§42).
 - `MockLLMProvider.swift`: mock determinista para tests/offline (§23).
-- 11 tests (Swift Testing, suite serializada) + suite global 380 tests/80 suites green + build
-  iOS OK. Pendiente N1: adaptador a `AgentBackendTransport` (puente a PR-1603) y validación
-  contra `TrainingRestriction` en la capa que lo consuma.
+- `NVIDIAKeyLoader.swift`: key en RUNTIME desde entorno `NVIDIA_API_KEY` o `.env` (gitignored);
+  NUNCA embebida en el binario (§22/§42).
+- 15 tests (Swift Testing) + suite global 384 tests/81 suites green + build iOS OK.
+  Pendiente N1: adaptador a `AgentBackendTransport` (puente a PR-1603). El `.env` raíz
+  (gitignored) inyecta `NVIDIA_API_KEY`; `AppEnvironment.llmProvider` expone el provider.
 
 ---
 
