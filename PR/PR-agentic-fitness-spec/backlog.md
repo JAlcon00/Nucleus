@@ -923,6 +923,18 @@ Dividir en subtareas según API real disponible.
 - sin score falso de 0–100.
 - DecisionRecord.
 
+### Estado (2026-09-01)
+- PRDomain `RecoveryDecisionEngine.swift`: `RecoveryDecision` (trainAsPlanned/
+  trainWithAdjustments/recoverySession/restRecommended), `RecoveryState` interpretable
+  (normal/moderateFatigue/highFatigue/restRecommended), `RecoveryContext` (subjective
+  check-in PR-1301 + performance decline + near-failure + carga alta + `HealthRecoveryContext`
+  opcional, sueño sólo si autorizado), policy versionada `RecoveryPolicy` (`.recovery`,
+  thresholds booleanos) y `RecoveryPolicyDefaults`. `RecoveryDecisionEngine` determinista
+  con precedencia descanso>recovery>ajuste conservador>normal; malestar subjetivo ⇒
+  `avoidRegion` (nunca diagnóstico). Sin score 0–100 (§13.3 / riesgo G). Genera
+  `DecisionRecord` auditable. + tests (17) en `RecoveryDecisionEngineTests.swift`.
+  swift test 0 fallos; iOS build limpio. Desbloquea PR-1303.
+
 ---
 
 ## PR-1303 — Deload engine
