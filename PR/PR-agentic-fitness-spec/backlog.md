@@ -970,6 +970,16 @@ Dividir en subtareas según API real disponible.
 - evita conflictos de sesiones consecutivas incompatibles.
 - usuario confirma cambios importantes de calendario.
 
+### Estado (2026-09-01)
+- PRDomain `AutoRescheduleEngine.swift`: `AutoRescheduleEngine` determinista que mueve
+  una sesión cuando su día queda bloqueado como descanso recomendado (PR-1302) a la
+  primera ranura libre/no-bloqueada; evita sesiones consecutivas incompatibles
+  (foco musc. compartido) verificando vecinos; requiere confirmación si el movimiento
+  excede `maxRecommendedShiftDays`; respuesta conservadora (sin movimiento inventado)
+  si no hay ranura compatible. Policy versionada `.rest` (`rest.autoReschedule`).
+  Genera `DecisionRecord` (`.reorder`/`.restChange`). + tests (11) en
+  `AutoRescheduleEngineTests.swift`. swift test 0 fallos; iOS build limpio.
+
 ---
 
 # EPIC-14 — Restrictions & Safety
