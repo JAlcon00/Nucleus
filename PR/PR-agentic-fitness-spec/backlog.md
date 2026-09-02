@@ -466,6 +466,14 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - funciona offline.
 - estado de descanso/no workout claro.
 
+### Estado (2026-09-01)
+- PRDomain `TodayScreen.swift` (`TodayScreenDriver` determinista: restDay /
+  readyToStart / activeWorkout, duración inyectada, sin inventar) + tests (swift test 359/78).
+- iOS `TodayView.swift` (shell render-only, touch targets, estados claros, offline) enrutado
+  desde `ContentView`; target iOS ahora enlaza `PRDomain`; build iOS limpio.
+- Pendiente: cableado de programación real de la sesión de hoy (hoy → restDay hasta que
+  exista plan; sigue en historias de plan/schedule).
+
 ---
 
 ## PR-0602 — Active workout state machine

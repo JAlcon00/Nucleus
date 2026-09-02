@@ -9,24 +9,28 @@
 //
 
 import SwiftUI
+import PRDomain
 
 struct ContentView: View {
     @Environment(AppEnvironment.self) private var environment
 
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "figure.strengthtraining.traditional")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("PR")
-                .font(.largeTitle.bold())
-            Text("Tú entrenas. PR administra el resto.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-        }
-        .padding()
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("PR. Tú entrenas, PR administra el resto.")
+        // Pantalla "Hoy" (PR-0601). Estado derivado por `TodayScreenDriver`; el
+        // cableado con la programación real de sesiones llega en historias
+        // posteriores (hoy → día de descanso hasta que exista sesión planeada).
+        TodayView(
+            state: TodayScreenDriver().derive(todayTemplate: nil, activeSession: nil),
+            onStart: startWorkout,
+            onResume: resumeWorkout
+        )
+    }
+
+    private func startWorkout() {
+        // Intento de empezar sesión: la capa de aplicación lo gestiona (PR-0602).
+    }
+
+    private func resumeWorkout() {
+        // Intento de continuar sesión en curso.
     }
 }
 

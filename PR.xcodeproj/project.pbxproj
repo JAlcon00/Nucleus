@@ -10,6 +10,7 @@
 		B7DC00010000000000000001 /* PRCore in Frameworks */ = {isa = PBXBuildFile; productRef = B7DC00020000000000000002 /* PRCore */; };
 		B7DC00060000000000000001 /* PRCore in Frameworks */ = {isa = PBXBuildFile; productRef = B7DC00020000000000000002 /* PRCore */; };
 		B7DC00080000000000000001 /* PRDomain in Frameworks */ = {isa = PBXBuildFile; productRef = B7DC00070000000000000001 /* PRDomain */; };
+		B7DC00090000000000000001 /* PRDomain in Frameworks */ = {isa = PBXBuildFile; productRef = B7DC00070000000000000001 /* PRDomain */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +50,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B7DC00010000000000000001 /* PRCore in Frameworks */,
+				B7DC00090000000000000001 /* PRDomain in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -103,6 +105,7 @@
 			name = PR;
 			packageProductDependencies = (
 				B7DC00020000000000000002 /* PRCore */,
+				B7DC00070000000000000001 /* PRDomain */,
 			);
 			productName = PR;
 			productReference = 87DD72A230464C7100D2DF71 /* PR.app */;
