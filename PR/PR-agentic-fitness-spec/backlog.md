@@ -1411,6 +1411,9 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
 - **PR-1801 — Bodybuilding phase domain (DONE):** `BodybuildingPhase` + `BodybuildingPhaseController`
   en PRDomain (promptMaster §18.1). Fase de competición separada del `TrainingGoal`.
   Suite global 479 tests/92 suites green + build iOS OK sin warnings.
+- **PR-1802 — Specialization blocks (DONE):** `SpecializationBlockEngine` en PRDomain
+  (delega el volumen a PR-0502; especializa selects, mantiene no-prioritarios, valida el
+  presupuesto de tiempo). Suite global 485 tests/93 suites green + build iOS OK sin warnings.
 
 ---
 
@@ -1534,7 +1537,7 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
 
 ---
 
-## PR-1802 — Specialization blocks
+## PR-1802 — Specialization blocks — **DONE**
 **Priority:** P2  
 **Size:** L  
 **Dependencies:** PR-0502, PR-1801
@@ -1543,6 +1546,22 @@ Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core
 - selected muscles emphasize/specialize.
 - maintain targets for non-priorities.
 - time budget respected.
+
+### Implementación
+- `PRCore/Sources/PRDomain/Specialization.swift`: `SpecializationBlockEngine` que delega la
+  distribución de volumen a `VolumeAllocator` (PR-0502) y sólo selecciona/categoriza/valida:
+  `SpecializationSelection` (tiers `.specialize`/`.emphasize`), `SpecializationBlock` con
+  `specializedMuscles`/`maintainedMuscles` y `SpecializationTimeCheck` (minutes/set lo da el
+  llamador, desde `DurationEstimator`; el bloque reporta si cabe en el presupuesto semanal,
+  nunca lo rompe en silencio). No prioritaris se mantienen en su propio rango de tier.
+  Dependencias PR-0502 (`VolumeAllocator`) y PR-1801 (`BodybuildingPhase`/priorities) DONE.
+- `PRCore/Tests/PRDomainTests/SpecializationTests.swift`: 6 tests (specialize/emphasize volumen,
+  maintain no-prioritarios, time budget fits, sin selección, determinismo, validación).
+
+### Verificación (Prove)
+- `swift test`: 485 tests / 93 suites green (479/92 previos + 6 nuevos), 3 runs seguidos.
+- `swift build -c release`: sin warnings.
+- `xcodebuild -scheme PR` (iOS): build OK, 0 warnings.
 
 ---
 

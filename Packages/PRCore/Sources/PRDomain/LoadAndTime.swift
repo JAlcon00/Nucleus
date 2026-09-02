@@ -126,4 +126,5 @@ public enum DomainValidationError: Error, Equatable, Sendable {
     case invalidAdherencePlannedSets
     case invalidStreakWeek
     case invalidAchievementSnapshot
+    case invalidSpecializationInput
 }
