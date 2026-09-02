@@ -904,6 +904,11 @@ Dividir en subtareas según API real disponible.
 - excellent/normal/tired/veryTired/somethingHurts.
 - no obligatorio todos los días si policy no lo requiere.
 
+### Estado (2026-09-01)
+- PRDomain `FitnessCheckIn.swift` (`CheckInFeeling`, `PreWorkoutCheckIn` con coherencia
+  malestar⇔región, `CheckInPolicy` versionada vía `EvidenceRule` con `requiredEveryNDays`
+  y `CheckInEngine`) + tests (swift test 369/79). Sin Views. Desbloquea PR-1302.
+
 ---
 
 ## PR-1302 — RecoveryDecisionEngine v1
