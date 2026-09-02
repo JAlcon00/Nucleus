@@ -1255,6 +1255,57 @@ Etiquetar correlaciones como observadas, no causales.
 
 ---
 
+## PR-1608 — LLM provider abstraction + NVIDIA Hosted transport (Phase N1)
+
+**Priority:** P0  
+**Size:** L  
+**Dependencies:** PR-1603  
+**Doc:** `NEMOTRON_3_5_LIGHTNING_API.md` (§8, §20, §23, §34-35, §40, Phase N1)
+
+### Contexto
+El agente necesita un LLM real (`nvidia/nemotron-3.5-lightning-30b-a3b`). La app de
+producción NO puede contener la API key ni conocer los internals del proveedor (§22, §42):
+la key vive en un backend/entorno. Este slice construye la abstracción de proveedor y el
+transporte NVIDIA Hosted (fase de conectividad) EN LA CAPA DE APP/CORE (PRCore), nunca en
+el dominio (el dominio no usa networking; PR-1603 ya definió el contrato `AgentBackendTransport`).
+
+### Criterios de aceptación
+- abstracción de proveedor `LLMProvider` con `AgentRequest`/`AgentResponse` provider-agnostic
+  y `AgentExecutionMode` (fast/reasoning/deepReasoning) — no exponer params NVIDIA en dominio.
+- `NVIDIAHostedProvider`: mapea a Chat Completions (model/messages/temperature/max_tokens/
+  reasoning_budget/chat_template_kwargs) usando presets §40 según el execution mode.
+- mapa de errores §34 (401/403, 408/429, 422, 5xx) a errores tipados.
+- retry política §35 (retriable vs no) con intentos acotados.
+- `MockLLMProvider` para tests/offline.
+- key sólo en runtime/entorno; NUNCA embebida en el cliente.
+- no parsear texto libre: validar JSON contra schema local; no diagnosticar.
+
+### Acceptance final
+- [ ] hosted auth works (server-side key)
+- [x] provider abstraction exists
+- [x] fast non-thinking + reasoning request mapping
+- [x] JSON decoding + schema validation
+- [x] error + retry mapping testeados
+- [x] TrainerEngine sigue siendo autoritativo (sin LLM en decisiones deterministas)
+
+### Estado (2026-09-01)
+Primer slice N1 implementado, testado y con build verde en PRCore (capa app/core, NO dominio):
+- `AgentProvider.swift`: `LLMProvider` protocol provider-agnostic + `AgentRequest`/`AgentResponse`
+  (text/reasoning/finishReason/tokens) + `AgentExecutionMode` (fast/reasoning/deepReasoning) +
+  `AgentMessage`/`AgentToolDefinition`/`AgentFinishReason`/`AgentOutputRequirement`.
+- `NVIDIAChatModels.swift`: DTOs Chat Completions (`NVIDIAChatRequest` con reasoning_budget +
+  chat_template_kwargs.enable_thinking; `NVIDIAChatResponse` con choices[].message.content/
+  reasoning_content y usage).
+- `NVIDIAHostedProvider.swift`: mapeo payload según preset por modo (§40/§23); mapa de errores
+  §34 tipado; retry acotado con backoff/jitter (§35); key en header Authorization inyectada en
+  runtime — NUNCA en el body ni en el cliente (§22/§42).
+- `MockLLMProvider.swift`: mock determinista para tests/offline (§23).
+- 11 tests (Swift Testing, suite serializada) + suite global 380 tests/80 suites green + build
+  iOS OK. Pendiente N1: adaptador a `AgentBackendTransport` (puente a PR-1603) y validación
+  contra `TrainingRestriction` en la capa que lo consuma.
+
+---
+
 # EPIC-17 — Consistency & Gamification
 
 ## PR-1701 — Weekly adherence engine
