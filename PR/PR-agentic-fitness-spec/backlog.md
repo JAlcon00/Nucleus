@@ -994,6 +994,16 @@ Dividir en subtareas según API real disponible.
 - user-reported vs professional-guidance.
 - reviewDate no auto-resolve.
 
+### Estado (2026-09-01)
+- PRDomain `RestrictionManager.swift` (reglas de negocio fuera de Views): create/update
+  validan contenido accionable y exigen confirmación explícita para `professionalGuidance`
+  (§16.2); `review(asOf:)` sólo pasa `active`→`reviewNeeded` (NUNCA auto-resuelve); `resolve`
+  exige transición válida (sólo desde `reviewNeeded`) y confirmación para origen profesional.
+  + tests (13) en `RestrictionManagerTests.swift` (reutiliza `Restriction.swift` de PR-0106).
+- iOS render-only `RestrictionManagementView.swift` (lista + badges fuente/estado, sin reglas)
+  conectada en `ContentView` (primer destino NavigationLink). swift test 0 fallos; iOS build
+  limpio. Desbloquea PR-1402.
+
 ---
 
 ## PR-1402 — RestrictionPolicyEngine

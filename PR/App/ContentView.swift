@@ -15,14 +15,32 @@ struct ContentView: View {
     @Environment(AppEnvironment.self) private var environment
 
     var body: some View {
-        // Pantalla "Hoy" (PR-0601). Estado derivado por `TodayScreenDriver`; el
-        // cableado con la programación real de sesiones llega en historias
-        // posteriores (hoy → día de descanso hasta que exista sesión planeada).
-        TodayView(
-            state: TodayScreenDriver().derive(todayTemplate: nil, activeSession: nil),
-            onStart: startWorkout,
-            onResume: resumeWorkout
-        )
+        NavigationStack {
+            // Pantalla "Hoy" (PR-0601). Estado derivado por `TodayScreenDriver`; el
+            // cableado con la programación real de sesiones llega en historias
+            // posteriores (hoy → día de descanso hasta que exista sesión planeada).
+            TodayView(
+                state: TodayScreenDriver().derive(todayTemplate: nil, activeSession: nil),
+                onStart: startWorkout,
+                onResume: resumeWorkout
+            )
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    NavigationLink {
+                        // Gestión de restricciones (PR-1401). Sin restricciones por
+                        // defecto; el CRUD se conecta con la capa de dominio más adelante.
+                        RestrictionManagementView(
+                            restrictions: [],
+                            onCreate: {},
+                            onReview: { _ in },
+                            onResolve: { _ in }
+                        )
+                    } label: {
+                        Label("Restricciones", systemImage: "list.bullet.clipboard")
+                    }
+                }
+            }
+        }
     }
 
     private func startWorkout() {
