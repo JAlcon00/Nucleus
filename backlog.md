@@ -973,7 +973,8 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0904 — Substitution scoring engine
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-0301, PR-0106
+**Dependencies:** PR-0301, PR-0106  
+**Status:** DONE
 
 ### Criterios de aceptación
 - safety gate.
@@ -986,7 +987,8 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0905 — Reorder-before-replace
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-0702, PR-0902, PR-0904
+**Dependencies:** PR-0702, PR-0902, PR-0904  
+**Status:** DONE
 
 ### Criterios de aceptación
 - occupied intenta siguiente ejercicio compatible.

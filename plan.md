@@ -1341,6 +1341,48 @@ DONE. `Packages/PRCore/Sources/PRDomain/MissingEquipment.swift` (plan §9, RF-01
   nuevo, available/unknown no bloquean.
 - Suite global verde: **258 tests / 64 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0904 (Substitution scoring engine)
+
+DONE. `Packages/PRCore/Sources/PRDomain/SubstitutionScoring.swift` (promptMaster §10.3):
+
+- **Pesos versionados** via `EvidenceRule` (`safety.substitutionScoring`, versión rule
+  en el EvidenceRegistry, no constantes dispersas): muscle 0.30, movement pattern 0.20,
+  training role 0.15, angle 0.10, fatigue profile 0.08, stability 0.05, user history
+  0.05, preference 0.04, equipment confidence 0.03 (suman 1.00).
+  `SubstitutionScoringConfig` valida categoría `.safety`, claves presentes y suma 1.00.
+- **Safety gate** obligatorio: reutiliza `RestrictionPolicyEngine.safeSubstitutes`
+  (PR-1402). Un candidato prohibido por la política NUNCA se adopta (§16.2).
+- **`SubstitutionScoringEngine.substitutes(for:)`** → `SubstitutionVerdict`
+  (`.safe([ScoredSubstitute])` / `.noSafeSubstitute`). Ranking reproducible:
+  mayor score primero, empate → nombre canónico. Dimensiones desde `Exercise`
+  (músculo primario Jaccard, patrón, rol, ángulo, perfil de fatiga coseno,
+  estabilidad, historial/preferencia del usuario, confianza de equipamiento vía
+  `GymProfile`).
+- Tests (`Tests/PRDomainTests/SubstitutionScoringTests.swift`): pesos suman 1.00,
+  rechazo de pesos no unitarios, ranking reproducible, mejor equivalente lidera,
+  historial/preferencia elevan score, gate excluye prohibidos, no-safe-substitute
+  con todas prohibidas / sin candidatas, máquina ocupada baja el score.
+- Suite global verde: **554 tests / 101 suites** (`swift test`); iOS Debug build verde.
+
+### Estado PR-0905 (Reorder-before-replace)
+
+DONE. `Packages/PRCore/Sources/PRDomain/ReorderController.swift` (plan §9, RF-010):
+
+- **`ReorderBeforeReplaceController`**: cuando un equipo está ocupado, localiza el
+  primer ejercicio de la sesión restante que usa ese equipo (el "bloqueado") e intenta
+  adelantar el siguiente ejercicio **compatible y libre**.
+- **GATE de interferencia por fatiga** (reusa `FatigueInterferenceEngine`): el candidato
+  sólo se adopta si el reorder NO aumenta la interferencia respecto al orden base. Así
+  NUNCA mueve un ejercicio de prioridad baja (p.ej. triceps) antes de un movimiento
+  prioritario (p.ej. priority bench) si la interferencia lo excede.
+- **`.substitute(blocked:)`** si no hay reorder seguro (deja sitio a la sustitución
+  PR-0904); `.unchanged` sin ocupación relevante. Salida auditable con `DecisionFact`.
+- Tests (`Tests/PRDomainTests/ReorderControllerTests.swift`, 5): adelanta compatible
+  libre, no triceps antes de priority bench (interferencia excede threshold),
+  sin reorder seguro ofrece sustitución, unchanged sin ocupación, un solo ejercicio
+  ocupado → sustitución.
+- Suite global verde: **554 tests / 101 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion
