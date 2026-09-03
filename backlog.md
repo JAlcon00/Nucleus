@@ -322,7 +322,8 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 ## PR-0203 — Pending operation queue
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-0202
+**Dependencies:** PR-0202  
+**Status:** DONE
 
 ### Criterios de aceptación
 - Operaciones críticas tienen idempotency ID.

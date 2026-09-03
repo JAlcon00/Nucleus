@@ -991,6 +991,16 @@ DONE. Persistencia local offline-first detrás de los protocolos `Repository`.
 - Tests de integración (`Tests/PRCoreTests/CodableRepositoriesTests.swift`): round-trip por entidad, relaciones (sets dentro de sesión), delete policies, perfil único, persistencia atómica a disco.
 - Suite global verde: **82 tests / 33 suites** (`swift test`); iOS Debug build verde; watchOS no compilable en este entorno (runtime no instalado, como en PR-0001).
 
+### Estado PR-0203 (Pending operation queue)
+
+DONE. Cola de operaciones pendientes offline-first con idempotencia.
+
+- `Sources/PRDomain/PendingOperations.swift`: `PendingOperation` (idempotencyKey, kind, payload, createdAt) + `PendingOperationQueue` (dedup por key e id, orden por createdAt, filtro por kind, Codable). El dedupe lo decide el **dominio** (arquitectura determinista), no el LLM.
+- `Sources/PRCore/PendingOperationStore.swift`: `PendingOperationQueueStore` (persistencia atómica sobre `RepositoryStore`) + `SetPersistenceGuard` — `enqueueSetSave` (idempotencyKey = `set.id.rawValue.persistenceKey`) y `drainSetOperations` (re-aplica sets pendientes de forma idempotente y los retira de la cola; si la sesión aún no existe, conserva la operación para reintentar).
+- Garantiza el invariante *"retry no duplica SetRecord"* y que la app siga funcionando aunque el backend esté apagado (PR-0203 AC).
+- Tests: `Tests/PRDomainTests/PendingOperationTests.swift` + `Tests/PRCoreTests/PendingOperationStoreTests.swift` (14 tests: dedup por key e id, orden, Codable round-trip, drain idempotente, no pérdida cuando falta la sesión).
+- Suite global verde: **551 tests / 101 suites** (`swift test`); iOS Debug build verde.
+
 ### Estado PR-0301 (Exercise catalog seed)
 
 DONE. Catálogo inicial versionado con import idempotente.
