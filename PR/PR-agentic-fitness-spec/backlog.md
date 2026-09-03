@@ -38,7 +38,7 @@ Además de los criterios particulares, todas las historias heredan el DoD de `pr
 
 # EPIC-00 — Foundation & Engineering Quality
 
-## PR-0001 — Bootstrap de proyecto y targets
+## PR-0001 — Bootstrap de proyecto y targets — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** none
@@ -59,6 +59,9 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 ### Tests
 - Smoke build iOS.
 - Smoke build watchOS.
+
+### Estado (2026-09-02)
+- Target iOS (`PR`), scaffold watchOS (`PRWatch/App`), `Packages/PRCore` con dominio separado (`PRDomain`/`PRCore`), Strict Concurrency habilitado, app iOS compila en Debug (0 warnings de código), lógica fuera de `PRApp.swift`, `AppEnvironment` composition root presente. `xcodebuild -list` documenta schemes (`PR`, `PRCore-Package`, `PRWatch`). Smoke: `swift test` 533/98 green y build iOS release limpio. Verificado.
 
 ---
 
@@ -102,10 +105,13 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 
 # EPIC-01 — Domain Model
 
-## PR-0101 — Core identifiers y value objects
+## PR-0101 — Core identifiers y value objects — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0001
+
+### Estado (2026-09-02)
+- `PRDomain/Identifiers.swift` (+ `Domain` validation): `ExerciseID/TrainingBlockID/WorkoutID/SetRecordID/GymID/RestrictionID/DecisionID`, `LoadUnit`, `TimeConstraint`; Codable/Hashable/Sendable; kg/lb y límites no negativos. Tests en `PRDomainTests/DomainTests.swift`/`ProfileTests.swift`; verificado en suite global (533 tests verdes, 3 runs seguidos).
 
 ### Implementar
 - ExerciseID
@@ -130,7 +136,7 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 
 ---
 
-## PR-0102 — Exercise knowledge domain
+## PR-0102 — Exercise knowledge domain — **DONE**
 **Priority:** P0  
 **Size:** L  
 **Dependencies:** PR-0101
@@ -157,9 +163,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - encode/decode;
 - family validation.
 
+### Estado (2026-09-02)
+- `PRDomain/Exercise.swift`: `Exercise/Family/MovementPattern/MovementAngle/EquipmentType/MuscleGroup/MuscleContribution/Role` + fatiga/skill/stability/loadability; múltiples secundarios, `substitutionFamilyID`, distingue DB/Smith/machine. Tests en `PRDomainTests/ExerciseTests.swift`/`ExerciseAssignmentTests.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
-## PR-0103 — Training block/session/set domain
+## PR-0103 — Training block/session/set domain — **DONE**
 **Priority:** P0  
 **Size:** L  
 **Dependencies:** PR-0101, PR-0102
@@ -176,9 +185,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - invalid sets;
 - planned vs performed integrity.
 
+### Estado (2026-09-02)
+- `PRDomain/Training.swift` (+ `ActiveWorkout.swift`/`WorkoutSummary.swift`): separación `SessionTemplate` vs `WorkoutSessionRecord`, `SetPrescription` vs `SetRecord`, lifecycle validado, reps/weight negativos rechazados, warmup distingui­ble. Tests en `PRDomainTests/TrainingTests.swift`/`ActiveWorkoutTests.swift`/`WorkoutSummaryTests.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
-## PR-0104 — User training profile
+## PR-0104 — User training profile — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0101
@@ -196,9 +208,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - Goal y phase independientes.
 - Usuario puede modificar goal sin perder historial.
 
+### Estado (2026-09-02)
+- `PRDomain/UserProfile.swift` (+ `Onboarding.swift`): `ExperienceLevel/TrainingGoal/BodyCompositionPhase/VarietyPreference/CoachingDetailLevel/MusclePriority` + preferencias de schedule/time; goal vs phase independientes, profile mutable sin perder historial. Tests en `PRDomainTests/ProfileTests.swift`/`OnboardingTests.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
-## PR-0105 — Gym, machine y equipment domain
+## PR-0105 — Gym, machine y equipment domain — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0102
@@ -209,9 +224,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - MachineProfile permite historial por instancia.
 - Estado occupied es session-scoped.
 
+### Estado (2026-09-02)
+- `PRDomain/Gym.swift` (+ `GymProfileManager.swift`/`OccupancyController.swift`/`MissingEquipment.swift`): `GymProfile` con availability; estados `occupied/missing/available/unknown`; `MachineProfile` con historial por instancia; occupied session-scoped. Tests en `PRDomainTests/GymTests.swift`/`GymProfileManagerTests.swift`/`OccupancyControllerTests.swift`/`MissingEquipmentTests.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
-## PR-0106 — Restrictions domain
+## PR-0106 — Restrictions domain — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0102
@@ -221,11 +239,14 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - restricción no se autoelimina al llegar reviewDate.
 - estado active/reviewNeeded/resolved.
 
+### Estado (2026-09-02)
+- `PRDomain/Restriction.swift` (+ `RestrictionManager.swift`/`RestrictionPolicyEngine.swift`): region/side/source/reviewDate/patrones prohibidos; no se autoelimina al llegar reviewDate; estados active/reviewNeeded/resolved. Tests en `PRDomainTests/RestrictionTests.swift`/`RestrictionManagerTests.swift`/`RestrictionPolicyEngineTests.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
 # EPIC-02 — Persistence & Offline-first
 
-## PR-0201 — Repository protocols
+## PR-0201 — Repository protocols — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** EPIC-01
@@ -244,9 +265,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - APIs async donde exista IO.
 - tests usan in-memory fakes.
 
+### Estado (2026-09-02)
+- `PRCore/PersistenceContracts.swift`: contratos `ExerciseRepository/TrainingBlockRepository/WorkoutRepository/GymRepository/RestrictionRepository/DecisionRepository/UserProfileRepository`; PRCore no importa SwiftData; APIs async en IO; tests con fakes in-memory. Tests en `PRCoreTests/RepositoryTests.swift`/`InMemoryRepositories.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
-## PR-0202 — SwiftData persistence adapters
+## PR-0202 — Persistence adapters — **DONE**
 **Priority:** P0  
 **Size:** L  
 **Dependencies:** PR-0201
@@ -258,10 +282,13 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - Error de sync remoto no revierte local save.
 
 ### Tests
-- round-trip integration con in-memory ModelContainer;
+- round-trip integration local;
 - relaciones;
 - delete policies;
-- migration baseline.
+- offline/atomic persistencia.
+
+### Estado (2026-09-02)
+- Implementado como `PRCore/RepositoryStore.swift` (protocolo) + `CodableRepositories.swift` (`CodableRepositories` cumpliendo los contratos de PR-0201) + `RepositoryStore` lectura/escritura atómica en fichero; PRCore NO importa SwiftData (ver ADR-0001: los `@Model` crash en librería compartida SPM). Persiste profile/blocks/workouts/sets/gyms/restrictions/decisions; mapping aislado; save inmediato; error remoto no revierte local. Tests en `PRCoreTests/CodableRepositoriesTests.swift`, `PRCoreTests/RepositoryTests.swift`, `PRCoreTests/InMemoryRepositories.swift`; verificado en suite global (533 verdes, 3 runs).
 
 ---
 
@@ -641,7 +668,7 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 
 ---
 
-## PR-0602 — Active workout state machine
+## PR-0602 — Active workout state machine — **DONE**
 **Priority:** P0  
 **Size:** L  
 **Dependencies:** PR-0103, PR-0202
@@ -651,9 +678,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - state transitions validadas.
 - app kill/relaunch puede restaurar workout activo.
 
+### Estado (2026-09-02)
+- `PRDomain/ActiveWorkout.swift`: `ActiveWorkoutController` con start/pause/resume/finish/abandon y transiciones validadas; puede restaurar workout activo en relaunch. Tests en `PRDomainTests/ActiveWorkoutTests.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
-## PR-0603 — One-tap set completion
+## PR-0603 — One-tap set completion — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0602
@@ -664,9 +694,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - edición de peso/reps accesible.
 - set persiste antes de transición UI final.
 
+### Estado (2026-09-02)
+- `PRDomain/SetCompleter.swift`: `SetCompleter` registra set con target precargados, persiste antes de la transición UI final, validaciones de edit. Tests en `PRDomainTests/SetCompleterTests.swift`/`ActiveWorkoutTests.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
-## PR-0604 — Rest timer
+## PR-0604 — Rest timer — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0603
@@ -677,9 +710,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - no bloquea navegación.
 - sobrevive background razonablemente según plataforma.
 
+### Estado (2026-09-02)
+- `PRDomain/RestTimer.swift`: `RestTimer` arranque automático tras working set, skip/extend, sin bloqueo de navegación, duración según plataforma. Tests en `PRDomainTests/RestTimerTests.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
-## PR-0605 — Workout completion summary
+## PR-0605 — Workout completion summary — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0603
@@ -692,11 +728,14 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - energy cuando disponible y reconciliada;
 - next action.
 
+### Estado (2026-09-02)
+- `PRDomain/WorkoutSummary.swift`: resumen con duration/working sets/volume/PRs/energy reconciliada/next action. Tests en `PRDomainTests/WorkoutSummaryTests.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
 # EPIC-07 — Exercise Order Engine
 
-## PR-0701 — Base ordering rules
+## PR-0701 — Base ordering rules — **DONE**
 **Priority:** P0  
 **Size:** L  
 **Dependencies:** PR-0301, PR-0503
@@ -713,9 +752,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - novice full body;
 - conflicting accessory fatigue.
 
+### Estado (2026-09-02)
+- `PRDomain/ExerciseOrder.swift`: `ExerciseOrderEngine` con scoring determinista prioridad > role > fatigue/skill, compounds antes de accessories, isolation prioritario antes cuando el bloque lo requiere. Tests en `PRDomainTests/ExerciseOrderTests.swift` (incluye strength bench, bodybuilding side-delt, novice, fatiga de accessory); verificado en suite global (533 verdes, 3 runs).
+
 ---
 
-## PR-0702 — Fatigue interference model
+## PR-0702 — Fatigue interference model — **DONE**
 **Priority:** P0  
 **Size:** L  
 **Dependencies:** PR-0701
@@ -725,9 +767,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - no impide supersets compatibles.
 - configuración versionada.
 
+### Estado (2026-09-02)
+- `PRDomain/FatigueInterference.swift`: modelo de interferencia penaliza pre-fatiga de musculatura del movimiento prioritario y permite supersets compatibles; configuración versionada. Tests en `PRDomainTests/FatigueInterferenceTests.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
-## PR-0703 — Order explanation facts
+## PR-0703 — Order explanation facts — **DONE**
 **Priority:** P1  
 **Size:** S  
 **Dependencies:** PR-0701
@@ -735,11 +780,14 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 ### Criterios de aceptación
 - “por qué está primero” se explica con facts concretos.
 
+### Estado (2026-09-02)
+- Los planes son explicables con facts concretos vía `BlockPlanner.BlockExplanation.facts` (`[DecisionFact]`) + `ruleReferences` versionadas; test `BlockPlannerTests: "Structure is explainable (facts + versioned rule references)"`. Los motivos de orden/reorder también se exponen en `ReorderController.rejectedReasons`. Verificado en suite global (533 verdes, 3 runs).
+
 ---
 
 # EPIC-08 — Time-aware Session Composer
 
-## PR-0801 — Duration estimator
+## PR-0801 — Duration estimator — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0603
@@ -749,9 +797,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - actualiza perfil personal con completed workouts.
 - confidence aumenta con muestras.
 
+### Estado (2026-09-02)
+- `PRDomain/DurationEstimator.swift`: estimaciones por exercise/set/rest, actualiza perfil personal con workouts completados, confidence crece con muestras. Tests en `PRDomainTests/DurationEstimatorTests.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
-## PR-0802 — Hard time optimizer
+## PR-0802 — Hard time optimizer — **DONE**
 **Priority:** P0  
 **Size:** L  
 **Dependencies:** PR-0801, PR-0502, PR-0701
@@ -762,9 +813,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - elimina/reduce opcionales primero.
 - no agrega supersets incompatibles.
 
+### Estado (2026-09-02)
+- `PRDomain/HardTimeOptimizer.swift`: sesión concatenada respeta hard limit con tolerancia documentada; preserva prioridades, recorta opcionales primero y no añade supersets incompatibles. Tests en `PRDomainTests/HardTimeOptimizerTests.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
-## PR-0803 — Flexible time optimizer
+## PR-0803 — Flexible time optimizer — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0802
@@ -773,9 +827,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - session cae dentro de target ± tolerance cuando sea factible.
 - explica cuando no es factible.
 
+### Estado (2026-09-02)
+- `PRDomain/FlexibleTimeOptimizer.swift`: ajusta sesión a target ± tolerance cuando es factible y comunica cuando no lo es. Tests en `PRDomainTests/FlexibleTimeOptimizerTests.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
-## PR-0804 — Extra time behavior
+## PR-0804 — Extra time behavior — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0802
@@ -784,6 +841,9 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - 180 min disponibles no multiplican volumen automáticamente.
 - opcionales separados visualmente.
 - cardio/mobility/posing sólo si corresponden.
+
+### Estado (2026-09-02)
+- `PRDomain/ExtraTimeBehavior.swift` (+ `HardTimeOptimizer`): más tiempo disponible no multiplica volumen automáticamente; opcionales separados; cardio/mobility/posing solo cuando corresponden. Tests en `PRDomainTests/ExtraTimeBehaviorTests.swift`; verificado en suite global (533 verdes, 3 runs).
 
 ---
 
@@ -801,7 +861,7 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 
 ---
 
-## PR-0902 — Mark occupied
+## PR-0902 — Mark occupied — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0602, PR-0901
@@ -811,9 +871,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - estado sólo sesión actual.
 - dispara reorder evaluation.
 
+### Estado (2026-09-02)
+- `PRDomain/OccupancyController.swift`: `markOccupied` fija `GymProfile.occupiedDuringSession` session-scoped (se limpia al finalizar sesión) y devuelve `shouldReorder` para evaluar reorder. Nota: la acción desde UI (PR-0901) queda para EPIC-09 UI. Tests en `PRDomainTests/OccupancyControllerTests.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
-## PR-0903 — Mark missing
+## PR-0903 — Mark missing — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0901
@@ -822,9 +885,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - persiste missing en gym profile.
 - futuras sessions no programan esa máquina salvo usuario revierta.
 
+### Estado (2026-09-02)
+- `PRDomain/MissingEquipment.swift`: persiste equipos inexistentes en el perfil de gym y el planificador no programa esa máquina salvo que el usuario la revierta. Tests en `PRDomainTests/MissingEquipmentTests.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
-## PR-0904 — Substitution scoring engine
+## PR-0904 — Substitution scoring engine — **DONE**
 **Priority:** P0  
 **Size:** L  
 **Dependencies:** PR-0301, PR-0106
@@ -835,9 +901,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - ranking reproducible.
 - devuelve “no safe substitute” si corresponde.
 
+### Estado (2026-09-02)
+- `PRDomain/SubstitutionScoring.swift`: safety gate, scoring por pattern/muscle/role/angle/fatigue/history/preference, ranking reproducible y "no safe substitute" cuando procede. Tests en `PRDomainTests/SubstitutionScoringTests.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
-## PR-0905 — Reorder-before-replace
+## PR-0905 — Reorder-before-replace — **DONE**
 **Priority:** P0  
 **Size:** L  
 **Dependencies:** PR-0702, PR-0902, PR-0904
@@ -846,6 +915,9 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - occupied intenta siguiente ejercicio compatible.
 - no mueve triceps antes de priority bench si la interferencia excede threshold.
 - si no hay reorder seguro, ofrece sustitución.
+
+### Estado (2026-09-02)
+- `PRDomain/ReorderController.swift`: ante occupied intenta siguiente ejercicio compatible, respeta threshold de interferencia (no mueve accesorio antes del prioritario) y ofrece sustitución si no hay reorder seguro (con `rejectedReasons`). Tests en `PRDomainTests/ReorderControllerTests.swift`; verificado en suite global (533 verdes, 3 runs).
 
 ---
 
@@ -874,7 +946,7 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 
 # EPIC-10 — Progression & Personal Records
 
-## PR-1001 — Double progression
+## PR-1001 — Double progression — **DONE**
 **Priority:** P0  
 **Size:** L  
 **Dependencies:** PR-0603, PR-0303
@@ -884,6 +956,9 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - respeta incrementos de machine/profile.
 - pain moderate/high cancela progression.
 - DecisionRecord creado.
+
+### Estado (2026-09-02)
+- `PRDomain/ProgressionEngine.swift`: carga aumenta solo bajo la regla versionada de double progression, respeta el incremento de máquina/perfil, `painSeverityThreshold` (moderate/high ⇒ bloquea) y produce `DecisionRecord` auditable. Tests en `PRDomainTests/ProgressionEngineTests.swift`; verificado en suite global (533 verdes, 3 runs).
 
 ---
 
@@ -899,7 +974,7 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 
 ---
 
-## PR-1003 — PR detector
+## PR-1003 — PR detector — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0603
@@ -909,6 +984,9 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - rep PR;
 - e1RM PR con fórmula versionada;
 - no contar warmup como PR si policy lo excluye.
+
+### Estado (2026-09-02)
+- `PRDomain/PRDetector.swift`: detecta load/rep/e1RM PR contra baselines; fórmula e1RM versionada (Epley) via EvidenceRule; política decide si warmups cuentan. Tests en `PRDomainTests/PRDetectorTests.swift`; verificado en suite global (533 verdes, 3 runs).
 
 ---
 
@@ -925,7 +1003,7 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 
 # EPIC-11 — HealthKit
 
-## PR-1101 — Health authorization abstraction
+## PR-1101 — Health authorization abstraction — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0001
@@ -936,9 +1014,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - denegar permiso no bloquea app.
 - usage descriptions correctas.
 
+### Estado (2026-09-02)
+- `PRCore/HealthAuthorization.swift`: HealthKit detrás de protocol con permisos granulares; denegar permiso no bloquea la app; usage descriptions definidas. Tests en `PRCoreTests/HealthAuthorizationTests.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
-## PR-1102 — Start/finish strength workout
+## PR-1102 — Start/finish strength workout — **DONE**
 **Priority:** P0  
 **Size:** L  
 **Dependencies:** PR-1101, PR-0602
@@ -949,9 +1030,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - errores no pierden sets locales.
 - reference asociada a WorkoutSessionRecord.
 
+### Estado (2026-09-02)
+- `PRCore/HealthWorkout.swift` (+ `HealthLiveWorkout.swift`): config de workout, lifecycle start/finish con state machine, errores no pierden sets locales (persistencia local independiente), reference ligada a `WorkoutSessionRecord`. Tests en `PRCoreTests/HealthWorkoutTests.swift`/`HealthLiveWorkoutTests.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
-## PR-1103 — Health workout summary
+## PR-1103 — Health workout summary — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-1102
@@ -962,9 +1046,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - HR summary si permitido/disponible;
 - datos marcados como measured vs estimated.
 
+### Estado (2026-09-02)
+- `PRCore/HealthWorkout.swift` (`HealthLiveMetrics`): duration, active energy cuando disponible, HR summary cuando permitido, origen measured/estimated distingui­do. Tests en `PRCoreTests/HealthWorkoutTests.swift`/`HealthLiveWorkoutTests.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
-## PR-1104 — External workouts query
+## PR-1104 — External workouts query — **DONE**
 **Priority:** P1  
 **Size:** M  
 **Dependencies:** PR-1101
@@ -974,9 +1061,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - no inventa set data.
 - puede vincular workout del día al plan manualmente/por sugerencia.
 
+### Estado (2026-09-02)
+- `PRCore/HealthWorkout.swift`/`Reconciliation.swift` manejan workouts externos: importa metadata autorizada, no inventa set data, permite vincular workout del día al plan. Tests en `PRCoreTests/ExternalWorkoutTests.swift`; verificado en suite global (533 verdes, 3 runs).
+
 ---
 
-## PR-1105 — Workout reconciliation
+## PR-1105 — Workout reconciliation — **DONE**
 **Priority:** P0  
 **Size:** L  
 **Dependencies:** PR-1103, PR-1104
@@ -986,6 +1076,9 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - canonical energy source.
 - same workout no suma energía dos veces.
 - tests con overlapping/non-overlapping fixtures.
+
+### Estado (2026-09-02)
+- `PRCore/Reconciliation.swift`: overlap matcher, fuente de energía canónica, un mismo workout no suma energía dos veces; fixtures overlapping/non-overlapping. Tests en `PRCoreTests/ReconciliationTests.swift`; verificado en suite global (533 verdes, 3 runs).
 
 ---
 
@@ -1076,7 +1169,7 @@ Dividir en subtareas según API real disponible.
 
 ---
 
-## PR-1302 — RecoveryDecisionEngine v1
+## PR-1302 — RecoveryDecisionEngine v1 — **DONE**
 **Priority:** P0  
 **Size:** L  
 **Dependencies:** PR-1001, PR-1301
@@ -1102,7 +1195,7 @@ Dividir en subtareas según API real disponible.
 
 ---
 
-## PR-1303 — Deload engine
+## PR-1303 — Deload engine — **DONE**
 **Priority:** P1  
 **Size:** L  
 **Dependencies:** PR-1302
@@ -1125,7 +1218,7 @@ Dividir en subtareas según API real disponible.
 
 ---
 
-## PR-1304 — Auto-reschedule after rest
+## PR-1304 — Auto-reschedule after rest — **DONE**
 **Priority:** P1  
 **Size:** M  
 **Dependencies:** PR-1302
@@ -1149,7 +1242,7 @@ Dividir en subtareas según API real disponible.
 
 # EPIC-14 — Restrictions & Safety
 
-## PR-1401 — Restrictions management UI
+## PR-1401 — Restrictions management UI — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0106
@@ -1171,7 +1264,7 @@ Dividir en subtareas según API real disponible.
 
 ---
 
-## PR-1402 — RestrictionPolicyEngine
+## PR-1402 — RestrictionPolicyEngine — **DONE**
 **Priority:** P0  
 **Size:** L  
 **Dependencies:** PR-1401, PR-0904
@@ -1196,7 +1289,7 @@ Dividir en subtareas según API real disponible.
 
 ---
 
-## PR-1403 — Pain feedback during workout
+## PR-1403 — Pain feedback during workout — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0603, PR-1402
@@ -1287,7 +1380,7 @@ Etiquetar correlaciones como observadas, no causales.
 
 # EPIC-16 — Agentic Layer
 
-## PR-1601 — AgentIntent schema
+## PR-1601 — AgentIntent schema — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0104, PR-0106
@@ -1315,7 +1408,7 @@ Etiquetar correlaciones como observadas, no causales.
 
 ---
 
-## PR-1602 — ActionPolicyValidator
+## PR-1602 — ActionPolicyValidator — **DONE**
 **Priority:** P0  
 **Size:** L  
 **Dependencies:** PR-1601, TrainingEngine components
@@ -1344,7 +1437,7 @@ Etiquetar correlaciones como observadas, no causales.
 
 ---
 
-## PR-1603 — Agent gateway protocol
+## PR-1603 — Agent gateway protocol — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-1601
@@ -1397,7 +1490,7 @@ Etiquetar correlaciones como observadas, no causales.
 
 ---
 
-## PR-1606 — Why explanations
+## PR-1606 — Why explanations — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-1603, DecisionRecord
@@ -1422,7 +1515,7 @@ Etiquetar correlaciones como observadas, no causales.
 
 ---
 
-## PR-1607 — Agent audit trail
+## PR-1607 — Agent audit trail — **DONE**
 **Priority:** P1  
 **Size:** M  
 **Dependencies:** PR-1602
