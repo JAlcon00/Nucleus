@@ -907,6 +907,21 @@ Implementado y verificado:
 
 **Fix de build:** los `.md`/spec dentro de la carpeta sincronizada `PR/` se excluyen del target vía `PBXFileSystemSynchronizedBuildFileExceptionSet` para evitar el error "Multiple commands produce".
 
+### Estado PR-0003 (Logging seguro)
+
+DONE. `Packages/PRCore/Sources/PRCore/SafeLogging.swift` + `SafeLoggingTests.swift`: wrapper
+`Sendable` sobre `os.Logger` (`PRLogger`) con categorías tipadas `LogCategory`
+(app, workout, health, sync, agent, persistence) y `subsystem` por defecto; `LogLevel`
+(debug/info/notice/error/fault) mapeado a los métodos de `Logger`. La redacción es un
+`LogRedactor` puro (formateo propio, testeable sin el unified logging system): NUNCA
+loguea notas de lesión/dolor, ids de sample de salud (UUID), tokens (`Bearer`/`sk-`/`tok_`/
+JWT sensibles) ni Apple identifiers (`userIdentifier`); los valores se interpolan con
+privacidad por defecto del sistema (nunca `.public`). Tests (10) en `SafeLoggingTests.swift`
+(PRCore): seis categorías, logger por categoría, nota de lesión redactada, entrada de
+dolor/lesión oculta por clave, sample de salud redactado, tokens por prefijo, JWT explícito
+reemplazado, Apple identifier redactado, clave token/secret oculta entera, y datos no
+sensibles conservados. Verificado con `swift test --filter SafeLoggingTests`: 10/10 verdes.
+
 ### Estado PR-0101 (Core identifiers y value objects)
 
 DONE. Implementado en `Packages/PRCore/Sources/PRDomain/`:
@@ -1036,6 +1051,39 @@ DONE. Búsqueda offline del catálogo (`Packages/PRCore/Sources/PRDomain/Exercis
 - Test de rendimiento sobre el catálogo real (`Tests/PRCoreTests/ExerciseSearchPerfTests.swift`): **<100 ms** sobre los 678 ejercicios del bundle (cumple criterio PR-0302).
 - Suite global verde: **125 tests / 45 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0401 (Sign in with Apple)
+
+DONE. `Packages/PRCore/Sources/PRCore/AuthTypes.swift` + `AppleIDAuthCoordinator.swift` y la
+implementación de producción `PR/App/Auth/SignInWithAppleProvider.swift`. AuthenticationServices
+queda detrás de `AppleIDAuthProviding` (protocolo): el coordinador (`AppleIDAuthCoordinator`,
+`@Observable`) es testeable con fake y no importa HealthKit ni AuthenticationServices (RF-001). El
+provider real (capa app) usa `ASAuthorizationController` y sólo conserva el `user` opaco; el
+credential token/email NO se persisten (RF-0401). Maneja success/cancel/failure: cancel vuelve a
+`idle` sin alerta; primer login crea `LocalUserProfile` con `isFirstLogin`. Tests
+(`Packages/PRCore/Tests/PRCoreTests/AuthCoordinatorTests.swift`, 8): success crea perfil, transición
+UI a `signedIn`, cancel→idle, failure expone mensaje sin perfil, identificador vacío→error, no se
+persiste token sensible, reset conserva perfil, signOut descarta perfil. Verificado con `swift test
+--filter AuthCoordinatorTests`: 8/8 verdes.
+
+### Estado PR-0402 (Onboarding profile flow)
+
+DONE. `Packages/PRCore/Sources/PRDomain/Onboarding.swift` (dominio) +
+`Packages/PRCore/Sources/PRCore/OnboardingCoordinator.swift` (app-core wiring) + vistas
+`PR/App/Onboarding/*.swift`. Todas las reglas viven en el dominio:
+`OnboardingProfileBuilder.build` valida **2...7 días/semana y 20...240 min/sesión**
+(Onboarding.swift:162-163) y construye `OnboardingProfile` con goal, phase, experience,
+daysPerWeek, sessionMinutes, variety, gym opcional (defaultGymID) y restrictions
+opcionales. `OnboardingFlowController` conserva el borrador al `goBack()` (respuestas
+no se pierden). `OnboardingCoordinator` es app-core sin reglas: delega en los engines y
+expone `phase` observable; las vistas son renderizadores puros sin lógica de validación.
+Tests (22): 11 en `OnboardingTests.swift` (PRDomain) — perfil completo, días/minutos
+fuera de rango lanzan, boundaries aceptados (2/7, 20/240), paso requerido faltante,
+gym/restricciones opcionales propagan, back preserva respuestas, avance bloqueado sin
+respuesta, pasos opcionales avanzan sin responder, faltan pasos ⇒ error, límites
+respetados; 11 en `OnboardingCoordinatorTests.swift` (PRCore) — auth-gate, navegación,
+goBack preserva, complete construye, complete no inventa respuestas, no requiere
+HealthKit. Verificado con `swift test --filter Onboarding`: 22 tests verdes en 2 suites.
+
 ### Estado PR-0501 (Split selector)
 
 DONE. `Packages/PRCore/Sources/PRDomain/SplitSelector.swift` (promptMaster §8.2):
@@ -1147,6 +1195,20 @@ DONE. `Packages/PRCore/Sources/PRDomain/BlockPlanner.swift` (plan §4F):
   (Codable round-trip), rechazo de semanas/prioridades inválidas, explicabilidad,
   rebuild → ID nuevo sin borrar, determinismo y exclusión por restricciones.
 - Suite global verde: **177 tests / 53 suites** (`swift test`); iOS Debug build verde.
+
+### Estado PR-0601 (Today screen)
+
+DONE. `Packages/PRCore/Sources/PRDomain/TodayScreen.swift` (driver determinista puro) +
+`Packages/PRCore/Sources/PRCore/TodayPlanCoordinator.swift` (cablea un plan REAL generado:
+`BlockPlanner` → block → rotación semanal determinista a la template de hoy → duración
+estimada) + vista `PR/App/TodayView.swift` (un CTA principal por estado, ≤2 acciones
+"Empezar/Continuar"). Muestra sesión, duración estimada y CTA; funciona offline (sin red)
+y distingue estado de descanso/sin-entrenamiento (`restDay` / `readyToStart` / `activeWorkout`).
+Nunca inventa duración. Tests (14): `TodayScreenTests.swift` (10) —
+`restDayWithoutTemplate`, `trainingDayYieldsReadyToStart`, `restDayYieldsRestDay`,
+`activeWorkoutShowsResume`, `emptyTemplateIsRestDay`, determinismo/offline; y
+`TodayPlanCoordinatorTests.swift` (4) — plan real generado. Verificado con `swift test
+--filter Today`: 14/14 verdes.
 
 ### Estado PR-0602 (Active workout state machine)
 
@@ -1490,6 +1552,19 @@ no puede evadir restricciones; no escribe repos directamente; gate de dolor; gen
 
 DONE. `Packages/PRCore/Sources/PRDomain/AgentGateway.swift` + `AgentGatewayTests.swift`:
 interpreta/explica con timeout y retry acotados; fallback local si el backend no responde.
+
+### Estado PR-1606 (Why explanations)
+
+DONE. Explicación del "por qué" que usa SÓLO los `DecisionFact` suministrados
+(`Packages/PRCore/Sources/PRDomain/AgentGateway.swift` → `LocalFallbackExplainer.explain`,
+`PRCore/LLMBackendTransport.swift.explain`, `PRDomain/AgentActionWriter.swift`
+`askWhy(DecisionID)`). Fallback de plantilla determinista funciona offline (1–4 razones
+concretas, `prefix(4)`); backend retry acotado y si vacío/no parseable ⇒ fallback local.
+Cada engine emite `DecisionFact`/`explanationFacts` que alimentan al explicador. Tests
+verdes: `AgentGatewayTests` (12, offline fallback, límite a 4 razones, backend/fallback local,
+no guarda key), `AgentActionWriterTests` (10, preview read-only), `LLMBackendTransportTests`
+(15, explain desde facts, strips bullets, límite a 4, unparseable⇒empty), `AgentIntentTests`
+(14, `askWhy(DecisionID)`). 51 tests en 4 suites.
 
 ### Estado PR-1701 (Weekly adherence engine)
 

@@ -80,7 +80,8 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 ## PR-0003 — Logging seguro
 **Priority:** P0  
 **Size:** S  
-**Dependencies:** PR-0001
+**Dependencies:** PR-0001  
+**Status:** DONE
 
 ### Criterios de aceptación
 - Wrapper basado en `Logger`.
@@ -421,7 +422,8 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0401 — Sign in with Apple
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0001
+**Dependencies:** PR-0001  
+**Status:** DONE
 
 ### Criterios de aceptación
 - Usa AuthenticationServices real.
@@ -439,7 +441,8 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0402 — Onboarding profile flow
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-0104, PR-0401
+**Dependencies:** PR-0104, PR-0401  
+**Status:** DONE
 
 ### Criterios de aceptación
 - goal;
@@ -585,7 +588,8 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-0601 — Today screen
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0504
+**Dependencies:** PR-0504  
+**Status:** DONE
 
 ### Criterios de aceptación
 - muestra sesión, duración estimada y CTA empezar.
@@ -1437,7 +1441,8 @@ Etiquetar correlaciones como observadas, no causales.
 ## PR-1606 — Why explanations
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-1603, DecisionRecord
+**Dependencies:** PR-1603, DecisionRecord  
+**Status:** DONE
 
 ### Criterios de aceptación
 - explanation sólo usa facts suministrados.
