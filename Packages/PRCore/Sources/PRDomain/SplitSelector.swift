@@ -68,13 +68,17 @@ public enum SplitSelectionError: Error, Equatable, Sendable {
 
 /// Selecciona una estructura de bloques de forma determinista y explicable.
 ///
-/// Reglas (MVP, en orden de prioridad):
-/// - 2–3 días → `fullBody` (adherencia; frecuencia requiere cuerpo completo).
+/// Reglas (MVP, en orden de prioridad; rangos soportados promptMaster §8.2):
+/// - 2 días → `fullBody` (adherencia; PPL requiere 3+ días).
+/// - 3 días → `fullBody` por defecto; pero permite `pushPullLegs` "cuando tenga
+///   sentido": experiencia advanced/competitive o objetivo bodybuilding (más
+///   especialización por día sin solapar cuerpo completo a baja frecuencia).
 /// - 4 días → `upperLower`; salvo experiencia avanzada con objetivo de
 ///   bodybuilding en surplus, que opta por `pushPullLegs` más especialización.
 /// - 5 días → `pushPullLegs` + 2º día de pierna / densidad.
-/// - 6–7 días → `pushPullLegs` (con rotación de pierna o acceso adicional según
-///   objetivo) para dejar frecuencia viable y evitar sesiones únicas de aislamiento.
+/// - 6 días → `pushPullLegs` (rango soportado §8.2).
+/// - 7 días → `pushPullLegs` con rotación de pierna (adherencia; fuera del rango
+///   publicado de PPL 3–6, se mantiene para alta frecuencia sin aislamiento único).
 ///
 /// Nunca depende de LLM; misma entrada → mismo split.
 public struct SplitSelector: Sendable {
@@ -94,7 +98,31 @@ public struct SplitSelector: Sendable {
         }
 
         switch trainingDaysPerWeek {
-        case 2, 3:
+        case 2:
+            return SplitSelection(
+                split: .fullBody,
+                trainingDaysPerWeek: trainingDaysPerWeek,
+                goal: goal,
+                experience: experience,
+                reason: .trainingDays
+            )
+        case 3:
+            // "3–6 días permite PPL cuando tenga sentido" (PR-0501 / §8.2): a
+            // experiencia advanced/competitive o con objetivo bodybuilding la PPL
+            // aporta especialización por día; en caso contrario se prioriza la
+            // frecuencia de cuerpo completo (novice/beginner → skill y educación).
+            let ppLWhenItMakesSense = experience == .advanced
+                || experience == .competitive
+                || goal == .bodybuilding
+            if ppLWhenItMakesSense {
+                return SplitSelection(
+                    split: .pushPullLegs,
+                    trainingDaysPerWeek: trainingDaysPerWeek,
+                    goal: goal,
+                    experience: experience,
+                    reason: .goalRequirement
+                )
+            }
             return SplitSelection(
                 split: .fullBody,
                 trainingDaysPerWeek: trainingDaysPerWeek,

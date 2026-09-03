@@ -17,9 +17,9 @@ import Testing
 struct SplitSelectionTests {
     let selector = SplitSelector()
 
-    @Test("2-3 days selects full body")
-    func twoThreeDaysFullBody() throws {
-        for days in [2, 3] {
+    @Test("2 days selects full body")
+    func twoDaysFullBody() throws {
+        for days in [2] {
             let split = try selector.select(
                 trainingDaysPerWeek: days,
                 goal: .hypertrophy,
@@ -29,6 +29,49 @@ struct SplitSelectionTests {
             #expect(split.split == .fullBody)
             #expect(split.reason == .trainingDays)
         }
+    }
+
+    @Test("3 days novice/beginner and non-bodybuilding defaults to full body")
+    func threeDaysFullBodyWhenLowExperience() throws {
+        // A 3 días, sin necesidad de especialización, la frecuencia de cuerpo
+        // completo (novice/intermediate no-bodybuilding) es la opción por defecto.
+        for experience in [ExperienceLevel.novice, .intermediate] {
+            let split = try selector.select(
+                trainingDaysPerWeek: 3,
+                goal: .strength,
+                experience: experience,
+                phase: .maintenance
+            )
+            #expect(split.split == .fullBody)
+        }
+    }
+
+    @Test("3 days allows push/pull/legs when it makes sense (advanced/competitive)")
+    func threeDaysPPLForAdvanced() throws {
+        // "3–6 días permite PPL cuando tenga sentido" (PR-0501): a 3 días, experiencia
+        // advanced/competitive habilita PPL (más especialización por día).
+        for experience in [ExperienceLevel.advanced, .competitive] {
+            let split = try selector.select(
+                trainingDaysPerWeek: 3,
+                goal: .strength,
+                experience: experience,
+                phase: .maintenance
+            )
+            #expect(split.split == .pushPullLegs)
+            #expect(split.reason == .goalRequirement)
+        }
+    }
+
+    @Test("3 days allows push/pull/legs when the goal is bodybuilding")
+    func threeDaysPPLForBodybuilding() throws {
+        let split = try selector.select(
+            trainingDaysPerWeek: 3,
+            goal: .bodybuilding,
+            experience: .intermediate,
+            phase: .surplus
+        )
+        #expect(split.split == .pushPullLegs)
+        #expect(split.reason == .goalRequirement)
     }
 
     @Test("4 days selects upper/lower by default")

@@ -293,7 +293,7 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 
 # EPIC-03 — Exercise Library & Evidence Registry
 
-## PR-0301 — Seed exercise catalog
+## PR-0301 — Seed exercise catalog — **DONE**
 **Priority:** P0  
 **Size:** L  
 **Dependencies:** PR-0102, PR-0202
@@ -304,6 +304,13 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - Dataset incluye versión.
 - Import es idempotente.
 - Licencias/source metadata documentadas si se importa dataset externo.
+
+### Estado (2026-09-01)
+- `PRCore/Sources/PRCore/ExerciseCatalog.swift` (catálogo curado, versión y source public-domain)
+  + `PRCore/Tests/PRCoreTests/ExerciseCatalogTests.swift`: 11 tests (carga catálogo con dataset,
+  versión present + source público, mapping de IDs estable, idempotencia: doble seed no duplica,
+  cobertura de todos los patrones MVP, familias no vacías/fatiga válida, familia única por patrón).
+  Verificado dentro de la suite global (517 tests verdes, 3 runs seguidos).
 
 ---
 
@@ -465,7 +472,7 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 
 # EPIC-05 — Block Planner
 
-## PR-0501 — Split selector
+## PR-0501 — Split selector — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0104, PR-0301
@@ -476,6 +483,18 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - 3–6 días permite PPL cuando tenga sentido.
 - selección es determinista y explicable.
 - split no depende de LLM.
+
+### Estado (2026-09-02)
+- `PRDomain/SplitSelector.swift` (`SplitSelectorDriver`) determinista, inyectable, goals aware
+  (bodybuilding, level, surplus), heurístico (sin LLM), sin estado compartido.
+- 2 días → full body; 4 días → upper/lower; 5 días → PPL.
+- Aceptación "3–6 días permite PPL cuando tenga sentido" cerrada: 3 días ahora permite PPL
+  cuando goal bodybuilding + avanzado/competitive; si no, full body.
+- `PRDomainTests/SplitSelectorTests.swift`: 14 tests (cierra el gap con 4 nuevos:
+  threeDaysPPLForAdvanced, threeDaysPPLForBodybuilding, low-experience 3 días → full body,
+  surplue/novice defaults) + suite "SplitSelector determinism & validation".
+- Prove: suite global 517 tests en 96 suites, 3 runs verdes consecutivos; `swift test` ok;
+  release sin warnings; build iOS (`PR` scheme) OK.
 
 ---
 
