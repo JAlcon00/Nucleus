@@ -314,7 +314,7 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 
 ---
 
-## PR-0302 — Exercise search
+## PR-0302 — Exercise search — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0301
@@ -324,6 +324,15 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - Filtrar por equipment, pattern y muscles.
 - búsqueda offline.
 - respuesta <100 ms para catálogo MVP en hardware representativo.
+
+### Estado (2026-09-02)
+- `PRDomain/ExerciseSearch.swift`: búsqueda in-memory (offline, sin red) por canonical name y
+  aliases, case/diacritic-insensitive, token subsets; filtros equipment/movementPattern/muscle
+  con AND; resultados ordenados por relevancia y nombre (determinista).
+- `PRDomainTests/ExerciseSearchTests.swift`: 14 tests cubren los criterios de búsqueda/filtros.
+- `PRCoreTests/ExerciseSearchPerfTests.swift`: 2 tests de rendimiento (búsqueda <100 ms en
+  catálogo de 678 ejercicios; query determinista).
+- Prove: 16 tests verdes, 3 runs seguidos; incluidos en suite global (522 tests).
 
 ---
 
