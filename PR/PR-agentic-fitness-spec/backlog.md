@@ -535,7 +535,7 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 
 ---
 
-## PR-0503 — Exercise assignment
+## PR-0503 — Exercise assignment — **DONE**
 **Priority:** P0  
 **Size:** L  
 **Dependencies:** PR-0502, PR-0301
@@ -546,9 +546,18 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - prioriza variedad según profile sin romper anchors.
 - no programa ejercicios bloqueados por restrictions.
 
+### Estado (2026-09-02)
+- `PRDomain/ExerciseAssignment.swift`: `ExerciseAssigner` asigna anchor (el más estable, mide
+  progreso) + pool de rotatables de la misma `substitutionFamily`; equipment conocido excluye
+  no disponibles, unknown no descarta (la UI pregunta); restricciones bloquean patrón/ID con
+  lista permitida prevalente; rotatables según `VarietyPreference` sin romper el anchor;
+  determinista; `noAvailableExercise` explícito. Regla versionada `assignment.anchorRotatable`.
+- `PRDomainTests/ExerciseAssignmentTests.swift`: 10 tests cubren los 4 criterios.
+- Prove: 10 tests verdes, 3 runs seguidos; incluidos en suite global (522 tests).
+
 ---
 
-## PR-0504 — 4–8 week block generation
+## PR-0504 — 4–8 week block generation — **DONE**
 **Priority:** P0  
 **Size:** L  
 **Dependencies:** PR-0503
@@ -558,6 +567,15 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - semanas dentro de 4...8.
 - se puede explicar estructura.
 - rebuild no borra historial anterior.
+
+### Estado (2026-09-02)
+- `PRDomain/BlockPlanner.swift`: `BlockPlanner` orquesta SplitSelector → VolumeAllocator →
+  ExerciseAssigner → order/fatigue y produce `TrainingBlock` persistible (4–8 semanas, NUEVO —
+  nunca muta ni borra historial), con `BlockExplanation` (facts + reglas versionadas de volumen
+  y assignment). Determinista.
+- `PRDomainTests/BlockPlannerTests.swift`: 7 tests cubren los 4 criterios (semanas 4...8,
+  explicable, rebuild no borra historial, exclusión de restricciones, determinismo).
+- Prove: 7 tests verdes, 3 runs seguidos; incluidos en suite global (522 tests).
 
 ---
 
