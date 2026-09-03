@@ -647,7 +647,7 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 
 # EPIC-06 — Today & Workout Logging
 
-## PR-0601 — Today screen
+## PR-0601 — Today screen — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0504
@@ -658,13 +658,20 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - funciona offline.
 - estado de descanso/no workout claro.
 
-### Estado (2026-09-01)
+### Estado (2026-09-02)
 - PRDomain `TodayScreen.swift` (`TodayScreenDriver` determinista: restDay /
   readyToStart / activeWorkout, duración inyectada, sin inventar) + tests (swift test 359/78).
 - iOS `TodayView.swift` (shell render-only, touch targets, estados claros, offline) enrutado
   desde `ContentView`; target iOS ahora enlaza `PRDomain`; build iOS limpio.
-- Pendiente: cableado de programación real de la sesión de hoy (hoy → restDay hasta que
-  exista plan; sigue en historias de plan/schedule).
+- **Cableado a plan real (cierre completado, 2026-09-03)**: `PRCore/TodayPlanCoordinator.swift`
+  genera un `TrainingBlock` real vía `BlockPlanner` desde el `OnboardingProfile`, elige la
+  plantilla del día por rotación determinista (semana lun=0, primeros `trainingDaysPerWeek`
+  días = entrenamiento, resto descanso), deriva `TodayScreenState` con duración estimada del
+  perfil, y el composition root (`AppEnvironment.todayPlan`) lo expone; `AppRootView` deriva
+  el estado del plan REAL (ya no restDay de siempre). Offline y determinista; no inventa
+  músculos/equipo (defaults documentados: musculatura estándar `.normal`, equipment básico
+  `knownAvailable`). +4 tests en `PRCoreTests/TodayPlanCoordinatorTests.swift`.
+  Prove: suite global 537 tests / 99 suites verdes ×3; build iOS limpio; release PRCore limpio.
 
 ---
 

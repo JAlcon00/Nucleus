@@ -39,8 +39,12 @@ struct AppRootView: View {
                     onGoBack: { environment.onboarding.goBack() },
                     onFinish: { environment.onboarding.complete() }
                 )
-            case .completed:
+            case .completed(let profile):
                 appContent
+                    .onAppear {
+                        // Deriva el plan real de hoy a partir del perfil (PR-0601 wiring).
+                        _ = environment.todayPlan.load(profile: profile)
+                    }
             case .failed(let message):
                 // Renderizamos un gate coherente y mostramos el error en un alert.
                 Color.clear
@@ -68,7 +72,7 @@ struct AppRootView: View {
     private var appContent: some View {
         NavigationStack {
             TodayView(
-                state: TodayScreenDriver().derive(todayTemplate: nil, activeSession: nil),
+                state: environment.todayPlan.plan?.todayState ?? .restDay,
                 onStart: startWorkout,
                 onResume: resumeWorkout
             )
