@@ -46,11 +46,14 @@ public struct VolumeAllocation: Codable, Sendable, Hashable {
     public let targets: [MuscleVolumeAssignment]
     public let minTotalWeeklySets: Int
     public let maxTotalWeeklySets: Int
+    /// Chequeo de presupuesto de tiempo semanal aproximado (nil si no se pidió).
+    public let timeCheck: SpecializationTimeCheck?
 
-    public init(targets: [MuscleVolumeAssignment], minTotalWeeklySets: Int, maxTotalWeeklySets: Int) {
+    public init(targets: [MuscleVolumeAssignment], minTotalWeeklySets: Int, maxTotalWeeklySets: Int, timeCheck: SpecializationTimeCheck? = nil) {
         self.targets = targets
         self.minTotalWeeklySets = minTotalWeeklySets
         self.maxTotalWeeklySets = maxTotalWeeklySets
+        self.timeCheck = timeCheck
     }
 
     /// Suma de sets semanales prescritos.
@@ -166,6 +169,23 @@ public struct VolumeAllocator: Sendable {
     }
 
     public func allocate(priorities: [MusclePriority]) throws -> VolumeAllocation {
+        try allocate(priorities: priorities, weeklyTimeBudgetMinutes: nil, minutesPerWorkingSet: nil)
+    }
+
+    /// Distribuye volumen respetando (aproximadamente) un presupuesto de tiempo semanal.
+    ///
+    /// El presupuesto se respeta sin romper los rangos versionados de evidencia: el volumen
+    /// asigna el representativo (mínimo) de cada tier y se estiman los minutos
+    /// (`totalWeeklySets × minutesPerWorkingSet`). Si el volumen cabe en el presupuesto se
+    /// reporta `fitsBudget == true`; si el presupuesto es más ajustado que el suelo de
+    /// evidencia, se reporta `fitsBudget == false` en lugar de bajar volumen por debajo del
+    /// mínimo versionado o generar volumen negativo. Determinista: mismas entradas →
+    /// mismo chequeo.
+    public func allocate(
+        priorities: [MusclePriority],
+        weeklyTimeBudgetMinutes: Int?,
+        minutesPerWorkingSet: Double?
+    ) throws -> VolumeAllocation {
         let reference = try config.reference()
         var targets: [MuscleVolumeAssignment] = []
         var minTotal = 0
@@ -184,10 +204,28 @@ public struct VolumeAllocator: Sendable {
             maxTotal += range.upperBound
         }
 
-        return VolumeAllocation(
+        let allocation = VolumeAllocation(
             targets: targets,
             minTotalWeeklySets: minTotal,
             maxTotalWeeklySets: maxTotal
+        )
+
+        guard let budget = weeklyTimeBudgetMinutes,
+              let perSet = minutesPerWorkingSet, perSet >= 0, perSet.isFinite else {
+            return allocation
+        }
+
+        let estimated = Int((Double(allocation.totalWeeklySets) * perSet).rounded(.up))
+        let timeCheck = SpecializationTimeCheck(
+            estimatedMinutes: estimated,
+            budgetMinutes: budget,
+            fitsBudget: estimated <= budget
+        )
+        return VolumeAllocation(
+            targets: targets,
+            minTotalWeeklySets: minTotal,
+            maxTotalWeeklySets: maxTotal,
+            timeCheck: timeCheck
         )
     }
 

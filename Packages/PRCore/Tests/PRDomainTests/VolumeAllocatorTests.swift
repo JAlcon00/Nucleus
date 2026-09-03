@@ -127,3 +127,72 @@ struct VolumeConfigTests {
         }
     }
 }
+
+@Suite("VolumeAllocator time budget (PR-0502)")
+struct VolumeAllocatorTimeBudgetTests {
+    private func priority(_ muscle: MuscleGroup.ID, _ tier: PriorityTier) -> MusclePriority {
+        MusclePriority(muscleGroupID: muscle, priority: tier)
+    }
+
+    @Test("Without a time budget no check is attached")
+    func noBudgetProducesNoTimeCheck() throws {
+        let allocator = VolumeAllocator(config: try makeConfig())
+        let allocation = try allocator.allocate(priorities: [
+            priority(.chest, .emphasize),
+            priority(.back, .normal),
+        ])
+        #expect(allocation.timeCheck == nil)
+    }
+
+    @Test("Generous budget reports fitsBudget true")
+    func generousBudgetFits() throws {
+        let allocator = VolumeAllocator(config: try makeConfig())
+        // emphasize 12 + normal 8 = 20 sets; 20 × 3 = 60 min.
+        let allocation = try allocator.allocate(
+            priorities: [priority(.chest, .emphasize), priority(.back, .normal)],
+            weeklyTimeBudgetMinutes: 60,
+            minutesPerWorkingSet: 3.0
+        )
+        #expect(allocation.timeCheck?.estimatedMinutes == 60)
+        #expect(allocation.timeCheck?.budgetMinutes == 60)
+        #expect(allocation.timeCheck?.fitsBudget == true)
+    }
+
+    @Test("Tight budget reports fitsBudget false instead of breaking the evidence floor")
+    func tightBudgetDoesNotFit() throws {
+        let allocator = VolumeAllocator(config: try makeConfig())
+        // emphasize 12 + normal 8 = 20 sets; 20 × 2 = 40 min > 30 min budget.
+        let allocation = try allocator.allocate(
+            priorities: [priority(.chest, .emphasize), priority(.back, .normal)],
+            weeklyTimeBudgetMinutes: 30,
+            minutesPerWorkingSet: 2.0
+        )
+        #expect(allocation.timeCheck?.estimatedMinutes == 40)
+        #expect(allocation.timeCheck?.fitsBudget == false)
+        // El suelo de evidencia no se rompe: los sets siguen en los mínimos versionados.
+        #expect(allocation.target(for: .chest) == 12)
+        #expect(allocation.target(for: .back) == 8)
+    }
+
+    @Test("Same inputs produce the same time check")
+    func timeCheckDeterministic() throws {
+        let allocator = VolumeAllocator(config: try makeConfig())
+        let priorities = [priority(.chest, .specialize), priority(.biceps, .normal)]
+        let a = try allocator.allocate(priorities: priorities, weeklyTimeBudgetMinutes: 90, minutesPerWorkingSet: 3.0)
+        let b = try allocator.allocate(priorities: priorities, weeklyTimeBudgetMinutes: 90, minutesPerWorkingSet: 3.0)
+        #expect(a.timeCheck == b.timeCheck)
+        #expect(a.timeCheck?.fitsBudget == true)
+    }
+
+    @Test("Minutes per set rounding rounds the estimate up")
+    func estimateRoundsUp() throws {
+        let allocator = VolumeAllocator(config: try makeConfig())
+        // 20 sets × 3.1 = 62 min (en vez de 62.0 exacto) → 62.
+        let allocation = try allocator.allocate(
+            priorities: [priority(.chest, .emphasize), priority(.back, .normal)],
+            weeklyTimeBudgetMinutes: 100,
+            minutesPerWorkingSet: 3.1
+        )
+        #expect(allocation.timeCheck?.estimatedMinutes == 62)
+    }
+}

@@ -35,7 +35,7 @@ public struct SpecializationSelection: Equatable, Sendable {
 }
 
 /// Chequeo de presupuesto de tiempo semanal del bloque de especialización (PR-1802).
-public struct SpecializationTimeCheck: Equatable, Sendable {
+public struct SpecializationTimeCheck: Equatable, Hashable, Codable, Sendable {
     /// Minutos estimados para el volumen total semanal del bloque.
     public let estimatedMinutes: Int
     /// Presupuesto de tiempo semanal disponible.
@@ -118,20 +118,21 @@ public struct SpecializationBlockEngine: Sendable {
 
         let selection = Self.selection(from: input.priorities)
 
-        // Volumen semanal por músculo según PR-0502 (cada uno en su propio tier).
-        let allocation = try allocator.allocate(priorities: input.priorities)
+        // Volumen semanal por músculo según PR-0502 (cada uno en su propio tier), con el
+        // presupuesto de tiempo respetado por el allocator (reportando fit/minutos).
+        let allocation = try allocator.allocate(
+            priorities: input.priorities,
+            weeklyTimeBudgetMinutes: input.weeklyTimeBudgetMinutes,
+            minutesPerWorkingSet: input.minutesPerWorkingSet
+        )
 
         let specializedSet = Set(selection.specializeTargets).union(selection.emphasizeTargets)
         let targeted = allocation.targets.filter { specializedSet.contains($0.muscleGroupID) }
         let maintained = allocation.targets.filter { !specializedSet.contains($0.muscleGroupID) }
 
-        // Chequeo de tiempo: volumen total × minutos por working set.
-        let estimated = Int((Double(allocation.totalWeeklySets) * input.minutesPerWorkingSet).rounded(.up))
-        let timeCheck = SpecializationTimeCheck(
-            estimatedMinutes: estimated,
-            budgetMinutes: input.weeklyTimeBudgetMinutes,
-            fitsBudget: estimated <= input.weeklyTimeBudgetMinutes
-        )
+        guard let timeCheck = allocation.timeCheck else {
+            throw DomainValidationError.invalidSpecializationInput
+        }
 
         return SpecializationBlock(
             allocation: allocation,

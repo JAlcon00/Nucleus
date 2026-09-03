@@ -327,7 +327,7 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 
 ---
 
-## PR-0303 — Evidence Registry
+## PR-0303 — Evidence Registry — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0101
@@ -337,6 +337,15 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - DecisionRecord puede guardar rule ID/version.
 - parámetros centralizados.
 - cambios de reglas son testeables.
+
+### Estado (2026-09-02)
+- `PRDomain/Evidence.swift`: `EvidenceRule` versionada (version ≥1, params centralizados,
+  referencia título/source), `DecisionRecord` guarda rule ID/version, registry con
+  desactivación y orden estable, cambios requieren bump de versión.
+- `PRDomainTests/EvidenceTests.swift`: 16 tests (Codable round-trip, validaciones de
+  versión/params/referencia, centralización, bump requerido, versión en vigor para registros
+  viejos, exclusión de reglas desactivadas, orden estable). Verificado dentro de la suite
+  global (517 tests verdes, 3 runs seguidos).
 
 ---
 
@@ -498,7 +507,7 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 
 ---
 
-## PR-0502 — Volume allocator
+## PR-0502 — Volume allocator — **DONE**
 **Priority:** P0  
 **Size:** L  
 **Dependencies:** PR-0501, PR-0303
@@ -509,6 +518,20 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - no genera volumen negativo.
 - respeta time budget aproximado.
 - límites vienen de configuración/evidence rules versionadas.
+
+### Estado (2026-09-02)
+- `PRDomain/VolumeAllocator.swift`: `VolumeAllocator` distribuye sets semanales por músculo
+  según tier (`maintain < normal < emphasize < specialize`) desde `VolumeConfig` (rule versionada
+  `volume.weeklySetsPerMuscle`); `MuscleVolumeAssignment` con `ruleReference`; rechaza volumen
+  negativo (`negativeVolume`); sin prioridades no inventa músculos. Presupuesto de tiempo
+  aproximado respetado: `allocate(priorities:weeklyTimeBudgetMinutes:minutesPerWorkingSet:)`
+  reporta `SpecializationTimeCheck` (estimated/budget/fitsBudget) sin bajar del suelo de
+  evidencia ni generar negativo; sin budget → no chequeo (compat Para atrás).
+- `SpecializationBlockEngine` (PR-1802) delega el chequeo de tiempo al allocator (fuente única).
+- `PRDomainTests/VolumeAllocatorTests.swift`: 16 tests en 3 suites (distribución, config,
+  time budget). Cierre del gap "respeta time budget" con 5 tests nuevos.
+- Prove: suite global 522 tests en 97 suites, 3 runs verdes consecutivos; release sin warnings;
+  build iOS (`PR` scheme) OK.
 
 ---
 
