@@ -1025,7 +1025,8 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-1001 — Double progression
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-0603, PR-0303
+**Dependencies:** PR-0603, PR-0303  
+**Status:** DONE
 
 ### Criterios de aceptación
 - carga aumenta sólo bajo reglas.
@@ -1049,8 +1050,9 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 
 ## PR-1003 — PR detector
 **Priority:** P0  
-**Size:** M  
-**Dependencies:** PR-0603
+**Size:** S  
+**Dependencies:** PR-0603  
+**Status:** DONE
 
 ### Criterios de aceptación
 - load PR;
@@ -1076,7 +1078,8 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-1101 — Health authorization abstraction
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0001
+**Dependencies:** PR-0001  
+**Status:** DONE
 
 ### Criterios de aceptación
 - HealthKit detrás de protocol.
@@ -1089,7 +1092,8 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-1102 — Start/finish strength workout
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-1101, PR-0602
+**Dependencies:** PR-1101, PR-0602  
+**Status:** DONE
 
 ### Criterios de aceptación
 - workout configuration correcta.
@@ -1102,7 +1106,8 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-1103 — Health workout summary
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-1102
+**Dependencies:** PR-1102  
+**Status:** DONE
 
 ### Criterios de aceptación
 - duration;
@@ -1127,7 +1132,8 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-1105 — Workout reconciliation
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-1103, PR-1104
+**Dependencies:** PR-1103, PR-1104  
+**Status:** DONE
 
 ### Criterios de aceptación
 - overlap matcher.
@@ -1142,7 +1148,8 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-1201 — Watch workout UI shell
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-0001, PR-0602
+**Dependencies:** PR-0001, PR-0602  
+**Status:** DONE
 
 ### Criterios de aceptación
 - current exercise;
@@ -1158,7 +1165,8 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-1202 — Watch HealthKit live workout
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-1102, PR-1201
+**Dependencies:** PR-1102, PR-1201  
+**Status:** DONE
 
 ### Criterios de aceptación
 - usa HKWorkoutSession/HKLiveWorkoutBuilder según APIs reales.
@@ -1211,7 +1219,8 @@ Dividir en subtareas según API real disponible.
 ## PR-1302 — RecoveryDecisionEngine v1
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-1001, PR-1301
+**Dependencies:** PR-1001, PR-1301  
+**Status:** DONE
 
 ### Criterios de aceptación
 - usa performance + subjective feedback.
@@ -1251,7 +1260,8 @@ Dividir en subtareas según API real disponible.
 ## PR-1401 — Restrictions management UI
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0106
+**Dependencies:** PR-0106  
+**Status:** DONE
 
 ### Criterios de aceptación
 - crear/edit/review/resolve.
@@ -1263,7 +1273,8 @@ Dividir en subtareas según API real disponible.
 ## PR-1402 — RestrictionPolicyEngine
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-1401, PR-0904
+**Dependencies:** PR-1401, PR-0904  
+**Status:** DONE
 
 ### Criterios de aceptación
 - forbidden movement excludes exercise.
@@ -1276,7 +1287,8 @@ Dividir en subtareas según API real disponible.
 ## PR-1403 — Pain feedback during workout
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0603, PR-1402
+**Dependencies:** PR-0603, PR-1402  
+**Status:** DONE
 
 ### Criterios de aceptación
 - none/mild/moderate/high.
@@ -1357,7 +1369,8 @@ Etiquetar correlaciones como observadas, no causales.
 ## PR-1601 — AgentIntent schema
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0104, PR-0106
+**Dependencies:** PR-0104, PR-0106  
+**Status:** DONE
 
 ### Criterios de aceptación
 - intents definidos en dominio.
@@ -1369,7 +1382,8 @@ Etiquetar correlaciones como observadas, no causales.
 ## PR-1602 — ActionPolicyValidator
 **Priority:** P0  
 **Size:** L  
-**Dependencies:** PR-1601, TrainingEngine components
+**Dependencies:** PR-1601, TrainingEngine components  
+**Status:** DONE
 
 ### Criterios de aceptación
 - LLM action cannot bypass restrictions.
@@ -1382,7 +1396,8 @@ Etiquetar correlaciones como observadas, no causales.
 ## PR-1603 — Agent gateway protocol
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-1601
+**Dependencies:** PR-1601  
+**Status:** DONE
 
 ### Criterios de aceptación
 - `interpret(text, context)`.
@@ -1446,7 +1461,8 @@ Etiquetar correlaciones como observadas, no causales.
 ## PR-1701 — Weekly adherence engine
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0605
+**Dependencies:** PR-0605  
+**Status:** DONE
 
 ### Criterios de aceptación
 - planned sessions vs completed/adjusted/rest.

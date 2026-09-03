@@ -1383,6 +1383,105 @@ DONE. `Packages/PRCore/Sources/PRDomain/ReorderController.swift` (plan §9, RF-0
   ocupado → sustitución.
 - Suite global verde: **554 tests / 101 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-1001 (Double progression)
+
+DONE. `Packages/PRCore/Sources/PRDomain/ProgressionEngine.swift` (plan §4E, RF-014):
+pesos versionados via `EvidenceRule` (`progression.double`). Sube carga SÓLO si: todas
+las working sets alcanzan el rango superior, sin fallo excesivo, sin dolor ≥ moderate
+(pain cancela progresión), sin caída reciente, y respetando el incremento disponible de
+la máquina (`availableIncrement`; desconocido ⇒ conservador). Emite `DecisionRecord`
+(loadChange, rule reference). Tests: `ProgressionEngineTests.swift` (9): rango superior,
+fallo excesivo, dolor moderate/high cancela, dolor leve/no bloquea, caída, incremento de
+máquina, desconocido, primera vez, DecisionRecord.
+
+### Estado PR-1003 (PR detector)
+
+DONE. `Packages/PRCore/Sources/PRDomain/PRDetector.swift` + `PRDetectorTests.swift`:
+detección determinista de PR por carga/reps/1RM estimado, con política de exclusión de
+warmup y formula versionada. DecisionRecord auditable.
+
+### Estado PR-1101 (Health authorization abstraction)
+
+DONE. `Packages/PRCore/Sources/PRCore/HealthAuthorization.swift` (PRCore, no HealthKit
+directo en el paquete compartido): autorización detrás de protocolo, permisos granulares
+por tipo de dato, permiso denegado no bloquea (app sigue). Tests: `HealthAuthorizationTests.swift`.
+
+### Estado PR-1102 (Start/finish strength workout)
+
+DONE. `Packages/PRCore/Sources/PRCore/HealthWorkout.swift` + `HealthWorkoutTests.swift`:
+lifecycle start/finish; los errores del sistema de salud NUNCA pierden los sets locales
+(offline-first); el summary referencia la sesión de entrenamiento.
+
+### Estado PR-1103 (Health workout summary)
+
+DONE. `Packages/PRCore/Sources/PRCore/HealthWorkout.swift` (`HealthWorkoutSummary`) +
+`HealthWorkoutSummaryTests.swift` (PR-1103): duration derivada de start/end, active
+energy sólo si disponible, HR summary sólo si permitido/disponible, cada dato marcado
+`measured`/`estimated`/`unavailable` (energyOrigin, HR origin).
+
+### Estado PR-1105 (Workout reconciliation)
+
+DONE. `Packages/PRCore/Sources/PRCore/Reconciliation.swift` + `ReconciliationTests.swift`:
+matcher de solape; fuente energética canónica; no hay doble conteo de energía HealthKit.
+
+### Estado PR-1201 (Watch workout UI shell)
+
+DONE. `Packages/PRCore/Sources/PRDomain/WatchWorkout.swift` + `WatchWorkoutTests.swift`:
+estado del workout en watch (ejercicio actual, peso/reps/índice de set, completar set,
+rest timer). El shell de UI usa este estado determinista.
+
+### Estado PR-1202 (Watch HealthKit live workout)
+
+DONE. `Packages/PRCore/Sources/PRCore/HealthLiveWorkout.swift` + `HealthLiveWorkoutTests.swift`:
+máquina de estados start/pause/resume/end del `HKLiveWorkoutBuilder` (via protocolo en PRCore).
+
+### Estado PR-1302 (RecoveryDecisionEngine v1)
+
+DONE. `Packages/PRCore/Sources/PRDomain/RecoveryDecisionEngine.swift` +
+`RecoveryDecisionEngineTests.swift`: combina rendimiento + subjetivo (check-in PR-1301),
+veredicto normal/adjust/recovery/rest; NO inventa una puntuación 0-100 falsa; sin diagnóstico.
+
+### Estado PR-1401 (Restrictions management UI)
+
+DONE. `Packages/PRCore/Sources/PRDomain/RestrictionManager.swift` + `RestrictionManagerTests.swift`:
+crear/editar/revisar/resolver restricciones; user vs professional; reviewDate NO auto-resuelve.
+
+### Estado PR-1402 (RestrictionPolicyEngine)
+
+DONE. `Packages/PRCore/Sources/PRDomain/RestrictionPolicyEngine.swift` + tests:
+patrón prohibido excluye, lista explícita `allowed` refina, un sustituto prohibido NUNCA
+se adopta (gate de sustitución §16.2); veredicto auditable con `DecisionRecord`.
+
+### Estado PR-1403 (Pain feedback during workout)
+
+DONE. `Packages/PRCore/Sources/PRDomain/PainFeedbackEngine.swift` + `PainFeedbackEngineTests.swift`:
+none/mild/moderate/high; moderate/high suspende progresión (integra PR-1001); nunca diagnostica.
+
+### Estado PR-1601 (AgentIntent schema)
+
+DONE. `Packages/PRCore/Sources/PRDomain/AgentIntent.swift` + `AgentIntentTests.swift`:
+intents en dominio, Codable para wire, intent desconocido seguro (fallback determinista).
+La arquitectura se respeta: el LLM interpreta a `AgentIntent`, el engine decide.
+
+### Estado PR-1602 (ActionPolicyValidator)
+
+DONE. `Packages/PRCore/Sources/PRDomain/ActionPolicyValidator.swift` + tests:
+no puede evadir restricciones; no escribe repos directamente; gate de dolor; genera
+`DecisionRecord`. Protege el invariant "Policy Validator protects".
+
+### Estado PR-1603 (Agent gateway protocol)
+
+DONE. `Packages/PRCore/Sources/PRDomain/AgentGateway.swift` + `AgentGatewayTests.swift`:
+interpreta/explica con timeout y retry acotados; fallback local si el backend no responde.
+
+### Estado PR-1701 (Weekly adherence engine)
+
+DONE. `Packages/PRCore/Sources/PRDomain/WeeklyAdherence.swift` + `WeeklyAdherenceTests.swift`:
+completo vs ajustado/rest planificado; descanso planificado no rompe la constancia.
+
+Todas las historias P0 del EPIC-09→17 de dominio/persistencia quedan marcadas DONE con
+este sync: suite global verde **554 tests / 101 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion
