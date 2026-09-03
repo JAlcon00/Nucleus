@@ -1039,7 +1039,8 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 ## PR-1002 — Strength progression strategies
 **Priority:** P1  
 **Size:** L  
-**Dependencies:** PR-1001
+**Dependencies:** PR-1001  
+**Status:** DONE
 
 ### Criterios de aceptación
 - linearLoad/repGoal/topSetBackoff modelados.

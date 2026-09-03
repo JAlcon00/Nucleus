@@ -1394,6 +1394,23 @@ la máquina (`availableIncrement`; desconocido ⇒ conservador). Emite `Decision
 fallo excesivo, dolor moderate/high cancela, dolor leve/no bloquea, caída, incremento de
 máquina, desconocido, primera vez, DecisionRecord.
 
+### Estado PR-1002 (Strength progression strategies)
+
+DONE. `Packages/PRCore/Sources/PRDomain/StrengthProgression.swift` + `StrengthProgressionTests.swift`:
+enum `ProgressionStrategy` (doubleProgression, linearLoad, repGoal, rirAutoregulated,
+strengthTopSetBackoff, maintain; spec §12.2). La estrategia es explícita por
+block/exercise — cada una usa su propia regla, no una fórmula única (§12.1): linearLoad
+sube un incremento fijo cuando todas las working sets alcanzan el rango superior;
+repGoal avanza el objetivo de reps dentro del rango sin tocar peso y, al completarlo,
+sube carga y reinicia al tramo inferior; topSetBackoff sube el top set al cumplir su
+objetivo y modela back-off a la fracción configurada (0.85); rirAutoregulated reacciona
+al RIR (bajo⇒sube, alto⇒hold); doubleProgression delega en el engine PR-1001; maintain
+conserva. Peso versionado via `EvidenceRule` (`progression.strength`), gate conservador
+común (dolor ≥ moderate cancela; fallo excesivo y caída mantienen; primera vez sin carga base mantiene) y emisión de `DecisionRecord`. Tests (20): casos del enum, estrategia
+explícita y no fórmula única, subida/mantenimiento en las tres estrategias, respeto del
+incremento de equipo, back-off configurado, RIR, maintain, delegación doubleProgression,
+gate de dolor y primera vez.
+
 ### Estado PR-1003 (PR detector)
 
 DONE. `Packages/PRCore/Sources/PRDomain/PRDetector.swift` + `PRDetectorTests.swift`:
