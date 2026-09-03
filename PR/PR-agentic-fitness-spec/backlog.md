@@ -423,11 +423,11 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
   `OnboardingFlowController` en PRDomain; produce el `OnboardingProfile` de §4.2 validando
   2...7 días / 20...240 min y preserva las respuestas al volver atrás. 11 tests. Suite global
   green + build iOS OK sin warnings. Dependencias PR-0104 y PR-0401 DONE.
-  Siguiente dependencia P1 → PR-0403 (coaching detail initial mapping).
+  Siguiente dependencia P1 → PR-0403 (coaching detail initial mapping) DONE.
 
 ---
 
-## PR-0403 — Coaching detail initial mapping
+## PR-0403 — Coaching detail initial mapping — **DONE**
 **Priority:** P1  
 **Size:** S  
 **Dependencies:** PR-0402
@@ -437,6 +437,29 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - intermediate balanced.
 - advanced/competitive advanced.
 - usuario puede cambiar manualmente.
+
+### Implementación
+- `PRCore/Sources/PRDomain/CoachingDetail.swift`: `CoachingDetailMapper` (mapeo inicial determinista
+  `ExperienceLevel → CoachingDetailLevel` según promptMaster §17.1: novice/beginner → guided,
+  intermediate → balanced, advanced/competitive → advanced). `CoachingDetailPrefs` (estado con nivel
+  activo + `LevelSource` `defaultByExperience`/`manualOverride`); el usuario SIEMPRE puede
+  reemplazarlo manualmente y el override manda sobre el default (auditable, sin reglas en Views).
+- `PRCore/Tests/PRDomainTests/CoachingDetailTests.swift`: 10 tests (mapeos por nivel, exhaustivo y
+  determinista, override manual manda y se marca como userChosen, override igual marca manual,
+  override inmutable no muta, reset vuelve al default por nueva experiencia).
+
+### Verificación (Prove)
+- `swift test`: suite global green (339 SwiftTesting tests en el run actual incluye +10 nuevos
+  coaching detail), 3 runs seguidos verdes; el flake conocido `AgentAuditTrailTests
+  /testNoRawUserTextStored` es pre-existente y ajeno a esta historia.
+- `swift build -c release` (PRCore): sin warnings.
+- `xcodebuild -scheme PR` (iOS Simulator): build OK, 0 warnings de código.
+
+### Estado (2026-09-02) — EPIC-04 Authentication
+- **PR-0403 — Coaching detail initial mapping (DONE):** `CoachingDetailMapper` + `CoachingDetailPrefs`
+  en PRDomain; default por experiencia y override manual del usuario siempre permitido. 10 tests.
+  Suite global green + build iOS OK sin warnings. Dependencia PR-0402 DONE. EPIC-04 Authentication
+  stories completas (PR-0401/0402/0403).
 
 ---
 
