@@ -27,15 +27,16 @@ public final class AppEnvironment {
         NVIDIAHostedProvider()
     }
 
-    /// Coordinador de Sign in with Apple (PR-0401). Usa el provider real de
-    /// producción; los tests inyectan un fake. No persiste tokens de forma insegura.
-    public let authCoordinator: AppleIDAuthCoordinator
+    /// Coordinador de onboarding (EPIC-04, PR-0401 + PR-0402 wiring): gate de Sign in
+    /// with Apple + flujo de pasos + perfil mínimo. Usa el provider real de producción;
+    /// los tests/previews inyectan un fake. No persiste tokens inseguros ni requiere HealthKit.
+    public let onboarding: OnboardingCoordinator
 
     public init(
         coreVersion: String = PRCore.version,
         authProvider: (any AppleIDAuthProviding)? = nil
     ) {
         self.coreVersion = coreVersion
-        self.authCoordinator = AppleIDAuthCoordinator(provider: authProvider ?? SignInWithAppleProvider())
+        self.onboarding = OnboardingCoordinator(authProvider: authProvider ?? SignInWithAppleProvider())
     }
 }

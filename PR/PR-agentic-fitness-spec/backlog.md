@@ -486,6 +486,24 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
   Suite global green + build iOS OK sin warnings. Dependencia PR-0402 DONE. EPIC-04 Authentication
   stories completas (PR-0401/0402/0403).
 
+### App-layer onboarding wiring (EPIC-04, 2026-09-02) — across auth + onboarding engines
+- `PRCore/OnboardingCoordinator.swift` (`@MainActor @Observable` app-core): orquesta el gate de
+  Sign in with Apple (posee `AppleIDAuthCoordinator` con provider inyectable) + flujo de pasos
+  (value `OnboardingFlowController`) + perfil mínimo (`OnboardingProfileBuilder`). Expone un único
+  `OnboardingPhase` observable (`signedOut`/`signingIn`/`onboarding(step,index,canGoBack,canAdvance,
+  isAtEnd)`/`completed(profile)`/`failed(msg)`). Intents `signIn/select/advance/goBack/complete/
+  dismissFailure`. No persiste tokens inseguros ni requiere HealthKit. NO hay reglas de negocio en
+  Views.
+- `PRCoreTests/OnboardingCoordinatorTests.swift`: 11 tests (gate auth success/cancel/failure,
+  navegación preservando respuestas, finalización con perfil, borrador incompleto no inventa,
+  dismissFailure).
+- App (iOS): `PR/App/Onboarding/AppRootView.swift` (routing fase → sign-in / pasos / app),
+  `SignInView.swift` (gate con Sign in with Apple), `OnboardingStepView.swift` (controles tipados
+  por paso + atrás/siguiente/terminar). `AppEnvironment` ahora expone `onboarding:
+  OnboardingCoordinator` (composición root, provider real); `ContentView` enruta a `AppRootView`.
+- Prove: suite global 533 tests en 98 suites, 3 runs verdes; release sin warnings; build iOS
+  (`PR` scheme) OK 0 warnings de código.
+
 ---
 
 # EPIC-05 — Block Planner
