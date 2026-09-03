@@ -379,7 +379,7 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 
 ---
 
-## PR-0402 — Onboarding profile flow
+## PR-0402 — Onboarding profile flow — **DONE**
 **Priority:** P0  
 **Size:** L  
 **Dependencies:** PR-0104, PR-0401
@@ -395,6 +395,35 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - optional restrictions.
 - usuario puede volver atrás sin perder respuestas.
 - validaciones 2...7 días, 20...240 min.
+
+### Implementación
+- `PRCore/Sources/PRDomain/Onboarding.swift`: motor determinista del onboarding (promptMaster §4,
+  RF-003). `OnboardingStep` (orden tipado del flujo: goal/phase/experience/daysPerWeek/
+  sessionMinutes/gym/variety/restrictions; gym y restrictions opcionales). `OnboardingDraft`
+  acumula respuestas tipadas por paso y conserva las dadas al navegar atrás. `OnboardingProfile`
+  (estructura EXACTA de §4.2: goal, phase `BodyCompositionPhase` — independiente del
+  `BodybuildingPhase` de PR-1801 —, experience, days, minutes, variety, defaultGymID opcional,
+  restrictions opcionales). `OnboardingProfileBuilder` valida 2...7 días y 20...240 min y NO
+  inventa objetivos si un paso obligatorio falta. `OnboardingFlowController` navega adelante/atrás
+  sin perder respuestas y no avanza hasta que el paso obligatorio está respondido.
+- `PRCore/Tests/PRDomainTests/OnboardingTests.swift`: 11 tests (perfil completo, validaciones de
+  rangos y límites, missing step lanza, propagación de gym/restricciones, back-navigation conserva
+  respuestas, advance bloqueado hasta responder, pasos opcionales, completeness sólo al final,
+  límites de navegación).
+
+### Verificación (Prove)
+- `swift test`: suite global green (329 SwiftTesting tests en el run actual incluye +11 nuevos
+  onboarding), 2 runs seguidos completos verdes; el flake conocido `AgentAuditTrailTests
+  /testNoRawUserTextStored` es pre-existente y ajeno a esta historia.
+- `swift build -c release` (PRCore): sin warnings.
+- `xcodebuild -scheme PR` (iOS Simulator): build OK, 0 warnings de código.
+
+### Estado (2026-09-02) — EPIC-04 Authentication
+- **PR-0402 — Onboarding profile flow (DONE):** motor determinista `OnboardingProfileBuilder` +
+  `OnboardingFlowController` en PRDomain; produce el `OnboardingProfile` de §4.2 validando
+  2...7 días / 20...240 min y preserva las respuestas al volver atrás. 11 tests. Suite global
+  green + build iOS OK sin warnings. Dependencias PR-0104 y PR-0401 DONE.
+  Siguiente dependencia P1 → PR-0403 (coaching detail initial mapping).
 
 ---
 
