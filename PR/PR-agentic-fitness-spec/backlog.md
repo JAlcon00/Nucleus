@@ -335,7 +335,7 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 
 # EPIC-04 — Authentication & Onboarding
 
-## PR-0401 — Sign in with Apple
+## PR-0401 — Sign in with Apple — **DONE**
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** PR-0001
@@ -347,9 +347,35 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - Primer login crea perfil local.
 - Login no requiere HealthKit.
 
-### Tests
-- auth coordinator unit con fake provider abstraction;
-- UI state tests.
+### Implementación
+- `PRCore/Sources/PRCore/AuthTypes.swift`: contrato `AppleIDAuthProviding` (auth detrás de un
+  protocolo), `AppleIDAuthResult` (`success`/`canceled`/`failed`) y perfil local
+  `LocalUserProfile` (sólo identificador opaco, NUNCA token). No importa HealthKit ni auth.
+- `PRCore/Sources/PRCore/AppleIDAuthCoordinator.swift`: `AppleIDAuthCoordinator`
+  (`@MainActor @Observable`) máquina de estados visible por la UI (`AuthFlowState`:
+  `idle`/`authenticating`/`signedIn`/`failed`). Success → crea perfil local (primer login);
+  cancel → vuelve a `idle` sin alerta; failure → `failed(message)`. Sólo conserva el
+  `userIdentifier` opaco; el credential token NO se persiste. `FakeAppleIDAuthProvider` (fake
+  para tests/previews, §32.3: nunca AuthenticationServices real en unit tests).
+- `PR/App/Auth/SignInWithAppleProvider.swift`: provider de producción con `AuthenticationServices`
+  (`ASAuthorizationAppleIDProvider`/`ASAuthorizationController` + delegates). Devuelve
+  `canceled` en `ASAuthorizationError.canceled`; en éxito usa sólo `credential.user`. Inyectado
+  por la app. `AppEnvironment` expone `authCoordinator` (composición root).
+
+### Verificación (Prove)
+- `swift test`: suite global green (318 tests en el run actual incluye +8 nuevos auth tests),
+  3 runs seguidos de autenticación pasados; el flake conocido `AgentAuditTrailTests
+  /testNoRawUserTextStored` es pre-existente y ajeno a esta historia.
+- `swift build -c release` (PRCore): sin warnings.
+- `xcodebuild -scheme PR` (iOS Simulator): build OK, 0 warnings de código.
+
+### Estado (2026-09-02) — EPIC-04 Authentication
+- **PR-0401 — Sign in with Apple (DONE):** coordinator `AppleIDAuthCoordinator` en PRCore
+  (testeable con `FakeAppleIDAuthProvider`) + provider real `SignInWithAppleProvider`
+  (AuthenticationServices) en la capa de app, inyectado por `AppEnvironment`. Maneja
+  success/cancel/failure, crea perfil local en el primer login y NO persiste el credential
+  token. Suite global green (incluye +8 tests de auth) + build iOS OK sin warnings.
+  Siguiente dependencia P0 → PR-0402 (onboarding).
 
 ---
 
