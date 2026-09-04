@@ -17,11 +17,17 @@ if [[ ! -f "$PBX" ]]; then
 fi
 
 # 1) Debe existir una excepción con la carpeta (no un archivo individual).
+#    Acepta la carpeta de spec ya sea bajo `PR/` o movida a la raíz del repo.
 if ! grep -q "PR-agentic-fitness-spec," "$PBX"; then
   echo "ERROR: falta la excepción 'PR-agentic-fitness-spec,' en $PBX." >&2
   echo "  La carpeta de spec quedó como miembro del target PR (se empaqueta .md)." >&2
   echo "  Restaura con: git checkout -- $PBX  (o restaura la excepción para el target PR)." >&2
   exit 1
+fi
+if grep -q "PR/PR-agentic-fitness-spec," "$PBX"; then
+  echo "  info: la carpeta de spec se encuentra en PR/PR-agentic-fitness-spec (no excepcionada)." >&2
+elif grep -q "PR-agentic-fitness-spec," "$PBX"; then
+  echo "  info: la carpeta de spec se referencia como PR-agentic-fitness-spec (valida por token)." >&2
 fi
 
 # 2) No debe apuntar al target equivocado (PRWatch) — el drift común.

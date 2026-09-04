@@ -67,63 +67,58 @@ struct AppRootView: View {
         environment.onboarding.phase
     }
 
-    /// El contenido "de la app" tras completar el onboarding: hoy + restricciones.
+    /// Coordinador de WORKOUT MODE activo (nil hasta que se empieza una sesión).
+    @State private var workout: WorkoutSessionCoordinator?
+    @State private var showWorkout = false
+    @State private var selectedTab = AppTab.today
+
+    /// El contenido "de la app" tras completar el onboarding: tab bar + WORKOUT MODE.
+    /// La sesión activa se presenta a nivel raíz (fullScreenCover) para reemplazar la
+    /// navegación temporalmente (SKILL §6). Vista de composición: sin reglas de negocio.
     @ViewBuilder
     private var appContent: some View {
-        NavigationStack {
-            TodayView(
-                state: environment.todayPlan.plan?.todayState ?? .restDay,
-                onStart: startWorkout,
-                onResume: resumeWorkout
-            )
-            .toolbar {
-                ToolbarItemGroup(placement: .primaryAction) {
-                    NavigationLink {
-                        RestrictionManagementView(
-                            restrictions: [],
-                            onCreate: {},
-                            onReview: { _ in },
-                            onResolve: { _ in }
-                        )
-                    } label: {
-                        Label("Restricciones", systemImage: "list.bullet.clipboard")
-                    }
-
-                    NavigationLink {
-                        ExportView(
-                            coordinator: DataExportCoordinator(),
-                            bundle: makeExportBundle(),
-                            sessions: []
-                        )
-                    } label: {
-                        Label("Exportar", systemImage: "square.and.arrow.up")
-                    }
+        AppTabBarView(
+            selectedTab: $selectedTab,
+            showWorkout: $showWorkout,
+            onStart: { startWorkout() },
+            onResume: { resumeWorkout() }
+        )
+        .fullScreenCover(isPresented: $showWorkout) {
+            if let workout {
+                NavigationStack {
+                    WorkoutModeView(
+                        coordinator: workout,
+                        onDone: { showWorkout = false },
+                        coachingLevel: coachingLevel
+                    )
                 }
             }
         }
     }
 
+    /// Nivel de detalle de coaching derivado (determinista, PR-0403) del perfil de
+    /// onboarding completado. Default `guided` si aún no hay perfil (nunca inventa).
+    private var coachingLevel: CoachingDetailLevel {
+        guard case .completed(let profile) = environment.onboarding.phase else {
+            return .guided
+        }
+        return CoachingDetailMapper().initialDefault(for: profile.experience)
+    }
+
     private func startWorkout() {
-        // Intento de empezar sesión: la capa de aplicación lo gestiona (PR-0602).
+        guard let coordinator = environment.makeWorkoutCoordinator() else { return }
+        _ = coordinator.start()
+        workout = coordinator
+        showWorkout = true
     }
 
     private func resumeWorkout() {
-        // Intento de continuar sesión en curso.
-    }
-
-    /// Snapshot del historial para export. La alimentación con datos reales de los
-    /// repositorios se completará al cablear la capa de persistencia al composition root.
-    private func makeExportBundle() -> ExportBundle {
-        ExportBundle(
-            schemaVersion: ExportBundleVersion.current,
-            exportedAt: Date(),
-            blocks: [],
-            sessions: [],
-            exercises: [],
-            gyms: [],
-            restrictions: [],
-            profile: nil
-        )
+        // Restaura el workout activo (si se conserva) o inicia uno nuevo con el estado
+        // actual de la plantilla de hoy. En este slice la sesión se empieza/persiste en
+        // memoria; el reload desde persistencia es el cableado de PR-0201/0202.
+        guard let coordinator = environment.makeWorkoutCoordinator() else { return }
+        workout = coordinator
+        showWorkout = true
     }
 }
 
