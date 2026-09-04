@@ -412,6 +412,27 @@ xcodebuild \
 
 No asumir que ese simulator existe; listar destinations si falla.
 
+## CI local reproducible (PR-0002)
+
+Pipeline reproducible de build + unit tests, sin dependencia de rutas absolutas y con
+exit code no cero ante fallo:
+
+```bash
+make ci          # pipeline completo: guard + swift build + swift test + build scheme iOS
+make test        # solo unit tests del paquete PRCore
+make test-ios    # solo build del scheme iOS (integración)
+make guards      # solo guard del pbxproj (spec excluida del target)
+```
+
+También se puede invocar el script directamente (misma función, logs en `.ci/`):
+
+```bash
+./scripts/ci.sh all
+```
+
+Cualquier gate que falle hace fallar el pipeline (exit != 0). Los logs reproducibles de
+cada fase quedan en `.ci/` (ignorados por git).
+
 ---
 
 # Entitlements y privacidad

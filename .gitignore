@@ -14,3 +14,6 @@ DerivedData/
 
 # Local/secret
 .env
+
+# CI logs reproducibles (PR-0002)
+.ci/

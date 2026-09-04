@@ -907,6 +907,20 @@ Implementado y verificado:
 
 **Fix de build:** los `.md`/spec dentro de la carpeta sincronizada `PR/` se excluyen del target vía `PBXFileSystemSynchronizedBuildFileExceptionSet` para evitar el error "Multiple commands produce".
 
+### Estado PR-0002 (CI local reproducible)
+
+DONE. `scripts/ci.sh` + `Makefile` (root). Pipeline reproducible de build + unit tests:
+resuelve el root relativo al script (sin rutas absolutas de dev), con `set -euo pipefail`
+y fallo fail-fast (exit != 0 ante cualquier gate roto). Gates: (1) guard del pbxproj
+(`scripts/check_pbxproj_exception.sh`), (2) `swift build` de PRCore, (3) `swift test`
+de PRCore, (4) build del scheme `PR` con el primer destination de iOS Simulator
+detectado (si no hay destination se omite, el core ya quedó validado). La salida de
+cada fase se vierte a `.ci/<fase>.log` (ignorado vía `.gitignore`) para que el exit
+code del gate sea fiable (issue: `swift test` a `/dev/null` devuelve no-cero falsamente).
+`Makefile`: `make ci` (todo), `make test`, `make test-ios`, `make guards`. README
+documenta ejecución (§CI local reproducible). Verificado: `make ci` → exit 0 con los 4
+gates verdes (584 tests / 103 suites, iOS scheme build OK) y gate fallido → exit 1.
+
 ### Estado PR-0003 (Logging seguro)
 
 DONE. `Packages/PRCore/Sources/PRCore/SafeLogging.swift` + `SafeLoggingTests.swift`: wrapper

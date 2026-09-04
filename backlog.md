@@ -67,7 +67,8 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 ## PR-0002 — CI local reproducible
 **Priority:** P0  
 **Size:** M  
-**Dependencies:** PR-0001
+**Dependencies:** PR-0001  
+**Status:** DONE
 
 ### Criterios de aceptación
 - Existe script/Makefile/justfile documentado para build + unit tests.
