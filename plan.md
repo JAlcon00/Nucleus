@@ -1116,6 +1116,15 @@ respetados; 11 en `OnboardingCoordinatorTests.swift` (PRCore) — auth-gate, nav
 goBack preserva, complete construye, complete no inventa respuestas, no requiere
 HealthKit. Verificado con `swift test --filter Onboarding`: 22 tests verdes en 2 suites.
 
+### Estado PR-0403 (Coaching detail initial mapping)
+
+DONE. `Packages/PRCore/Sources/PRDomain/CoachingDetail.swift` + `CoachingDetailTests.swift`:
+`CoachingDetailMapper` (novice/beginner → guided, intermediate → balanced,
+advanced/competitive → advanced, determinista) y `CoachingDetailPrefs` (nivel efectivo +
+origen `defaultByExperience`/`manualOverride`; el override manual manda sobre el default
+aunque coincida, y `resetting` vuelve al default). El usuario siempre puede cambiar
+manualmente (PR-0403 AC). 10 tests verdes.
+
 ### Estado PR-0501 (Split selector)
 
 DONE. `Packages/PRCore/Sources/PRDomain/SplitSelector.swift` (promptMaster §8.2):

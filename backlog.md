@@ -477,12 +477,21 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 **Priority:** P1  
 **Size:** S  
 **Dependencies:** PR-0402
+**Status:** DONE
 
 ### Criterios de aceptación
 - novice/beginner default guided.
 - intermediate balanced.
 - advanced/competitive advanced.
 - usuario puede cambiar manualmente.
+
+### Estado
+DONE. `Packages/PRCore/Sources/PRDomain/CoachingDetail.swift`: `CoachingDetailMapper`
+(mapeo determinista novice/beginner→guided, intermediate→balanced,
+advanced/competitive→advanced) + `CoachingDetailPrefs` (nivel efectivo + origen
+`defaultByExperience`/`manualOverride`, override manual manda sobre el default y
+`resetting` limpia el override). El usuario SIEMPRE puede cambiar manualmente.
+Cobertura: 10 tests en `PRDomainTests/CoachingDetailTests.swift`.
 
 ---
 
