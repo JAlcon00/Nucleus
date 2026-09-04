@@ -1528,6 +1528,19 @@ rest timer). El shell de UI usa este estado determinista.
 DONE. `Packages/PRCore/Sources/PRCore/HealthLiveWorkout.swift` + `HealthLiveWorkoutTests.swift`:
 máquina de estados start/pause/resume/end del `HKLiveWorkoutBuilder` (via protocolo en PRCore).
 
+### Estado PR-1203 (Multidevice workout coordination)
+
+DONE. `Packages/PRCore/Sources/PRDomain/WorkoutSync.swift` + `WorkoutSyncTests.swift`:
+motor determinista e idempotente de coordinación del workout compartido (RNF-014).
+`WorkoutSyncEngine` aplica `SetEvent` (idempotentes por clave estable) sobre un
+`WorkoutSyncLedger`:
+- reintentar/reenviar ⇒ no-op (nunca duplica sets);
+- conflicto sobre el mismo `SetSlot` ⇒ supersede por `performedAt` (empate ⇒ mayor device),
+  queda exactamente un set;
+- merge commutativo ⇒ mismo workout lógico en cualquier orden de llegada;
+- local-first/offline-first ⇒ un dispositivo continúa y converge al reconectar.
+6 tests.
+
 ### Estado PR-1302 (RecoveryDecisionEngine v1)
 
 DONE. `Packages/PRCore/Sources/PRDomain/RecoveryDecisionEngine.swift` +

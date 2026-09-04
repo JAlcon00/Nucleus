@@ -1185,6 +1185,7 @@ mapeo determinista a la ontología `Exercise` de PRDomain documentado en
 **Priority:** P0  
 **Size:** XL  
 **Dependencies:** PR-1202
+**Status:** DONE
 
 ### Antes de implementar
 Dividir en subtareas según API real disponible.
@@ -1194,6 +1195,19 @@ Dividir en subtareas según API real disponible.
 - comandos son idempotentes.
 - conflicto no duplica sets.
 - uno puede continuar si el otro se desconecta temporalmente.
+
+### Estado
+Implementado con un motor determinista e idempotente de coordinación en el dominio
+(`WorkoutSyncEngine` + `SetEvent` + `WorkoutSyncLedger`, RNF-014):
+- **Idempotencia**: cada comando es idempotente por su clave estable (`event.dedupKey` / `SetRecordID`);
+  reenviar o reintentar es un no-op y nunca duplica sets.
+- **Conflicto sin duplicar**: dos eventos que nombran el mismo `SetSlot` representan el mismo
+  set lógico; gana el más reciente (`performedAt`, empate ⇒ mayor `device`) y queda exactamente uno.
+- **Mismo workout lógico**: el merge es commutativo; los dispositivos convergen al mismo contenido
+  de sets en cualquier orden de llegada.
+- **Desconexión tolerante**: local-first/offline-first; cada dispositivo aplica sus eventos en
+  solitario y el merge converge al reconectar.
+- Cobertura: 6 tests en `PRDomainTests/WorkoutSyncTests.swift`.
 
 ---
 
