@@ -599,11 +599,22 @@ Cobertura: 10 tests en `PRDomainTests/CoachingDetailTests.swift`.
 **Priority:** P1  
 **Size:** M  
 **Dependencies:** PR-0504
+**Status:** DONE
 
 ### Criterios de aceptación
 - nuevo goal/phase puede cerrar/transition current block.
 - historical records permanecen intactos.
 - exercise continuity se conserva cuando conviene.
+
+### Estado
+DONE. `Packages/PRCore/Sources/PRDomain/BlockTransition.swift`: `BlockTransitionEngine`
+(RF-033). Un cambio de goal/phase CIEERRA el bloque actual como copia inmutable con
+status `.completed` (historico y sessions intactos, mismo ID) y abre un NUEVO bloque
+(ID distinto) con el objetivo/fase destino. Continuidad de ejercicio "cuando conviene":
+un ejercicio se conserva sólo si su músculo primario sigue siendo prioritario en el
+nuevo bloque (`CatalogExercisePrimaryResolver`); si deja de priorizarse, se descarta.
+Transición con hechos explicables (facts). Bloque ya terminal ⇒ `notTransitionable`.
+Cobertura: 6 tests en `PRDomainTests/BlockTransitionTests.swift`.
 
 ---
 

@@ -1237,6 +1237,18 @@ DONE. `Packages/PRCore/Sources/PRDomain/BlockPlanner.swift` (plan §4F):
   rebuild → ID nuevo sin borrar, determinismo y exclusión por restricciones.
 - Suite global verde: **177 tests / 53 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0505 (Block transition)
+
+DONE. `Packages/PRCore/Sources/PRDomain/BlockTransition.swift` + `BlockTransitionTests.swift`
+(RF-033). `BlockTransitionEngine.transition(current:toGoal:phase:priorityMuscles:...)`:
+cierra el bloque actual como copia inmutable (`closedBlock`, mismo ID, sessions e historial
+intactos) y abre un `newBlock` con ID nuevo y goal/fase destino. Continuidad de ejercicio
+"cuando conviene": `CatalogExercisePrimaryResolver` resuelve el músculo primario de cada
+ejercicio; se conserva (carryover a las plantillas del nuevo bloque) si ese músculo sigue
+siendo prioritario, y se descarta si deja de priorizarse. Números de weeks válidos 4...8;
+bloque terminal ⇒ `BlockTransitionError.notTransitionable`. 6 tests verdes.
+- Suite global verde: **603 tests / 106 suites** (`swift test`); iOS Debug build verde.
+
 ### Estado PR-0601 (Today screen)
 
 DONE. `Packages/PRCore/Sources/PRDomain/TodayScreen.swift` (driver determinista puro) +
