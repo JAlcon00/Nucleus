@@ -1290,10 +1290,17 @@ Implementado con un motor determinista e idempotente de coordinación en el domi
 **Priority:** P1  
 **Size:** S  
 **Dependencies:** PR-0601
+**Status:** DONE
 
 ### Criterios de aceptación
 - excellent/normal/tired/veryTired/somethingHurts.
 - no obligatorio todos los días si policy no lo requiere.
+
+### Estado
+DONE. `Packages/PRCore/Sources/PRDomain/FitnessCheckIn.swift`:
+`PreWorkoutCheckIn` con excellent/normal/tired/veryTired/somethingHurts (+ región cuando
+aplica, sin diagnosticar). El pre-workout check-in no es obligatorio todos los días si la
+policy no lo requiere. Cobertura: `PRDomainTests/FitnessCheckInTests.swift`.
 
 ---
 
