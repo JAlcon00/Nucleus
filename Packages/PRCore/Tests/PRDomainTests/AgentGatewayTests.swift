@@ -144,4 +144,56 @@ final class AgentGatewayTests: XCTestCase {
         // transporte + timing + fallback local). Esto es estructural: sin API key.
         XCTAssertTrue(true)
     }
+
+    // MARK: - Fallback NL de gym/equipo (PR-1605)
+
+    func testEquipmentOccupiedMapsToEquipmentUnavailable() async throws {
+        let gateway = AgentGateway(transport: nil, timing: try makeTiming())
+        let result = await gateway.interpret(text: "el bench está ocupado", context: AgentContext())
+        XCTAssertEqual(result, .intent(.equipmentUnavailable(
+            EquipmentReference(equipmentType: .machine),
+            .occupied
+        )))
+    }
+
+    func testNoEquipmentMapsToDoesNotExist() async throws {
+        let gateway = AgentGateway(transport: nil, timing: try makeTiming())
+        let result = await gateway.interpret(text: "no tienen hack squat aquí", context: AgentContext())
+        XCTAssertEqual(result, .intent(.equipmentUnavailable(
+            EquipmentReference(equipmentType: .machine),
+            .doesNotExist
+        )))
+    }
+
+    func testDumbbellMissing() async throws {
+        let gateway = AgentGateway(transport: nil, timing: try makeTiming())
+        let result = await gateway.interpret(text: "no hay mancuernas", context: AgentContext())
+        XCTAssertEqual(result, .intent(.equipmentUnavailable(
+            EquipmentReference(equipmentType: .dumbbell),
+            .doesNotExist
+        )))
+    }
+
+    func testMachineOccupiedVariant() async throws {
+        let gateway = AgentGateway(transport: nil, timing: try makeTiming())
+        let result = await gateway.interpret(text: "la maquina esta en uso", context: AgentContext())
+        XCTAssertEqual(result, .intent(.equipmentUnavailable(
+            EquipmentReference(equipmentType: .machine),
+            .occupied
+        )))
+    }
+
+    func testEquipmentWithoutAvailabilityStillClarifies() async throws {
+        let gateway = AgentGateway(transport: nil, timing: try makeTiming())
+        // Frase de equipo sin patrón de ocupado/inexistente ⇒ no inventa intent.
+        let result = await gateway.interpret(text: "el cable", context: AgentContext())
+        XCTAssertEqual(result, .needsClarification)
+    }
+
+    func testEquipmentDontTransfersOriginalLoad() async throws {
+        // Sin patrón de ocupado/inexistente, no se emite un intent de sustitución.
+        let gateway = AgentGateway(transport: nil, timing: try makeTiming())
+        let result = await gateway.interpret(text: "quiero transferir la carga", context: AgentContext())
+        XCTAssertEqual(result, .needsClarification)
+    }
 }

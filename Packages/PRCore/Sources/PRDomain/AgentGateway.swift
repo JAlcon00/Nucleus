@@ -142,6 +142,22 @@ public struct LocalFallbackInterpreter: Sendable {
             return .intent(.setTimeConstraint(.hard(minutes: minutes)))
         }
 
+        // Equipo ocupado: "el bench está ocupado" / "la maquina esta ocupada".
+        if let equipment = extractUnavailableEquipment(from: trimmed, pattern: Self.occupiedPattern) {
+            return .intent(.equipmentUnavailable(
+                EquipmentReference(equipmentType: equipment),
+                .occupied
+            ))
+        }
+
+        // Equipo inexistente en el gym: "no tienen hack squat" / "no hay cable".
+        if let equipment = extractUnavailableEquipment(from: trimmed, pattern: Self.missingPattern) {
+            return .intent(.equipmentUnavailable(
+                EquipmentReference(equipmentType: equipment),
+                .doesNotExist
+            ))
+        }
+
         // Objetivo / fase / gym deterministas.
         switch trimmed {
         case "cambiar objetivo a hipertrofia", "objetivo hipertrofia":
@@ -155,6 +171,39 @@ public struct LocalFallbackInterpreter: Sendable {
         default:
             return .needsClarification
         }
+    }
+
+    // MARK: - Equipamiento (PR-1605)
+
+    private static let occupiedPattern = #"\b(est[áa]|se encuentra)?\s*(ocupad[oa]|en uso|pillad[oa])"#
+    private static let missingPattern = #"no (tienen|hay|ten[cg]amos|cuentan)"#
+
+    /// Intenta detectar + mapear un equipo al que se refiere el texto. Devuelve
+    /// `nil` si no hay ninguna palabra de equipo conocida (⇒ `needsClarification`).
+    private func extractUnavailableEquipment(from text: String, pattern: String) -> EquipmentType? {
+        // Mapeo determinista nombre → tipo. El dominio NO inventa instancias de
+        // máquina: devuelve el tipo para que el caller resuelva la instancia.
+        let keywords: [(EquipmentType, [String])] = [
+            (.barbell, ["barra", "barbell", "barra olimpica"]),
+            (.dumbbell, ["mancuerna", "dumbbell", "mancuernas"]),
+            (.smithMachine, ["smith", "smitch"]),
+            (.cable, ["cable", "polea", "crossover"]),
+            (.machine, ["maquina", "prensa", "hack squat", "hack", "ackly", "press machine", "leg press", "bench", "banco", "press de banca", "banca"]),
+            (.kettlebell, ["kettlebell", "pesa rusa"]),
+            (.bands, ["bandas", "goma", "resistencia"]),
+            (.sled, ["trineo", "sled"]),
+            (.plateLoaded, ["lastre", "discos"]),
+        ]
+
+        // Debe haber patrón de ocupado/inexistente Y una palabra de equipo.
+        guard text.range(of: pattern, options: .regularExpression) != nil else { return nil }
+
+        for (type, words) in keywords {
+            for word in words where text.contains(word) {
+                return type
+            }
+        }
+        return nil
     }
 
     private func extractMinutes(from text: String) -> Int? {

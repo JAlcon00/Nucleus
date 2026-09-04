@@ -1640,6 +1640,43 @@ completo vs ajustado/rest planificado; descanso planificado no rompe la constanc
 Todas las historias P0 del EPIC-09→17 de dominio/persistencia quedan marcadas DONE con
 este sync: suite global verde **554 tests / 101 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0004 (Feature flags)
+
+DONE. `Packages/PRCore/Sources/PRCore/FeatureFlags.swift` + `FeatureFlagsTests.swift`
+(PR-core). `FeatureFlags` con claves estables de Appendix E (`agent.nvidia.*`,
+`agent.tools.write.enabled`, `agent.health_context.enabled`,
+`agent.recovery_adjustment.enabled`, `agent.exercise_substitution.enabled`) con DEFAULTS
+SEGUROS (todo DESHABILITADO en producción), override auditable (source default/override),
+write independiente de read-only, Codable que rechaza claves desconocidas.
+`AppConfiguration` sólo expone `environmentTag`, nunca secretos (PR-2002). 6 tests.
+
+### Estado PR-0703 (Order explanation facts)
+
+DONE. `ExerciseOrderEngine.orderWithExplanation` (+`OrderExplanation`/`OrderedExerciseExplanation`)
+en `ExerciseOrder.swift` + `OrderExplanationTests.swift` (PR-domain). Explica de forma
+determinista "por qué va primero" con facts por ejercicio (rol funcional, bonus de
+prioridad muscular, bonus de demanda técnica) reusando `DecisionFact` para PR-1606;
+alineado rank-por-rank con el orden; Codable. 6 tests.
+
+### Estado PR-1605 (NL gym/equipment)
+
+DONE. `LocalFallbackInterpreter` en `AgentGateway.swift` + `AgentGatewayTests.swift`
+(PR-domain). Reconoce de forma determinista ocupado/inexistente de equipo →
+`.equipmentUnavailable(ref, .occupied|.doesNotExist)` con mapeo nombre→`EquipmentType`
+("el bench está ocupado", "no tienen hack squat aquí", "no hay mancuernas"); nunca inventa
+instancias de máquina ni transfiere carga. 6 tests.
+
+### Estado PR-0906/1303/1304/1604/1607/1702/1703/1801/1904
+
+Backfill: estas P1 de dominio ya estaban implementadas con tests. Marcadas DONE en backlog:
+per-machine history (`LoadHistory.swift`), deload (`DeloadEngine.swift`), auto-reschedule
+(`AutoRescheduleEngine.swift`), NL time constraint (`AgentIntent`+`LocalFallbackInterpreter`),
+agent audit trail (`AgentAuditTrail.swift`), consistency streak (`ConsistencyStreak.swift`),
+achievements (`Achievements.swift`), bodybuilding phase (`BodybuildingPhase.swift`), duration
+learning (`DurationEstimator`).
+
+Suite global verde: **615 tests / 108 suites** (`swift test`); iOS Debug build verde.
+
 ---
 
 # 25. Definition of milestone completion

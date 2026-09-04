@@ -96,11 +96,22 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 **Priority:** P1  
 **Size:** S  
 **Dependencies:** PR-0001
+**Status:** DONE
 
 ### Criterios de aceptación
 - Flags para agent backend, bodybuilding advanced y experimental features.
 - Configuración no contiene secretos.
 - Defaults seguros para producción.
+
+### Estado
+DONE. `Packages/PRCore/Sources/PRCore/FeatureFlags.swift`: `FeatureFlags` con claves
+estables de Appendix E (`agent.nvidia.*`, `agent.tools.write.enabled`,
+`agent.health_context.enabled`, `agent.recovery_adjustment.enabled`,
+`agent.exercise_substitution.enabled`) con DEFAULTS SEGUROS (todo DESHABILITADO en
+producción). Override auditable (`source` default/override); `write` independiente de
+`read-only`. Codable rechaza claves desconocidas. Config (`AppConfiguration`) sólo expone
+`environmentTag`, nunca secretos. Cobertura: 6 tests en
+`PRCoreTests/FeatureFlagsTests.swift`.
 
 ---
 
@@ -812,9 +823,17 @@ Cobertura: 6 tests en `PRDomainTests/BlockTransitionTests.swift`.
 **Priority:** P1  
 **Size:** S  
 **Dependencies:** PR-0701
+**Status:** DONE
 
 ### Criterios de aceptación
 - “por qué está primero” se explica con facts concretos.
+
+### Estado
+DONE. `ExerciseOrderEngine.orderWithExplanation` expone `OrderExplanation` con facts
+deterministas por ejercicio (rol funcional, bonus de prioridad muscular, bonus de demanda
+técnica) reusando `DecisionFact` para la capa de explicabilidad (PR-1606). Alineados
+rank-por-rank con el orden; Codable. Cobertura: 6 tests en
+`PRDomainTests/OrderExplanationTests.swift`.
 
 ---
 
@@ -1040,10 +1059,18 @@ Cobertura: 6 tests en `PRDomainTests/BlockTransitionTests.swift`.
 **Priority:** P1  
 **Size:** M  
 **Dependencies:** PR-0105, PR-0603
+**Status:** DONE
 
 ### Criterios de aceptación
 - historial de load por machine instance.
 - sustitución recupera historial del sustituto, no transfiere carga del original.
+
+### Estado
+DONE. `Packages/PRCore/Sources/PRDomain/LoadHistory.swift`: `MachineLoadHistoryService`
+con perfil EWMA por clave `exercise + machineInstance` (RF-013, §6.5). `record` actualiza
+la carga de la máquina del set completado; `weightForSubstitute` devuelve el historial del
+SUSTITUTO en su propia máquina y NUNCA transfiere la carga original. Determinista,
+realiza con confianza logística. Cobertura: `PRDomainTests/LoadHistoryTests.swift`.
 
 ---
 
@@ -1289,11 +1316,19 @@ Implementado con un motor determinista e idempotente de coordinación en el domi
 **Priority:** P1  
 **Size:** L  
 **Dependencies:** PR-1302
+**Status:** DONE
 
 ### Criterios de aceptación
 - planned y triggered deload.
 - reduce variable(s) según policy.
 - deload counts toward adherence.
+
+### Estado
+DONE. `Packages/PRCore/Sources/PRDomain/DeloadEngine.swift`: `DeloadEngine` con política
+versionada (`DeloadPolicyConfig`/`DeloadPolicyDefaults`) cubre deload PLANEADO (semanas 6/8
+según `deloadPolicy`) y TRIGGERED; reduce variables (carga/RIR/volumen) con guardas de
+fracción de carga/RIR/volumen inválidos. Cuenta para adherencia (`planned deload` no rompe
+consistencia). Cobertura: `PRDomainTests/DeloadEngineTests.swift`.
 
 ---
 
@@ -1301,11 +1336,18 @@ Implementado con un motor determinista e idempotente de coordinación en el domi
 **Priority:** P1  
 **Size:** M  
 **Dependencies:** PR-1302
+**Status:** DONE
 
 ### Criterios de aceptación
 - descanso recomendado puede mover sesión.
 - evita conflictos de sesiones consecutivas incompatibles.
 - usuario confirma cambios importantes de calendario.
+
+### Estado
+DONE. `Packages/PRCore/Sources/PRDomain/AutoRescheduleEngine.swift`: motor determinista
+que re-mueve una sesión tras descanso recomendado, evita conflictos de sesiones
+consecutivas incompatibles y marca los movimientos de calendario relevantes para
+confirmación del usuario. Cobertura: `PRDomainTests/AutoRescheduleEngineTests.swift`.
 
 ---
 
@@ -1465,6 +1507,7 @@ Etiquetar correlaciones como observadas, no causales.
 **Priority:** P1  
 **Size:** M  
 **Dependencies:** PR-1603, PR-0802
+**Status:** DONE
 
 ### Ejemplos
 - “Hoy sólo tengo 30 minutos.”
@@ -1474,16 +1517,30 @@ Etiquetar correlaciones como observadas, no causales.
 - intent estructurado correcto.
 - engine, no LLM, recompone sesión.
 
+### Estado
+DONE. El intent `setTimeConstraint` está en `AgentIntent` y el `LocalFallbackInterpreter`
+resuelve offline ("solo 30 min" → `.hard(minutes:)`); el engine recomponen la sesión
+(`HardTimeOptimizer`/`FlexibleTimeOptimizer`), nunca el LLM. Cobertura:
+`AgentGatewayTests`/`AgentAdvancedReasoningTests`.
+
 ---
 
 ## PR-1605 — Natural language: gym/equipment
 **Priority:** P1  
 **Size:** M  
 **Dependencies:** PR-1603, PR-0905
+**Status:** DONE
 
 ### Ejemplos
 - “No tienen hack squat aquí.”
 - “El bench está ocupado.”
+
+### Estado
+DONE. `LocalFallbackInterpreter` reconoce de forma determinista ocupado/inexistente de
+equipo → `.equipmentUnavailable(reference, .occupied | .doesNotExist)` con mapeo de
+palabras de equipo → `EquipmentType` (sin inventar instancias de máquina). El caller
+resuelve la instancia y dispara reorder/substitute (PR-0902/0905). Cobertura: 6 tests en
+`AgentGatewayTests`.
 
 ---
 
@@ -1504,10 +1561,17 @@ Etiquetar correlaciones como observadas, no causales.
 **Priority:** P1  
 **Size:** M  
 **Dependencies:** PR-1602
+**Status:** DONE
 
 ### Criterios
 - intent/action/result traceable.
 - datos sensibles minimizados.
+
+### Estado
+DONE. `Packages/PRCore/Sources/PRDomain/AgentAuditTrail.swift`: `AgentAuditRecord` +
+`AgentAuditJournal` trazan intent→validación→result por `conversationID`, append-only y
+con mínima retención de sensibles (tags/nombres/veredictos, nunca texto crudo ni PII).
+Cobertura: `PRDomainTests/AgentAuditTrailTests.swift`.
 
 ---
 
@@ -1530,10 +1594,16 @@ Etiquetar correlaciones como observadas, no causales.
 **Priority:** P1  
 **Size:** S  
 **Dependencies:** PR-1701
+**Status:** DONE
 
 ### Criterios de aceptación
 - streak por semanas de cumplimiento.
 - no streak de entrenar todos los días como métrica principal.
+
+### Estado
+DONE. `Packages/PRCore/Sources/PRDomain/ConsistencyStreak.swift`: streak por semanas de
+cumplimiento (no entrena todos los días como métrica principal). Cobertura:
+`PRDomainTests/ConsistencyStreakTests.swift`.
 
 ---
 
@@ -1541,6 +1611,7 @@ Etiquetar correlaciones como observadas, no causales.
 **Priority:** P1  
 **Size:** M  
 **Dependencies:** PR-1003, PR-1701
+**Status:** DONE
 
 ### Achievements iniciales
 - first workout;
@@ -1552,6 +1623,10 @@ Etiquetar correlaciones como observadas, no causales.
 - first smart substitution;
 - 100/500/1000 working sets.
 
+### Estado
+DONE. `Packages/PRCore/Sources/PRDomain/Achievements.swift`: framework de logros con los
+hitos iniciales deterministas. Cobertura: `PRDomainTests/AchievementTests.swift`.
+
 ---
 
 # EPIC-18 — Bodybuilding Mode
@@ -1560,10 +1635,16 @@ Etiquetar correlaciones como observadas, no causales.
 **Priority:** P1  
 **Size:** S  
 **Dependencies:** PR-0104
+**Status:** DONE
 
 ### Criterios
 - offSeason/cut/contestPrep/recovery.
 - TrainingGoal bodybuilding remains separate from phase.
+
+### Estado
+DONE. `Packages/PRCore/Sources/PRDomain/BodybuildingPhase.swift`: fases
+offSeason/cut/contestPrep/recovery, con `TrainingGoal.bodybuilding` independiente de la
+fase. Cobertura: `PRDomainTests/BodybuildingPhaseTests.swift`.
 
 ---
 
@@ -1659,9 +1740,15 @@ Etiquetar correlaciones como observadas, no causales.
 **Priority:** P1  
 **Size:** M  
 **Dependencies:** PR-0801
+**Status:** DONE
 
 ### Criterios
 - personal session/exercise timing visible to optimizer.
+
+### Estado
+DONE. `ExerciseDurationProfile` del `DurationEstimator` (PR-0801) aprende con workouts
+completados (EWMA + confianza) y el motor favorece el tiempo personal sobre el default;
+el optimizador lo usa. Cobertura: `PRDomainTests/DurationEstimatorTests.swift`.
 
 ---
 

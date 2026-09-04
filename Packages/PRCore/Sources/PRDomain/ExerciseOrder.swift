@@ -53,6 +53,40 @@ public enum ExerciseOrderError: Error, Equatable, Sendable {
     case emptyInput
 }
 
+/// Explicación determinista del orden de una sesión (PR-0703).
+///
+/// Por cada ejercicio ordenado añade facts concretos que responden "por qué va
+/// donde va": el rol funcional, el bonus muscular de prioridad y el bonus de
+/// demanda técnica. Los facts reusan `DecisionFact` para encajar con el resto de
+/// la máquina de explicabilidad (PR-1606): la UI puede traducirlos o pasarlos al
+/// agente para explicación offline.
+public struct OrderExplanation: Codable, Sendable, Equatable {
+    /// Facts por ejercicio, en el mismo orden que `OrderedExercise`.
+    public let perExercise: [OrderedExerciseExplanation]
+
+    public init(perExercise: [OrderedExerciseExplanation]) {
+        self.perExercise = perExercise
+    }
+}
+
+/// Facts explicables de UN ejercicio dentro del orden.
+public struct OrderedExerciseExplanation: Codable, Sendable, Equatable, Identifiable {
+    public let exerciseID: ExerciseID
+    public let rank: Int
+    public let orderScore: Int
+    /// Motivos deterministas, ordenados por relevancia (mayor impacto primero).
+    public let facts: [DecisionFact]
+
+    public var id: ExerciseID { exerciseID }
+
+    public init(exerciseID: ExerciseID, rank: Int, orderScore: Int, facts: [DecisionFact]) {
+        self.exerciseID = exerciseID
+        self.rank = rank
+        self.orderScore = orderScore
+        self.facts = facts
+    }
+}
+
 /// Ordena una sesión de forma determinista (PR-0701, promptMaster §9).
 ///
 /// Reglas de prioridad (alta → baja):
@@ -89,6 +123,24 @@ public struct ExerciseOrderEngine: Sendable {
         }
     }
 
+    /// Ordena Y explica el porqué de cada posición (PR-0703). Devuelve el mismo
+    /// orden que `order` más los facts concretos por ejercicio.
+    public func orderWithExplanation(input: ExerciseOrderInput) throws -> (ordered: [OrderedExercise], explanation: OrderExplanation) {
+        let ordered = try order(input: input)
+        let priorities = priorityBy(muscle: input.priorities)
+
+        var perExercise: [OrderedExerciseExplanation] = []
+        for item in ordered {
+            perExercise.append(OrderedExerciseExplanation(
+                exerciseID: item.exercise.id,
+                rank: item.rank,
+                orderScore: item.orderScore,
+                facts: Self.facts(for: item.exercise, priorities: priorities)
+            ))
+        }
+        return (ordered, OrderExplanation(perExercise: perExercise))
+    }
+
     // MARK: - Scoring (§9.3 conceptual)
 
     /// Puntuación de orden base. Mayor ⇒ primero.
@@ -99,6 +151,38 @@ public struct ExerciseOrderEngine: Sendable {
         score += skillBonus(exercise)
         score += loadabilityBonus(exercise)
         return score
+    }
+
+    /// Facts deterministas que explican el orden de UN ejercicio (PR-0703).
+    /// Cada fact nombra el motivo y su impacto concreto en puntos.
+    private static func facts(for exercise: Exercise, priorities: [MuscleGroup.ID: PriorityTier]) -> [DecisionFact] {
+        var facts: [DecisionFact] = []
+
+        let role = rolePriority(exercise)
+        if role > 0 {
+            facts.append(DecisionFact(
+                key: "exercise.order.role",
+                value: "role \(dominantRole(of: exercise).rawValue) (+\(role) pts)"
+            ))
+        }
+
+        let bonus = priorityBonus(exercise, priorities: priorities)
+        if bonus > 0 {
+            facts.append(DecisionFact(
+                key: "exercise.order.musclePriority",
+                value: "muscle priority bonus (+\(bonus) pts)"
+            ))
+        }
+
+        let skill = skillBonus(exercise)
+        if skill > 0 {
+            facts.append(DecisionFact(
+                key: "exercise.order.skillDemand",
+                value: "skill demand \(exercise.skillDemand.rawValue) (+\(skill) pts)"
+            ))
+        }
+
+        return facts
     }
 
     /// Rol funcional (prmMaster §9.1 4–8).
@@ -113,6 +197,21 @@ public struct ExerciseOrderEngine: Sendable {
         if roles.contains(.conditioning) || roles.contains(.posing) { return 1 }
         // Si el ejercicio es anchor pero sin rol compuesto, se trata según su función.
         return 40
+    }
+
+    /// Rol dominante del ejercicio para el fact de explicación (mismo orden que
+    /// `rolePriority`, de mayor a menor prioridad funcional).
+    private static func dominantRole(of exercise: Exercise) -> ExerciseRole {
+        let roles = exercise.defaultRoles
+        if roles.contains(.primaryCompound) { return .primaryCompound }
+        if roles.contains(.secondaryCompound) { return .secondaryCompound }
+        if roles.contains(.priorityIsolation) { return .priorityIsolation }
+        if roles.contains(.accessoryIsolation) { return .accessoryIsolation }
+        if roles.contains(.warmup) { return .warmup }
+        if roles.contains(.mobility) { return .mobility }
+        if roles.contains(.conditioning) { return .conditioning }
+        if roles.contains(.posing) { return .posing }
+        return .anchor
     }
 
     /// Bonus muscular por prioridad del bloque (§9.1 3).
