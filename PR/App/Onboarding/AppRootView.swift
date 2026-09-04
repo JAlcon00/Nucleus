@@ -77,7 +77,7 @@ struct AppRootView: View {
                 onResume: resumeWorkout
             )
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItemGroup(placement: .primaryAction) {
                     NavigationLink {
                         RestrictionManagementView(
                             restrictions: [],
@@ -87,6 +87,16 @@ struct AppRootView: View {
                         )
                     } label: {
                         Label("Restricciones", systemImage: "list.bullet.clipboard")
+                    }
+
+                    NavigationLink {
+                        ExportView(
+                            coordinator: DataExportCoordinator(),
+                            bundle: makeExportBundle(),
+                            sessions: []
+                        )
+                    } label: {
+                        Label("Exportar", systemImage: "square.and.arrow.up")
                     }
                 }
             }
@@ -99,6 +109,21 @@ struct AppRootView: View {
 
     private func resumeWorkout() {
         // Intento de continuar sesión en curso.
+    }
+
+    /// Snapshot del historial para export. La alimentación con datos reales de los
+    /// repositorios se completará al cablear la capa de persistencia al composition root.
+    private func makeExportBundle() -> ExportBundle {
+        ExportBundle(
+            schemaVersion: ExportBundleVersion.current,
+            exportedAt: Date(),
+            blocks: [],
+            sessions: [],
+            exercises: [],
+            gyms: [],
+            restrictions: [],
+            profile: nil
+        )
     }
 }
 

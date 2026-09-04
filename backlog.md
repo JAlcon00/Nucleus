@@ -339,12 +339,26 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 **Priority:** P1  
 **Size:** M  
 **Dependencies:** PR-0202
+**Status:** DONE
 
 ### Criterios de aceptación
 - Export JSON completo de training data.
 - CSV mínimo para workout sets.
 - No exportar secrets.
 - user-controlled share/export flow.
+
+### Estado
+Implementado con un motor determinista de dominio (`ExportEngine`).
+- **JSON completo**: `ExportBundle` versionado (bloques, sesiones+sets, ejercicios, gyms,
+  restricciones y perfil), serialización determinista (`sortedKeys` + ISO-8601).
+- **CSV mínimo de workout sets**: una fila por set (cabecera + 10 columnas), orden
+  determinista y quoting RFC-4180.
+- **No exporta secrets**: el bundle sólo contiene agregados de dominio de entrenamiento;
+  además `containsForbiddenSecretFields` niega el export si detecta campos con nombres
+  de secretos (`DataExportError.secretDetected`).
+- **user-controlled flow**: `DataExportCoordinator` (caso de uso en PRCore) + `ExportView`
+  con `ShareLink` del archivo.
+- Cobertura: 7 tests en `PRDomainTests/DataExportTests.swift`.
 
 ---
 

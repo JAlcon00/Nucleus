@@ -1030,6 +1030,24 @@ DONE. Cola de operaciones pendientes offline-first con idempotencia.
 - Tests: `Tests/PRDomainTests/PendingOperationTests.swift` + `Tests/PRCoreTests/PendingOperationStoreTests.swift` (14 tests: dedup por key e id, orden, Codable round-trip, drain idempotente, no pérdida cuando falta la sesión).
 - Suite global verde: **551 tests / 101 suites** (`swift test`); iOS Debug build verde.
 
+### Estado PR-0204 (Data export)
+
+DONE. Export de datos portable y determinista (RF-030, RNEG-006).
+
+- `Sources/PRDomain/DataExport.swift`: `ExportEngine` + `ExportBundle` (JSON completo:
+  bloques, sesiones+sets, ejercicios, gyms, restricciones, perfil; versionado, orden
+  determinista, ISO-8601) + `workoutSetsCSV` (CSV mínimo, una fila por set, 10 columnas,
+  quoting RFC-4180). Política de secrets explícita (`ForbiddenExportFields`) y guardia
+  `containsForbiddenSecretFields` que impide exportar campos con nombres de secrets.
+- `Sources/PRCore/DataExportCoordinator.swift`: caso de uso que compone los artefactos
+  y lanza `DataExportError.secretDetected` ante cualquier campo sospechoso.
+- `PR/App/ExportView.swift`: pantalla user-controlled con `ShareLink` (JSON completo /
+  CSV de sets), alimentada vía `AppRootView`.
+- Tests: `Tests/PRDomainTests/DataExportTests.swift` (7 tests: JSON completo+determinista,
+  sin secrets, guardia detecta field inyectado, CSV cabecera+filas+orden, columnas estables,
+  vacío, rir/pain).
+- Suite global verde: **597 tests / 105 suites** (`swift test`); iOS Debug build verde.
+
 ### Estado PR-0301 (Exercise catalog seed)
 
 DONE. Catálogo inicial versionado con import idempotente.
