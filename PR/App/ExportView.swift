@@ -4,9 +4,11 @@
 //
 //  Created by PR.
 //
-//  Pantalla de export de datos (PR-0204, RF-030 / RNEG-006). Renderiza estado y
-//  delega en `DataExportCoordinator` (caso de uso) para construir el archivo; el
-//  compartido es "user-controlled" vía `ShareLink`. No contiene reglas de negocio.
+//  Pantalla de export con historial (PR-0204, SCRUM-23). Muestra el conteo real de
+//  sesiones guardadas, avisa de registros ilegibles y ofrece compartir JSON y CSV
+//  (user-controlled, `ShareLink`). Los archivos los construye `DataExportCoordinator`;
+//  si el JSON no se puede generar (p. ej. el guard de secretos lo rechaza) se dice,
+//  nunca se oculta. Sin reglas de negocio.
 //
 
 import SwiftUI
@@ -15,63 +17,76 @@ import PRCore
 import PRDomain
 
 struct ExportView: View {
-    let coordinator: DataExportCoordinator
-    let bundle: ExportBundle
     let sessions: [WorkoutSessionRecord]
+    let exercises: [Exercise]
+    let unreadableCount: Int
 
-    @State private var jsonFile: DataExportFile?
-    @State private var csvFile: DataExportFile?
+    private let coordinator = DataExportCoordinator()
+
+    /// Archivos de export (se construyen una vez al aparecer).
+    private enum Files {
+        case preparing
+        case ready(json: DataExportFile?, csv: DataExportFile)
+    }
+
+    @State private var files: Files = .preparing
 
     var body: some View {
         List {
             Section("Historial de entrenamiento") {
-                Label(formatCount(bundle.sessions.count, "sesión", "sesiones"),
-                      systemImage: "figure.strengthtraining.traditional")
-                Label(formatCount(bundle.exercises.count, "ejercicio", "ejercicios"),
-                      systemImage: "dumbbell")
+                Label {
+                    sessionCount
+                        .monospacedDigit()
+                } icon: {
+                    Image(systemName: "figure.strengthtraining.traditional")
+                }
+                if unreadableCount > 0 {
+                    UnreadableRecordsNotice(count: unreadableCount)
+                }
             }
 
             Section("Exportar") {
-                shareButton(for: jsonFile, title: "JSON completo", icon: "doc.richtext")
-                shareButton(for: csvFile, title: "Workout sets (CSV)", icon: "tablecells")
+                switch files {
+                case .preparing:
+                    ProgressView("Preparando archivos…")
+                case .ready(let json, let csv):
+                    if let json {
+                        shareLink(json, title: "JSON completo", icon: "doc.richtext")
+                    } else {
+                        Label("No se pudo preparar el JSON.", systemImage: "exclamationmark.triangle")
+                    }
+                    shareLink(csv, title: "Series (CSV)", icon: "tablecells")
+                }
             }
         }
-        .navigationTitle("Exportar datos")
         .task { buildFiles() }
-        .overlay {
-            if jsonFile == nil && csvFile == nil {
-                ProgressView("Preparando export…")
-            }
-        }
+    }
+
+    private var sessionCount: Text {
+        sessions.count == 1 ? Text("1 sesión") : Text("\(sessions.count) sesiones")
     }
 
     private func buildFiles() {
-        jsonFile = try? coordinator.exportJSON(
-            sessions: bundle.sessions,
-            exercises: bundle.exercises,
-            blocks: bundle.blocks,
-            gyms: bundle.gyms,
-            restrictions: bundle.restrictions,
-            profile: bundle.profile,
-            exportedAt: bundle.exportedAt
-        )
-        csvFile = coordinator.exportSetsCSV(sessions: sessions)
-    }
-
-    @ViewBuilder
-    private func shareButton(for file: DataExportFile?, title: String, icon: String) -> some View {
-        if let file {
-            ShareLink(
-                item: ShareableFile(file: file),
-                preview: SharePreview(file.fileName)
-            ) {
-                Label(title, systemImage: icon)
-            }
+        let json: DataExportFile?
+        do {
+            json = try coordinator.exportJSON(
+                sessions: sessions,
+                exercises: exercises,
+                blocks: [],
+                gyms: [],
+                restrictions: [],
+                profile: nil
+            )
+        } catch {
+            json = nil
         }
+        files = .ready(json: json, csv: coordinator.exportSetsCSV(sessions: sessions))
     }
 
-    private func formatCount(_ n: Int, _ singular: String, _ plural: String) -> String {
-        "\(n) \(n == 1 ? singular : plural)"
+    private func shareLink(_ file: DataExportFile, title: LocalizedStringKey, icon: String) -> some View {
+        ShareLink(item: ShareableFile(file: file), preview: SharePreview(file.fileName)) {
+            Label(title, systemImage: icon)
+        }
     }
 }
 
@@ -88,19 +103,36 @@ struct ShareableFile: Transferable {
     }
 }
 
-#Preview {
-    ExportView(
-        coordinator: DataExportCoordinator(),
-        bundle: ExportBundle(
-            schemaVersion: ExportBundleVersion.current,
-            exportedAt: Date(),
-            blocks: [],
-            sessions: [],
-            exercises: [],
-            gyms: [],
-            restrictions: [],
-            profile: nil
-        ),
-        sessions: []
-    )
+// MARK: - Previews
+
+private func previewSessions(_ count: Int) -> [WorkoutSessionRecord] {
+    (0..<count).map { index in
+        WorkoutSessionRecord(
+            startedAt: Date(timeIntervalSinceReferenceDate: Double(index) * 86_400),
+            lifecycle: .completed
+        )
+    }
+}
+
+#Preview("2 sesiones") {
+    NavigationStack {
+        ExportView(sessions: previewSessions(2), exercises: [], unreadableCount: 0)
+            .navigationTitle("Exportar datos")
+    }
+}
+
+#Preview("1 sesión + ilegible · oscuro") {
+    NavigationStack {
+        ExportView(sessions: previewSessions(1), exercises: [], unreadableCount: 1)
+            .navigationTitle("Exportar datos")
+    }
+    .preferredColorScheme(.dark)
+}
+
+#Preview("3 sesiones · accessibility3") {
+    NavigationStack {
+        ExportView(sessions: previewSessions(3), exercises: [], unreadableCount: 2)
+            .navigationTitle("Exportar datos")
+    }
+    .dynamicTypeSize(.accessibility3)
 }

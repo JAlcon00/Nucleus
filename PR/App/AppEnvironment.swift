@@ -40,44 +40,39 @@ public final class AppEnvironment {
     /// Catálogo de ejercicios resolvido (inmutable; fallback vacío documentado).
     public let catalog: ExerciseCatalog
 
-    /// Almacén persistente local durabile (PR-0203 wiring): respalda la cola de
-    /// operaciones pendientes Y el repositorio de workouts con escritura atómica.
-    /// `nil` sólo si la infraestructura de Application Support no está disponible.
-    public let localRepositoryStore: AtomicFileRepositoryStore?
+    /// Persistencia local (SCRUM-23): una colección por subdirectorio bajo
+    /// `Application Support/PR/persistence`. `nil` sólo si Application Support no está
+    /// disponible (el workout sigue funcionando en memoria).
+    public let persistence: LocalPersistence?
 
     /// Construye un coordinador de WORKOUT MODE para la sesión planeada hoy.
     /// Usa la plantilla del plan de hoy (si la hay) y los nombres del catálogo.
     /// Devuelve `nil` para un día de descanso (sin sesión).
-    /// Cablea la persistencia offline-first (PR-0203): cada set completado se encola
-    /// como operación crítica durabile y, al cerrar la sesión, el registro se persiste
-    /// en el repositorio local. Si no hay almacén durable, el coordinador funciona igual
+    /// La persistencia (cola de pendientes, baselines de PR, guardado al terminar) la
+    /// cablea `LocalPersistence`. Si no hay almacén durable, el coordinador funciona igual
     /// en memoria (nunca se pierde la sesión viva).
-    /// Los baselines de PR (PR-1004) se derivan del historial local; si la lectura falla
-    /// se usa un baseline vacío (no se celebra nada) y el workout arranca igual.
     public func makeWorkoutCoordinator() async -> WorkoutSessionCoordinator? {
         guard let template = todayPlan.plan?.todayTemplate else { return nil }
         var names: [ExerciseID: String] = [:]
         for exercise in catalog.exercises {
             names[exercise.id] = exercise.canonicalName
         }
-        let pendingQueue = localRepositoryStore.map {
-            PendingOperationQueueStore(store: $0)
+        let presenter = PRCelebrationPresenter(locale: Self.presentationLocale)
+        if let persistence {
+            do {
+                return try await persistence.makeWorkoutCoordinator(
+                    template: template,
+                    exerciseNames: names,
+                    celebrationPresenter: presenter
+                )
+            } catch {
+                persistence.log.saveFailed(.workouts)
+            }
         }
-        let workoutRepository = localRepositoryStore.map {
-            FileWorkoutRepository(store: $0)
-        }
-        let history = (try? await workoutRepository?.allSessions()) ?? []
         return WorkoutSessionCoordinator(
             template: template,
             exerciseNames: names,
-            recordBaselines: PersonalRecordBaselineBuilder.baselines(from: history),
-            celebrationPresenter: PRCelebrationPresenter(locale: Self.presentationLocale),
-            pendingQueue: pendingQueue,
-            onSessionFinished: { [workoutRepository] session in
-                // Persiste el registro final en el repositorio local (async, best-effort).
-                // Un fallo aquí NO pierde el dato: la cola de operaciones queda intacta.
-                try? await workoutRepository?.save(session)
-            }
+            celebrationPresenter: presenter
         )
     }
 
@@ -85,11 +80,11 @@ public final class AppEnvironment {
         coreVersion: String = PRCore.version,
         authProvider: (any AppleIDAuthProviding)? = nil,
         catalog: ExerciseCatalog? = nil,
-        repositoryStore: AtomicFileRepositoryStore? = nil
+        persistence: LocalPersistence? = nil
     ) {
         self.coreVersion = coreVersion
         self.onboarding = OnboardingCoordinator(authProvider: authProvider ?? SignInWithAppleProvider())
-        self.localRepositoryStore = repositoryStore ?? Self.makeDefaultRepositoryStore()
+        self.persistence = persistence ?? Self.makeDefaultPersistence()
         let resolvedCatalog: ExerciseCatalog
         if let catalog {
             resolvedCatalog = catalog
@@ -118,25 +113,32 @@ public final class AppEnvironment {
         )
     }
 
-    /// Crea el almacén durable por defecto en Application Support/PR (API real de Apple).
-    /// Devuelve `nil` si el directorio no puede resolverse (fallback en memoria del app).
-    private static func makeDefaultRepositoryStore() -> AtomicFileRepositoryStore? {
-        guard let base = try? FileManager.default.url(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        ) else { return nil }
-        return try? AtomicFileRepositoryStore(
-            directoryProvider: AppSupportPersistenceDirectory(baseURL: base)
-        )
-    }
-}
-
-/// Provee el subdirectorio de persistencia del app dentro de Application Support.
-private struct AppSupportPersistenceDirectory: @unchecked Sendable, RepositoryDirectoryProviding {
-    let baseURL: URL
-    func directoryURL() throws -> URL {
-        baseURL.appendingPathComponent("PR/persistence", isDirectory: true)
+    /// Crea la persistencia por defecto en Application Support/PR/persistence y migra
+    /// una sola vez el layout antiguo (todo en la raíz). Devuelve `nil` si el directorio
+    /// no puede resolverse (fallback en memoria del app).
+    private static func makeDefaultPersistence() -> LocalPersistence? {
+        let persistence: LocalPersistence
+        do {
+            let base = try FileManager.default.url(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: true
+            )
+            persistence = try LocalPersistence(
+                rootURL: base.appendingPathComponent("PR/persistence", isDirectory: true)
+            )
+        } catch {
+            PersistenceLog.standard.migrationFailed()
+            return nil
+        }
+        do {
+            try persistence.migrateLegacyLayout()
+        } catch {
+            // Los archivos antiguos siguen intactos en la raíz: se reintenta al próximo
+            // arranque. Las colecciones nuevas son utilizables igualmente.
+            persistence.log.migrationFailed()
+        }
+        return persistence
     }
 }

@@ -26,6 +26,31 @@ enum JSONBlob {
     static func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
         try JSONDecoder().decode(type, from: data)
     }
+
+    /// Lectura tolerante de una colección completa (SCRUM-23): decodifica lo válido y
+    /// cuenta lo ilegible (IO o decode). Si hubo ilegibles, lo registra sin datos
+    /// personales. Lanza sólo si la colección entera no es accesible.
+    static func decodeAll<T: Decodable & Sendable>(
+        _ type: T.Type,
+        from store: any RepositoryStore,
+        collection: PersistenceCollection,
+        log: PersistenceLog
+    ) throws -> RepositoryReadResult<T> {
+        let raw = try store.readAllEntries()
+        var items: [T] = []
+        var unreadable = raw.unreadableKeys.count
+        for entry in raw.entries {
+            do {
+                items.append(try decode(type, from: entry.data))
+            } catch {
+                unreadable += 1
+            }
+        }
+        if unreadable > 0 {
+            log.unreadableRecords(collection, count: unreadable)
+        }
+        return RepositoryReadResult(items: items, unreadableCount: unreadable)
+    }
 }
 
 // MARK: - ExerciseRepository
@@ -33,13 +58,15 @@ enum JSONBlob {
 /// Implementación persistente de `ExerciseRepository`.
 public final class FileExerciseRepository: ExerciseRepository, @unchecked Sendable {
     private let store: any RepositoryStore
+    private let log: PersistenceLog
 
-    public init(store: some RepositoryStore) {
+    public init(store: some RepositoryStore, log: PersistenceLog = .standard) {
         self.store = store
+        self.log = log
     }
 
     public func allExercises() async throws -> [Exercise] {
-        try store.readAll().map { try JSONBlob.decode(Exercise.self, from: $0) }
+        try JSONBlob.decodeAll(Exercise.self, from: store, collection: .exercises, log: log).items
     }
 
     public func exercise(id: ExerciseID) async throws -> Exercise? {
@@ -61,13 +88,15 @@ public final class FileExerciseRepository: ExerciseRepository, @unchecked Sendab
 /// Implementación persistente de `TrainingBlockRepository`.
 public final class FileTrainingBlockRepository: TrainingBlockRepository, @unchecked Sendable {
     private let store: any RepositoryStore
+    private let log: PersistenceLog
 
-    public init(store: some RepositoryStore) {
+    public init(store: some RepositoryStore, log: PersistenceLog = .standard) {
         self.store = store
+        self.log = log
     }
 
     public func allBlocks() async throws -> [TrainingBlock] {
-        try store.readAll().map { try JSONBlob.decode(TrainingBlock.self, from: $0) }
+        try JSONBlob.decodeAll(TrainingBlock.self, from: store, collection: .blocks, log: log).items
     }
 
     public func block(id: TrainingBlockID) async throws -> TrainingBlock? {
@@ -90,13 +119,19 @@ public final class FileTrainingBlockRepository: TrainingBlockRepository, @unchec
 /// Guarda la sesión completa (incluye sus sets) de forma atómica e inmediata.
 public final class FileWorkoutRepository: WorkoutRepository, @unchecked Sendable {
     private let store: any RepositoryStore
+    private let log: PersistenceLog
 
-    public init(store: some RepositoryStore) {
+    public init(store: some RepositoryStore, log: PersistenceLog = .standard) {
         self.store = store
+        self.log = log
     }
 
     public func allSessions() async throws -> [WorkoutSessionRecord] {
-        try store.readAll().map { try JSONBlob.decode(WorkoutSessionRecord.self, from: $0) }
+        try await loadAllSessions().items
+    }
+
+    public func loadAllSessions() async throws -> RepositoryReadResult<WorkoutSessionRecord> {
+        try JSONBlob.decodeAll(WorkoutSessionRecord.self, from: store, collection: .workouts, log: log)
     }
 
     public func session(id: WorkoutID) async throws -> WorkoutSessionRecord? {
@@ -118,13 +153,15 @@ public final class FileWorkoutRepository: WorkoutRepository, @unchecked Sendable
 /// Implementación persistente de `GymRepository`.
 public final class FileGymRepository: GymRepository, @unchecked Sendable {
     private let store: any RepositoryStore
+    private let log: PersistenceLog
 
-    public init(store: some RepositoryStore) {
+    public init(store: some RepositoryStore, log: PersistenceLog = .standard) {
         self.store = store
+        self.log = log
     }
 
     public func allGyms() async throws -> [GymProfile] {
-        try store.readAll().map { try JSONBlob.decode(GymProfile.self, from: $0) }
+        try JSONBlob.decodeAll(GymProfile.self, from: store, collection: .gyms, log: log).items
     }
 
     public func gym(id: GymID) async throws -> GymProfile? {
@@ -146,13 +183,15 @@ public final class FileGymRepository: GymRepository, @unchecked Sendable {
 /// Implementación persistente de `RestrictionRepository`.
 public final class FileRestrictionRepository: RestrictionRepository, @unchecked Sendable {
     private let store: any RepositoryStore
+    private let log: PersistenceLog
 
-    public init(store: some RepositoryStore) {
+    public init(store: some RepositoryStore, log: PersistenceLog = .standard) {
         self.store = store
+        self.log = log
     }
 
     public func allRestrictions() async throws -> [TrainingRestriction] {
-        try store.readAll().map { try JSONBlob.decode(TrainingRestriction.self, from: $0) }
+        try JSONBlob.decodeAll(TrainingRestriction.self, from: store, collection: .restrictions, log: log).items
     }
 
     public func restriction(id: RestrictionID) async throws -> TrainingRestriction? {
@@ -174,13 +213,15 @@ public final class FileRestrictionRepository: RestrictionRepository, @unchecked 
 /// Implementación persistente de `DecisionRepository`.
 public final class FileDecisionRepository: DecisionRepository, @unchecked Sendable {
     private let store: any RepositoryStore
+    private let log: PersistenceLog
 
-    public init(store: some RepositoryStore) {
+    public init(store: some RepositoryStore, log: PersistenceLog = .standard) {
         self.store = store
+        self.log = log
     }
 
     public func allDecisions() async throws -> [DecisionRecord] {
-        try store.readAll().map { try JSONBlob.decode(DecisionRecord.self, from: $0) }
+        try JSONBlob.decodeAll(DecisionRecord.self, from: store, collection: .decisions, log: log).items
     }
 
     public func decision(id: DecisionID) async throws -> DecisionRecord? {
@@ -200,13 +241,15 @@ public final class FileDecisionRepository: DecisionRepository, @unchecked Sendab
 /// Los datos retenidos son mínimos (ver `AgentAuditRecord`): sin PII cruda.
 public final class FileAgentAuditRepository: AgentAuditRepository, @unchecked Sendable {
     private let store: any RepositoryStore
+    private let log: PersistenceLog
 
-    public init(store: some RepositoryStore) {
+    public init(store: some RepositoryStore, log: PersistenceLog = .standard) {
         self.store = store
+        self.log = log
     }
 
     public func allAuditRecords() async throws -> [AgentAuditRecord] {
-        try store.readAll().map { try JSONBlob.decode(AgentAuditRecord.self, from: $0) }
+        try JSONBlob.decodeAll(AgentAuditRecord.self, from: store, collection: .agentAudit, log: log).items
     }
 
     public func auditRecords(conversationID: UUID) async throws -> [AgentAuditRecord] {

@@ -29,12 +29,37 @@ public protocol TrainingBlockRepository: Sendable {
     func delete(id: TrainingBlockID) async throws
 }
 
+/// Resultado de leer una colección completa (SCRUM-23): los registros válidos y
+/// cuántos no se pudieron leer o decodificar. Permite avisar al usuario en vez de
+/// devolver una lista vacía en silencio.
+public struct RepositoryReadResult<Item: Sendable>: Sendable {
+    public let items: [Item]
+    public let unreadableCount: Int
+
+    public init(items: [Item], unreadableCount: Int = 0) {
+        self.items = items
+        self.unreadableCount = unreadableCount
+    }
+}
+
+extension RepositoryReadResult: Equatable where Item: Equatable {}
+
 /// Repositorio de sesiones de workout (ejecutadas y planificadas).
 public protocol WorkoutRepository: Sendable {
+    /// Sesiones válidas (tolerante: un registro ilegible no oculta a los demás).
     func allSessions() async throws -> [WorkoutSessionRecord]
+    /// Como `allSessions()` pero informando cuántos registros no se pudieron leer.
+    func loadAllSessions() async throws -> RepositoryReadResult<WorkoutSessionRecord>
     func session(id: WorkoutID) async throws -> WorkoutSessionRecord?
     func save(_ session: WorkoutSessionRecord) async throws
     func delete(id: WorkoutID) async throws
+}
+
+extension WorkoutRepository {
+    /// Implementaciones sin registros ilegibles posibles (p. ej. en memoria).
+    public func loadAllSessions() async throws -> RepositoryReadResult<WorkoutSessionRecord> {
+        RepositoryReadResult(items: try await allSessions())
+    }
 }
 
 /// Repositorio de gyms.

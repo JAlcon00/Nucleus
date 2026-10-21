@@ -34,6 +34,31 @@ public struct DataExportFile: Sendable {
     }
 }
 
+/// Historial disponible para exportar (SCRUM-23). Se exportan TODAS las sesiones
+/// guardadas (completadas y abandonadas, cada una con su estado): el historial es del
+/// usuario (RNEG-006). `unreadableCount` > 0 obliga a la UI a avisar; nunca se muestra
+/// un 0 silencioso.
+public enum ExportHistory: Equatable, Sendable {
+    /// No hay sesiones legibles. Puede haber registros ilegibles que avisar.
+    case empty(unreadableCount: Int)
+    /// Sesiones legibles (ordenadas por inicio) y cuántos registros no se pudieron leer.
+    case loaded(sessions: [WorkoutSessionRecord], unreadableCount: Int)
+
+    public var sessions: [WorkoutSessionRecord] {
+        switch self {
+        case .empty: return []
+        case .loaded(let sessions, _): return sessions
+        }
+    }
+
+    public var unreadableCount: Int {
+        switch self {
+        case .empty(let count): return count
+        case .loaded(_, let count): return count
+        }
+    }
+}
+
 /// Caso de uso de export. Acepta fuentes de datos agregadas (por defecto los
 /// repositorios de PRCore) y produce los archivos de export seguros.
 public struct DataExportCoordinator: Sendable {
@@ -47,6 +72,24 @@ public struct DataExportCoordinator: Sendable {
     ) {
         self.engine = engine
         self.schemaVersion = schemaVersion
+    }
+
+    /// Carga el historial a exportar desde el repositorio (lectura tolerante).
+    /// Lanza `.sourceUnavailable` sólo si la colección entera no es accesible.
+    public func loadHistory(from repository: any WorkoutRepository) async throws -> ExportHistory {
+        let result: RepositoryReadResult<WorkoutSessionRecord>
+        do {
+            result = try await repository.loadAllSessions()
+        } catch {
+            throw DataExportError.sourceUnavailable("sessions")
+        }
+        let sessions = result.items.sorted {
+            if $0.startedAt != $1.startedAt { return $0.startedAt < $1.startedAt }
+            return $0.id.rawValue.uuidString < $1.id.rawValue.uuidString
+        }
+        return sessions.isEmpty
+            ? .empty(unreadableCount: result.unreadableCount)
+            : .loaded(sessions: sessions, unreadableCount: result.unreadableCount)
     }
 
     /// Snapshot + JSON completo de training data.
