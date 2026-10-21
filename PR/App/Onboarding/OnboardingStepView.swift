@@ -114,7 +114,7 @@ struct OnboardingStepView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Días por semana")
                 .font(.headline)
-            Stepper(value: days, in: 2...7) {
+            Stepper(value: days, in: TrainingWeek.allowedTrainingDays) {
                 Text("\(days.wrappedValue) días")
             }
             .accessibilityLabel("Días de entrenamiento por semana")
@@ -126,7 +126,7 @@ struct OnboardingStepView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Minutos por sesión")
                 .font(.headline)
-            Stepper(value: minutes, in: 20...240, step: 5) {
+            Stepper(value: minutes, in: TrainingWeek.allowedSessionMinutes, step: 5) {
                 Text("\(minutes.wrappedValue) min")
             }
             .accessibilityLabel("Duración habitual de cada sesión en minutos")

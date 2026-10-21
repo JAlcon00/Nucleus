@@ -90,7 +90,7 @@ public struct SplitSelector: Sendable {
         experience: ExperienceLevel,
         phase: BodyCompositionPhase
     ) throws -> SplitSelection {
-        guard (2...7).contains(trainingDaysPerWeek) else {
+        guard (TrainingWeek.allowedTrainingDays).contains(trainingDaysPerWeek) else {
             throw SplitSelectionError.invalidTrainingDays(value: trainingDaysPerWeek)
         }
         guard trainingDaysPerWeek != 1 else {

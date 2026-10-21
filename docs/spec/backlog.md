@@ -446,7 +446,7 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 - variety;
 - optional restrictions.
 - usuario puede volver atrás sin perder respuestas.
-- validaciones 2...7 días, 20...240 min.
+- validaciones 2...7 días, 30...240 min (mínimo subido de 20 a 30, 2026-10-21).
 
 ### Implementación
 - `PRCore/Sources/PRDomain/Onboarding.swift`: motor determinista del onboarding (promptMaster §4,

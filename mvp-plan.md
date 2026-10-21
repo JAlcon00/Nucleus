@@ -130,7 +130,8 @@ Origen: la primera prueba manual de Jesús (2026-10-21). Herramienta: target `PR
 - [x] Hoy lista los ejercicios de la sesión. Prueba: `testTodayListsTheExercisesOfTheSession`.
 - [x] Lunes con sesión, domingo "Día de descanso"; Export vacío explícito; llegar a Hoy desde el cuestionario.
 - [x] Sesión de 60 min con volumen realista → SCRUM-28. Prueba: `testTodaySessionHasRealisticVolume` (ya verde; `make test-ui` sigue aparte de `make ci` por tardar ~4 min).
-- [ ] Nombres de ejercicios en español: el dataset (`free-exercise-db`) viene en inglés. **Decisión de Jesús** (traducir los 678 nombres o dejarlos en inglés para el POC).
+- [x] Nombres de ejercicios en español: los 678 nombres se tradujeron (`exercise-names-es.json`); el inglés queda como alias de búsqueda. 👤 Jesús: revisar la calidad de los nombres en la app.
+- [x] Mínimos de entrenamiento: 2 días y 30 minutos por sesión (antes 20), en una sola constante (`TrainingWeek.allowedSessionMinutes`).
 
 Evidencia: `make ci` → `✔ Test run with 439 tests in 69 suites passed` + `✔ Test run with 274 tests in 54 suites passed` (2026-10-21); `xcodebuild test` de `PRUITests` en simulador iOS: 9 de 10 pasan, falla solo la de volumen.
 

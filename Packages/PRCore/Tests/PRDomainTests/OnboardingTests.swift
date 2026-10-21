@@ -59,7 +59,7 @@ struct OnboardingTests {
         }
     }
 
-    @Test("días límite válidos (2 y 7) aceptados; minutos límite (20 y 240) aceptados")
+    @Test("días límite válidos (2 y 7) aceptados; minutos límite (30 y 240) aceptados")
     func boundaryValuesAccepted() throws {
         for days in [2, 7] {
             var draft = completeDraft()
@@ -67,11 +67,25 @@ struct OnboardingTests {
             let profile = try OnboardingProfileBuilder().build(from: draft)
             #expect(profile.trainingDaysPerWeek == days)
         }
-        for minutes in [20, 240] {
+        for minutes in [30, 240] {
             var draft = completeDraft()
             draft = draft.settingAnswer(.sessionMinutes(minutes), for: .sessionMinutes)
             let profile = try OnboardingProfileBuilder().build(from: draft)
             #expect(profile.usualSessionMinutes == minutes)
+        }
+    }
+
+    @Test("menos de 30 minutos o menos de 2 días se rechazan")
+    func belowMinimumsRejected() {
+        var minutesDraft = completeDraft()
+        minutesDraft = minutesDraft.settingAnswer(.sessionMinutes(29), for: .sessionMinutes)
+        #expect(throws: OnboardingProfileBuilder.BuildError.invalidSessionMinutes(29)) {
+            _ = try OnboardingProfileBuilder().build(from: minutesDraft)
+        }
+        var daysDraft = completeDraft()
+        daysDraft = daysDraft.settingAnswer(.daysPerWeek(1), for: .daysPerWeek)
+        #expect(throws: OnboardingProfileBuilder.BuildError.invalidTrainingDays(1)) {
+            _ = try OnboardingProfileBuilder().build(from: daysDraft)
         }
     }
 

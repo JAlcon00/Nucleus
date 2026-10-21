@@ -67,7 +67,7 @@ struct BlockPlannerRealCatalogTests {
     @Test("Con poco tiempo se recortan series pero el ancla de cada ejercicio conserva al menos una")
     func tightTimeTrimsButKeepsEachExercise() throws {
         let (roomy, _) = try plan(days: 3, minutes: nil)
-        let (tight, _) = try plan(days: 3, minutes: 20)
+        let (tight, _) = try plan(days: 3, minutes: TrainingWeek.allowedSessionMinutes.lowerBound)
         let roomySets = roomy.block.sessions.map { $0.plannedSets.count }.reduce(0, +)
         let tightSets = tight.block.sessions.map { $0.plannedSets.count }.reduce(0, +)
         #expect(tightSets < roomySets)
@@ -113,5 +113,33 @@ struct BlockPlannerRealCatalogTests {
                 }
             }
         }
+    }
+}
+
+@Suite("Catálogo real en español")
+struct SpanishCatalogNamesTests {
+
+    @Test("Todos los ejercicios tienen nombre en español y conservan el inglés como alias")
+    func allExercisesTranslated() throws {
+        let catalog = try ExerciseCatalogLoader.loadBundled()
+        #expect(catalog.exercises.count == 678)
+        // 4 nombres (p. ej. "Pushups") son iguales en ambos idiomas y quedan sin alias.
+        let untranslated = catalog.exercises.filter { $0.aliases.isEmpty }
+        #expect(untranslated.count <= 10, "Sin traducir: \(untranslated.map(\.canonicalName))")
+    }
+
+    @Test("Los IDs no cambian al traducir (los datos guardados siguen válidos) y la búsqueda sigue en inglés")
+    func idsStableAcrossLanguages() throws {
+        let raw = Data("""
+        [{"id":"Barbell_Bench_Press","name":"Barbell Bench Press","force":"push","level":"intermediate",
+          "mechanic":"compound","equipment":"barbell","primaryMuscles":["chest"],
+          "secondaryMuscles":["triceps"],"category":"strength"}]
+        """.utf8)
+        let english = try ExerciseCatalogLoader.load(from: raw)
+        let spanish = try ExerciseCatalogLoader.load(from: raw, spanishNames: ["Barbell_Bench_Press": "Press de banca con barra"])
+        #expect(english.exercises.map(\.id) == spanish.exercises.map(\.id))
+        #expect(spanish.exercises.first?.canonicalName == "Press de banca con barra")
+        #expect(spanish.exercises.first?.aliases == ["Barbell Bench Press"])
+        #expect(english.exercises.first?.canonicalName == "Barbell Bench Press")
     }
 }

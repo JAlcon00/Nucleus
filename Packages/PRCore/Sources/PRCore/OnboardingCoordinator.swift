@@ -168,7 +168,7 @@ public final class OnboardingCoordinator {
         case .invalidTrainingDays(let days):
             return "\(days) días no está en el rango permitido (2...7)."
         case .invalidSessionMinutes(let minutes):
-            return "\(minutes) minutos no están en el rango permitido (20...240)."
+            return "\(minutes) minutos no están en el rango permitido (30...240)."
         }
     }
 }

@@ -59,6 +59,18 @@ propio por día). `TodayPlanBuilder` lo usa. Cobertura en
 `Packages/PRCore/Tests/PRDomainTests/TrainingWeekTests.swift` y
 `Packages/PRCore/Tests/PRCoreTests/TodayWeekIntegrationTests.swift`.
 
+## Volumen, orden y límites del plan (SCRUM-28 / SCRUM-29, RF-005, RF-034)
+
+`BlockPlanner` reparte el objetivo semanal de cada músculo entre sus días y ejercicios
+(una plantilla por día, recorte al tiempo de la sesión con `DurationEstimator`) y ordena
+con `ExerciseOrderEngine` + `FatigueInterferenceEngine`; la explicación y la precedencia
+(restricciones > rol funcional > prioridad muscular > demanda técnica > fatiga) viajan en
+`BlockExplanation.sessionOrder` y se muestran en "¿Por qué este orden?". Límites únicos en
+`TrainingWeek.allowedTrainingDays` (2...7) y `allowedSessionMinutes` (30...240). Nombres de
+ejercicio en español desde `Resources/exercise-names-es.json` (el inglés queda como alias; los
+IDs no cambian). Cobertura: `PRDomainTests/BlockPlannerOrderTests.swift`,
+`PRCoreTests/BlockPlannerRealCatalogTests.swift`, `PRDomainTests/OnboardingTests.swift`.
+
 ## Persistencia local (EPIC-02)
 
 Implementada en PR-0202 detrás de los protocolos `Repository` con un almacén

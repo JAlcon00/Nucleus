@@ -108,9 +108,9 @@ public struct PreferredDayTime: Codable, Sendable, Hashable {
 
 /// Preferencias de horario/semana del usuario (PR-0104).
 public struct SchedulePreference: Codable, Sendable, Hashable {
-    /// Días de entrenamiento por semana (2...7).
+    /// Días de entrenamiento por semana (TrainingWeek.allowedTrainingDays).
     public var trainingDaysPerWeek: Int
-    /// Minutos habituales por sesión (20...240).
+    /// Minutos habituales por sesión (TrainingWeek.allowedSessionMinutes).
     public var usualSessionMinutes: Int
     /// Ventanas de tiempo preferidas (opcional).
     public var preferredTimeWindows: [PreferredDayTime]
@@ -120,10 +120,10 @@ public struct SchedulePreference: Codable, Sendable, Hashable {
         usualSessionMinutes: Int,
         preferredTimeWindows: [PreferredDayTime] = []
     ) throws {
-        guard (2...7).contains(trainingDaysPerWeek) else {
+        guard (TrainingWeek.allowedTrainingDays).contains(trainingDaysPerWeek) else {
             throw DomainValidationError.invalidMinutes(value: trainingDaysPerWeek)
         }
-        guard (20...240).contains(usualSessionMinutes) else {
+        guard (TrainingWeek.allowedSessionMinutes).contains(usualSessionMinutes) else {
             throw DomainValidationError.invalidMinutes(value: usualSessionMinutes)
         }
         self.trainingDaysPerWeek = trainingDaysPerWeek
@@ -151,10 +151,10 @@ public struct UserTrainingProfile: Codable, Sendable, Hashable {
         varietyPreference: VarietyPreference,
         coachingDetail: CoachingDetailLevel
     ) throws {
-        guard (2...7).contains(trainingDaysPerWeek) else {
+        guard (TrainingWeek.allowedTrainingDays).contains(trainingDaysPerWeek) else {
             throw DomainValidationError.invalidMinutes(value: trainingDaysPerWeek)
         }
-        guard (20...240).contains(usualSessionMinutes) else {
+        guard (TrainingWeek.allowedSessionMinutes).contains(usualSessionMinutes) else {
             throw DomainValidationError.invalidMinutes(value: usualSessionMinutes)
         }
         self.experience = experience

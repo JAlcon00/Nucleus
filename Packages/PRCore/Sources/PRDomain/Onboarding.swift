@@ -6,7 +6,7 @@
 //
 //  Onboarding funcional (promptMaster §4, RF-003, PR-0402). Produce un primer perfil
 //  útil sin cuestionario excesivo. INVARIANTES: determinista; `trainingDaysPerWeek`
-//  2...7; `usualSessionMinutes` 20...240; el usuario puede volver atrás SIN perder las
+//  2...7; `usualSessionMinutes` 30...240; el usuario puede volver atrás SIN perder las
 //  respuestas ya dadas; el onboarding se completa sin HealthKit (el gym/perfil de
 //  restricciones es opcional y el login no requiere HealthKit, RF-003/PR-0401).
 //
@@ -151,7 +151,7 @@ public struct OnboardingProfile: Codable, Sendable, Hashable {
 
 /// Convierte un borrador completo en un `OnboardingProfile` válido (PR-0402).
 ///
-/// Validaciones (§4.2): `trainingDaysPerWeek` 2...7, `usualSessionMinutes` 20...240.
+/// Validaciones (§4.2): `trainingDaysPerWeek` 2...7, `usualSessionMinutes` 30...240.
 /// gym y restrictions son opcionales (nil / vacío). No inventa respuestas: si un paso
 /// obligatorio falta, no finaliza.
 public struct OnboardingProfileBuilder: Sendable {
@@ -177,8 +177,8 @@ public struct OnboardingProfileBuilder: Sendable {
         let daysValue = days.intValue
         let minutesValue = minutes.intValue
 
-        guard (2...7).contains(daysValue) else { throw BuildError.invalidTrainingDays(daysValue) }
-        guard (20...240).contains(minutesValue) else { throw BuildError.invalidSessionMinutes(minutesValue) }
+        guard (TrainingWeek.allowedTrainingDays).contains(daysValue) else { throw BuildError.invalidTrainingDays(daysValue) }
+        guard (TrainingWeek.allowedSessionMinutes).contains(minutesValue) else { throw BuildError.invalidSessionMinutes(minutesValue) }
 
         let gymID: GymID? = if case .gym(let value) = draft.answer(for: .gym) { value } else { nil }
         let restrictions: [TrainingRestriction] =

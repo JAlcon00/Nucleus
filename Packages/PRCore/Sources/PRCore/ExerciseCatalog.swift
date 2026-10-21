@@ -408,11 +408,19 @@ public enum ExerciseCatalogLoader {
             throw ExerciseCatalogError.bundledResourceMissing
         }
         let data = try Data(contentsOf: url)
-        return try load(from: data)
+        // Nombres en español (id del dataset → nombre). Si falta el recurso o un id, el
+        // ejercicio conserva su nombre original en inglés: nunca se inventa un nombre.
+        var spanishNames: [String: String] = [:]
+        if let namesURL = Bundle.module.url(forResource: "exercise-names-es", withExtension: "json") {
+            spanishNames = try JSONDecoder().decode([String: String].self, from: Data(contentsOf: namesURL))
+        }
+        return try load(from: data, spanishNames: spanishNames)
     }
 
-    /// Mapea datos crudos JSON del dataset a `ExerciseCatalog`.
-    public static func load(from data: Data) throws -> ExerciseCatalog {
+    /// Mapea datos crudos JSON del dataset a `ExerciseCatalog`. `spanishNames` es opcional:
+    /// el nombre en español pasa a `canonicalName` y el original en inglés queda como alias
+    /// (la búsqueda sigue encontrando "bench press"). Los IDs no dependen del nombre.
+    public static func load(from data: Data, spanishNames: [String: String] = [:]) throws -> ExerciseCatalog {
         let entries: [FreeExerciseDBEntry]
         do {
             entries = try JSONDecoder().decode([FreeExerciseDBEntry].self, from: data)
@@ -487,8 +495,8 @@ public enum ExerciseCatalogLoader {
 
             let exercise = Exercise(
                 id: ExerciseID(rawValue: SeedID.uuid(namespace: "exercise", slug: entry.id)),
-                canonicalName: entry.name,
-                aliases: [],
+                canonicalName: spanishNames[entry.id] ?? entry.name,
+                aliases: spanishNames[entry.id] == nil ? [] : [entry.name],
                 movementPattern: pattern,
                 movementAngle: ExerciseInflector.angle(name: entry.name, pattern: pattern),
                 primaryMuscles: primary,

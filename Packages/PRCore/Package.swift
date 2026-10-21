@@ -37,6 +37,7 @@ let package = Package(
                 // Ejercicios curados del catálogo inicial (PR-0301). Dataset
                 // "free-exercise-db" (Unlicense); ver ADR-0002.
                 .copy("Resources/exercises.json"),
+                .copy("Resources/exercise-names-es.json"),
                 // Strings de presentación localizables (PR-1004).
                 .process("Resources/Localizable.xcstrings"),
             ]

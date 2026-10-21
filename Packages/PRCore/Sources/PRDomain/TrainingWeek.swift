@@ -26,6 +26,9 @@ public struct TrainingWeek: Equatable, Sendable {
     public static let daysInWeek = 7
     /// Rango permitido de días de entrenamiento por semana (§4.2).
     public static let allowedTrainingDays: ClosedRange<Int> = 2...7
+    /// Rango permitido de minutos por sesión: mínimo 30 (una sesión más corta no alcanza
+    /// para calentar y completar series de trabajo útiles) y máximo 240.
+    public static let allowedSessionMinutes: ClosedRange<Int> = 30...240
 
     public let trainingDaysPerWeek: Int
 

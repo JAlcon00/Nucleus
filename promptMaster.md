@@ -319,7 +319,7 @@ struct OnboardingProfile: Codable, Sendable {
 Validaciones:
 
 - `trainingDaysPerWeek`: 2...7
-- `usualSessionMinutes`: 20...240
+- `usualSessionMinutes`: 30...240
 - no inventar objetivos si el usuario omite uno;
 - si `bodybuilding`, mostrar configuración avanzada posterior, no convertir onboarding inicial en un formulario enorme.
 
