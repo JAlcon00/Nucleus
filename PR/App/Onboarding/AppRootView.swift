@@ -54,6 +54,7 @@ struct AppRootView: View {
                     }
             }
         }
+        .task { await environment.startIfNeeded() }
         .alert("No se pudo continuar", isPresented: $showAlert) {
             Button("OK") {
                 environment.onboarding.dismissFailure()

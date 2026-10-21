@@ -33,6 +33,17 @@ public final class AppEnvironment {
     /// los tests/previews inyectan un fake. No persiste tokens inseguros ni requiere HealthKit.
     public let onboarding: OnboardingCoordinator
 
+    /// Modo de inicio de sesión resuelto al arrancar. `.simulated` sólo en Debug con
+    /// `-PRFakeSignIn` (para probar sin Sign in with Apple); en Release siempre `.appleID`.
+    public let authMode: AuthLaunchMode
+
+    /// Intent de arranque: en modo simulado inicia sesión sola (salta la pantalla de
+    /// login). En modo Apple no hace nada; el usuario toca el botón.
+    public func startIfNeeded() async {
+        guard authMode.signsInAutomatically, onboarding.phase == .signedOut else { return }
+        await onboarding.signIn()
+    }
+
     /// Coordinador del plan de hoy (PR-0601 wiring): a partir del perfil de onboarding
     /// genera un bloque real y deriva el estado de la pantalla "Hoy".
     public let todayPlan: TodayPlanCoordinator
@@ -83,7 +94,16 @@ public final class AppEnvironment {
         persistence: LocalPersistence? = nil
     ) {
         self.coreVersion = coreVersion
-        self.onboarding = OnboardingCoordinator(authProvider: authProvider ?? SignInWithAppleProvider())
+        #if DEBUG
+        let isDebugBuild = true
+        #else
+        let isDebugBuild = false
+        #endif
+        let mode = AuthLaunchMode.resolve(arguments: ProcessInfo.processInfo.arguments, isDebugBuild: isDebugBuild)
+        self.authMode = mode
+        self.onboarding = OnboardingCoordinator(
+            authProvider: authProvider ?? mode.provider(appleID: SignInWithAppleProvider())
+        )
         self.persistence = persistence ?? Self.makeDefaultPersistence()
         let resolvedCatalog: ExerciseCatalog
         if let catalog {
