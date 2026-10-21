@@ -45,6 +45,8 @@ struct AppTabBarView: View {
         NavigationStack {
             TodayView(
                 state: environment.todayPlan.plan?.todayState ?? .restDay,
+                order: environment.todayPlan.plan?.todayOrder ?? [],
+                orderReorderedByFatigue: environment.todayPlan.plan?.todayOrderReorderedByFatigue ?? false,
                 exercises: environment.todayPlan.plan?.todayExercises ?? [],
                 onStart: onStart,
                 onResume: onResume

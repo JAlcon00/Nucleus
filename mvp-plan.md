@@ -48,12 +48,12 @@ Cada funcionalidad se cierra cuando todas sus casillas están en `[x]`.
 
 ### F-02 · Plan semanal correcto — SCRUM-182 (era de Joss)
 - [x] La semana tiene exactamente los días elegidos (2 a 7) → SCRUM-27.
-- [ ] Cada día tiene su propia sesión con series realistas → SCRUM-28.
-- [ ] Más tiempo no agrega series → SCRUM-28.
+- [x] Cada día tiene su propia sesión con series realistas → SCRUM-28.
+- [x] Más tiempo no agrega series → SCRUM-28.
 
 ### F-03 · Pantalla Hoy — SCRUM-183 (era de Joss)
 - [x] Hoy muestra la sesión correcta del día o "Día de descanso" → SCRUM-27. La UI existe; el cálculo quedó corregido.
-- [ ] Ejercicios en orden lógico, de grandes a pequeños → SCRUM-29.
+- [x] Ejercicios en orden lógico, de grandes a pequeños → SCRUM-29.
 - [x] Puedo empezar el entrenamiento con un toque.
 
 ### F-04 · Registrar series sin internet — SCRUM-184 (era de Gael)
@@ -99,8 +99,8 @@ Diagnóstico verificado en el código el 2026-10-20: todos los bugs descritos ab
 | 4 | SCRUM-24 | No perder el workout si la app se cierra | P0 | 1 | [ ] |
 | 5 | SCRUM-25 | Cerrar bien la sesión al terminar | P0 | 4 | [ ] |
 | 6 | SCRUM-26 | Recordar perfil y plan | P0 | 1 | [ ] |
-| 7 | SCRUM-28 | Volumen real y una sesión distinta por día | P0 | 2, 6 | [ ] |
-| 8 | SCRUM-29 | Ejercicios en orden correcto | P0 | 7 | [ ] |
+| 7 | SCRUM-28 | Volumen real y una sesión distinta por día | P0 | 2, 6 | [ ] (falta migración de bloques guardados, bloque 6) |
+| 8 | SCRUM-29 | Ejercicios en orden correcto | P0 | 7 | [x] |
 | 9 | SCRUM-30 | Duración real y ajuste de tiempo (F-07) | P1 | 7 | [ ] |
 | 10 | SCRUM-190 | Pruebas de los flujos | soporte | 1–8 | [ ] |
 | 11 | SCRUM-188 | Ambiente demo | soporte | 1–8 | [ ] |
@@ -129,7 +129,7 @@ Origen: la primera prueba manual de Jesús (2026-10-21). Herramienta: target `PR
 - [x] Días y minutos por defecto se registran sin mover el selector. Prueba: `testDefaultDaysAndMinutesCanAdvance...`.
 - [x] Hoy lista los ejercicios de la sesión. Prueba: `testTodayListsTheExercisesOfTheSession`.
 - [x] Lunes con sesión, domingo "Día de descanso"; Export vacío explícito; llegar a Hoy desde el cuestionario.
-- [ ] Sesión de 60 min con volumen realista (hoy 160 series) → **SCRUM-28 (bloque 7)**. Prueba en rojo a propósito: `testTodaySessionHasRealisticVolume`. Mientras tanto `make test-ui` no está en `make ci`.
+- [x] Sesión de 60 min con volumen realista → SCRUM-28. Prueba: `testTodaySessionHasRealisticVolume` (ya verde; `make test-ui` sigue aparte de `make ci` por tardar ~4 min).
 - [ ] Nombres de ejercicios en español: el dataset (`free-exercise-db`) viene en inglés. **Decisión de Jesús** (traducir los 678 nombres o dejarlos en inglés para el POC).
 
 Evidencia: `make ci` → `✔ Test run with 439 tests in 69 suites passed` + `✔ Test run with 274 tests in 54 suites passed` (2026-10-21); `xcodebuild test` de `PRUITests` en simulador iOS: 9 de 10 pasan, falla solo la de volumen.
@@ -293,13 +293,13 @@ Evidencia: commit `64c95d9`; `make ci` → `✔ Test run with 439 tests in 69 su
 **Bug actual:** `BlockPlanner.buildSessions` asigna `weeklySets / days` series a **cada ejercicio** y repite la misma plantilla todos los días. Salen sesiones de más de 100 series.
 
 **Criterios:**
-- [ ] Un músculo con objetivo de 8 series por semana suma 8 en la semana, no 8 por ejercicio.
-- [ ] Las series se reparten entre los ejercicios y los días de ese músculo.
-- [ ] Cada día tiene su propia plantilla, y los ejercicios ancla se conservan entre semanas.
-- [ ] Una sesión pensada para 60 minutos cabe en 60 minutos según el estimador.
-- [ ] Con 180 minutos no hay más series de trabajo que con 90.
+- [x] Un músculo con objetivo de 8 series por semana suma 8 en la semana, no 8 por ejercicio.
+- [x] Las series se reparten entre los ejercicios y los días de ese músculo.
+- [x] Cada día tiene su propia plantilla, y los ejercicios ancla se conservan entre semanas.
+- [x] Una sesión pensada para 60 minutos cabe en 60 minutos según el estimador.
+- [x] Con 180 minutos no hay más series de trabajo que con 90.
 - [ ] Un bloque guardado con volumen inflado se regenera o migra al arrancar, conserva IDs de bloque y anclas, y se muestra un aviso breve.
-- [ ] Rangos de series por semana según la prioridad del músculo:
+- [x] Rangos de series por semana según la prioridad del músculo:
   - mantener: 4–6;
   - normal: 8–12;
   - enfatizar: 12–16;
@@ -308,6 +308,8 @@ Evidencia: commit `64c95d9`; `make ci` → `✔ Test run with 439 tests in 69 su
 **Tests:**
 - Unitarios: suma semanal contra el objetivo (plan de 3 días de cuerpo completo), plantilla distinta por día, anclas estables, regeneración de un bloque inflado.
 - Integración: onboarding real → bloque guardado → recorrer la semana en Hoy sumando series.
+
+Evidencia: `make ci` → `✔ Test run with 443 tests in 70 suites passed` + `✔ Test run with 283 tests in 55 suites passed` (2026-10-21); `PRCoreTests/BlockPlannerRealCatalogTests.swift` (catálogo real, N = 2…7) y rangos por prioridad en `VolumeAllocatorTests`; `make test-ui` → 10 de 10. **Pendiente:** regenerar/migrar bloques guardados con volumen inflado (criterio abierto; depende del bloque 6, que es quien persiste el bloque) y 👤 prueba manual de Jesús.
 
 **👤 Manual (Jesús):** generar planes de 2, 3, 4 y 6 días y revisar las series por sesión.
 
@@ -318,16 +320,18 @@ Evidencia: commit `64c95d9`; `make ci` → `✔ Test run with 439 tests in 69 su
 **Bug actual:** `BlockPlanner` recibe `orderEngine` y `fatigueEngine` pero nunca los llama. Puede salir tríceps antes del press de banca.
 
 **Criterios:**
-- [ ] Primero los compuestos principales, luego los secundarios y al final los aislamientos y accesorios.
-- [ ] Un músculo prioritario puede adelantarse frente a otros del mismo rol.
-- [ ] Ningún aislamiento va antes de un compuesto que necesita ese músculo fresco: tríceps/press, bíceps/remo.
-- [ ] La misma entrada produce el mismo orden (determinismo).
-- [ ] "¿Por qué este orden?" muestra una razón sencilla desde el `DecisionRecord`: rol, prioridad o fatiga.
-- [ ] La precedencia entre prioridad muscular y fatiga queda documentada en el `DecisionRecord`.
+- [x] Primero los compuestos principales, luego los secundarios y al final los aislamientos y accesorios.
+- [x] Un músculo prioritario puede adelantarse frente a otros del mismo rol.
+- [x] Ningún aislamiento va antes de un compuesto que necesita ese músculo fresco: tríceps/press, bíceps/remo.
+- [x] La misma entrada produce el mismo orden (determinismo).
+- [x] "¿Por qué este orden?" muestra una razón sencilla desde el `DecisionRecord`: rol, prioridad o fatiga.
+- [x] La precedencia entre prioridad muscular y fatiga queda documentada en el `DecisionRecord`.
 
 **Tests:**
 - Unitarios: `BlockPlanner` invoca ambos motores; casos tríceps/press, bíceps/remo y prioridad; determinismo.
 - Integración: orden de cada sesión en Hoy desde el onboarding real.
+
+Evidencia: `make ci` (mismas líneas que el bloque 7, 2026-10-21); `PRDomainTests/BlockPlannerOrderTests.swift` (tríceps/press, bíceps/remo, prioridad, determinismo, explicación + precedencia), `PRCoreTests/BlockPlannerRealCatalogTests.swift` (aislamiento nunca antes de su compuesto, N = 2…7) y `TodayExerciseListTests.orderExplanationMatchesSession`. La hoja "¿Por qué este orden?" (`today.whyOrder`) se verificó por compilación y tests de datos; **pendiente** revisarla en dispositivo/preview y 👤 Jesús. Precedencia: restricciones > rol funcional > prioridad muscular > demanda técnica > interferencia por fatiga.
 
 ---
 

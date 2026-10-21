@@ -31,6 +31,30 @@ public struct TodayExerciseLine: Equatable, Sendable, Identifiable {
     }
 }
 
+/// Motivo (determinista, derivado de los facts del motor de orden) por el que un
+/// ejercicio va en su posición. La View sólo lo traduce a texto.
+public enum TodayOrderReason: Equatable, Sendable {
+    case functionalRole
+    case musclePriority
+    case technicalDemand
+}
+
+/// Una fila de "¿Por qué este orden?": posición, ejercicio y motivos.
+public struct TodayOrderLine: Equatable, Sendable, Identifiable {
+    public let exerciseID: ExerciseID
+    public let name: String?
+    public let rank: Int
+    public let reasons: [TodayOrderReason]
+    public var id: ExerciseID { exerciseID }
+
+    public init(exerciseID: ExerciseID, name: String?, rank: Int, reasons: [TodayOrderReason]) {
+        self.exerciseID = exerciseID
+        self.name = name
+        self.rank = rank
+        self.reasons = reasons
+    }
+}
+
 /// Plan derivado para la pantalla "Hoy": bloque generado + plantilla de hoy + estado.
 public struct TodayPlan: Equatable, Sendable {
     public let block: TrainingBlock
@@ -40,6 +64,10 @@ public struct TodayPlan: Equatable, Sendable {
     public let todayState: TodayScreenState
     /// Ejercicios de la sesión de hoy en el orden de la plantilla (vacío en descanso).
     public let todayExercises: [TodayExerciseLine]
+    /// Explicación del orden de hoy (SCRUM-29), tomada del `DecisionRecord` del bloque.
+    public let todayOrder: [TodayOrderLine]
+    /// ¿La fatiga reordenó la sesión de hoy?
+    public let todayOrderReorderedByFatigue: Bool
 
     public init(
         block: TrainingBlock,
@@ -47,7 +75,9 @@ public struct TodayPlan: Equatable, Sendable {
         todayTemplate: SessionTemplate?,
         estimatedMinutes: Int?,
         todayState: TodayScreenState,
-        todayExercises: [TodayExerciseLine] = []
+        todayExercises: [TodayExerciseLine] = [],
+        todayOrder: [TodayOrderLine] = [],
+        todayOrderReorderedByFatigue: Bool = false
     ) {
         self.block = block
         self.sessions = sessions
@@ -55,6 +85,8 @@ public struct TodayPlan: Equatable, Sendable {
         self.estimatedMinutes = estimatedMinutes
         self.todayState = todayState
         self.todayExercises = todayExercises
+        self.todayOrder = todayOrder
+        self.todayOrderReorderedByFatigue = todayOrderReorderedByFatigue
     }
 }
 
@@ -113,14 +145,37 @@ public struct TodayPlanBuilder: Sendable {
             activeSession: nil,
             estimatedMinutes: estimatedMinutes
         )
+        let orderExplanation = todayTemplate.flatMap { template in
+            result.explanation.sessionOrder.first { $0.sessionTitle == template.title }
+        }
         return TodayPlan(
             block: block,
             sessions: block.sessions,
             todayTemplate: todayTemplate,
             estimatedMinutes: estimatedMinutes,
             todayState: state,
-            todayExercises: exerciseLines(for: todayTemplate, catalog: catalog)
+            todayExercises: exerciseLines(for: todayTemplate, catalog: catalog),
+            todayOrder: orderLines(for: orderExplanation, catalog: catalog),
+            todayOrderReorderedByFatigue: orderExplanation?.reorderedByFatigue ?? false
         )
+    }
+
+    /// Filas "¿Por qué este orden?" a partir de la explicación guardada del planificador.
+    func orderLines(for explanation: SessionOrderExplanation?, catalog: ExerciseCatalog) -> [TodayOrderLine] {
+        guard let explanation else { return [] }
+        let names = Dictionary(catalog.exercises.map { ($0.id, $0.canonicalName) }, uniquingKeysWith: { first, _ in first })
+        return explanation.entries.map { entry in
+            var reasons: [TodayOrderReason] = []
+            for fact in entry.facts {
+                switch fact.key {
+                case "exercise.order.role": reasons.append(.functionalRole)
+                case "exercise.order.musclePriority": reasons.append(.musclePriority)
+                case "exercise.order.skillDemand": reasons.append(.technicalDemand)
+                default: break
+                }
+            }
+            return TodayOrderLine(exerciseID: entry.exerciseID, name: names[entry.exerciseID], rank: entry.rank, reasons: reasons)
+        }
     }
 
     /// Ejercicios de la plantilla en orden de aparición, con su número de series.
@@ -178,7 +233,8 @@ public struct TodayPlanBuilder: Sendable {
             varietyPreference: profile.varietyPreference,
             catalog: catalog,
             restrictions: profile.restrictions,
-            equipmentKnownness: defaultEquipmentKnownness()
+            equipmentKnownness: defaultEquipmentKnownness(),
+            sessionMinutes: profile.usualSessionMinutes
         )
     }
 

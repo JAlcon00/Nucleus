@@ -29,6 +29,9 @@ public struct BlockPlanningInput: Sendable {
     public var restrictions: [TrainingRestriction]
     /// Disponibilidad de equipment (conocida o unknown).
     public var equipmentKnownness: EquipmentKnownness
+    /// Minutos que el usuario dedica a una sesión. Si una sesión no cabe, se recortan
+    /// series de los ejercicios de menor prioridad; `nil` = sin límite de tiempo.
+    public var sessionMinutes: Int?
 
     public init(
         goal: TrainingGoal,
@@ -40,8 +43,10 @@ public struct BlockPlanningInput: Sendable {
         varietyPreference: VarietyPreference,
         catalog: [Exercise],
         restrictions: [TrainingRestriction],
-        equipmentKnownness: EquipmentKnownness
+        equipmentKnownness: EquipmentKnownness,
+        sessionMinutes: Int? = nil
     ) {
+        self.sessionMinutes = sessionMinutes
         self.goal = goal
         self.phase = phase
         self.experience = experience
@@ -58,13 +63,40 @@ public struct BlockPlanningInput: Sendable {
 /// Hecho explicativo del bloque generado.
 public struct BlockExplanation: Codable, Sendable, Hashable {
     public let facts: [DecisionFact]
-    /// Referencias versionadas de las reglas usadas (volumen + assignment).
+    /// Referencias versionadas de las reglas usadas (volumen + assignment + orden/fatiga).
     public let ruleReferences: [EvidenceRuleReference]
+    /// Por qué cada ejercicio va en su posición, por sesión (SCRUM-29).
+    public let sessionOrder: [SessionOrderExplanation]
 
-    public init(facts: [DecisionFact], ruleReferences: [EvidenceRuleReference]) {
+    public init(
+        facts: [DecisionFact],
+        ruleReferences: [EvidenceRuleReference],
+        sessionOrder: [SessionOrderExplanation] = []
+    ) {
         self.facts = facts
         self.ruleReferences = ruleReferences
+        self.sessionOrder = sessionOrder
     }
+}
+
+/// Orden final de una sesión con sus razones (rol funcional, prioridad muscular, demanda
+/// técnica y, si aplicó, reordenamiento por fatiga).
+public struct SessionOrderExplanation: Codable, Sendable, Hashable {
+    public struct Entry: Codable, Sendable, Hashable {
+        public let exerciseID: ExerciseID
+        /// Posición final 1…N dentro de la sesión.
+        public let rank: Int
+        public let facts: [DecisionFact]
+    }
+
+    public let sessionTitle: String
+    public let entries: [Entry]
+    /// ¿La fatiga cambió el orden por rol/prioridad?
+    public let reorderedByFatigue: Bool
+    /// Interferencia residual del orden final (0 = ningún ejercicio pre-fatiga a otro prioritario).
+    public let residualInterference: Double
+    /// Precedencia aplicada, documentada para auditar (promptMaster §9.1).
+    public static let precedence = "restricciones > rol funcional > prioridad muscular > demanda técnica > interferencia por fatiga"
 }
 
 /// Resultado del planificador: bloque persistible + explicación.
@@ -106,14 +138,17 @@ public struct BlockPlanner: Sendable {
     private let assigner: ExerciseAssigner
     private let orderEngine: ExerciseOrderEngine
     private let fatigueEngine: FatigueInterferenceEngine
+    private let durationEstimator: DurationEstimator
 
     public init(
         splitSelector: SplitSelector = SplitSelector(),
         volumeAllocator: VolumeAllocator,
         assigner: ExerciseAssigner = ExerciseAssigner(),
         orderEngine: ExerciseOrderEngine = ExerciseOrderEngine(),
-        fatigueEngine: FatigueInterferenceEngine = FatigueInterferenceEngine()
+        fatigueEngine: FatigueInterferenceEngine = FatigueInterferenceEngine(),
+        durationEstimator: DurationEstimator = DurationEstimator()
     ) {
+        self.durationEstimator = durationEstimator
         self.splitSelector = splitSelector
         self.volumeAllocator = volumeAllocator
         self.assigner = assigner
@@ -153,12 +188,13 @@ public struct BlockPlanner: Sendable {
         }
 
         // Construimos una plantilla de sesión por día de entrenamiento.
-        let sessions = try buildSessions(
+        let built = try buildSessions(
             split: split,
             input: input,
             allocation: allocation,
             assignmentsByMuscle: assignmentsByMuscle
         )
+        let sessions = built.sessions
 
         let muscleTargets = try allocation.targets.map { assignment in
             try MuscleVolumeTarget(
@@ -180,51 +216,194 @@ public struct BlockPlanner: Sendable {
             varietyPolicy: try VarietyPolicy(percentStable: Self.stablePercent(for: input.varietyPreference))
         )
 
-        let explanation = try buildExplanation(input: input, split: split, allocation: allocation)
+        let explanation = try buildExplanation(
+            input: input, split: split, allocation: allocation, sessionOrder: built.order
+        )
 
         return BlockPlanningResult(block: block, explanation: explanation, split: split)
     }
 
-    // MARK: - Session building
+    // MARK: - Session building (SCRUM-28 / SCRUM-29)
 
+    /// Un día de entrenamiento de la semana con los músculos que trabaja.
+    private struct DayPlan {
+        let title: String
+        let muscles: [MuscleGroup.ID]
+    }
+
+    /// Un ejercicio de una sesión con las series que le tocan ese día.
+    private struct DayExercise {
+        let exercise: Exercise
+        var sets: Int
+    }
+
+    /// Construye UNA plantilla por día de entrenamiento (N días ⇒ N sesiones):
+    /// - el objetivo semanal de cada músculo se reparte entre los días en que se entrena
+    ///   (suma exacta) y luego entre pocos ejercicios (≈3 series cada uno), no por ejercicio;
+    /// - el ancla se conserva todos los días; los rotables cambian de un día a otro;
+    /// - cada sesión se ordena (rol/prioridad, luego fatiga) y se recorta si no cabe en
+    ///   el tiempo del usuario.
     private func buildSessions(
         split: TrainingSplit,
         input: BlockPlanningInput,
         allocation: VolumeAllocation,
         assignmentsByMuscle: [MuscleGroup.ID: MuscleExerciseAssignment]
-    ) throws -> [SessionTemplate] {
-        // Días que trabajan cada músculo según split.
-        let dayMuscles = classification(for: split)
-        let muscleWorkDays = dayCountByMuscle(split: split, muscles: allocation.targets.map(\.muscleGroupID))
-        return try trainingDaysBySplit(split).enumerated().compactMap { index, name -> SessionTemplate? in
-            let muscles = dayMuscles[index]
-            var plannedSets: [PlannedSet] = []
-            var seen: Set<ExerciseID> = []
-            for muscle in muscles {
+    ) throws -> (sessions: [SessionTemplate], order: [SessionOrderExplanation]) {
+        let days = dayPlans(split: split, trainingDays: input.trainingDaysPerWeek)
+        let catalog = Dictionary(input.catalog.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let fatigueConfig = try FatigueInterferenceConfig(rule: FatigueInterferenceDefaults.makeRule())
+
+        // Días (índices) en que se entrena cada músculo.
+        var daysByMuscle: [MuscleGroup.ID: [Int]] = [:]
+        for (index, day) in days.enumerated() {
+            for muscle in day.muscles { daysByMuscle[muscle, default: []].append(index) }
+        }
+
+        var sessions: [SessionTemplate] = []
+        var orderExplanations: [SessionOrderExplanation] = []
+        for (dayIndex, day) in days.enumerated() {
+            var chosen: [DayExercise] = []
+            for muscle in day.muscles {
                 guard let assignment = assignmentsByMuscle[muscle],
-                      let days = muscleWorkDays[muscle], days > 0,
-                      let weeklySets = allocation.target(for: muscle) else { continue }
-                let setsThisDay = max(1, weeklySets / days)
-                for assigned in orderedExercises(assignment) {
-                    guard !seen.contains(assigned.exercise) else { continue }
-                    seen.insert(assigned.exercise)
-                    for _ in 0..<setsThisDay {
-                        plannedSets.append(PlannedSet(
-                            exerciseID: assigned.exercise,
-                            prescription: try prescription(for: input.goal, isAnchor: assigned.role == .anchor)
-                        ))
+                      let weeklySets = allocation.target(for: muscle),
+                      let muscleDays = daysByMuscle[muscle],
+                      let position = muscleDays.firstIndex(of: dayIndex) else { continue }
+                // Reparto exacto del objetivo semanal entre los días del músculo.
+                let setsToday = weeklySets / muscleDays.count + (position < weeklySets % muscleDays.count ? 1 : 0)
+                guard setsToday > 0 else { continue }
+                for (exerciseID, sets) in distribute(setsToday, among: assignment, occurrence: position) {
+                    guard let exercise = catalog[exerciseID] else { continue }
+                    if let existing = chosen.firstIndex(where: { $0.exercise.id == exerciseID }) {
+                        chosen[existing].sets += sets
+                    } else {
+                        chosen.append(DayExercise(exercise: exercise, sets: sets))
                     }
                 }
             }
-            guard !plannedSets.isEmpty else { return nil }
-            return SessionTemplate(title: name, plannedSets: plannedSets)
+            guard !chosen.isEmpty else { continue }
+
+            let (ordered, explanation) = try order(
+                chosen, title: day.title, input: input, fatigueConfig: fatigueConfig
+            )
+            var exercises = ordered
+            let rx = try prescription(for: input.goal, isAnchor: false)
+            if let minutes = input.sessionMinutes {
+                trimToFit(&exercises, minutes: minutes, prescription: rx)
+            }
+            var plannedSets: [PlannedSet] = []
+            for item in exercises {
+                for _ in 0..<item.sets {
+                    plannedSets.append(PlannedSet(exerciseID: item.exercise.id, prescription: rx))
+                }
+            }
+            sessions.append(SessionTemplate(title: day.title, plannedSets: plannedSets))
+            orderExplanations.append(explanation)
+        }
+        return (sessions, orderExplanations)
+    }
+
+    /// Reparte las series del día entre pocos ejercicios del músculo: el ancla (el primer
+    /// día, o junto a rotables si hay series de sobra) y rotables que cambian según
+    /// cuántas veces se entrenó ya ese músculo en la semana.
+    private func distribute(
+        _ sets: Int,
+        among assignment: MuscleExerciseAssignment,
+        occurrence: Int
+    ) -> [(ExerciseID, Int)] {
+        let anchor = assignment.assignments.first { $0.role == .anchor } ?? assignment.assignments.first
+        guard let anchor else { return [] }
+        let rotatables = assignment.assignments.filter { $0.exercise != anchor.exercise }
+        // ≈ 3 series por ejercicio, entre 1 y todos los asignados.
+        let count = min(assignment.assignments.count, max(1, (sets + 2) / 3))
+        var picked: [ExerciseID]
+        if count == 1, occurrence > 0, !rotatables.isEmpty {
+            // Pocas series ese día: un solo ejercicio. El ancla se entrena el primer día
+            // de la semana y los demás días rota (cada día tiene su propia plantilla).
+            picked = [rotatables[(occurrence - 1) % rotatables.count].exercise]
+        } else {
+            picked = [anchor.exercise]
+            if count > 1, !rotatables.isEmpty {
+                for step in 0..<(count - 1) {
+                    picked.append(rotatables[(occurrence * (count - 1) + step) % rotatables.count].exercise)
+                }
+            }
+        }
+        // Sin repetir (pocos rotables) y con el reparto exacto; el ancla recibe el resto.
+        var unique: [ExerciseID] = []
+        for id in picked where !unique.contains(id) { unique.append(id) }
+        let base = sets / unique.count
+        let remainder = sets % unique.count
+        return unique.enumerated().map { index, id in (id, base + (index < remainder ? 1 : 0)) }
+    }
+
+    /// Ordena la sesión: rol funcional y prioridad muscular (`ExerciseOrderEngine`), luego
+    /// reduce la interferencia por fatiga (`FatigueInterferenceEngine`) sin adelantar un
+    /// ejercicio menos prioritario a uno prioritario. Devuelve también el porqué.
+    private func order(
+        _ chosen: [DayExercise],
+        title: String,
+        input: BlockPlanningInput,
+        fatigueConfig: FatigueInterferenceConfig
+    ) throws -> ([DayExercise], SessionOrderExplanation) {
+        let byID = Dictionary(chosen.map { ($0.exercise.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let result = try orderEngine.orderWithExplanation(input: ExerciseOrderInput(
+            exercises: chosen.map(\.exercise), priorities: input.priorities, goal: input.goal
+        ))
+        let byRoleOrder = result.ordered.map(\.exercise)
+        var finalOrder = byRoleOrder
+        var interference = 0.0
+        if byRoleOrder.count >= 2 {
+            let assessment = try fatigueEngine.reorder(input: byRoleOrder, config: fatigueConfig)
+            finalOrder = assessment.orderedExercises
+            interference = assessment.totalPenalty
+        }
+        let factsByID = Dictionary(
+            result.explanation.perExercise.map { ($0.exerciseID, $0.facts) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let reordered = finalOrder.map(\.id) != byRoleOrder.map(\.id)
+        let entries = finalOrder.enumerated().map { index, exercise in
+            SessionOrderExplanation.Entry(
+                exerciseID: exercise.id,
+                rank: index + 1,
+                facts: factsByID[exercise.id] ?? []
+            )
+        }
+        let items = finalOrder.compactMap { byID[$0.id] }
+        return (items, SessionOrderExplanation(
+            sessionTitle: title, entries: entries, reorderedByFatigue: reordered, residualInterference: interference
+        ))
+    }
+
+    /// Si la sesión excede los minutos del usuario, quita series de los últimos ejercicios
+    /// (menor prioridad), de una en una; un ejercicio nunca baja de 1 serie.
+    private func trimToFit(_ exercises: inout [DayExercise], minutes: Int, prescription: SetPrescription) {
+        func seconds(_ list: [DayExercise]) -> Int {
+            let sets = list.flatMap { item in
+                Array(repeating: PlannedSet(exerciseID: item.exercise.id, prescription: prescription), count: item.sets)
+            }
+            return durationEstimator.estimate(plannedSets: sets)
+        }
+        while seconds(exercises) > minutes * 60 {
+            guard let index = exercises.lastIndex(where: { $0.sets > 1 }) else { return }
+            exercises[index].sets -= 1
         }
     }
 
-    /// Ordena los ejercicios asignados del músculo (order + fatigue).
-    private func orderedExercises(_ assignment: MuscleExerciseAssignment) -> [AssignedExercise] {
-        // Determinista: role anchor primero, luego rotatables estables.
-        assignment.assignments
+    /// Los días de entrenamiento de la semana: N sesiones, cada una con su título y músculos.
+    private func dayPlans(split: TrainingSplit, trainingDays: Int) -> [DayPlan] {
+        let classes = classification(for: split)
+        let names = trainingDaysBySplit(split)
+        let total = max(1, trainingDays)
+        return (0..<total).map { index in
+            let classIndex = index % classes.count
+            let occurrence = index / classes.count
+            // Cuántas veces aparece este tipo de día en la semana; si se repite, A/B/C…
+            let timesInWeek = (total - classIndex + classes.count - 1) / classes.count
+            let letter = String(UnicodeScalar(UInt8(65 + min(occurrence, 25))))
+            let title = timesInWeek > 1 ? "\(names[classIndex]) \(letter)" : names[classIndex]
+            return DayPlan(title: title, muscles: classes[classIndex])
+        }
     }
 
     private func prescription(for goal: TrainingGoal, isAnchor: Bool) throws -> SetPrescription {
@@ -284,7 +463,8 @@ public struct BlockPlanner: Sendable {
     private func buildExplanation(
         input: BlockPlanningInput,
         split: TrainingSplit,
-        allocation: VolumeAllocation
+        allocation: VolumeAllocation,
+        sessionOrder: [SessionOrderExplanation]
     ) throws -> BlockExplanation {
         let totalVolume = allocation.totalWeeklySets
         let anchorCount = input.priorities.count
@@ -296,9 +476,11 @@ public struct BlockPlanner: Sendable {
             DecisionFact(key: "trainingDaysPerWeek", value: String(input.trainingDaysPerWeek)),
             DecisionFact(key: "priorityMuscles", value: String(anchorCount)),
             DecisionFact(key: "totalWeeklySets", value: String(totalVolume)),
+            DecisionFact(key: "orderPrecedence", value: SessionOrderExplanation.precedence),
         ]
-        let references = [try volumeConfigReference(), try assignmentRuleReference()]
-        return BlockExplanation(facts: facts, ruleReferences: references)
+        let fatigue = try FatigueInterferenceConfig(rule: FatigueInterferenceDefaults.makeRule()).reference()
+        let references = [try volumeConfigReference(), try assignmentRuleReference(), fatigue]
+        return BlockExplanation(facts: facts, ruleReferences: references, sessionOrder: sessionOrder)
     }
 
     private func volumeConfigReference() throws -> EvidenceRuleReference {

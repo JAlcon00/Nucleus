@@ -17,12 +17,17 @@ import PRDomain
 struct TodayView: View {
     /// Estado derivado por `TodayScreenDriver` (se inyecta desde el composition root).
     let state: TodayScreenState
+    /// Explicación del orden de hoy (SCRUM-29).
+    var order: [TodayOrderLine] = []
+    var orderReorderedByFatigue = false
     /// Ejercicios de la sesión de hoy (ya con nombre del catálogo), en orden.
     var exercises: [TodayExerciseLine] = []
     /// Intento: empezar la sesión planeada.
     let onStart: () -> Void
     /// Intento: continuar la sesión en curso.
     let onResume: () -> Void
+
+    @State private var showingOrder = false
 
     var body: some View {
         Group {
@@ -72,9 +77,64 @@ struct TodayView: View {
                 sessionSummary(presentation)
             }
             exerciseList
+            if !order.isEmpty {
+                Button {
+                    showingOrder = true
+                } label: {
+                    Label("¿Por qué este orden?", systemImage: "questionmark.circle")
+                        .frame(minHeight: 44)
+                }
+                .accessibilityIdentifier("today.whyOrder")
+            }
             startButton(presentation)
         }
         .padding(24)
+        .sheet(isPresented: $showingOrder) { orderSheet }
+    }
+
+    /// Hoja "¿Por qué este orden?": posición, ejercicio y motivos del motor de orden.
+    private var orderSheet: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(order) { line in
+                        VStack(alignment: .leading, spacing: DSpace.xs) {
+                            Text("\(line.rank). \(line.name ?? String(localized: "Ejercicio"))")
+                                .font(.headline)
+                            ForEach(Array(line.reasons.enumerated()), id: \.offset) { _, reason in
+                                Text(Self.text(for: reason))
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                } footer: {
+                    VStack(alignment: .leading, spacing: DSpace.xs) {
+                        if orderReorderedByFatigue {
+                            Text("La fatiga acumulada cambió el orden para proteger los músculos prioritarios.")
+                        }
+                        Text("Precedencia: restricciones, rol funcional, prioridad muscular, demanda técnica y, al final, interferencia por fatiga.")
+                    }
+                }
+            }
+            .navigationTitle("¿Por qué este orden?")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Listo") { showingOrder = false }
+                }
+            }
+        }
+        .accessibilityIdentifier("today.orderSheet")
+    }
+
+    private static func text(for reason: TodayOrderReason) -> String {
+        switch reason {
+        case .functionalRole: String(localized: "Los ejercicios compuestos van primero, con los músculos frescos.")
+        case .musclePriority: String(localized: "Trabaja un músculo que priorizas, por eso se adelanta.")
+        case .technicalDemand: String(localized: "Es técnicamente exigente: mejor hacerlo sin fatiga.")
+        }
     }
 
     /// Lista de ejercicios de la sesión (con scroll: el botón Empezar siempre queda a la vista).
