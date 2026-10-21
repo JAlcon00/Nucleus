@@ -55,9 +55,9 @@ public enum TodayPlanError: Error, Equatable, Sendable {
 ///   explícitas; tratar todas igual es una elección determinista y conservadora.
 /// - Equipment: conjunto básico de gimnasio `knownAvailable` (barbell/dumbbell/machine/
 ///   cable/bodyweight) como seed documentado; el perfil de gym real la refina en PR-0901.
-/// - Rotación semanal: los primeros `trainingDaysPerWeek` días laborables (lun..dom)
-///   son días de entrenamiento; el resto son descanso. La plantilla del día se elige
-///   rotando sobre las sesiones planificadas del bloque.
+/// - Rotación semanal (`TrainingWeek`, SCRUM-27): los primeros `trainingDaysPerWeek`
+///   días desde el lunes son de entrenamiento y cada uno tiene su slot 0…N-1; el resto
+///   es descanso. La plantilla del día es `sessions[slot % sessions.count]`.
 /// - Duración estimada: `profile.usualSessionMinutes` (estimación del usuario; el
 ///   cálculo por ejercicio real es PR-0801).
 public struct TodayPlanBuilder: Sendable {
@@ -70,7 +70,8 @@ public struct TodayPlanBuilder: Sendable {
         catalog: ExerciseCatalog,
         planner: BlockPlanner,
         driver: TodayScreenDriver,
-        date: Date = Date()
+        date: Date = Date(),
+        timeZone: TimeZone = .current
     ) throws -> TodayPlan {
         let input = try makeInput(profile: profile, catalog: catalog.exercises)
         let result: BlockPlanningResult
@@ -85,7 +86,8 @@ public struct TodayPlanBuilder: Sendable {
         let todayTemplate = try todaySession(
             from: block.sessions,
             trainingDaysPerWeek: profile.trainingDaysPerWeek,
-            date: date
+            date: date,
+            timeZone: timeZone
         )
         let state = driver.derive(
             todayTemplate: todayTemplate,
@@ -147,36 +149,23 @@ public struct TodayPlanBuilder: Sendable {
         )
     }
 
-    /// Elige la plantilla de hoy por rotación determinista sobre los días de la semana.
+    /// Elige la plantilla de hoy con la semana del dominio (`TrainingWeek`, SCRUM-27).
     private func todaySession(
         from sessions: [SessionTemplate],
         trainingDaysPerWeek: Int,
-        date: Date
+        date: Date,
+        timeZone: TimeZone
     ) throws -> SessionTemplate? {
         guard !sessions.isEmpty else { return nil }
-        let weekdayIndex = try weekdayIndex(for: date)
-        // Los primeros N días laborables son días de entrenamiento.
-        guard weekdayIndex < trainingDaysPerWeek else { return nil }
-        return sessions[weekdayIndex % sessions.count]
-    }
-
-    /// Calendario fijo (gregoriano, lunes como primer día) para una determinación
-    /// reproducible del día de hoy independiente del entorno.
-    private static let calendar: Calendar = {
-        var cal = Calendar(identifier: .gregorian)
-        cal.firstWeekday = 2 // lunes
-        return cal
-    }()
-
-    private func weekdayIndex(for date: Date) throws -> Int {
-        if Self.calendar.component(.weekday, from: date) == 1 {
-            // Domingo descartado por el esquema (primeros N días laborables = lun..); si
-            // el calendario devuelve 1 (domingo en firstWeekday=2) lo tratamos como último.
-            return 6
+        let week: TrainingWeek
+        do {
+            week = try TrainingWeek(trainingDaysPerWeek: trainingDaysPerWeek)
+        } catch {
+            throw TodayPlanError.invalidInput
         }
-        // weekday con firstWeekday=2 (lunes): lunes=1 ... sábado=6, domingo=7.
-        let weekday = Self.calendar.component(.weekday, from: date)
-        return weekday - 1
+        let dayIndex = TrainingWeek.dayIndex(for: date, timeZone: timeZone)
+        guard let slot = week.sessionSlot(dayIndex: dayIndex) else { return nil }
+        return sessions[slot % sessions.count]
     }
 }
 
@@ -191,17 +180,23 @@ public final class TodayPlanCoordinator {
     private let catalog: ExerciseCatalog
     private let planner: BlockPlanner
     private let driver: TodayScreenDriver
+    private let clock: () -> Date
+    private let timeZone: () -> TimeZone
 
     public init(
         builder: TodayPlanBuilder = TodayPlanBuilder(),
         catalog: ExerciseCatalog,
         planner: BlockPlanner? = nil,
-        driver: TodayScreenDriver = TodayScreenDriver()
+        driver: TodayScreenDriver = TodayScreenDriver(),
+        clock: @escaping () -> Date = { Date() },
+        timeZone: @escaping () -> TimeZone = { .current }
     ) {
         self.builder = builder
         self.catalog = catalog
         self.planner = planner ?? TodayPlanBuilder.defaultPlanner()
         self.driver = driver
+        self.clock = clock
+        self.timeZone = timeZone
     }
 
     /// Deriva el plan a partir del perfil (determinista; falla si no se puede).
@@ -211,7 +206,9 @@ public final class TodayPlanCoordinator {
                 profile: profile,
                 catalog: catalog,
                 planner: planner,
-                driver: driver
+                driver: driver,
+                date: clock(),
+                timeZone: timeZone()
             )
             return true
         } catch {
