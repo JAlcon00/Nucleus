@@ -73,9 +73,13 @@ public enum WorkoutSessionError: Error, Equatable, Sendable {
 /// - resumen: `WorkoutSummaryBuilder` tras completar (o abandonar) la sesión.
 @MainActor
 @Observable
-public final class WorkoutSessionCoordinator {
+public final class WorkoutSessionCoordinator: Identifiable {
     /// Plantilla de la sesión (lo planeado). Inmutable.
     public let template: SessionTemplate
+
+    /// Identidad estable (la de la plantilla): permite presentar la sesión con
+    /// `fullScreenCover(item:)`, que entrega el coordinador ya no opcional.
+    public nonisolated var id: UUID { template.id }
 
     /// Fase actual que la UI presenta (idle / active / resting / paused / finished).
     public private(set) var phase: WorkoutSessionPhase

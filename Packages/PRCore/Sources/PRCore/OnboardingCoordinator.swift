@@ -88,6 +88,11 @@ public final class OnboardingCoordinator {
         }
     }
 
+    /// Respuesta guardada del paso actual (la UI marca la opción elegida con ella).
+    public var currentAnswer: OnboardingAnswer? {
+        flowController.draft.answer(for: flowController.currentStep)
+    }
+
     /// Registra la respuesta del paso actual en el flow controller de dominio.
     public func select(_ answer: OnboardingAnswer) {
         flowController = flowController.answering(answer)
@@ -97,13 +102,24 @@ public final class OnboardingCoordinator {
     /// Avanza al siguiente paso si el actual está válidamente respondido.
     public func advance() {
         flowController = flowController.advance()
+        seedDefaultForCurrentStep()
         phase = onboardingPhase(for: flowController)
     }
 
     /// Retrocede un paso conservando todas las respuestas ya dadas.
     public func goBack() {
         flowController = flowController.goBack()
+        seedDefaultForCurrentStep()
         phase = onboardingPhase(for: flowController)
+    }
+
+    /// En pasos con selector numérico, lo que se muestra por defecto se registra al
+    /// llegar (sin pisar una respuesta ya dada): así "Siguiente" no exige mover el selector.
+    private func seedDefaultForCurrentStep() {
+        let step = flowController.currentStep
+        guard !flowController.draft.hasAnswer(for: step),
+              let answer = OnboardingDefaults.answer(for: step) else { return }
+        flowController = flowController.answering(answer)
     }
 
     /// Finaliza el onboarding construyendo el perfil mínimo. Falla si quedan pasos

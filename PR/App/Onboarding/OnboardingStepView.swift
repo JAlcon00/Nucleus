@@ -11,6 +11,7 @@
 //
 
 import SwiftUI
+import PRCore
 import PRDomain
 
 struct OnboardingStepView: View {
@@ -27,15 +28,38 @@ struct OnboardingStepView: View {
     /// ¿Es el último paso?
     let isAtEnd: Bool
 
+    /// Opciones ya localizadas de los pasos de elección (vacío en el resto).
+    let choices: [OnboardingChoice]
+    /// Respuesta guardada del paso actual (marca la opción elegida y fija los selectores).
+    let selected: OnboardingAnswer?
+
     /// Callbacks (intents). `onAnswer` entrega la respuesta tipada del paso.
     let onAnswer: (OnboardingAnswer) -> Void
     let onAdvance: () -> Void
     let onGoBack: () -> Void
     let onFinish: () -> Void
 
-    /// Valor local seleccionado para los pickers de este paso.
-    @State private var selectedDays = 4
-    @State private var selectedMinutes = 60
+    /// Valores de los selectores: salen de la respuesta guardada (o del valor por defecto
+    /// que el coordinador registra al llegar al paso); nunca de estado local desfasado.
+    private var days: Binding<Int> {
+        Binding(
+            get: {
+                if case .daysPerWeek(let value)? = selected { return value }
+                return OnboardingDefaults.trainingDaysPerWeek
+            },
+            set: { onAnswer(.daysPerWeek($0)) }
+        )
+    }
+
+    private var minutes: Binding<Int> {
+        Binding(
+            get: {
+                if case .sessionMinutes(let value)? = selected { return value }
+                return OnboardingDefaults.sessionMinutes
+            },
+            set: { onAnswer(.sessionMinutes($0)) }
+        )
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -61,6 +85,7 @@ struct OnboardingStepView: View {
                 .foregroundStyle(.secondary)
             Text(title(for: step))
                 .font(.title2.bold())
+                .accessibilityIdentifier("onboarding.title")
         }
         .padding(.horizontal, 24)
         .padding(.top, 16)
@@ -72,14 +97,8 @@ struct OnboardingStepView: View {
     @ViewBuilder
     private var stepContent: some View {
         switch step {
-        case .goal:
-            choicesPicker(TrainingGoal.self)
-        case .phase:
-            choicesPicker(BodyCompositionPhase.self)
-        case .experience:
-            choicesPicker(ExperienceLevel.self)
-        case .variety:
-            choicesPicker(VarietyPreference.self)
+        case .goal, .phase, .experience, .variety:
+            choicesPicker
         case .daysPerWeek:
             daysStepper
         case .sessionMinutes:
@@ -95,13 +114,11 @@ struct OnboardingStepView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Días por semana")
                 .font(.headline)
-            Stepper(value: $selectedDays, in: 2...7) {
-                Text("\(selectedDays) días")
+            Stepper(value: days, in: 2...7) {
+                Text("\(days.wrappedValue) días")
             }
             .accessibilityLabel("Días de entrenamiento por semana")
-            .onChange(of: selectedDays) { _, newValue in
-                onAnswer(.daysPerWeek(newValue))
-            }
+            .accessibilityIdentifier("onboarding.daysStepper")
         }
     }
 
@@ -109,13 +126,11 @@ struct OnboardingStepView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Minutos por sesión")
                 .font(.headline)
-            Stepper(value: $selectedMinutes, in: 20...240, step: 5) {
-                Text("\(selectedMinutes) min")
+            Stepper(value: minutes, in: 20...240, step: 5) {
+                Text("\(minutes.wrappedValue) min")
             }
             .accessibilityLabel("Duración habitual de cada sesión en minutos")
-            .onChange(of: selectedMinutes) { _, newValue in
-                onAnswer(.sessionMinutes(newValue))
-            }
+            .accessibilityIdentifier("onboarding.minutesStepper")
         }
     }
 
@@ -130,6 +145,7 @@ struct OnboardingStepView: View {
                 onAnswer(.gym(nil))
             }
             .buttonStyle(.bordered)
+            .accessibilityIdentifier("onboarding.skipGym")
         }
     }
 
@@ -144,58 +160,49 @@ struct OnboardingStepView: View {
                 onAnswer(.restrictions([]))
             }
             .buttonStyle(.bordered)
+            .accessibilityIdentifier("onboarding.skipRestrictions")
         }
     }
 
-    // MARK: - Generic picker
+    // MARK: - Choice picker
 
-    private func choicesPicker<Choice: RawRepresentable & CaseIterable & Hashable>(
-        _ choices: Choice.Type
-    ) -> some View
-        where Choice.AllCases: RandomAccessCollection
-    {
+    /// Opciones del paso: la vista sólo pinta el texto que ya viene localizado y reenvía
+    /// la respuesta tipada de la opción; la elegida se marca con icono + borde + trait
+    /// (no sólo con color).
+    private var choicesPicker: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title(for: step))
                 .font(.headline)
-            ForEach(choices.allCases, id: \.self) { choice in
+            ForEach(choices) { choice in
+                let isSelected = selected == choice.answer
                 Button {
-                    onAnswer(makeAnswer(for: choice))
+                    onAnswer(choice.answer)
                 } label: {
                     HStack {
-                        Text(rawName(of: choice))
+                        Text(choice.label)
                             .foregroundStyle(.primary)
                         Spacer()
+                        if isSelected {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(Color.accentColor)
+                        }
                     }
                     .padding(12)
                     .background(
-                        RoundedRectangle(cornerRadius: 10)
+                        RoundedRectangle(cornerRadius: DRadius.small)
                             .fill(Color(.secondarySystemBackground))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DRadius.small)
+                            .stroke(Color.accentColor, lineWidth: isSelected ? 2 : 0)
                     )
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(rawName(of: choice))
+                .accessibilityLabel(choice.label)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+                .accessibilityIdentifier("onboarding.option.\(choice.id)")
             }
         }
-    }
-
-    private func makeAnswer(for choice: some RawRepresentable) -> OnboardingAnswer {
-        let raw = "\(choice.rawValue)"
-        switch step {
-        case .goal:
-            return .goal(TrainingGoal(rawValue: raw) ?? .generalHealth)
-        case .phase:
-            return .phase(BodyCompositionPhase(rawValue: raw) ?? .maintenance)
-        case .experience:
-            return .experience(ExperienceLevel(rawValue: raw) ?? .intermediate)
-        case .variety:
-            return .variety(VarietyPreference(rawValue: raw) ?? .balanced)
-        default:
-            return .goal(.generalHealth) // pasos no picker no llegan aquí
-        }
-    }
-
-    private func rawName(of choice: some RawRepresentable) -> String {
-        "\(choice.rawValue)".capitalized
     }
 
     // MARK: - Footer
@@ -217,6 +224,7 @@ struct OnboardingStepView: View {
             }
             .buttonStyle(.borderedProminent)
             .disabled(!canAdvance)
+            .accessibilityIdentifier("onboarding.next")
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 16)
@@ -248,6 +256,8 @@ struct OnboardingStepView: View {
             canAdvance: false,
             canGoBack: false,
             isAtEnd: false,
+            choices: OnboardingChoicePresenter().choices(for: .goal),
+            selected: .goal(.hypertrophy),
             onAnswer: { _ in },
             onAdvance: {},
             onGoBack: {},

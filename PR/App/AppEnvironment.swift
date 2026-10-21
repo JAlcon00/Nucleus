@@ -104,7 +104,10 @@ public final class AppEnvironment {
         self.onboarding = OnboardingCoordinator(
             authProvider: authProvider ?? mode.provider(appleID: SignInWithAppleProvider())
         )
-        self.persistence = persistence ?? Self.makeDefaultPersistence()
+        let testOptions = UITestLaunchOptions.resolve(
+            arguments: ProcessInfo.processInfo.arguments, isDebugBuild: isDebugBuild
+        )
+        self.persistence = persistence ?? Self.makeDefaultPersistence(isolated: testOptions.isolatedPersistence)
         let resolvedCatalog: ExerciseCatalog
         if let catalog {
             resolvedCatalog = catalog
@@ -120,7 +123,12 @@ public final class AppEnvironment {
             )
         }
         self.catalog = resolvedCatalog
-        self.todayPlan = TodayPlanCoordinator(catalog: resolvedCatalog)
+        // Con `-PRFixedDate` (sólo Debug) "hoy" es ese día; si no, el reloj real.
+        let fixedDate = testOptions.fixedDate(timeZone: .current)
+        self.todayPlan = TodayPlanCoordinator(
+            catalog: resolvedCatalog,
+            clock: { fixedDate ?? Date() }
+        )
     }
 
     /// Locale para textos generados fuera de las Views (PR-1004): idioma que resolvió la
@@ -136,18 +144,24 @@ public final class AppEnvironment {
     /// Crea la persistencia por defecto en Application Support/PR/persistence y migra
     /// una sola vez el layout antiguo (todo en la raíz). Devuelve `nil` si el directorio
     /// no puede resolverse (fallback en memoria del app).
-    private static func makeDefaultPersistence() -> LocalPersistence? {
+    /// `isolated` (sólo pruebas de UI en Debug): directorio temporal NUEVO, nunca los datos reales.
+    private static func makeDefaultPersistence(isolated: Bool) -> LocalPersistence? {
         let persistence: LocalPersistence
         do {
-            let base = try FileManager.default.url(
-                for: .applicationSupportDirectory,
-                in: .userDomainMask,
-                appropriateFor: nil,
-                create: true
-            )
-            persistence = try LocalPersistence(
-                rootURL: base.appendingPathComponent("PR/persistence", isDirectory: true)
-            )
+            let root: URL
+            if isolated {
+                root = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("pr-uitest-\(UUID().uuidString)", isDirectory: true)
+            } else {
+                let base = try FileManager.default.url(
+                    for: .applicationSupportDirectory,
+                    in: .userDomainMask,
+                    appropriateFor: nil,
+                    create: true
+                )
+                root = base.appendingPathComponent("PR/persistence", isDirectory: true)
+            }
+            persistence = try LocalPersistence(rootURL: root)
         } catch {
             PersistenceLog.standard.migrationFailed()
             return nil

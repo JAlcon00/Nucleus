@@ -119,6 +119,23 @@ Definition of Done para todos los bloques:
 
 ---
 
+### Bloque 0 — Pruebas de UI y bugs de la primera prueba manual (antes del bloque 3)
+
+Origen: la primera prueba manual de Jesús (2026-10-21). Herramienta: target `PRUITests` (XCUIAutomation, equivalente a Cypress), `make test-ui`. Modos de arranque solo en Debug: `-PRFakeSignIn`, `-PRUITestReset` (datos temporales aparte), `-PRFixedDate yyyy-MM-dd`.
+
+- [x] Pantalla negra al tocar Empezar (la cubierta se presentaba con el workout `nil`) → `fullScreenCover(item:)`. Prueba: `testStartShowsTheFirstSetNotABlackScreen`.
+- [x] Cuestionario en español (no "Generalhealth"/"Hypertrophy"). Prueba: `testOnboardingOptionsAreInSpanish`.
+- [x] La opción elegida se ve marcada (icono + borde + trait). Prueba: `testSelectedOptionIsMarked`.
+- [x] Días y minutos por defecto se registran sin mover el selector. Prueba: `testDefaultDaysAndMinutesCanAdvance...`.
+- [x] Hoy lista los ejercicios de la sesión. Prueba: `testTodayListsTheExercisesOfTheSession`.
+- [x] Lunes con sesión, domingo "Día de descanso"; Export vacío explícito; llegar a Hoy desde el cuestionario.
+- [ ] Sesión de 60 min con volumen realista (hoy 160 series) → **SCRUM-28 (bloque 7)**. Prueba en rojo a propósito: `testTodaySessionHasRealisticVolume`. Mientras tanto `make test-ui` no está en `make ci`.
+- [ ] Nombres de ejercicios en español: el dataset (`free-exercise-db`) viene en inglés. **Decisión de Jesús** (traducir los 678 nombres o dejarlos en inglés para el POC).
+
+Evidencia: `make ci` → `✔ Test run with 439 tests in 69 suites passed` + `✔ Test run with 274 tests in 54 suites passed` (2026-10-21); `xcodebuild test` de `PRUITests` en simulador iOS: 9 de 10 pasan, falla solo la de volumen.
+
+---
+
 ### Bloque 1 — SCRUM-23 · Ver y exportar todo mi historial (P0, READY)
 
 **Bug actual:**

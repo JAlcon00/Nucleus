@@ -19,11 +19,14 @@ import SwiftUI
 struct PrimaryActionButton: View {
     let title: String
     let systemImage: String?
+    let identifier: String?
     let action: () -> Void
 
-    init(_ title: String, systemImage: String? = nil, action: @escaping () -> Void) {
+    /// `identifier` es el `accessibilityIdentifier` que usan las pruebas de UI.
+    init(_ title: String, systemImage: String? = nil, identifier: String? = nil, action: @escaping () -> Void) {
         self.title = title
         self.systemImage = systemImage
+        self.identifier = identifier
         self.action = action
     }
 
@@ -42,6 +45,7 @@ struct PrimaryActionButton: View {
         }
         .buttonStyle(.borderedProminent)
         .accessibilityHint(title)
+        .accessibilityIdentifier(identifier ?? "")
     }
 }
 

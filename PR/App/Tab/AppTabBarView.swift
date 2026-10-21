@@ -18,7 +18,6 @@ import PRDomain
 struct AppTabBarView: View {
     @Environment(AppEnvironment.self) private var environment
     @Binding var selectedTab: AppTab
-    @Binding var showWorkout: Bool
     /// Intento: empezar la sesión planeada hoy (envía al composition root).
     var onStart: () -> Void
     /// Intento: continuar la sesión en curso (idem).
@@ -46,6 +45,7 @@ struct AppTabBarView: View {
         NavigationStack {
             TodayView(
                 state: environment.todayPlan.plan?.todayState ?? .restDay,
+                exercises: environment.todayPlan.plan?.todayExercises ?? [],
                 onStart: onStart,
                 onResume: onResume
             )

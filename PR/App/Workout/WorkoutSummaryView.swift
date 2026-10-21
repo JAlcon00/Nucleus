@@ -66,7 +66,7 @@ struct WorkoutSummaryView: View {
                         .multilineTextAlignment(.center)
                 }
 
-                PrimaryActionButton("Seguir en el plan", systemImage: "checkmark") {
+                PrimaryActionButton("Seguir en el plan", systemImage: "checkmark", identifier: "summary.done") {
                     onDone()
                 }
                 .padding(.top, DSpace.s)

@@ -135,7 +135,8 @@ struct WorkoutModeView: View {
             Spacer()
             PrimaryActionButton(
                 "Completar serie",
-                systemImage: "checkmark"
+                systemImage: "checkmark",
+                identifier: "workout.completeSet"
             ) { completeSet(set) }
                 .padding(.horizontal, DSpace.l)
         }

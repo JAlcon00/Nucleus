@@ -1,6 +1,24 @@
 {
   "sourceLanguage" : "es",
   "strings" : {
+    "Salud general" : { "comment" : "Objetivo de entrenamiento", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "General health" } } } },
+    "Hipertrofia" : { "comment" : "Objetivo de entrenamiento: ganar músculo", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Hypertrophy" } } } },
+    "Fuerza" : { "comment" : "Objetivo de entrenamiento", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Strength" } } } },
+    "Powerbuilding" : { "comment" : "Objetivo: fuerza e hipertrofia combinadas", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Powerbuilding" } } } },
+    "Recomposición" : { "comment" : "Objetivo: perder grasa y ganar músculo a la vez", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Recomposition" } } } },
+    "Culturismo" : { "comment" : "Objetivo de entrenamiento", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Bodybuilding" } } } },
+    "Volumen (superávit)" : { "comment" : "Fase: comer por encima del mantenimiento", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Bulking (surplus)" } } } },
+    "Definición (déficit)" : { "comment" : "Fase: comer por debajo del mantenimiento", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Cutting (deficit)" } } } },
+    "Mantenimiento" : { "comment" : "Fase: peso estable", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Maintenance" } } } },
+    "Prefiero no decirlo" : { "comment" : "Fase sin especificar", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Prefer not to say" } } } },
+    "Novato" : { "comment" : "Nivel de experiencia", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Novice" } } } },
+    "Principiante" : { "comment" : "Nivel de experiencia", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Beginner" } } } },
+    "Intermedio" : { "comment" : "Nivel de experiencia", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Intermediate" } } } },
+    "Avanzado" : { "comment" : "Nivel de experiencia", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Advanced" } } } },
+    "Competitivo" : { "comment" : "Nivel de experiencia", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Competitive" } } } },
+    "Estable (pocos cambios)" : { "comment" : "Preferencia de variedad de ejercicios", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Stable (few changes)" } } } },
+    "Equilibrada" : { "comment" : "Preferencia de variedad de ejercicios", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Balanced" } } } },
+    "Variada" : { "comment" : "Preferencia de variedad de ejercicios", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Varied" } } } },
     "%@ × %lld" : {
       "comment" : "Carga del récord: peso con unidad × repeticiones. Ej.: 85 kg × 8",
       "localizations" : {

@@ -16,6 +16,21 @@ import Foundation
 import Observation
 import PRDomain
 
+/// Un ejercicio de la sesión de hoy tal como se lista en "Hoy": nombre del catálogo y
+/// número de series. Sin nombre inventado: si el catálogo no lo tiene, `name` es `nil`.
+public struct TodayExerciseLine: Equatable, Sendable, Identifiable {
+    public let exerciseID: ExerciseID
+    public let name: String?
+    public let setCount: Int
+    public var id: ExerciseID { exerciseID }
+
+    public init(exerciseID: ExerciseID, name: String?, setCount: Int) {
+        self.exerciseID = exerciseID
+        self.name = name
+        self.setCount = setCount
+    }
+}
+
 /// Plan derivado para la pantalla "Hoy": bloque generado + plantilla de hoy + estado.
 public struct TodayPlan: Equatable, Sendable {
     public let block: TrainingBlock
@@ -23,19 +38,23 @@ public struct TodayPlan: Equatable, Sendable {
     public let todayTemplate: SessionTemplate?
     public let estimatedMinutes: Int?
     public let todayState: TodayScreenState
+    /// Ejercicios de la sesión de hoy en el orden de la plantilla (vacío en descanso).
+    public let todayExercises: [TodayExerciseLine]
 
     public init(
         block: TrainingBlock,
         sessions: [SessionTemplate],
         todayTemplate: SessionTemplate?,
         estimatedMinutes: Int?,
-        todayState: TodayScreenState
+        todayState: TodayScreenState,
+        todayExercises: [TodayExerciseLine] = []
     ) {
         self.block = block
         self.sessions = sessions
         self.todayTemplate = todayTemplate
         self.estimatedMinutes = estimatedMinutes
         self.todayState = todayState
+        self.todayExercises = todayExercises
     }
 }
 
@@ -99,8 +118,22 @@ public struct TodayPlanBuilder: Sendable {
             sessions: block.sessions,
             todayTemplate: todayTemplate,
             estimatedMinutes: estimatedMinutes,
-            todayState: state
+            todayState: state,
+            todayExercises: exerciseLines(for: todayTemplate, catalog: catalog)
         )
+    }
+
+    /// Ejercicios de la plantilla en orden de aparición, con su número de series.
+    func exerciseLines(for template: SessionTemplate?, catalog: ExerciseCatalog) -> [TodayExerciseLine] {
+        guard let template else { return [] }
+        let names = Dictionary(catalog.exercises.map { ($0.id, $0.canonicalName) }, uniquingKeysWith: { first, _ in first })
+        var order: [ExerciseID] = []
+        var counts: [ExerciseID: Int] = [:]
+        for planned in template.plannedSets {
+            if counts[planned.exerciseID] == nil { order.append(planned.exerciseID) }
+            counts[planned.exerciseID, default: 0] += 1
+        }
+        return order.map { TodayExerciseLine(exerciseID: $0, name: names[$0], setCount: counts[$0] ?? 0) }
     }
 
     // MARK: - Defaults

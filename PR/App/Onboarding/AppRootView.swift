@@ -34,6 +34,8 @@ struct AppRootView: View {
                     canAdvance: canAdvance,
                     canGoBack: canGoBack,
                     isAtEnd: isAtEnd,
+                    choices: OnboardingChoicePresenter(locale: AppEnvironment.presentationLocale).choices(for: step),
+                    selected: environment.onboarding.currentAnswer,
                     onAnswer: { environment.onboarding.select($0) },
                     onAdvance: { environment.onboarding.advance() },
                     onGoBack: { environment.onboarding.goBack() },
@@ -69,8 +71,9 @@ struct AppRootView: View {
     }
 
     /// Coordinador de WORKOUT MODE activo (nil hasta que se empieza una sesión).
+    /// Si no es nil, WORKOUT MODE se presenta a pantalla completa (`fullScreenCover(item:)`
+    /// entrega el coordinador ya no opcional: antes la cubierta quedaba vacía/negra).
     @State private var workout: WorkoutSessionCoordinator?
-    @State private var showWorkout = false
     @State private var selectedTab = AppTab.today
     /// Carga en curso del coordinador (lee historial local). Una sola a la vez: un
     /// doble toque no crea dos sesiones.
@@ -83,19 +86,16 @@ struct AppRootView: View {
     private var appContent: some View {
         AppTabBarView(
             selectedTab: $selectedTab,
-            showWorkout: $showWorkout,
             onStart: { startWorkout() },
             onResume: { resumeWorkout() }
         )
-        .fullScreenCover(isPresented: $showWorkout) {
-            if let workout {
-                NavigationStack {
-                    WorkoutModeView(
-                        coordinator: workout,
-                        onDone: { showWorkout = false },
-                        coachingLevel: coachingLevel
-                    )
-                }
+        .fullScreenCover(item: $workout) { coordinator in
+            NavigationStack {
+                WorkoutModeView(
+                    coordinator: coordinator,
+                    onDone: { workout = nil },
+                    coachingLevel: coachingLevel
+                )
             }
         }
     }
@@ -130,7 +130,6 @@ struct AppRootView: View {
                 _ = coordinator.start()
             }
             workout = coordinator
-            showWorkout = true
         }
     }
 }

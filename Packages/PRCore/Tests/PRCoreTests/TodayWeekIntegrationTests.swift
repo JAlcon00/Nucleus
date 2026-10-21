@@ -66,3 +66,52 @@ struct TodayWeekIntegrationTests {
         #expect(states.dropFirst(days).allSatisfy { $0 == .restDay })
     }
 }
+
+@Suite("Hoy lista los ejercicios de la sesión")
+struct TodayExerciseListTests {
+
+    @MainActor
+    @Test("En un día de entrenamiento Hoy trae los ejercicios con nombre y series, en el orden de la plantilla")
+    func listsExercisesInTemplateOrder() throws {
+        let timeZone = try #require(TimeZone(identifier: "America/Mexico_City"))
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let monday = try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 19, hour: 12)))
+        let catalog = try ExerciseCatalogLoader.loadBundled()
+        let coordinator = TodayPlanCoordinator(catalog: catalog, clock: { monday }, timeZone: { timeZone })
+        let profile = OnboardingProfile(
+            goal: .hypertrophy, phase: .maintenance, experience: .intermediate,
+            trainingDaysPerWeek: 3, usualSessionMinutes: 60, varietyPreference: .balanced,
+            defaultGymID: nil, restrictions: []
+        )
+        #expect(coordinator.load(profile: profile))
+        let plan = try #require(coordinator.plan)
+        let template = try #require(plan.todayTemplate)
+
+        #expect(!plan.todayExercises.isEmpty)
+        #expect(plan.todayExercises.allSatisfy { $0.name != nil })
+        #expect(plan.todayExercises.map(\.setCount).reduce(0, +) == template.plannedSets.count)
+        var seen: [ExerciseID] = []
+        for planned in template.plannedSets where !seen.contains(planned.exerciseID) { seen.append(planned.exerciseID) }
+        #expect(plan.todayExercises.map(\.exerciseID) == seen)
+    }
+
+    @MainActor
+    @Test("En día de descanso no hay ejercicios")
+    func restDayHasNoExercises() throws {
+        let timeZone = try #require(TimeZone(identifier: "America/Mexico_City"))
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let sunday = try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 25, hour: 12)))
+        let coordinator = TodayPlanCoordinator(
+            catalog: try ExerciseCatalogLoader.loadBundled(), clock: { sunday }, timeZone: { timeZone }
+        )
+        let profile = OnboardingProfile(
+            goal: .hypertrophy, phase: .maintenance, experience: .intermediate,
+            trainingDaysPerWeek: 3, usualSessionMinutes: 60, varietyPreference: .balanced,
+            defaultGymID: nil, restrictions: []
+        )
+        #expect(coordinator.load(profile: profile))
+        #expect(coordinator.plan?.todayExercises.isEmpty == true)
+    }
+}

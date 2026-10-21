@@ -11,11 +11,14 @@
 //
 
 import SwiftUI
+import PRCore
 import PRDomain
 
 struct TodayView: View {
     /// Estado derivado por `TodayScreenDriver` (se inyecta desde el composition root).
     let state: TodayScreenState
+    /// Ejercicios de la sesión de hoy (ya con nombre del catálogo), en orden.
+    var exercises: [TodayExerciseLine] = []
     /// Intento: empezar la sesión planeada.
     let onStart: () -> Void
     /// Intento: continuar la sesión en curso.
@@ -53,6 +56,7 @@ struct TodayView: View {
         .padding(.horizontal, 24)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Día de descanso.")
+        .accessibilityIdentifier("today.restDay")
     }
 
     // MARK: - Ready to start
@@ -67,10 +71,30 @@ struct TodayView: View {
                     .font(.title2.bold())
                 sessionSummary(presentation)
             }
-            Spacer()
+            exerciseList
             startButton(presentation)
         }
         .padding(24)
+    }
+
+    /// Lista de ejercicios de la sesión (con scroll: el botón Empezar siempre queda a la vista).
+    private var exerciseList: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: DSpace.s) {
+                ForEach(Array(exercises.enumerated()), id: \.element.id) { index, line in
+                    HStack {
+                        Text(line.name ?? String(localized: "Ejercicio"))
+                        Spacer()
+                        Text("\(line.setCount) × series")
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                    .padding(.vertical, DSpace.xs)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("today.exercise.\(index)")
+                }
+            }
+        }
     }
 
     // MARK: - Active
@@ -102,6 +126,7 @@ struct TodayView: View {
         .font(.callout)
         .foregroundStyle(.secondary)
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("today.sessionSummary")
     }
 
     private func startButton(_ presentation: SessionPresentation) -> some View {
@@ -112,6 +137,7 @@ struct TodayView: View {
         }
         .buttonStyle(.borderedProminent)
         .accessibilityHint("Inicia la sesión de hoy.")
+        .accessibilityIdentifier("today.start")
     }
 
     private var resumeButton: some View {

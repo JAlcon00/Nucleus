@@ -57,6 +57,24 @@ public enum OnboardingAnswer: Equatable, Sendable {
     case restrictions([TrainingRestriction])
 }
 
+/// Valores que el cuestionario muestra por defecto en los selectores numéricos. Lo que
+/// se ve es lo que se registra: al llegar al paso se guarda como respuesta, para que
+/// "Siguiente" funcione sin tener que mover el selector.
+public enum OnboardingDefaults {
+    public static let trainingDaysPerWeek = 4
+    public static let sessionMinutes = 60
+
+    /// Respuesta por defecto de un paso con selector numérico; `nil` en el resto
+    /// (objetivo, fase, experiencia y variedad exigen elegir: no se inventan).
+    public static func answer(for step: OnboardingStep) -> OnboardingAnswer? {
+        switch step {
+        case .daysPerWeek: return .daysPerWeek(trainingDaysPerWeek)
+        case .sessionMinutes: return .sessionMinutes(sessionMinutes)
+        case .goal, .phase, .experience, .gym, .variety, .restrictions: return nil
+        }
+    }
+}
+
 /// Borrador del onboarding: acumula respuestas y conserva las dadas al navegar atrás.
 public struct OnboardingDraft: Equatable, Sendable {
     /// Respuestas por paso. Los pasos aún no respondidos NO están presentes.
