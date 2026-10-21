@@ -50,6 +50,15 @@ idempotente del layout compartido, clasificada por contenido. `DataExportCoordin
 expone `ExportHistory` (vacío / cargado + ilegibles) para que Export nunca muestre un 0
 silencioso. Cobertura en `Packages/PRCore/Tests/PRCoreTests/CollectionPersistenceTests.swift`.
 
+## Días de la semana (SCRUM-27, RF-005)
+
+`Packages/PRCore/Sources/PRDomain/TrainingWeek.swift`: único cálculo de "qué día es"
+(lunes = 0 … domingo = 6 vía `(weekday + 5) % 7`, zona horaria inyectada, sin
+depender de `firstWeekday`) y de qué días se entrena (primeros N desde el lunes, slot
+propio por día). `TodayPlanBuilder` lo usa. Cobertura en
+`Packages/PRCore/Tests/PRDomainTests/TrainingWeekTests.swift` y
+`Packages/PRCore/Tests/PRCoreTests/TodayWeekIntegrationTests.swift`.
+
 ## Persistencia local (EPIC-02)
 
 Implementada en PR-0202 detrás de los protocolos `Repository` con un almacén

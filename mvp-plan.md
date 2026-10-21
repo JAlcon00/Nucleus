@@ -47,12 +47,12 @@ Cada funcionalidad se cierra cuando todas sus casillas están en `[x]`.
 - [ ] Funciona sin internet después del primer inicio → SCRUM-26.
 
 ### F-02 · Plan semanal correcto — SCRUM-182 (era de Joss)
-- [ ] La semana tiene exactamente los días elegidos (2 a 7) → SCRUM-27.
+- [x] La semana tiene exactamente los días elegidos (2 a 7) → SCRUM-27.
 - [ ] Cada día tiene su propia sesión con series realistas → SCRUM-28.
 - [ ] Más tiempo no agrega series → SCRUM-28.
 
 ### F-03 · Pantalla Hoy — SCRUM-183 (era de Joss)
-- [ ] Hoy muestra la sesión correcta del día o "Día de descanso" → SCRUM-27. La UI existe; falta que el cálculo sea correcto.
+- [x] Hoy muestra la sesión correcta del día o "Día de descanso" → SCRUM-27. La UI existe; el cálculo quedó corregido.
 - [ ] Ejercicios en orden lógico, de grandes a pequeños → SCRUM-29.
 - [x] Puedo empezar el entrenamiento con un toque.
 
@@ -94,7 +94,7 @@ Diagnóstico verificado en el código el 2026-10-20: todos los bugs descritos ab
 | # | Jira | Qué | Prioridad | Depende de | Estado |
 |---|---|---|---|---|---|
 | 1 | SCRUM-23 | Historial y export correctos (colecciones separadas) | P0 | — | [ ] criterios [x]; falta 👤 manual |
-| 2 | SCRUM-27 | Días correctos de la semana | P0 | — (su test de integración final espera al #6) | [ ] |
+| 2 | SCRUM-27 | Días correctos de la semana | P0 | — (su test de integración final espera al #6) | [ ] criterios [x]; falta integración con #6 y 👤 manual |
 | 3 | SCRUM-189 | CI en GitHub | P0 soporte | — | [ ] |
 | 4 | SCRUM-24 | No perder el workout si la app se cierra | P0 | 1 | [ ] |
 | 5 | SCRUM-25 | Cerrar bien la sesión al terminar | P0 | 4 | [ ] |
@@ -160,11 +160,13 @@ Evidencia: commit `7b68b38`; `make ci` → `✔ Test run with 427 tests in 68 su
 **Corrección:** `(weekday + 5) % 7` sobre el `weekday` gregoriano (domingo = 1 … sábado = 7), que da lunes = 0 … domingo = 6. Centralizar este cálculo en **un solo lugar del dominio** (PRDomain).
 
 **Criterios:**
-- [ ] Para cualquier opción de 2 a 7 días, en los 7 días de la semana exactamente ese número de días propone entrenar.
-- [ ] En un día libre, Hoy muestra "Día de descanso" y no hay botón de empezar.
-- [ ] Ningún día repite por error la sesión de otro.
-- [ ] Lunes da índice 0 y domingo da 6.
-- [ ] El resultado no cambia con la zona horaria ni con el `firstWeekday` del sistema.
+- [x] Para cualquier opción de 2 a 7 días, en los 7 días de la semana exactamente ese número de días propone entrenar.
+- [x] En un día libre, Hoy muestra "Día de descanso" y no hay botón de empezar.
+- [x] Ningún día repite por error la sesión de otro.
+- [x] Lunes da índice 0 y domingo da 6.
+- [x] El resultado no cambia con la zona horaria ni con el `firstWeekday` del sistema.
+
+Evidencia: commit `64c95d9`; `make ci` → `✔ Test run with 439 tests in 69 suites passed` + `✔ Test run with 251 tests in 50 suites passed` (2026-10-20). Cálculo único en `PRDomain/TrainingWeek.swift`; tests en `PRDomainTests/TrainingWeekTests.swift` (12) y `PRCoreTests/TodayWeekIntegrationTests.swift` (coordinador real recorriendo 19–25 oct 2026 para N = 2…7). "Zona horaria" se interpreta como día **local** del usuario: el mismo día local da el mismo índice en 5 zonas; cerca de medianoche cuenta el día local, no el de UTC. En día libre el estado es `.restDay` y `TodayView` no tiene botón en ese caso. Regla de días conservada: los primeros N días desde el lunes. **Pendiente:** integración con `AppEnvironment` y plan persistido (espera al bloque 6); 👤 prueba manual de Jesús.
 
 **Tests:**
 - Unitarios:
