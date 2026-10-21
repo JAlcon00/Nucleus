@@ -5,9 +5,9 @@
 # (sin dependencia de rutas absolutas de un desarrollador). Cualquier gate que falle
 # hace que `make` devuelva exit code != 0.
 
-.PHONY: ci test build test-ios guards
+.PHONY: ci test build test-ios test-watch guards
 
-# Pipeline completo: guards + swift build + swift test + build scheme iOS.
+# Pipeline completo: guards + swift build + swift test + build schemes iOS y watchOS.
 ci:
 	./scripts/ci.sh all
 
@@ -19,6 +19,10 @@ test:
 guards:
 	./scripts/ci.sh guards
 
-# Build del scheme iOS real (integración, si hay destination disponible).
+# Build Debug del scheme iOS (destination concreto o genérico de Simulator).
 test-ios:
 	./scripts/ci.sh build-ios
+
+# Build Debug del scheme watchOS (destination concreto o genérico de Simulator).
+test-watch:
+	./scripts/ci.sh build-watch

@@ -1,46 +1,40 @@
 #!/usr/bin/env bash
 #
-# Guard del pbxproj (PR.xcodeproj/project.pbxproj).
+# Guard de empaquetado de la app (CI gate 1/5).
 #
-# Verifica que la excepción de la carpeta `PR-agentic-fitness-spec` siga presente y
-# correctamente apuntada al target `PR` (no a `PRWatch`, no perdida, no a nivel de
-# archivo). Esa carpeta es documentación de spec y NO debe compilarse/empaquetarse.
+# `PR/` y `PRWatch/` son carpetas sincronizadas de Xcode: TODO archivo que viva ahí entra
+# al target y se empaqueta en el .app. La documentación (spec, ADRs, scripts) vive en
+# `docs/` y no debe aparecer dentro de esas carpetas. Este guard falla si encuentra
+# documentos o scripts dentro de ellas.
 #
-# Uso: se recomienda ejecutar como pre-commit; devuelve 0 si está correcta.
+# Historia: la spec vivía en `PR/PR-agentic-fitness-spec` y dependía de una excepción de
+# membresía en project.pbxproj que Xcode perdía al editar el target (se empaquetaban los
+# .md). Se movió a `docs/spec` para eliminar esa fragilidad.
+#
+# Uso: ./scripts/check_pbxproj_exception.sh [ruta/al/project.pbxproj]
+# Salida: 0 si no hay documentación dentro de las carpetas de app.
 set -euo pipefail
 
 PBX="${1:-PR.xcodeproj/project.pbxproj}"
+REPO_ROOT="$(cd "$(dirname "$PBX")/.." && pwd)"
 
-if [[ ! -f "$PBX" ]]; then
-  echo "OK: no hay pbxproj ($PBX) — no aplica." >&2
-  exit 0
+found=0
+for app_dir in "$REPO_ROOT/PR" "$REPO_ROOT/PRWatch"; do
+  [[ -d "$app_dir" ]] || continue
+  while IFS= read -r -d '' file; do
+    echo "ERROR: documento dentro de una carpeta de app (se empaquetaría): ${file#"$REPO_ROOT"/}" >&2
+    found=1
+  done < <(find "$app_dir" -type f \( -name "*.md" -o -name "*.sh" \) -print0)
+done
+
+if [[ -d "$REPO_ROOT/PR/PR-agentic-fitness-spec" ]]; then
+  echo "ERROR: la spec volvió a PR/PR-agentic-fitness-spec; debe vivir en docs/spec." >&2
+  found=1
 fi
 
-# 1) Debe existir una excepción con la carpeta (no un archivo individual).
-#    Acepta la carpeta de spec ya sea bajo `PR/` o movida a la raíz del repo.
-if ! grep -q "PR-agentic-fitness-spec," "$PBX"; then
-  echo "ERROR: falta la excepción 'PR-agentic-fitness-spec,' en $PBX." >&2
-  echo "  La carpeta de spec quedó como miembro del target PR (se empaqueta .md)." >&2
-  echo "  Restaura con: git checkout -- $PBX  (o restaura la excepción para el target PR)." >&2
-  exit 1
-fi
-if grep -q "PR/PR-agentic-fitness-spec," "$PBX"; then
-  echo "  info: la carpeta de spec se encuentra en PR/PR-agentic-fitness-spec (no excepcionada)." >&2
-elif grep -q "PR-agentic-fitness-spec," "$PBX"; then
-  echo "  info: la carpeta de spec se referencia como PR-agentic-fitness-spec (valida por token)." >&2
-fi
-
-# 2) No debe apuntar al target equivocado (PRWatch) — el drift común.
-if grep -q 'Exceptions for "PR" folder in "PRWatch" target' "$PBX"; then
-  echo "ERROR: la excepción quedó re-apuntada a PRWatch en $PBX." >&2
-  echo "  Restaura con: git checkout -- $PBX" >&2
+if [[ $found -ne 0 ]]; then
+  echo "  Mueve la documentación a docs/ (fuera de PR/ y PRWatch/)." >&2
   exit 1
 fi
 
-# 3) La excepción debe existir como tal en la sección de excepciones del synced group.
-if ! grep -q "PBXFileSystemSynchronizedBuildFileExceptionSet" "$PBX"; then
-  echo "ERROR: no existe la sección de excepciones de grupo en $PBX." >&2
-  exit 1
-fi
-
-echo "OK: excepción de PR-agentic-fitness-spec correcta en $PBX." >&2
+echo "OK: sin documentación dentro de PR/ ni PRWatch/ (spec en docs/spec)." >&2

@@ -418,11 +418,22 @@ Pipeline reproducible de build + unit tests, sin dependencia de rutas absolutas 
 exit code no cero ante fallo:
 
 ```bash
-make ci          # pipeline completo: guard + swift build + swift test + build scheme iOS
+make ci          # pipeline completo: guard + swift build + swift test + builds iOS y watchOS
 make test        # solo unit tests del paquete PRCore
-make test-ios    # solo build del scheme iOS (integración)
+make test-ios    # solo build Debug del scheme iOS
+make test-watch  # solo build Debug del scheme watchOS
 make guards      # solo guard del pbxproj (spec excluida del target)
 ```
+
+Notas de entorno:
+
+- Si `xcode-select -p` apunta a CommandLineTools, el script usa `/Applications/Xcode.app`
+  (define `DEVELOPER_DIR` para elegir otro Xcode).
+- Los artefactos de SwiftPM van a `$TMPDIR/prcore-ci-build` (override: `PR_CI_SCRATCH`).
+  Al ejecutar `swift test` a mano dentro de `~/Documents`, usa
+  `swift test --scratch-path "$TMPDIR/prcore-build"` para evitar el error de codesign
+  *"resource fork, Finder information, or similar detritus not allowed"*.
+- Sin runtime de Simulator instalado, los builds usan `generic/platform=... Simulator`.
 
 También se puede invocar el script directamente (misma función, logs en `.ci/`):
 
