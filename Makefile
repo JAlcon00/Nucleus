@@ -5,7 +5,7 @@
 # (sin dependencia de rutas absolutas de un desarrollador). Cualquier gate que falle
 # hace que `make` devuelva exit code != 0.
 
-.PHONY: ci test build test-ios test-watch guards
+.PHONY: ci test build test-ios test-watch test-ui guards
 
 # Pipeline completo: guards + swift build + swift test + build schemes iOS y watchOS.
 ci:
@@ -26,3 +26,8 @@ test-ios:
 # Build Debug del scheme watchOS (destination concreto o genérico de Simulator).
 test-watch:
 	./scripts/ci.sh build-watch
+
+# Pruebas de UI (XCUIAutomation) en el simulador. Aún fuera de `make ci`: la prueba de
+# volumen realista espera a SCRUM-28.
+test-ui:
+	./scripts/ci.sh test-ui

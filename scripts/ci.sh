@@ -30,6 +30,7 @@
 #   ./scripts/ci.sh test         # solo unit tests del paquete
 #   ./scripts/ci.sh build-ios    # solo el build del scheme iOS
 #   ./scripts/ci.sh build-watch  # solo el build del scheme watchOS
+#   ./scripts/ci.sh test-ui      # pruebas de UI (XCUIAutomation) en el simulador
 #   ./scripts/ci.sh guards       # solo los guards
 #
 # Salida: 0 = éxito; != 0 = algún gate falló (ver mensaje en stderr).
@@ -113,6 +114,23 @@ run_scheme_build() {
       build )
 }
 
+# Pruebas de UI (XCUIAutomation) sobre el simulador. Aparte de `all` mientras la prueba
+# de volumen realista siga en rojo hasta SCRUM-28 (bloque 7); después se suma a `all`.
+run_ui_tests() {
+  local destination_id
+  destination_id="$(
+    cd "$REPO_ROOT" && xcodebuild -scheme PR -showdestinations 2>/dev/null \
+      | sed -n 's/.*{ platform:iOS Simulator,[^}]*id:\([0-9A-F-]\{36\}\)[^}]*}.*/\1/p' \
+      | head -n 1
+  )"
+  if [[ -z "$destination_id" ]]; then
+    log "ERROR: no hay simulador de iOS para las pruebas de UI." >&2
+    exit 1
+  fi
+  ( cd "$REPO_ROOT" && run_step "test-ui" xcodebuild \
+      -scheme PR -destination "id=$destination_id" -only-testing:PRUITests test )
+}
+
 run_ios_build() {
   run_scheme_build PR iOS build-ios "4/5"
 }
@@ -133,6 +151,9 @@ main() {
     build-watch)
       run_watch_build
       ;;
+    test-ui)
+      run_ui_tests
+      ;;
     guards)
       run_pbxproj_guard
       ;;
@@ -145,7 +166,7 @@ main() {
       ;;
     *)
       log "ERROR: fase desconocida '$phase'." >&2
-      log "  Uso: $(basename "${BASH_SOURCE[0]}") [all|test|build-ios|build-watch|guards]" >&2
+      log "  Uso: $(basename "${BASH_SOURCE[0]}") [all|test|build-ios|build-watch|test-ui|guards]" >&2
       exit 2
       ;;
   esac
