@@ -8,10 +8,11 @@ Este archivo es la autoridad máxima del repo: si una skill o una guía general 
 Antes de cualquier cambio, leer en este orden:
 
 1. `promptMaster.md`: visión e invariantes del producto.
-2. `.agents/skills/swift-elite-coach/SKILL.md`: reglas de ingeniería propias de PR (dominio, HealthKit, watchOS, agente, seguridad).
-3. La skill de estilo que corresponda a la tarea (sección 3).
-4. `backlog.md`: historia a trabajar y sus criterios de aceptación.
-5. `plan.md` y `README.md`: arquitectura y fases.
+2. **`mvp-plan.md`: plan activo (MVP/POC, fuente Jira SCRUM). Manda sobre `backlog.md` mientras tenga casillas abiertas.**
+3. `.agents/skills/swift-elite-coach/SKILL.md`: reglas de ingeniería propias de PR (dominio, HealthKit, watchOS, agente, seguridad).
+4. La skill de estilo que corresponda a la tarea (sección 3).
+5. `backlog.md`: historias de dominio ya implementadas y futuras.
+6. `plan.md` y `README.md`: arquitectura y fases.
 
 ## 2. Invariantes
 
@@ -119,7 +120,11 @@ Inspeccionar el repo real antes de asumir paths o schemes. No pisar cambios sin 
 
 ## 5. Backlog selection
 
-- Elegir la primera historia `READY` de mayor prioridad con dependencias `DONE`.
+- **Primero `mvp-plan.md`:** tomar el primer bloque de su sección 3 que no esté en `[x]` y tenga sus dependencias en `[x]`. Trabajar ahí todo lo asignado en Jira a Gael y Joss.
+- **Congelado:** mientras `mvp-plan.md` tenga casillas abiertas, no se trabaja ninguna historia P1/P2 de `backlog.md`.
+- **IDs:** usar siempre la clave de Jira (`SCRUM-XX`) en commits y ramas, por ejemplo `SCRUM-23 (P0): ...`. Los `PR-01xx` de Jira **no** son los `PR-01xx` de `backlog.md`.
+- **Al cerrar un bloque:** marcar `[x]` solo los criterios cuyo test pasó en `make ci` y agregar la línea `Evidencia:`. Las pruebas 👤 las marca Jesús.
+- Fuera del plan MVP: elegir la primera historia `READY` de mayor prioridad con dependencias `DONE`.
 - No empezar una P2 si hay una dependencia P0 incompleta.
 - Un bug que pierde datos, duplica energía, ignora una restricción o recomienda una carga inválida es P0 y bloquea lo demás.
 - Sin refactors oportunistas fuera del alcance de la historia: se mencionan aparte.
