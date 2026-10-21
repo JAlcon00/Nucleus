@@ -177,6 +177,18 @@ struct LegacyPersistenceMigrationTests {
             (.restrictions, try Fixture.encoded(RepoFixtures.restriction())),
             (.decisions, try Fixture.encoded(RepoFixtures.decision())),
             (.agentAudit, try Fixture.encoded(AgentAuditRecord(stage: .inboundIntent))),
+            (.plans, try Fixture.encoded(StoredPlan(
+                userID: "u",
+                profile: OnboardingProfile(
+                    goal: .hypertrophy, phase: .maintenance, experience: .intermediate,
+                    trainingDaysPerWeek: 3, usualSessionMinutes: 60, varietyPreference: .balanced
+                ),
+                activeBlockID: TrainingBlockID(),
+                blockHistory: [],
+                explanation: BlockExplanation(facts: [], ruleReferences: []),
+                updatedAt: Date(timeIntervalSince1970: 0)
+            ))),
+            (.session, try Fixture.encoded(StoredSession(userID: "u"))),
         ]
         #expect(samples.map(\.0).sorted { $0.rawValue < $1.rawValue }
             == PersistenceCollection.allCases.sorted { $0.rawValue < $1.rawValue })

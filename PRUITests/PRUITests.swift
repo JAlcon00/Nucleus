@@ -26,9 +26,10 @@ final class PRUITests: XCTestCase {
 
     // MARK: - Helpers
 
-    private func launch(date: String = monday) -> XCUIApplication {
+    private func launch(date: String = monday, storeID: String? = nil) -> XCUIApplication {
         let app = XCUIApplication(bundleIdentifier: Self.bundleID)
         app.launchArguments = ["-PRFakeSignIn", "-PRUITestReset", "-PRFixedDate", date]
+        if let storeID { app.launchArguments += ["-PRUITestStoreID", storeID] }
         app.launch()
         return app
     }
@@ -109,6 +110,35 @@ final class PRUITests: XCTestCase {
         let app = launch()
         completeOnboarding(app)
         XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15), "Tras el cuestionario debe verse Hoy con sesión (lunes)")
+    }
+
+    // MARK: - Recordar perfil y plan (SCRUM-26)
+
+    func testReopeningTheAppGoesStraightToToday() {
+        let storeID = "ui-\(UUID().uuidString.prefix(8))"
+        let app = launch(storeID: storeID)
+        completeOnboarding(app)
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
+        let firstSummary = element(app, "today.sessionSummary").label
+
+        app.terminate()
+        let reopened = launch(storeID: storeID)
+        XCTAssertTrue(element(reopened, "today.start").waitForExistence(timeout: 20),
+                      "Al reabrir debe verse Hoy directo, sin login ni cuestionario")
+        XCTAssertFalse(element(reopened, "onboarding.next").exists, "No debe repetir el cuestionario")
+        XCTAssertEqual(element(reopened, "today.sessionSummary").label, firstSummary, "Debe ser el mismo plan")
+    }
+
+    func testRedoQuestionnaireFromTodayOpensTheQuestionnaire() {
+        let app = launch()
+        completeOnboarding(app)
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
+        tap(app, "today.redo")
+        let confirm = app.buttons["Sí, rehacer"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        confirm.tap()
+        XCTAssertTrue(element(app, "onboarding.option.hypertrophy").waitForExistence(timeout: 10),
+                      "Rehacer debe abrir el cuestionario")
     }
 
     // MARK: - Hoy

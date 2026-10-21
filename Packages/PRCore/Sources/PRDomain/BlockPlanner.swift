@@ -32,6 +32,9 @@ public struct BlockPlanningInput: Sendable {
     /// Minutos que el usuario dedica a una sesión. Si una sesión no cabe, se recortan
     /// series de los ejercicios de menor prioridad; `nil` = sin límite de tiempo.
     public var sessionMinutes: Int?
+    /// ID del bloque a generar. `nil` = ID nuevo. Para regenerar un bloque guardado
+    /// conservando su identidad (SCRUM-26).
+    public var blockID: TrainingBlockID?
 
     public init(
         goal: TrainingGoal,
@@ -44,9 +47,11 @@ public struct BlockPlanningInput: Sendable {
         catalog: [Exercise],
         restrictions: [TrainingRestriction],
         equipmentKnownness: EquipmentKnownness,
-        sessionMinutes: Int? = nil
+        sessionMinutes: Int? = nil,
+        blockID: TrainingBlockID? = nil
     ) {
         self.sessionMinutes = sessionMinutes
+        self.blockID = blockID
         self.goal = goal
         self.phase = phase
         self.experience = experience
@@ -204,6 +209,7 @@ public struct BlockPlanner: Sendable {
         }
 
         let block = try TrainingBlock(
+            id: input.blockID ?? TrainingBlockID(),
             name: "\(input.goal.rawValue.capitalized) block",
             goal: input.goal,
             phase: input.phase,

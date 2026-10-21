@@ -22,6 +22,9 @@ struct TodayView: View {
     var orderReorderedByFatigue = false
     /// Ejercicios de la sesión de hoy (ya con nombre del catálogo), en orden.
     var exercises: [TodayExerciseLine] = []
+    /// Aviso breve cuando la app actualizó el plan guardado (SCRUM-26).
+    var notice: TodayPlanNotice?
+    var onDismissNotice: () -> Void = {}
     /// Intento: empezar la sesión planeada.
     let onStart: () -> Void
     /// Intento: continuar la sesión en curso.
@@ -42,6 +45,34 @@ struct TodayView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .contain)
+        .safeAreaInset(edge: .top) {
+            if let notice { noticeBanner(notice) }
+        }
+    }
+
+    private func noticeBanner(_ notice: TodayPlanNotice) -> some View {
+        HStack(alignment: .top, spacing: DSpace.s) {
+            Image(systemName: "arrow.triangle.2.circlepath")
+                .accessibilityHidden(true)
+            Text(Self.text(for: notice))
+                .font(.callout)
+            Spacer(minLength: 0)
+            Button("Entendido", action: onDismissNotice)
+                .font(.callout.bold())
+                .frame(minHeight: 44)
+                .accessibilityIdentifier("today.notice.dismiss")
+        }
+        .padding(DSpace.m)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: DRadius.medium))
+        .padding(.horizontal, 24)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("today.notice")
+    }
+
+    private static func text(for notice: TodayPlanNotice) -> String {
+        switch notice {
+        case .planUpdated: String(localized: "Actualizamos tu plan para que las sesiones tengan un volumen realista.")
+        }
     }
 
     // MARK: - Rest day

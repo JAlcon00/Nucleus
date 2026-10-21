@@ -37,16 +37,19 @@ public final class AppEnvironment {
     /// `-PRFakeSignIn` (para probar sin Sign in with Apple); en Release siempre `.appleID`.
     public let authMode: AuthLaunchMode
 
-    /// Intent de arranque: en modo simulado inicia sesión sola (salta la pantalla de
-    /// login). En modo Apple no hace nada; el usuario toca el botón.
+    /// Intent de arranque: recupera la sesión y el plan guardados; en modo simulado inicia
+    /// sesión sola (salta la pantalla de login). En modo Apple, sin sesión guardada, el
+    /// usuario toca el botón.
     public func startIfNeeded() async {
-        guard authMode.signsInAutomatically, onboarding.phase == .signedOut else { return }
-        await onboarding.signIn()
+        await session.start(autoSignIn: authMode.signsInAutomatically)
     }
 
     /// Coordinador del plan de hoy (PR-0601 wiring): a partir del perfil de onboarding
     /// genera un bloque real y deriva el estado de la pantalla "Hoy".
     public let todayPlan: TodayPlanCoordinator
+
+    /// Arranque y sesión (SCRUM-26): recuerda al usuario y su plan entre arranques.
+    public let session: AppSessionCoordinator
 
     /// Catálogo de ejercicios resolvido (inmutable; fallback vacío documentado).
     public let catalog: ExerciseCatalog
@@ -107,7 +110,7 @@ public final class AppEnvironment {
         let testOptions = UITestLaunchOptions.resolve(
             arguments: ProcessInfo.processInfo.arguments, isDebugBuild: isDebugBuild
         )
-        self.persistence = persistence ?? Self.makeDefaultPersistence(isolated: testOptions.isolatedPersistence)
+        self.persistence = persistence ?? Self.makeDefaultPersistence(isolated: testOptions.isolatedPersistence ? testOptions.isolatedDirectoryName : nil)
         let resolvedCatalog: ExerciseCatalog
         if let catalog {
             resolvedCatalog = catalog
@@ -125,9 +128,24 @@ public final class AppEnvironment {
         self.catalog = resolvedCatalog
         // Con `-PRFixedDate` (sólo Debug) "hoy" es ese día; si no, el reloj real.
         let fixedDate = testOptions.fixedDate(timeZone: .current)
+        var planStore: PlanStore?
+        if let persistence = self.persistence {
+            do {
+                planStore = try persistence.planStore()
+            } catch {
+                // Sin almacén del plan la app funciona en memoria, pero no recuerda al usuario.
+                persistence.log.saveFailed(.plans)
+            }
+        }
         self.todayPlan = TodayPlanCoordinator(
             catalog: resolvedCatalog,
+            planStore: planStore,
             clock: { fixedDate ?? Date() }
+        )
+        self.session = AppSessionCoordinator(
+            onboarding: self.onboarding,
+            todayPlan: self.todayPlan,
+            planStore: planStore
         )
     }
 
@@ -144,14 +162,14 @@ public final class AppEnvironment {
     /// Crea la persistencia por defecto en Application Support/PR/persistence y migra
     /// una sola vez el layout antiguo (todo en la raíz). Devuelve `nil` si el directorio
     /// no puede resolverse (fallback en memoria del app).
-    /// `isolated` (sólo pruebas de UI en Debug): directorio temporal NUEVO, nunca los datos reales.
-    private static func makeDefaultPersistence(isolated: Bool) -> LocalPersistence? {
+    /// `isolated` (sólo pruebas de UI en Debug): nombre de un directorio temporal, nunca los datos reales.
+    private static func makeDefaultPersistence(isolated isolatedName: String?) -> LocalPersistence? {
         let persistence: LocalPersistence
         do {
             let root: URL
-            if isolated {
+            if let isolatedName {
                 root = FileManager.default.temporaryDirectory
-                    .appendingPathComponent("pr-uitest-\(UUID().uuidString)", isDirectory: true)
+                    .appendingPathComponent(isolatedName, isDirectory: true)
             } else {
                 let base = try FileManager.default.url(
                     for: .applicationSupportDirectory,

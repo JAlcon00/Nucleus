@@ -68,6 +68,13 @@ public final class AppleIDAuthCoordinator {
         }
     }
 
+    /// Recupera una sesión recordada (SCRUM-26): ya no es un primer inicio de sesión.
+    public func restoreSession(userIdentifier: String) {
+        let restored = LocalUserProfile(userIdentifier: userIdentifier, displayName: nil, isFirstLogin: false)
+        profile = restored
+        flowState = .signedIn(restored)
+    }
+
     /// Devuelve la UI a su estado base (tras cerrar la alerta de error o desconectar).
     public func reset() {
         flowState = .idle

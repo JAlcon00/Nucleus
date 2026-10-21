@@ -15,6 +15,7 @@ import PRDomain
 
 struct AppRootView: View {
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.scenePhase) private var scenePhase
     @State private var showAlert = false
     @State private var alertMessage = ""
 
@@ -22,7 +23,7 @@ struct AppRootView: View {
         Group {
             switch phase {
             case .signedOut:
-                SignInView(onSignIn: { await environment.onboarding.signIn() })
+                SignInView(onSignIn: { await environment.session.signIn() })
             case .signingIn:
                 ProgressView("Conectando…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -43,10 +44,13 @@ struct AppRootView: View {
                 )
             case .completed(let profile):
                 appContent
-                    .onAppear {
-                        // Deriva el plan real de hoy a partir del perfil (PR-0601 wiring).
-                        _ = environment.todayPlan.load(profile: profile)
+                    .task(id: profile) {
+                        // Activa y guarda el plan del perfil (SCRUM-26). Si venimos de un
+                        // plan recordado, ya está activo y no se regenera.
+                        _ = await environment.session.planCompleted(profile: profile)
                     }
+            case .planUnreadable:
+                PlanUnreadableView(onRedo: { environment.session.redoQuestionnaire() })
             case .failed(let message):
                 // Renderizamos un gate coherente y mostramos el error en un alert.
                 Color.clear
@@ -57,6 +61,12 @@ struct AppRootView: View {
             }
         }
         .task { await environment.startIfNeeded() }
+        .onChange(of: scenePhase) { _, newPhase in
+            // Si Apple revocó la credencial mientras la app estaba en segundo plano.
+            if newPhase == .active {
+                Task { await environment.session.verifyCredential() }
+            }
+        }
         .alert("No se pudo continuar", isPresented: $showAlert) {
             Button("OK") {
                 environment.onboarding.dismissFailure()
@@ -87,7 +97,8 @@ struct AppRootView: View {
         AppTabBarView(
             selectedTab: $selectedTab,
             onStart: { startWorkout() },
-            onResume: { resumeWorkout() }
+            onResume: { resumeWorkout() },
+            onRedoQuestionnaire: { environment.session.redoQuestionnaire() }
         )
         .fullScreenCover(item: $workout) { coordinator in
             NavigationStack {
@@ -131,6 +142,36 @@ struct AppRootView: View {
             }
             workout = coordinator
         }
+    }
+}
+
+/// El perfil o el bloque guardados no se pueden leer: se ofrece rehacer el cuestionario.
+/// No se borra el historial de entrenamientos.
+private struct PlanUnreadableView: View {
+    let onRedo: () -> Void
+
+    var body: some View {
+        VStack(spacing: DSpace.l) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.largeTitle)
+                .foregroundStyle(.orange)
+                .accessibilityHidden(true)
+            Text("No pudimos leer tu plan")
+                .font(.title2.bold())
+            Text("Tus entrenamientos guardados siguen intactos. Contesta el cuestionario de nuevo para crear tu plan.")
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+            Button(action: onRedo) {
+                Text("Rehacer cuestionario")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: 50)
+            }
+            .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier("plan.unreadable.redo")
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityIdentifier("plan.unreadable")
     }
 }
 

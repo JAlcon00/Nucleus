@@ -1,0 +1,88 @@
+//
+//  StoredPlan.swift
+//  PRDomain
+//
+//  SCRUM-26: lo que la app recuerda del plan de UN usuario entre arranques. Es un
+//  registro pequeño que apunta a los bloques (que viven en su propia colección): el
+//  perfil del cuestionario, el bloque activo, el historial de bloques y la versión del
+//  generador con el que se hizo el plan (para migrar planes viejos, p. ej. con volumen
+//  inflado antes de SCRUM-28). Puro: sin persistencia ni reloj.
+//
+
+import Foundation
+
+/// Plan guardado de un usuario. `userID` es el identificador opaco de Apple (nunca un
+/// token ni un correo).
+public struct StoredPlan: Codable, Sendable, Equatable {
+    /// Versión actual del generador de bloques. Subirla fuerza la migración de los
+    /// planes guardados con una versión menor.
+    /// 1 = volumen inflado (antes de SCRUM-28, nunca se llegó a guardar así);
+    /// 2 = volumen real repartido por día y orden por rol/fatiga (SCRUM-28/29).
+    public static let currentGeneratorVersion = 2
+
+    public let userID: String
+    public var profile: OnboardingProfile
+    public var activeBlockID: TrainingBlockID
+    /// Todos los bloques del usuario (activo incluido), del más antiguo al más reciente.
+    public var blockHistory: [TrainingBlockID]
+    public var generatorVersion: Int
+    /// Explicación del bloque activo (orden de cada sesión), para "¿Por qué este orden?".
+    public var explanation: BlockExplanation
+    public var updatedAt: Date
+
+    public init(
+        userID: String,
+        profile: OnboardingProfile,
+        activeBlockID: TrainingBlockID,
+        blockHistory: [TrainingBlockID],
+        generatorVersion: Int = StoredPlan.currentGeneratorVersion,
+        explanation: BlockExplanation,
+        updatedAt: Date
+    ) {
+        self.userID = userID
+        self.profile = profile
+        self.activeBlockID = activeBlockID
+        self.blockHistory = blockHistory
+        self.generatorVersion = generatorVersion
+        self.explanation = explanation
+        self.updatedAt = updatedAt
+    }
+
+    /// ¿Se generó con un generador anterior al actual (hay que regenerarlo)?
+    public var needsMigration: Bool { generatorVersion < Self.currentGeneratorVersion }
+}
+
+/// Sesión recordada entre arranques: SOLO el identificador opaco del usuario (más la
+/// versión del formato, que además hace el registro inconfundible con un `StoredPlan`
+/// al clasificar archivos por contenido).
+public struct StoredSession: Codable, Sendable, Equatable {
+    public static let currentFormatVersion = 1
+
+    public let userID: String
+    public let formatVersion: Int
+
+    public init(userID: String, formatVersion: Int = StoredSession.currentFormatVersion) {
+        self.userID = userID
+        self.formatVersion = formatVersion
+    }
+}
+
+/// Qué hacer con el plan cuando el usuario vuelve a contestar el cuestionario.
+public enum PlanChange: Equatable, Sendable {
+    /// Mismo perfil: se conserva el bloque tal cual.
+    case unchanged
+    /// Cambió algo que no define el bloque (minutos, variedad, experiencia, restricciones):
+    /// se regenera el MISMO bloque (mismo ID e historial).
+    case regenerateInPlace
+    /// Cambió objetivo, fase o días: bloque nuevo; el anterior se cierra y se conserva.
+    case newBlock
+}
+
+public enum PlanChangeDecider {
+    public static func decide(old: OnboardingProfile, new: OnboardingProfile) -> PlanChange {
+        if old.goal != new.goal || old.phase != new.phase || old.trainingDaysPerWeek != new.trainingDaysPerWeek {
+            return .newBlock
+        }
+        return old == new ? .unchanged : .regenerateInPlace
+    }
+}

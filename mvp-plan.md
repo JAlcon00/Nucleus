@@ -98,8 +98,8 @@ Diagnóstico verificado en el código el 2026-10-20: todos los bugs descritos ab
 | 3 | SCRUM-189 | CI en GitHub | P0 soporte | — | [ ] |
 | 4 | SCRUM-24 | No perder el workout si la app se cierra | P0 | 1 | [ ] |
 | 5 | SCRUM-25 | Cerrar bien la sesión al terminar | P0 | 4 | [ ] |
-| 6 | SCRUM-26 | Recordar perfil y plan | P0 | 1 | [ ] |
-| 7 | SCRUM-28 | Volumen real y una sesión distinta por día | P0 | 2, 6 | [ ] (falta migración de bloques guardados, bloque 6) |
+| 6 | SCRUM-26 | Recordar perfil y plan | P0 | 1 | [ ] criterios [x]; falta 👤 manual |
+| 7 | SCRUM-28 | Volumen real y una sesión distinta por día | P0 | 2, 6 | [ ] criterios [x]; falta 👤 manual |
 | 8 | SCRUM-29 | Ejercicios en orden correcto | P0 | 7 | [x] |
 | 9 | SCRUM-30 | Duración real y ajuste de tiempo (F-07) | P1 | 7 | [ ] |
 | 10 | SCRUM-190 | Pruebas de los flujos | soporte | 1–8 | [ ] |
@@ -272,18 +272,20 @@ Evidencia: commit `64c95d9`; `make ci` → `✔ Test run with 439 tests in 69 su
 **Bug actual:** `FileUserProfileRepository` y `FileTrainingBlockRepository` existen, pero `AppEnvironment` no los usa. Cada arranque repite login y cuestionario y genera un bloque con IDs nuevos.
 
 **Criterios:**
-- [ ] En el primer arranque, al terminar el cuestionario se guardan el perfil y el bloque.
-- [ ] Al reabrir (al día siguiente y sin internet), se entra directo a Hoy con el mismo bloque y los mismos IDs.
-- [ ] De la sesión de Apple solo se persiste el identificador del usuario, sin tokens ni correo.
-- [ ] Al cambiar objetivo, fase o días se genera un bloque nuevo, y el anterior queda cerrado y conservado con su historial.
-- [ ] "Rehacer cuestionario", temporalmente desde Hoy, ejecuta ese mismo flujo de cambio de plan.
-- [ ] Si Apple revocó la credencial, la app vuelve al login sin borrar datos locales.
-- [ ] Si el perfil está corrupto, se ofrece rehacer el cuestionario sin tocar el historial.
-- [ ] Los datos quedan asociados al identificador del usuario, para que no se mezclen dos cuentas.
+- [x] En el primer arranque, al terminar el cuestionario se guardan el perfil y el bloque.
+- [x] Al reabrir (al día siguiente y sin internet), se entra directo a Hoy con el mismo bloque y los mismos IDs.
+- [x] De la sesión de Apple solo se persiste el identificador del usuario, sin tokens ni correo.
+- [x] Al cambiar objetivo, fase o días se genera un bloque nuevo, y el anterior queda cerrado y conservado con su historial.
+- [x] "Rehacer cuestionario", temporalmente desde Hoy, ejecuta ese mismo flujo de cambio de plan.
+- [x] Si Apple revocó la credencial, la app vuelve al login sin borrar datos locales.
+- [x] Si el perfil está corrupto, se ofrece rehacer el cuestionario sin tocar el historial.
+- [x] Los datos quedan asociados al identificador del usuario, para que no se mezclen dos cuentas.
 
 **Tests:**
 - Unitarios: guardar y leer perfil y bloque, cambio de plan, perfil corrupto.
 - Integración: onboarding con `AppEnvironment` real; una segunda instancia sobre el mismo directorio llega a Hoy con el mismo `blockID`.
+
+Evidencia: `make ci` → `✔ Test run with 444 tests in 70 suites passed` + `✔ Test run with 304 tests in 59 suites passed` (2026-10-21); `PRCoreTests/PlanPersistenceTests.swift` (plan, migración, dos cuentas, perfil corrupto, revocación, rehacer) sobre `LocalPersistence` real; UI (Xcode, simulador): 12 de 12, incluidas `testReopeningTheAppGoesStraightToToday` y `testRedoQuestionnaireFromTodayOpensTheQuestionnaire`. Diseño: `StoredPlan`/`StoredSession` (PRDomain), `PlanStore`, `AppSessionCoordinator` (PRCore); la sesión guarda sólo `userID` + versión de formato, las claves de archivo se derivan del ID. **Límites:** los entrenamientos (`workouts`) aún no se separan por usuario; la revocación se comprueba al arrancar y al volver a primer plano. **Pendiente:** 👤 Jesús (instalar, reabrir, modo avión, cuenta revocada real).
 
 **👤 Manual (Jesús):** instalar, completar onboarding, cerrar y reabrir, también en modo avión.
 
@@ -299,7 +301,7 @@ Evidencia: commit `64c95d9`; `make ci` → `✔ Test run with 439 tests in 69 su
 - [x] Cada día tiene su propia plantilla, y los ejercicios ancla se conservan entre semanas.
 - [x] Una sesión pensada para 60 minutos cabe en 60 minutos según el estimador.
 - [x] Con 180 minutos no hay más series de trabajo que con 90.
-- [ ] Un bloque guardado con volumen inflado se regenera o migra al arrancar, conserva IDs de bloque y anclas, y se muestra un aviso breve.
+- [x] Un bloque guardado con volumen inflado se regenera o migra al arrancar, conserva IDs de bloque y anclas, y se muestra un aviso breve. Prueba: `PlanPersistenceTests.inflatedPlanIsMigrated`.
 - [x] Rangos de series por semana según la prioridad del músculo:
   - mantener: 4–6;
   - normal: 8–12;

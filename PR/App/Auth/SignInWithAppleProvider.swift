@@ -34,6 +34,23 @@ public final class SignInWithAppleProvider: NSObject, AppleIDAuthProviding {
         }
     }
 
+    /// Consulta a Apple si la credencial del usuario sigue vigente (SCRUM-26). Un error
+    /// (p. ej. sin internet) es `.unavailable`: no se confunde con una revocación.
+    public nonisolated func credentialState(forUserIdentifier userIdentifier: String) async -> AppleCredentialState {
+        do {
+            let state = try await ASAuthorizationAppleIDProvider().credentialState(forUserID: userIdentifier)
+            switch state {
+            case .authorized: return .authorized
+            case .revoked: return .revoked
+            case .notFound: return .notFound
+            case .transferred: return .unavailable
+            @unknown default: return .unavailable
+            }
+        } catch {
+            return .unavailable
+        }
+    }
+
     private func startRequest() {
         let provider = ASAuthorizationAppleIDProvider()
         let request = provider.createRequest()

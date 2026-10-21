@@ -31,6 +31,9 @@ public enum OnboardingPhase: Equatable {
     case completed(OnboardingProfile)
     /// Último intento fallido (error de auth o de finalización del perfil).
     case failed(String)
+    /// El perfil o el bloque guardados no se pueden leer (SCRUM-26): se ofrece rehacer el
+    /// cuestionario. No se borra nada del historial.
+    case planUnreadable
 }
 
 /// Coordinador de app del onboarding.
@@ -86,6 +89,57 @@ public final class OnboardingCoordinator {
         case .authenticating:
             phase = .signingIn
         }
+    }
+
+    // MARK: - SCRUM-26: sesión y plan recordados
+
+    /// Entra con una sesión recordada, sin pasar por Apple. Quién es el usuario lo decide
+    /// quien llama (la sesión guardada); aquí sólo se refleja en el estado.
+    public func resumeSession(userIdentifier: String) {
+        auth.restoreSession(userIdentifier: userIdentifier)
+    }
+
+    /// Hay un plan guardado: directo a "Hoy".
+    public func showCompleted(_ profile: OnboardingProfile) {
+        phase = .completed(profile)
+    }
+
+    /// No hay plan guardado: empieza el cuestionario.
+    public func beginOnboarding() {
+        phase = onboardingPhase(for: flowController)
+    }
+
+    /// Vuelve al login sin tocar datos locales (credencial revocada, SCRUM-26).
+    public func returnToSignIn() {
+        auth.signOut()
+        flowController = OnboardingFlowController()
+        phase = .signedOut
+    }
+
+    /// El plan guardado no se pudo leer.
+    public func showPlanUnreadable() {
+        phase = .planUnreadable
+    }
+
+    /// "Rehacer cuestionario": vuelve al primer paso. Conserva las respuestas de la sesión
+    /// o, si se pasa el perfil guardado, parte de sus valores para no empezar de cero.
+    public func redo(from profile: OnboardingProfile? = nil) {
+        var draft = flowController.draft
+        if let profile {
+            let answers: [(OnboardingStep, OnboardingAnswer)] = [
+                (.goal, .goal(profile.goal)),
+                (.phase, .phase(profile.phase)),
+                (.experience, .experience(profile.experience)),
+                (.daysPerWeek, .daysPerWeek(profile.trainingDaysPerWeek)),
+                (.sessionMinutes, .sessionMinutes(profile.usualSessionMinutes)),
+                (.gym, .gym(profile.defaultGymID)),
+                (.variety, .variety(profile.varietyPreference)),
+                (.restrictions, .restrictions(profile.restrictions)),
+            ]
+            for (step, answer) in answers { draft = draft.settingAnswer(answer, for: step) }
+        }
+        flowController = OnboardingFlowController(draft: draft)
+        phase = onboardingPhase(for: flowController)
     }
 
     /// Respuesta guardada del paso actual (la UI marca la opción elegida con ella).

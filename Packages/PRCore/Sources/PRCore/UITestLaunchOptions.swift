@@ -10,6 +10,8 @@
 //    los datos reales (cada prueba empieza de cero y nunca toca datos del usuario).
 //  - `-PRFixedDate yyyy-MM-dd`: fija "hoy" (mediodía local) para probar lunes/domingo
 //    sin cambiar la fecha del simulador.
+//  - `-PRUITestStoreID <id>`: junto con el reset, el directorio temporal lleva ese id y se
+//    REUTILIZA al relanzar la app (para probar que cierra y reabre recordando el plan).
 //  La decisión es pura y testeable; la app sólo pasa sus argumentos y si es Debug.
 //
 
@@ -18,15 +20,25 @@ import Foundation
 public struct UITestLaunchOptions: Equatable, Sendable {
     public static let resetArgument = "-PRUITestReset"
     public static let fixedDateArgument = "-PRFixedDate"
+    public static let storeIDArgument = "-PRUITestStoreID"
 
     /// Usar persistencia aislada en un directorio temporal nuevo.
     public let isolatedPersistence: Bool
     /// Fecha local (año, mes, día) que reemplaza a "hoy"; `nil` = reloj real.
     public let fixedDay: DateComponents?
 
-    public init(isolatedPersistence: Bool = false, fixedDay: DateComponents? = nil) {
+    /// Identificador del directorio aislado; `nil` = uno nuevo en cada arranque.
+    public let storeID: String?
+
+    public init(isolatedPersistence: Bool = false, fixedDay: DateComponents? = nil, storeID: String? = nil) {
         self.isolatedPersistence = isolatedPersistence
         self.fixedDay = fixedDay
+        self.storeID = storeID
+    }
+
+    /// Nombre del directorio temporal aislado: estable con `storeID`, nuevo si no hay.
+    public var isolatedDirectoryName: String {
+        "pr-uitest-\(storeID ?? UUID().uuidString)"
     }
 
     /// Sin opciones: comportamiento normal de producción.
@@ -38,7 +50,8 @@ public struct UITestLaunchOptions: Equatable, Sendable {
         guard isDebugBuild else { return .none }
         return UITestLaunchOptions(
             isolatedPersistence: arguments.contains(resetArgument),
-            fixedDay: fixedDay(in: arguments)
+            fixedDay: fixedDay(in: arguments),
+            storeID: storeID(in: arguments)
         )
     }
 
@@ -56,6 +69,15 @@ public struct UITestLaunchOptions: Equatable, Sendable {
                   year: fixedDay.year, month: fixedDay.month, day: fixedDay.day
               ) else { return nil }
         return date
+    }
+
+    /// Sólo letras, números y guiones: nunca una ruta.
+    private static func storeID(in arguments: [String]) -> String? {
+        guard let index = arguments.firstIndex(of: storeIDArgument),
+              arguments.indices.contains(index + 1) else { return nil }
+        let value = arguments[index + 1]
+        guard !value.isEmpty, value.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "-" }) else { return nil }
+        return value
     }
 
     private static func fixedDay(in arguments: [String]) -> DateComponents? {

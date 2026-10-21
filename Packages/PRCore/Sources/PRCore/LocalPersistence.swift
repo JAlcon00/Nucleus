@@ -29,6 +29,10 @@ public enum PersistenceCollection: String, CaseIterable, Sendable, Hashable {
     case restrictions
     case decisions
     case agentAudit = "agent-audit"
+    /// Plan por usuario (perfil + bloque activo + historial de bloques). SCRUM-26.
+    case plans
+    /// Sesión recordada: sólo el identificador opaco del usuario. SCRUM-26.
+    case session
 }
 
 /// Registro de eventos de persistencia SIN datos personales: sólo colección y

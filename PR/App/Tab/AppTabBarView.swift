@@ -22,6 +22,10 @@ struct AppTabBarView: View {
     var onStart: () -> Void
     /// Intento: continuar la sesión en curso (idem).
     var onResume: () -> Void
+    /// Intento: rehacer el cuestionario (mismo flujo que un cambio de plan).
+    var onRedoQuestionnaire: () -> Void
+
+    @State private var confirmingRedo = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -48,6 +52,8 @@ struct AppTabBarView: View {
                 order: environment.todayPlan.plan?.todayOrder ?? [],
                 orderReorderedByFatigue: environment.todayPlan.plan?.todayOrderReorderedByFatigue ?? false,
                 exercises: environment.todayPlan.plan?.todayExercises ?? [],
+                notice: environment.todayPlan.notice,
+                onDismissNotice: { environment.todayPlan.dismissNotice() },
                 onStart: onStart,
                 onResume: onResume
             )
@@ -64,12 +70,29 @@ struct AppTabBarView: View {
                         Label("Restricciones", systemImage: "list.bullet.clipboard")
                     }
 
+                    Button {
+                        confirmingRedo = true
+                    } label: {
+                        Label("Rehacer cuestionario", systemImage: "arrow.counterclockwise")
+                    }
+                    .accessibilityIdentifier("today.redo")
+
                     NavigationLink {
                         ExportDataView()
                     } label: {
                         Label("Exportar", systemImage: "square.and.arrow.up")
                     }
                 }
+            }
+            .confirmationDialog(
+                "¿Rehacer el cuestionario?",
+                isPresented: $confirmingRedo,
+                titleVisibility: .visible
+            ) {
+                Button("Sí, rehacer") { onRedoQuestionnaire() }
+                Button("Cancelar", role: .cancel) {}
+            } message: {
+                Text("Si cambias objetivo, fase o días se crea un bloque nuevo. El anterior y su historial se conservan.")
             }
         }
     }

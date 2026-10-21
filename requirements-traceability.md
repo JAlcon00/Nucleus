@@ -71,6 +71,16 @@ ejercicio en español desde `Resources/exercise-names-es.json` (el inglés queda
 IDs no cambian). Cobertura: `PRDomainTests/BlockPlannerOrderTests.swift`,
 `PRCoreTests/BlockPlannerRealCatalogTests.swift`, `PRDomainTests/OnboardingTests.swift`.
 
+## Recordar perfil y plan (SCRUM-26, RF-001/RF-005)
+
+`PRDomain/StoredPlan.swift` (`StoredPlan`, `StoredSession`, `PlanChangeDecider`),
+`PRCore/PlanStore.swift` (colecciones `plans`, `session` y `blocks`) y
+`PRCore/AppSessionCoordinator.swift` (arranque: sesión → credencial de Apple → plan →
+Hoy / cuestionario / login / perfil ilegible). Cambiar objetivo, fase o días cierra el bloque
+anterior (`completed`) y crea uno nuevo; otros cambios regeneran el mismo bloque; un plan de
+generador anterior se migra conservando el ID. Cobertura:
+`PRCoreTests/PlanPersistenceTests.swift` y `PRUITests` (reabrir y rehacer).
+
 ## Persistencia local (EPIC-02)
 
 Implementada en PR-0202 detrás de los protocolos `Repository` con un almacén

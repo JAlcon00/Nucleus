@@ -31,6 +31,35 @@ public enum AppleIDAuthResult: Equatable, Sendable {
 public protocol AppleIDAuthProviding: Sendable {
     /// Inicia el flujo de Sign in with Apple y devuelve el resultado.
     func authenticate() async -> AppleIDAuthResult
+
+    /// Estado de la credencial de un usuario ya conocido (SCRUM-26). Se consulta al
+    /// arrancar para saber si Apple la revocó. Sin conexión devuelve `.unavailable`.
+    func credentialState(forUserIdentifier userIdentifier: String) async -> AppleCredentialState
+}
+
+extension AppleIDAuthProviding {
+    /// Por defecto (fakes, modo simulado) la credencial siempre vale.
+    public func credentialState(forUserIdentifier userIdentifier: String) async -> AppleCredentialState {
+        .authorized
+    }
+}
+
+/// Estado de la credencial de Apple de un usuario.
+public enum AppleCredentialState: Equatable, Sendable {
+    case authorized
+    /// Apple la revocó (el usuario dejó de usar Sign in with Apple con la app).
+    case revoked
+    case notFound
+    /// No se pudo saber (p. ej. sin internet). NO es una revocación: se conserva la sesión.
+    case unavailable
+
+    /// ¿Hay que volver al login? Sólo si Apple confirmó que ya no vale.
+    public var requiresSignIn: Bool {
+        switch self {
+        case .revoked, .notFound: return true
+        case .authorized, .unavailable: return false
+        }
+    }
 }
 
 /// Perfil local creado en el primer login. NO contiene el credential token ni el

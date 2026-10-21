@@ -100,6 +100,8 @@ public struct LegacyPersistenceMigration: Sendable {
         case .restrictions: return (try? decoder.decode(TrainingRestriction.self, from: data)) != nil
         case .decisions: return (try? decoder.decode(DecisionRecord.self, from: data)) != nil
         case .agentAudit: return (try? decoder.decode(AgentAuditRecord.self, from: data)) != nil
+        case .plans: return (try? decoder.decode(StoredPlan.self, from: data)) != nil
+        case .session: return (try? decoder.decode(StoredSession.self, from: data)) != nil
         }
     }
 
