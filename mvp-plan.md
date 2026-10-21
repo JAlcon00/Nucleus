@@ -70,7 +70,7 @@ Cada funcionalidad se cierra cuando todas sus casillas están en `[x]`.
 - [x] Al completar la última serie aparece un resumen.
 - [ ] El resumen muestra duración, series, volumen y récords calculados desde los datos guardados → SCRUM-25.
 - [ ] El entrenamiento queda guardado una sola vez como completado → SCRUM-25.
-- [ ] Exportar muestra el número real de entrenamientos y todas sus series → SCRUM-23.
+- [x] Exportar muestra el número real de entrenamientos y todas sus series → SCRUM-23.
 
 ### F-07 · Ajustar la sesión a mi tiempo (opcional) — SCRUM-187 (era de Joss)
 Entra al demo solo si F-01 a F-06 están completos.
@@ -93,7 +93,7 @@ Diagnóstico verificado en el código el 2026-10-20: todos los bugs descritos ab
 
 | # | Jira | Qué | Prioridad | Depende de | Estado |
 |---|---|---|---|---|---|
-| 1 | SCRUM-23 | Historial y export correctos (colecciones separadas) | P0 | — | [ ] |
+| 1 | SCRUM-23 | Historial y export correctos (colecciones separadas) | P0 | — | [ ] criterios [x]; falta 👤 manual |
 | 2 | SCRUM-27 | Días correctos de la semana | P0 | — (su test de integración final espera al #6) | [ ] |
 | 3 | SCRUM-189 | CI en GitHub | P0 soporte | — | [ ] |
 | 4 | SCRUM-24 | No perder el workout si la app se cierra | P0 | 1 | [ ] |
@@ -126,20 +126,22 @@ Definition of Done para todos los bloques:
 - `readAll` intenta decodificar todo como `WorkoutSession`, falla con la cola y el error se traga. Resultado: Export muestra 0 sesiones.
 
 **Criterios:**
-- [ ] Cada colección (workouts, cola de pendientes, perfil, bloque y demás) vive en su propio subdirectorio, y al leer una colección solo se leen sus archivos.
-- [ ] Con 2 sesiones completadas y al menos 1 operación en cola, Export muestra "2 sesiones".
-- [ ] El JSON exportado contiene las 2 sesiones con todas sus series, y el CSV tiene exactamente una fila por serie.
-- [ ] Sin sesiones, Export muestra un estado vacío explícito ("Aún no tienes entrenamientos"), no "0 sesiones".
-- [ ] Con 1 archivo corrupto entre 3 válidos:
+- [x] Cada colección (workouts, cola de pendientes, perfil, bloque y demás) vive en su propio subdirectorio, y al leer una colección solo se leen sus archivos.
+- [x] Con 2 sesiones completadas y al menos 1 operación en cola, Export muestra "2 sesiones".
+- [x] El JSON exportado contiene las 2 sesiones con todas sus series, y el CSV tiene exactamente una fila por serie.
+- [x] Sin sesiones, Export muestra un estado vacío explícito ("Aún no tienes entrenamientos"), no "0 sesiones".
+- [x] Con 1 archivo corrupto entre 3 válidos:
   - se devuelven las 3 válidas;
   - el error se registra sin datos personales;
   - Export avisa que 1 registro no se pudo leer;
   - nunca devuelve 0 en silencio.
-- [ ] Hay una migración única desde el directorio compartido:
+- [x] Hay una migración única desde el directorio compartido:
   - cada archivo se mueve a su colección, clasificado por contenido decodificable y no por nombre;
   - no se borra nada antes de haberlo escrito en su destino;
   - si se ejecuta dos veces, la segunda no hace nada.
-- [ ] El export no incluye tokens, identificadores de Apple ni claves.
+- [x] El export no incluye tokens, identificadores de Apple ni claves.
+
+Evidencia: commit `7b68b38`; `make ci` → `✔ Test run with 427 tests in 68 suites passed` + `✔ Test run with 250 tests in 49 suites passed` (2026-10-20). Tests en `Packages/PRCore/Tests/PRCoreTests/CollectionPersistenceTests.swift` (15, incluida la integración workout → disco → otra instancia → Export = 1). UI validada con previews en simulador iOS 27.1 (2 sesiones, 1 sesión + ilegible en oscuro, vacío con aviso, error con `.accessibility3`). Decisión: Export cuenta y exporta todas las sesiones guardadas (completadas y abandonadas, con su estado). **Pendiente:** 👤 prueba manual de Jesús con la app corriendo.
 
 **Tests:**
 - Unitarios: lectura por colección, lectura tolerante a un archivo corrupto, migración idempotente.

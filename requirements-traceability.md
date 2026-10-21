@@ -40,6 +40,16 @@ Esta matriz vincula requisitos maestros con épicas principales. Debe actualizar
 | RF-034 Exercise catalog | EPIC-03 | catalog seed + MVP coverage tests (PR-0301) |
 | RF-025 Explainability (versioned) | EPIC-03/16 | EvidenceRegistry + versioned rule references in DecisionRecord (PR-0303) |
 
+## Historial y export por colecciones (SCRUM-23, RF-028/RF-030)
+
+`Packages/PRCore/Sources/PRCore/LocalPersistence.swift`: una colección por
+subdirectorio (`PersistenceCollection`) bajo `Application Support/PR/persistence`;
+lectura tolerante (`RepositoryReadResult` con `unreadableCount`, registrada sin datos
+personales vía `PersistenceLog`). `PersistenceMigration.swift`: migración única e
+idempotente del layout compartido, clasificada por contenido. `DataExportCoordinator`
+expone `ExportHistory` (vacío / cargado + ilegibles) para que Export nunca muestre un 0
+silencioso. Cobertura en `Packages/PRCore/Tests/PRCoreTests/CollectionPersistenceTests.swift`.
+
 ## Persistencia local (EPIC-02)
 
 Implementada en PR-0202 detrás de los protocolos `Repository` con un almacén
