@@ -1,0 +1,79 @@
+{
+  "sourceLanguage" : "es",
+  "strings" : {
+    "%@ × %lld" : {
+      "comment" : "Carga del récord: peso con unidad × repeticiones. Ej.: 85 kg × 8",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ × %2$lld" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ × %2$lld" } }
+      }
+    },
+    "%@, %@ por %@" : {
+      "comment" : "VoiceOver: un récord. Ej.: Press banca, 85 kilogramos por 8 repeticiones",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%1$@, %2$@ for %3$@" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%1$@, %2$@ por %3$@" } }
+      }
+    },
+    "%@: %@." : {
+      "comment" : "VoiceOver al aparecer la celebración: titular y lista de récords",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%1$@: %2$@." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%1$@: %2$@." } }
+      }
+    },
+    "%lld nuevos récords" : {
+      "comment" : "Titular de la celebración con varios récords (count ≥ 2)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%lld new records" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%lld nuevos récords" } }
+      }
+    },
+    "%lld repeticiones" : {
+      "comment" : "Número de repeticiones (con variación singular/plural)",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld repetition" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld repetitions" } }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld repetición" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld repeticiones" } }
+            }
+          }
+        }
+      }
+    },
+    "Ejercicio" : {
+      "comment" : "Nombre genérico si el ejercicio no está en el catálogo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Exercise" } }
+      }
+    },
+    "Levantaste más que tu mejor carga registrada. Así se ve la sobrecarga progresiva: el plan decidirá en la próxima sesión si conviene subir." : {
+      "comment" : "Explicación para nivel guiado tras un récord",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You lifted more than your best recorded load. That's progressive overload: the plan will decide next session whether to go up." } }
+      }
+    },
+    "Nuevo récord" : {
+      "comment" : "Titular de la celebración con un solo récord",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "New record" } }
+      }
+    },
+    "Superaste tu mejor carga registrada." : {
+      "comment" : "Explicación breve para nivel balanceado tras un récord",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You beat your best recorded load." } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

@@ -43,7 +43,7 @@ Esta matriz vincula requisitos maestros con épicas principales. Debe actualizar
 ## Persistencia local (EPIC-02)
 
 Implementada en PR-0202 detrás de los protocolos `Repository` con un almacén
-Codable/JSON de escritura atómica (no SwiftData; ver `PR-agentic-fitness-spec/docs/adr/ADR-0001`). Cobertura en
+Codable/JSON de escritura atómica (no SwiftData; ver `docs/spec/docs/adr/ADR-0001`). Cobertura en
 `Packages/PRCore/Tests/PRCoreTests/CodableRepositoriesTests.swift`: round-trip por entidad, relaciones,
 delete policies, perfil único y persistencia atómica a disco. El save local es
 inmediato y autoritativo para proteger los datos de workout (RF-028/RF-029).
@@ -52,7 +52,7 @@ inmediato y autoritativo para proteger los datos de workout (RF-028/RF-029).
 
 Implementado en PR-0301 con el dataset público *free-exercise-db* (Unlicense)
 curado a 678 ejercicios y mapeado de forma determinista a la ontología `Exercise`
-de PRDomain (ver `PR-agentic-fitness-spec/docs/adr/ADR-0002`). Cobertura en
+de PRDomain (ver `docs/spec/docs/adr/ADR-0002`). Cobertura en
 `Packages/PRCore/Tests/PRCoreTests/ExerciseCatalogTests.swift`: carga del bundle,
 determinismo de IDs, patrones MVP e idempotencia del seed (RF-034).
 
@@ -228,6 +228,18 @@ Implementado en PR-0903 en `Packages/PRCore/Sources/PRDomain/MissingEquipment.sw
 y filtra las sesiones futuras para que no programen máquinas marcadas inexistentes,
 salvo que el usuario revierta (`revert` → `.unknown`). Cobertura en
 `Packages/PRCore/Tests/PRDomainTests/MissingEquipmentTests.swift` (RF-011).
+
+## PR celebration (EPIC-10, RF-015)
+
+Implementado en PR-1004: `Packages/PRCore/Sources/PRDomain/PRCelebration.swift` decide
+la celebración (una por ejercicio, unidad real, explicación por nivel de coaching),
+`Packages/PRCore/Sources/PRCore/PRCelebrationPresenter.swift` la convierte en textos
+localizados (RNF-013, `Localizable.xcstrings`) con anuncio VoiceOver, y
+`PersonalRecordBaselineBuilder` (`WorkoutSummary.swift`) deriva baselines
+del historial comparables por unidad + máquina (RN-007), de modo que no se celebra un
+récord inventado. Cobertura en `Packages/PRCore/Tests/PRDomainTests/PRCelebrationTests.swift`,
+`Packages/PRCore/Tests/PRCoreTests/PRCelebrationPresenterTests.swift` y
+`Packages/PRCore/Tests/PRCoreTests/WorkoutCelebrationWiringTests.swift`.
 
 ## Safety-critical traceability
 

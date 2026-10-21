@@ -46,7 +46,11 @@ struct WorkoutModeView: View {
             case .paused(let set):
                 pausedView(set)
             case .finished(let summary):
-                WorkoutSummaryView(summary: summary, onDone: onDone)
+                WorkoutSummaryView(
+                    summary: summary,
+                    celebration: coordinator.celebration(for: summary, level: coachingLevel),
+                    onDone: onDone
+                )
             }
         }
         .navigationBarTitleDisplayMode(.inline)

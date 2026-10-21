@@ -52,7 +52,9 @@ public final class AppEnvironment {
     /// como operación crítica durabile y, al cerrar la sesión, el registro se persiste
     /// en el repositorio local. Si no hay almacén durable, el coordinador funciona igual
     /// en memoria (nunca se pierde la sesión viva).
-    public func makeWorkoutCoordinator() -> WorkoutSessionCoordinator? {
+    /// Los baselines de PR (PR-1004) se derivan del historial local; si la lectura falla
+    /// se usa un baseline vacío (no se celebra nada) y el workout arranca igual.
+    public func makeWorkoutCoordinator() async -> WorkoutSessionCoordinator? {
         guard let template = todayPlan.plan?.todayTemplate else { return nil }
         var names: [ExerciseID: String] = [:]
         for exercise in catalog.exercises {
@@ -64,9 +66,12 @@ public final class AppEnvironment {
         let workoutRepository = localRepositoryStore.map {
             FileWorkoutRepository(store: $0)
         }
+        let history = (try? await workoutRepository?.allSessions()) ?? []
         return WorkoutSessionCoordinator(
             template: template,
             exerciseNames: names,
+            recordBaselines: PersonalRecordBaselineBuilder.baselines(from: history),
+            celebrationPresenter: PRCelebrationPresenter(locale: Self.presentationLocale),
             pendingQueue: pendingQueue,
             onSessionFinished: { [workoutRepository] session in
                 // Persiste el registro final en el repositorio local (async, best-effort).
@@ -101,6 +106,16 @@ public final class AppEnvironment {
         }
         self.catalog = resolvedCatalog
         self.todayPlan = TodayPlanCoordinator(catalog: resolvedCatalog)
+    }
+
+    /// Locale para textos generados fuera de las Views (PR-1004): idioma que resolvió la
+    /// app (development region `es` mientras no haya otras traducciones de la app) con el
+    /// formato regional del usuario.
+    static var presentationLocale: Locale {
+        PRCelebrationPresenter.presentationLocale(
+            appLanguage: Bundle.main.preferredLocalizations.first,
+            userLocale: .current
+        )
     }
 
     /// Crea el almacén durable por defecto en Application Support/PR (API real de Apple).

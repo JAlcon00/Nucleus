@@ -71,6 +71,9 @@ struct AppRootView: View {
     @State private var workout: WorkoutSessionCoordinator?
     @State private var showWorkout = false
     @State private var selectedTab = AppTab.today
+    /// Carga en curso del coordinador (lee historial local). Una sola a la vez: un
+    /// doble toque no crea dos sesiones.
+    @State private var workoutLoad: Task<Void, Never>?
 
     /// El contenido "de la app" tras completar el onboarding: tab bar + WORKOUT MODE.
     /// La sesión activa se presenta a nivel raíz (fullScreenCover) para reemplazar la
@@ -106,19 +109,28 @@ struct AppRootView: View {
     }
 
     private func startWorkout() {
-        guard let coordinator = environment.makeWorkoutCoordinator() else { return }
-        _ = coordinator.start()
-        workout = coordinator
-        showWorkout = true
+        presentWorkout(startingNewSession: true)
     }
 
     private func resumeWorkout() {
         // Restaura el workout activo (si se conserva) o inicia uno nuevo con el estado
         // actual de la plantilla de hoy. En este slice la sesión se empieza/persiste en
         // memoria; el reload desde persistencia es el cableado de PR-0201/0202.
-        guard let coordinator = environment.makeWorkoutCoordinator() else { return }
-        workout = coordinator
-        showWorkout = true
+        presentWorkout(startingNewSession: false)
+    }
+
+    private func presentWorkout(startingNewSession: Bool) {
+        guard workoutLoad == nil else { return }
+        workoutLoad = Task {
+            defer { workoutLoad = nil }
+            guard let coordinator = await environment.makeWorkoutCoordinator(),
+                  !Task.isCancelled else { return }
+            if startingNewSession {
+                _ = coordinator.start()
+            }
+            workout = coordinator
+            showWorkout = true
+        }
     }
 }
 

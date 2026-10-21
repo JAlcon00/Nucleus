@@ -4,20 +4,27 @@
 //
 //  Created by PR.
 //
-//  Suscripción de sesión completada (PR-0605 UI, SKILL §44). Presenta duration,
-//  working sets, volumen, PRs detectados y próxima acción. Célébra el PR de forma
-//  breve (haptic + animación corta), sin confeti excesivo (SKILL §44). Vista pura:
-//  renderiza `WorkoutSummary`; no decide nada.
+//  Resumen de sesión completada (PR-0605 UI). Presenta duration, working sets,
+//  volumen, PRs y próxima acción. Celebración del PR (PR-1004): breve e inline (no
+//  modal, no bloquea "Seguir en el plan"), haptic único, anuncio VoiceOver y animación
+//  corta que con Reduce Motion se sustituye por un fundido. Vista pura: el contenido
+//  de la celebración lo decide `PRCelebrationBuilder` en el dominio y los textos
+//  localizados los produce `PRCelebrationPresenter` (PRCore).
 //
 
 import SwiftUI
+import PRCore
 import PRDomain
 
 struct WorkoutSummaryView: View {
     let summary: WorkoutSummary
+    /// Celebración ya decidida y localizada (PR-1004); `nil` si no hay récords.
+    var celebration: PRCelebrationPresentation? = nil
     let onDone: () -> Void
 
-    @State private var burst = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var celebrationVisible = false
+    @State private var celebrated = false
 
     private var durationText: String {
         let m = summary.durationSeconds / 60
@@ -39,9 +46,13 @@ struct WorkoutSummaryView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: DSpace.l) {
-                if !summary.records.isEmpty {
-                    prCard
-                        .transition(.scale.combined(with: .opacity))
+                if let celebration {
+                    // El espacio de la tarjeta existe desde el primer frame: sólo se
+                    // animan opacidad y escala (no afectan al layout), así el resto de
+                    // la pantalla no salta al aparecer el récord. Reduce Motion: sólo fundido.
+                    prCard(celebration)
+                        .opacity(celebrationVisible ? 1 : 0)
+                        .scaleEffect(celebrationVisible || reduceMotion ? 1 : 0.92)
                 }
 
                 header
@@ -63,6 +74,7 @@ struct WorkoutSummaryView: View {
             .padding(DSpace.l)
         }
         .background(Color(uiColor: .systemBackground))
+        .onAppear { celebrate() }
     }
 
     private var header: some View {
@@ -71,23 +83,38 @@ struct WorkoutSummaryView: View {
             .foregroundStyle(Color.success)
     }
 
-    private var prCard: some View {
+    private func prCard(_ celebration: PRCelebrationPresentation) -> some View {
+        // Todo el texto en `.primary`: sobre el tinte de la tarjeta, verde de éxito
+        // (1.9:1) y `.secondary` (3.2:1) no alcanzan AA en modo claro. El trofeo
+        // verde es redundante: el significado lo lleva el texto.
         VStack(spacing: DSpace.s) {
-            Text("NUEVO RÉCORD")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(Color.success)
-            ForEach(summary.records, id: \.exerciseID) { record in
-                Text("\(record.weight.cleanString) kg × \(record.reps)")
-                    .font(.title2.bold())
+            Label {
+                Text(celebration.headline)
+                    .foregroundStyle(.primary)
+            } icon: {
+                Image(systemName: "trophy.fill")
+                    .foregroundStyle(Color.success)
             }
-            Text(summary.records.count == 1 ? "Marca personal." : "Marcas personales.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            .font(.headline)
+            ForEach(celebration.rows) { item in
+                VStack(spacing: DSpace.xs) {
+                    Text(item.exerciseName)
+                        .font(.subheadline)
+                    Text(item.loadText)
+                        .font(.title2.bold().monospacedDigit())
+                }
+            }
+            if let detail = celebration.detail {
+                Text(detail)
+                    .font(.footnote)
+                    .multilineTextAlignment(.center)
+            }
         }
+        .foregroundStyle(.primary)
         .frame(maxWidth: .infinity)
         .padding(DSpace.l)
         .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: DRadius.large))
-        .onAppear { celebrate() }
+        .accessibilityElement(children: .combine)
     }
 
     private var statsGrid: some View {
@@ -120,44 +147,71 @@ struct WorkoutSummaryView: View {
         .accessibilityLabel("\(title): \(value)")
     }
 
-    /// Celebración breve del PR (SKILL §44): haptic success + animación corta.
+    /// Celebración breve (PR-1004), una sola vez por presentación: animación corta (o
+    /// fundido con Reduce Motion), un haptic de éxito y anuncio para VoiceOver.
     private func celebrate() {
-        withAnimation(.spring(duration: 0.4)) { burst = true }
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-    }
-}
-
-private extension Double {
-    var cleanString: String {
-        if self.rounded() == self {
-            return "\(Int(self.rounded()))"
+        guard let celebration, !celebrated else { return }
+        celebrated = true
+        withAnimation(DMotion.celebration(reduceMotion: reduceMotion)) {
+            celebrationVisible = true
         }
-        return String(format: "%.1f", self)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        AccessibilityNotification.Announcement(celebration.accessibilityAnnouncement).post()
     }
 }
 
-#Preview("Resumen con PR") {
-    NavigationStack {
+/// Fixture de preview: resumen + celebración resuelta por el dominio (no en la View).
+@MainActor
+private func previewSummaryView(
+    records: [(name: String, weight: Double, unit: LoadUnit, reps: Int)],
+    level: CoachingDetailLevel
+) -> some View {
+    var names: [ExerciseID: String] = [:]
+    let personalRecords = records.enumerated().map { index, record in
+        let id = ExerciseID()
+        names[id] = record.name
+        return PersonalRecord(
+            exerciseID: id,
+            weight: record.weight,
+            unit: record.unit,
+            reps: record.reps,
+            achievedAt: Date(timeIntervalSinceReferenceDate: Double(index))
+        )
+    }
+    let summary = WorkoutSummary(
+        durationSeconds: 42 * 60 + 12,
+        workingSets: 12,
+        volume: 12850,
+        energyKcal: nil,
+        records: personalRecords,
+        nextAction: .completed
+    )
+    return NavigationStack {
         WorkoutSummaryView(
-            summary: WorkoutSummary(
-                durationSeconds: 42 * 60 + 12,
-                workingSets: 12,
-                volume: 12850,
-                energyKcal: nil,
-                records: [
-                    PersonalRecord(
-                        exerciseID: ExerciseID(),
-                        weight: 85,
-                        unit: .kilograms,
-                        reps: 8,
-                        achievedAt: Date()
-                    )
-                ],
-                nextAction: .completed
-            ),
+            summary: summary,
+            celebration: PRCelebrationBuilder()
+                .celebration(for: personalRecords, exerciseNames: names, level: level)
+                .map(PRCelebrationPresenter(locale: AppEnvironment.presentationLocale).present),
             onDone: {}
         )
     }
+}
+
+#Preview("PR · guided · claro") {
+    previewSummaryView(records: [("Press banca", 85, .kilograms, 8)], level: .guided)
+}
+
+#Preview("PR · balanced · oscuro · varios en lb") {
+    previewSummaryView(
+        records: [("Press banca", 185, .pounds, 6), ("Remo con barra", 155, .pounds, 8)],
+        level: .balanced
+    )
+    .preferredColorScheme(.dark)
+}
+
+#Preview("PR · advanced · accessibility3") {
+    previewSummaryView(records: [("Sentadilla", 142.5, .kilograms, 3)], level: .advanced)
+        .dynamicTypeSize(.accessibility3)
 }
 
 #Preview("Resumen sin PR") {

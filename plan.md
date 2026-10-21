@@ -826,10 +826,10 @@ Rollback
 - **`ADR-0001`** (PR-0202): SwiftData y la capa de persistencia local → almacén
   Codable/JSON de escritura atómica en PRCore. Los `@Model` de SwiftData no pueden
   vivir en una librería SPM compartida (SIGTRAP); SwiftData queda reservado a la
-  capa de app. Ubicación: `PR-agentic-fitness-spec/docs/adr/ADR-0001-*.md`.
+  capa de app. Ubicación: `docs/spec/docs/adr/ADR-0001-*.md`.
 - **`ADR-0002`** (PR-0301): seed del catálogo de ejercicios — dataset
   *free-exercise-db* (Unlicense) + mapeo determinista a la ontología `Exercise`
-  de PRDomain. Ubicación: `PR-agentic-fitness-spec/docs/adr/ADR-0002-*.md`.
+  de PRDomain. Ubicación: `docs/spec/docs/adr/ADR-0002-*.md`.
 
 ---
 
@@ -901,11 +901,13 @@ Implementado y verificado:
 - **Dominio inicial en `PRDomain`:** identificadores tipados (`ExerciseID`, `TrainingBlockID`, `WorkoutID`, `SetRecordID`, `GymID`, `RestrictionID`, `DecisionID`, `EvidenceRuleID`), `LoadAndTime` (`Load`, `LoadUnit`, `TimeConstraint`, `DomainValidationError`) y `UserProfile` (`ExperienceLevel`, `TrainingGoal`, `BodyCompositionPhase`, `VarietyPreference`, `CoachingDetailLevel`, `PriorityTier`, `UserTrainingProfile`).
 - **Strict Concurrency:** `SWIFT_VERSION = 6.0`, `SWIFT_STRICT_CONCURRENCY = complete`, `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`.
 - **Composition root:** `AppEnvironment` (`@MainActor`, `@Observable`) inyectado al entorno de contenido. `PRApp.swift` y `PRWatchApp.swift` sin lógica de negocio.
-- **Compilación:** iOS Debug `BUILD SUCCEEDED`. watchOS definido pero **no compilable en este entorno** por ausencia del runtime watchOS (solo iOS 26.5 instalado).
+- **Compilación:** iOS Debug y watchOS Debug `BUILD SUCCEEDED` (destinations genéricos `generic/platform=iOS Simulator` / `generic/platform=watchOS Simulator`, que no requieren runtime instalado). Cerrado como DONE; ambos builds son gates de `make ci`.
 - **Tests `PRCore`:** 12 tests Swift Testing, todos verdes (`swift test`).
 - **Schemes:** `xcodebuild -list` documenta `PR`, `PRWatch`, `PRCore`, `PRDomain`.
 
 **Fix de build:** los `.md`/spec dentro de la carpeta sincronizada `PR/` se excluyen del target vía `PBXFileSystemSynchronizedBuildFileExceptionSet` para evitar el error "Multiple commands produce".
+
+**Actualización (2026-10-20):** esa excepción se perdía al editar el target en Xcode y los `.md` (incluida la guía de la API de NVIDIA) terminaban empaquetados en el `.app`. La spec se movió a `docs/spec/` (fuera de las carpetas sincronizadas) y el gate 1/5 de `make ci` ahora falla si hay cualquier `.md`/`.sh` dentro de `PR/` o `PRWatch/`.
 
 ### Estado PR-0002 (CI local reproducible)
 
@@ -920,6 +922,16 @@ code del gate sea fiable (issue: `swift test` a `/dev/null` devuelve no-cero fal
 `Makefile`: `make ci` (todo), `make test`, `make test-ios`, `make guards`. README
 documenta ejecución (§CI local reproducible). Verificado: `make ci` → exit 0 con los 4
 gates verdes (584 tests / 103 suites, iOS scheme build OK) y gate fallido → exit 1.
+
+**Hardening (2026-10-20):** el pipeline fallaba en máquinas con `xcode-select` apuntando
+a CommandLineTools (sin XCTest) y con el repo dentro de `~/Documents` (atributos
+extendidos rompen el codesign ad-hoc del resource bundle). Ahora: usa
+`/Applications/Xcode.app` si el developer dir es CommandLineTools (respeta
+`DEVELOPER_DIR`); artefactos SwiftPM en `PR_CI_SCRATCH` (default
+`$TMPDIR/prcore-ci-build`); builds de scheme con destination genérico de Simulator si no
+hay runtime (ya no se omiten en silencio); nuevo gate 5/5 watchOS (`make test-watch`);
+`run_step` reporta el gate fallido antes de salir. Verificado: `make ci` → exit 0, 5
+gates verdes (632 tests / 110 suites); toolchain roto → `ERROR: test-core falló`, exit 1.
 
 ### Estado PR-0003 (Logging seguro)
 
@@ -1531,6 +1543,24 @@ gate de dolor y primera vez.
 DONE. `Packages/PRCore/Sources/PRDomain/PRDetector.swift` + `PRDetectorTests.swift`:
 detección determinista de PR por carga/reps/1RM estimado, con política de exclusión de
 warmup y formula versionada. DecisionRecord auditable.
+
+### Estado PR-1004 (PR celebration)
+
+DONE (2026-10-20). Cierre: textos movidos a `PRCore/PRCelebrationPresenter` +
+`Localizable.xcstrings` (el dominio sólo devuelve hechos), locale de presentación = idioma
+de la app + región del usuario, `developmentRegion = es`, y animación sólo de
+opacidad/escala para no desplazar la pantalla. 30 tests de PR-1004; `make ci` verde
+(427 + 235 tests). Validación visual con previews en iOS 27.0; VoiceOver/Reduce Motion en
+dispositivo no ejecutados. Historial previo: `Packages/PRCore/Sources/PRDomain/PRCelebration.swift` (`PRCelebrationBuilder`) +
+baselines con contexto en `WorkoutSummary.swift` (`PersonalRecordBaselineBuilder`,
+`PersonalRecordBaselineContext`; detector ignora sets en unidad/máquina distinta, RN-007)
++ cableado en `WorkoutSessionCoordinator` (`recordBaselines`, `celebration(for:level:)`) y
+`AppEnvironment.makeWorkoutCoordinator()` (ahora `async`, lee el historial local; fallo
+de lectura ⇒ sin baselines, el workout arranca igual). `WorkoutSummaryView` presenta la
+celebración inline con Reduce Motion (fundido), haptic único y anuncio VoiceOver.
+Corrige que la app real nunca detectaba PRs (no se pasaban baselines) y que mostraba "kg"
+para sets en lb. Tests: 18 nuevos; suite **650 tests / 112 suites** verde; `make ci` verde.
+Pendiente: validación visual/VoiceOver (sin runtime de Simulator en el entorno).
 
 ### Estado PR-1101 (Health authorization abstraction)
 

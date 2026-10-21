@@ -12,6 +12,9 @@ import PackageDescription
 
 let package = Package(
     name: "PRCore",
+    // Español es el idioma inicial (RNF-013); los strings de PRCore viven en
+    // `Resources/Localizable.xcstrings`.
+    defaultLocalization: "es",
     platforms: [
         .iOS(.v18),
         .watchOS(.v11),
@@ -33,7 +36,9 @@ let package = Package(
             resources: [
                 // Ejercicios curados del catálogo inicial (PR-0301). Dataset
                 // "free-exercise-db" (Unlicense); ver ADR-0002.
-                .copy("Resources/exercises.json")
+                .copy("Resources/exercises.json"),
+                // Strings de presentación localizables (PR-1004).
+                .process("Resources/Localizable.xcstrings"),
             ]
         ),
         .testTarget(

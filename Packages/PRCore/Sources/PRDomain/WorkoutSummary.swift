@@ -69,14 +69,92 @@ public struct WorkoutSummary: Equatable, Codable, Sendable {
     }
 }
 
+/// Contexto en el que se registró un baseline: unidad y máquina concreta. Las cargas
+/// sólo son comparables dentro del mismo contexto (RN-007: máquinas distintas no se
+/// comparan; kg y lb tampoco se comparan sin conversión explícita).
+public struct PersonalRecordBaselineContext: Equatable, Codable, Sendable, Hashable {
+    public var unit: LoadUnit
+    public var machineProfileID: UUID?
+
+    public init(unit: LoadUnit, machineProfileID: UUID? = nil) {
+        self.unit = unit
+        self.machineProfileID = machineProfileID
+    }
+}
+
+/// Mejor carga histórica de un ejercicio dentro de un contexto comparable.
+public struct PersonalRecordBaseline: Equatable, Codable, Sendable {
+    public var bestWeight: Double
+    public var context: PersonalRecordBaselineContext
+
+    public init(bestWeight: Double, context: PersonalRecordBaselineContext) {
+        self.bestWeight = bestWeight
+        self.context = context
+    }
+}
+
+/// Deriva baselines de PR desde el historial persistido (PR-1004 wiring). Puro y
+/// determinista.
+///
+/// Reglas:
+/// - sólo cuentan sets `.completed` (skipped/planned nunca son baseline);
+/// - por ejercicio se agrupa por contexto (unidad + máquina); si el historial tiene
+///   varios contextos se usa el del set más reciente (el que el usuario usa hoy). Así
+///   nunca se compara una máquina con otra ni kg con lb;
+/// - un ejercicio sin historial no tiene baseline → no se celebra un PR inventado.
+public enum PersonalRecordBaselineBuilder {
+
+    public static func baselines(from history: [WorkoutSessionRecord]) -> [ExerciseID: PersonalRecordBaseline] {
+        var latest: [ExerciseID: SetRecord] = [:]
+        var best: [ExerciseID: [PersonalRecordBaselineContext: Double]] = [:]
+        for session in history {
+            for set in session.sets where set.lifecycle == .completed {
+                let context = PersonalRecordBaselineContext(unit: set.unit, machineProfileID: set.machineProfileID)
+                let current = best[set.exerciseID]?[context] ?? 0
+                best[set.exerciseID, default: [:]][context] = max(current, set.weight)
+                if let previous = latest[set.exerciseID] {
+                    // Empate de fecha → mayor id, para que el resultado no dependa del orden.
+                    if set.performedAt > previous.performedAt
+                        || (set.performedAt == previous.performedAt
+                            && set.id.rawValue.uuidString > previous.id.rawValue.uuidString) {
+                        latest[set.exerciseID] = set
+                    }
+                } else {
+                    latest[set.exerciseID] = set
+                }
+            }
+        }
+        var result: [ExerciseID: PersonalRecordBaseline] = [:]
+        for (exerciseID, recent) in latest {
+            let context = PersonalRecordBaselineContext(unit: recent.unit, machineProfileID: recent.machineProfileID)
+            guard let weight = best[exerciseID]?[context] else { continue }
+            result[exerciseID] = PersonalRecordBaseline(bestWeight: weight, context: context)
+        }
+        return result
+    }
+}
+
 /// Detecta récords personales comparando lo realizado contra un baseline histórico.
 public struct PersonalRecordDetector: Sendable {
     /// Baseline: mejor peso histórico por ejercicio. Sólo se detecta un PR cuando
     /// hay baseline (nunca se inventa un récord sin referencia previa).
     public var previousBestWeight: [ExerciseID: Double]
+    /// Contexto (unidad/máquina) de cada baseline. Si existe, un set en otro contexto
+    /// no es comparable y no se marca como PR (RN-007).
+    public var baselineContexts: [ExerciseID: PersonalRecordBaselineContext]
 
-    public init(previousBestWeight: [ExerciseID: Double] = [:]) {
+    public init(
+        previousBestWeight: [ExerciseID: Double] = [:],
+        baselineContexts: [ExerciseID: PersonalRecordBaselineContext] = [:]
+    ) {
         self.previousBestWeight = previousBestWeight
+        self.baselineContexts = baselineContexts
+    }
+
+    /// Construye el detector desde baselines con contexto (historial real).
+    public init(baselines: [ExerciseID: PersonalRecordBaseline]) {
+        self.previousBestWeight = baselines.mapValues(\.bestWeight)
+        self.baselineContexts = baselines.mapValues(\.context)
     }
 
     /// Devuelve los sets completados que superan el mejor peso histórico de su
@@ -85,6 +163,10 @@ public struct PersonalRecordDetector: Sendable {
         var result: [PersonalRecord] = []
         for set in session.sets where set.lifecycle == .completed {
             guard let baseline = previousBestWeight[set.exerciseID] else { continue }
+            if let context = baselineContexts[set.exerciseID],
+               context != PersonalRecordBaselineContext(unit: set.unit, machineProfileID: set.machineProfileID) {
+                continue // contexto no comparable: no inventar un récord.
+            }
             if set.weight > baseline {
                 result.append(
                     PersonalRecord(
@@ -114,12 +196,40 @@ public struct WorkoutSummaryBuilder: Sendable {
         energyKcal reconciledEnergy: Double? = nil,
         previousBestWeight: [ExerciseID: Double] = [:]
     ) -> WorkoutSummary {
+        summarize(
+            session,
+            now: now,
+            energyKcal: reconciledEnergy,
+            detector: PersonalRecordDetector(previousBestWeight: previousBestWeight)
+        )
+    }
+
+    /// Variante con baselines derivados del historial (unidad + máquina comparables).
+    public func summarize(
+        _ session: WorkoutSessionRecord,
+        now: Date = Date(),
+        energyKcal reconciledEnergy: Double? = nil,
+        baselines: [ExerciseID: PersonalRecordBaseline]
+    ) -> WorkoutSummary {
+        summarize(
+            session,
+            now: now,
+            energyKcal: reconciledEnergy,
+            detector: PersonalRecordDetector(baselines: baselines)
+        )
+    }
+
+    private func summarize(
+        _ session: WorkoutSessionRecord,
+        now: Date,
+        energyKcal reconciledEnergy: Double?,
+        detector: PersonalRecordDetector
+    ) -> WorkoutSummary {
         let end = session.endedAt ?? now
         let duration = Int(max(0, end.timeIntervalSince(session.startedAt)))
         let workingSets = session.sets.filter { $0.lifecycle == .completed }.count
         let volume = session.sets.reduce(0.0) { $0 + ($1.lifecycle == .completed ? ($1.weight * Double($1.reps)) : 0) }
 
-        let detector = PersonalRecordDetector(previousBestWeight: previousBestWeight)
         let records = detector.detect(in: session)
 
         let nextAction: SummaryNextAction

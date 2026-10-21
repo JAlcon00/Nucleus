@@ -26,6 +26,19 @@ enum DRadius {
     static let large: CGFloat = 22
 }
 
+/// Tokens de movimiento. Con Reduce Motion se sustituye el desplazamiento/escala por un
+/// fundido breve (mismo significado, sin movimiento).
+enum DMotion {
+    /// Aparición de un logro (PR-1004): spring corto, sin rebote exagerado.
+    static let celebration: Animation = .spring(duration: 0.4)
+    /// Variante con Reduce Motion: sólo opacidad.
+    static let celebrationReduced: Animation = .easeOut(duration: 0.2)
+
+    static func celebration(reduceMotion: Bool) -> Animation {
+        reduceMotion ? celebrationReduced : celebration
+    }
+}
+
 /// Colores de acción semánticos (SKILL §74). Deciden el tono; no el color por pantalla.
 extension Color {
     /// Acción primaria (empezar / completar serie).

@@ -42,7 +42,7 @@ Además de los criterios particulares, todas las historias heredan el DoD de `pr
 **Priority:** P0  
 **Size:** M  
 **Dependencies:** none  
-**Status:** IN_PROGRESS (iOS DONE; smoke build watchOS pendiente de runtime)  
+**Status:** DONE  
 
 
 ### Historia
@@ -61,6 +61,12 @@ Como equipo de desarrollo, quiero una estructura estable de iOS/watchOS/core par
 ### Tests
 - Smoke build iOS.
 - Smoke build watchOS.
+
+### Estado
+DONE. Smoke builds Debug de `PR` (iOS) y `PRWatch` (watchOS) verdes contra los
+destinations genéricos de Simulator (`generic/platform=iOS Simulator` /
+`generic/platform=watchOS Simulator`), que sólo requieren el SDK — antes bloqueados por
+falta de runtime watchOS. Ambos son ahora gates de `make ci` (4/5 y 5/5).
 
 ---
 
@@ -1133,10 +1139,52 @@ realiza con confianza logística. Cobertura: `PRDomainTests/LoadHistoryTests.swi
 **Priority:** P1  
 **Size:** S  
 **Dependencies:** PR-1003
+**Status:** DONE
 
 ### Criterios de aceptación
 - celebración breve, accesible y no obstructiva.
 - reduce motion respetado.
+
+### Estado
+DONE (2026-10-20). Validado con previews renderizados en iPhone 18 Pro / iOS 27.0 (claro,
+oscuro con varios récords en lb, `.accessibility3`). No ejecutado: el anuncio real de
+VoiceOver y Reduce Motion activo en dispositivo (verificados por código).
+- **Localización (RNF-013):** el dominio ya no produce texto (`PRCelebrationDetail`,
+  `PRCelebrationItem.exerciseName: String?`); `PRCore/PRCelebrationPresenter` genera los
+  strings desde `PRCore/Resources/Localizable.xcstrings` (es + en, plural de reps) con
+  `LocalizedStringResource` (idioma y formato del mismo locale) y `Measurement` sin
+  conversión de unidades. `presentationLocale(appLanguage:userLocale:)`: idioma que
+  resolvió la app + formato regional del usuario. Proyecto: `developmentRegion = es`.
+- **No obstructiva:** la tarjeta ocupa su espacio desde el primer frame; sólo se animan
+  opacidad/escala (antes la inserción empujaba el resto de la pantalla y producía frames
+  rotos, p. ej. el botón "Seguir en el plan" a medias).
+- **Bug corregido:** el coordinador nunca pasaba baselines al resumen ⇒ en la app real
+  `records` siempre estaba vacío y no se celebraba nada. Ahora `AppEnvironment` deriva
+  baselines del historial local (`PersonalRecordBaselineBuilder`) al crear el coordinador.
+- **Comparabilidad (RN-007):** cada baseline guarda su contexto (unidad + máquina); el
+  detector no marca PR si el set de hoy está en otro contexto (100 lb vs 80 kg, otra
+  máquina). Ante varios contextos se usa el del set más reciente.
+- **Dominio:** `PRDomain/PRCelebration.swift` — `PRCelebrationBuilder` decide una entrada
+  por ejercicio (mayor peso, luego reps), unidad real (antes la vista asumía "kg"),
+  copy por nivel (guided explica sobrecarga progresiva, balanced una línea, advanced
+  nada) y anuncio VoiceOver.
+- **UI:** `WorkoutSummaryView` inline (no modal, no bloquea "Seguir en el plan"), una
+  sola vez por presentación: haptic de éxito + `AccessibilityNotification.Announcement`;
+  animación spring corta que con Reduce Motion pasa a fundido (token `DMotion` nuevo en
+  `DesignTokens.swift`). Contraste medido con `contrast_check.py`: el verde de éxito
+  (1.90:1) y `.secondary` (3.24:1) fallaban AA sobre el tinte en modo claro ⇒ todo el
+  texto de la tarjeta en `.primary` (17.96:1 / 19.17:1); el trofeo verde es redundante.
+  Previews: guided claro, balanced oscuro con varios ejercicios en lb, advanced con
+  `.accessibility3`, y sin PR. La carga del coordinador (`AppRootView`) tiene dueño
+  (`workoutLoad`): un doble toque no crea dos sesiones.
+- Cobertura: 16 tests en `PRDomainTests/PRCelebrationTests.swift`, 11 en
+  `PRCoreTests/PRCelebrationPresenterTests.swift` y 3 en
+  `PRCoreTests/WorkoutCelebrationWiringTests.swift`. `make ci` verde: 427 + 235 tests,
+  builds iOS y watchOS.
+- **Hallazgos de la pantalla de resumen (PR-0605, fuera de alcance):** con
+  `.accessibility3` se truncan el botón principal ("Seguir en el p…") y la duración, y las
+  etiquetas se parten ("Dura-ción"); "Entrenamiento completado" en verde sobre blanco
+  probablemente no cumple contraste AA; el volumen no usa separador de miles.
 
 ---
 
@@ -1418,11 +1466,21 @@ confirmación del usuario. Cobertura: `PRDomainTests/AutoRescheduleEngineTests.s
 **Priority:** P1  
 **Size:** M  
 **Dependencies:** PR-0403
+**Status:** DONE
 
 ### Criterios de aceptación
 - education tied to current context.
 - dismissible.
 - advanced mode reduce explanations.
+
+### Estado
+DONE. `Packages/PRCore/Sources/PRDomain/CoachingCard.swift` + `CoachingCardDriver.swift`:
+deriva de forma determinista UNA tarjeta desde hechos reales del workout (calentamiento,
+descanso activo, `PainRecommendation` de PR-1403); prioridad molestia > calentamiento >
+descanso. `guided` muestra calentamiento+descanso, `balanced` sólo calentamiento breve,
+`advanced` ninguna tarjeta rutinaria (sólo la de seguridad ante molestia, sin
+diagnóstico). Id estable (`CoachingCardID`) → `WorkoutModeView` la descarta por sesión.
+Cobertura: 8 tests en `PRDomainTests/CoachingCardTests.swift`.
 
 ---
 

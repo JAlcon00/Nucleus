@@ -85,6 +85,11 @@ public final class WorkoutSessionCoordinator {
     private let completer: SetCompleter
     private let restTimer: RestTimer
     private let summaryBuilder: WorkoutSummaryBuilder
+    /// Baselines de PR derivados del historial local (PR-1004). Vacío ⇒ no se celebra
+    /// ningún récord (nunca se inventa uno sin referencia previa).
+    private let recordBaselines: [ExerciseID: PersonalRecordBaseline]
+    private let celebrationBuilder = PRCelebrationBuilder()
+    private let celebrationPresenter: PRCelebrationPresenter
     private let lastPerformedWeightLookup: (ExerciseID) -> Double?
     private let clock: () -> Date
 
@@ -106,6 +111,8 @@ public final class WorkoutSessionCoordinator {
         completer: SetCompleter = SetCompleter(),
         restTimer: RestTimer = RestTimer(),
         summaryBuilder: WorkoutSummaryBuilder = WorkoutSummaryBuilder(),
+        recordBaselines: [ExerciseID: PersonalRecordBaseline] = [:],
+        celebrationPresenter: PRCelebrationPresenter = PRCelebrationPresenter(),
         lastPerformedWeightLookup: @escaping (ExerciseID) -> Double? = { _ in nil },
         clock: @escaping () -> Date = { Date() },
         initialPhase: WorkoutSessionPhase = .idle,
@@ -119,6 +126,8 @@ public final class WorkoutSessionCoordinator {
         self.completer = completer
         self.restTimer = restTimer
         self.summaryBuilder = summaryBuilder
+        self.recordBaselines = recordBaselines
+        self.celebrationPresenter = celebrationPresenter
         self.lastPerformedWeightLookup = lastPerformedWeightLookup
         self.clock = clock
         self.phase = initialPhase
@@ -195,6 +204,15 @@ extension WorkoutSessionCoordinator {
             throw WorkoutSessionError.notActive
         }
         return closeAsFinished()
+    }
+
+    /// Celebración de los récords del resumen (PR-1004): el dominio decide qué y la
+    /// explicación según nivel; el presentador produce los textos localizados.
+    /// `nil` si no hay récords.
+    public func celebration(for summary: WorkoutSummary, level: CoachingDetailLevel) -> PRCelebrationPresentation? {
+        celebrationBuilder
+            .celebration(for: summary.records, exerciseNames: exerciseNames, level: level)
+            .map(celebrationPresenter.present)
     }
 
     /// Snapshot persistible para restaurar tras kill/relaunch.
@@ -358,7 +376,7 @@ extension WorkoutSessionCoordinator {
     private func closeAsFinished() -> WorkoutSessionPhase {
         let summary: WorkoutSummary
         if let live = controller.current?.session {
-            summary = summaryBuilder.summarize(live)
+            summary = summaryBuilder.summarize(live, now: clock(), baselines: recordBaselines)
             // Cerrar con persistencia durabile del registro final (best-effort, async):
             // el repositorio local se actualiza fuera del hilo de la UI del coordinador.
             Task { await onSessionFinished(live) }
