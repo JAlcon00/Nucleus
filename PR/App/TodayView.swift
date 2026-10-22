@@ -229,10 +229,7 @@ struct TodayView: View {
 
     private var restDayView: some View {
         VStack(spacing: 12) {
-            Image(systemName: "bed.double.fill")
-                .font(.largeTitle)
-                .imageScale(.large)
-                .foregroundStyle(Color.primaryAction)
+            IconBadge(systemName: "bed.double.fill", scale: 2.5)
             Text("Día de descanso")
                 .font(.title3.bold())
             Text("Hoy toca recuperar.")
@@ -240,9 +237,13 @@ struct TodayView: View {
                 .foregroundStyle(Color.textSecondary)
                 .multilineTextAlignment(.center)
             if let next = nextSessionText {
-                Text(next)
+                Label(next, systemImage: "calendar.badge.clock")
                     .font(.callout.weight(.semibold))
                     .multilineTextAlignment(.center)
+                    .padding(.horizontal, DSpace.m)
+                    .padding(.vertical, DSpace.s)
+                    .background(Color.surface, in: Capsule())
+                    .overlay { Capsule().strokeBorder(Color.hairline, lineWidth: 1) }
             }
         }
         .padding(.horizontal, 24)
@@ -263,16 +264,19 @@ struct TodayView: View {
 
     private func readyView(_ presentation: SessionPresentation) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                if let greetingName {
-                    Text("Hola, \(greetingName)")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.textSecondary)
+            HStack(alignment: .center, spacing: DSpace.m) {
+                IconBadge(systemName: "figure.strengthtraining.traditional", scale: 1.6, isHighlighted: true)
+                VStack(alignment: .leading, spacing: DSpace.xs) {
+                    if let greetingName {
+                        Label("Hola, \(greetingName)", systemImage: "hand.wave")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.textSecondary)
+                    }
+                    Text(vocabulary.sessionName(presentation.title))
+                        .font(.title2.bold())
                 }
-                Text(vocabulary.sessionName(presentation.title))
-                    .font(.title2.bold())
-                sessionSummary(presentation)
             }
+            sessionSummary(presentation)
             exerciseList
             if !order.isEmpty {
                 Button {
@@ -296,7 +300,7 @@ struct TodayView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: DSpace.s) {
                 ForEach(Array(exercises.enumerated()), id: \.element.id) { index, line in
-                    ExerciseLineRow(line: line, last: lastPerformance[line.exerciseID])
+                    ExerciseLineRow(line: line, last: lastPerformance[line.exerciseID], number: index + 1)
                         .padding(.vertical, DSpace.xs)
                         .accessibilityIdentifier("today.exercise.\(index)")
                 }
@@ -315,8 +319,11 @@ struct TodayView: View {
                 .font(.subheadline)
                 .foregroundStyle(Color.textSecondary)
                 .accessibilityIdentifier("today.activeBanner")
-            Text(vocabulary.sessionName(presentation.title))
-                .font(.title2.bold())
+            HStack(spacing: DSpace.m) {
+                IconBadge(systemName: isPaused ? "pause.fill" : "bolt.fill", scale: 1.6, isHighlighted: !isPaused)
+                Text(vocabulary.sessionName(presentation.title))
+                    .font(.title2.bold())
+            }
             sessionSummary(presentation)
             Spacer()
             resumeButton

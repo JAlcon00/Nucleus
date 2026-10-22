@@ -28,6 +28,7 @@ struct ProfileView: View {
     var body: some View {
         NavigationStack {
             List {
+                profileHeader
                 aboutYouSection
 
                 Section("Mi entrenamiento") {
@@ -46,8 +47,11 @@ struct ProfileView: View {
                     Button {
                         confirmingRedo = true
                     } label: {
-                        Label("Rehacer cuestionario", systemImage: "arrow.counterclockwise")
-                            .foregroundStyle(Color.textPrimary)
+                        Label {
+                            Text("Rehacer cuestionario").foregroundStyle(Color.textPrimary)
+                        } icon: {
+                            Image(systemName: "arrow.counterclockwise").foregroundStyle(Color.primaryAction)
+                        }
                     }
                     .accessibilityIdentifier("profile.redo")
                 }
@@ -84,28 +88,73 @@ struct ProfileView: View {
         }
     }
 
+    /// Cabecera con avatar: inicial del nombre o un icono si no hay nombre.
+    private var profileHeader: some View {
+        Section {
+            HStack(spacing: DSpace.m) {
+                if let initial = aboutYou?.name?.first {
+                    Text(String(initial).uppercased())
+                        .font(.title2.bold())
+                        .foregroundStyle(Color.onAccent)
+                        .frame(width: DSize.iconBadge * 2, height: DSize.iconBadge * 2)
+                        .background(LinearGradient.energy, in: Circle())
+                        .accessibilityHidden(true)
+                } else {
+                    IconBadge(systemName: "person.fill", scale: 2)
+                }
+                VStack(alignment: .leading, spacing: DSpace.xs) {
+                    Text(aboutYou?.name ?? String(localized: "Tu perfil"))
+                        .font(.title3.bold())
+                    HStack(alignment: .firstTextBaseline, spacing: DSpace.xs) {
+                        Image(systemName: "lock.fill").accessibilityHidden(true)
+                        Text("Tus datos se quedan en este iPhone")
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(Color.textSecondary)
+                }
+            }
+            .padding(.vertical, DSpace.s)
+            .accessibilityElement(children: .combine)
+        }
+        .listRowBackground(Color.surface)
+    }
+
     private var aboutYouSection: some View {
         Section {
             if let aboutYou {
                 if let name = aboutYou.name {
-                    LabeledContent("Nombre", value: name)
-                }
-                LabeledContent("Edad") {
-                    Text("\(aboutYou.age(on: now, timeZone: .current)) años").numericStyle()
-                }
-                LabeledContent("Sexo") {
-                    Text(AboutYouFields.label(aboutYou.sex))
-                }
-                if let height = aboutYou.heightCentimeters {
-                    LabeledContent("Estatura") {
-                        Text("\(height) cm").numericStyle()
+                    LabeledContent {
+                        Text(name)
+                    } label: {
+                        Label("Nombre", systemImage: "person.text.rectangle")
                     }
                 }
-                LabeledContent("Peso") {
-                    Text(Self.weightText(aboutYou)).numericStyle()
+                LabeledContent {
+                    Text("\(aboutYou.age(on: now, timeZone: .current)) años").numericStyle()
+                } label: {
+                    Label("Edad", systemImage: "birthday.cake")
                 }
-                Button("Editar", action: onEditAboutYou)
-                    .accessibilityIdentifier("profile.aboutYou.edit")
+                LabeledContent {
+                    Text(AboutYouFields.label(aboutYou.sex))
+                } label: {
+                    Label("Sexo", systemImage: "person.2")
+                }
+                if let height = aboutYou.heightCentimeters {
+                    LabeledContent {
+                        Text("\(height) cm").numericStyle()
+                    } label: {
+                        Label("Estatura", systemImage: "ruler")
+                    }
+                }
+                LabeledContent {
+                    Text(Self.weightText(aboutYou)).numericStyle()
+                } label: {
+                    Label("Peso", systemImage: "scalemass")
+                }
+                Button(action: onEditAboutYou) {
+                    Label("Editar", systemImage: "pencil")
+                }
+                .accessibilityIdentifier("profile.aboutYou.edit")
             } else {
                 Button(action: onEditAboutYou) {
                     Label("Completa tu perfil", systemImage: "person.crop.circle.badge.plus")

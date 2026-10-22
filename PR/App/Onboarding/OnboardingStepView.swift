@@ -60,36 +60,45 @@ struct OnboardingStepView: View {
         )
     }
 
+    /// Al tocar "Terminar" el pie muestra el loader hasta que el cuestionario se cierra.
+    @State private var isFinishing = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var footerState: OnboardingFooterState {
+        if isFinishing { return .finishing }
+        return canAdvance ? .ready : .needsAnswer
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            header
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+        VStack(spacing: 0) {
+            OnboardingProgressBar(current: indexPlusOne, total: stepCount)
+                .padding(.horizontal, DSpace.l)
+                .padding(.top, DSpace.xl)
+            OnboardingCenteredScroll {
+                VStack(spacing: DSpace.l) {
+                    OnboardingHeader(
+                        icon: Self.icon(for: step),
+                        eyebrow: "Paso \(indexPlusOne) de \(stepCount)",
+                        title: title(for: step),
+                        subtitle: subtitle(for: step),
+                        titleIdentifier: "onboarding.title"
+                    )
                     stepContent
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.horizontal, 24)
-                .padding(.top, 8)
+                // Cada paso entra como una diapositiva nueva (sólo fundido con Reduce Motion).
+                .id(step)
+                .transition(
+                    reduceMotion
+                        ? .opacity
+                        : .asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity)
+                )
             }
             footer
         }
+        .animation(DMotion.slide(reduceMotion: reduceMotion), value: step)
         .screenBackground()
         .navigationBarBackButtonHidden(true)
-    }
-
-    // MARK: - Header
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Paso \(indexPlusOne) de \(stepCount)")
-                .font(.caption)
-                .foregroundStyle(Color.textSecondary)
-            Text(title(for: step))
-                .font(.title2.bold())
-                .accessibilityIdentifier("onboarding.title")
-        }
-        .padding(.horizontal, 24)
-        .padding(.top, 16)
-        .padding(.bottom, 8)
     }
 
     // MARK: - Content
@@ -113,9 +122,6 @@ struct OnboardingStepView: View {
     /// "¿Qué días puedes entrenar?" (SCRUM-196): 7 chips; el número sale de los elegidos.
     private var daysPicker: some View {
         VStack(alignment: .leading, spacing: DSpace.m) {
-            Text("Dejamos descanso entre sesiones para que recuperes. Elige al menos 2 días.")
-                .font(.callout)
-                .foregroundStyle(Color.textSecondary)
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: DSpace.xs) {
                     ForEach(WeekDay.allCases, id: \.self) { dayChip($0) }
@@ -161,6 +167,7 @@ struct OnboardingStepView: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
+        .sensoryFeedback(.selection, trigger: isSelected)
         .accessibilityLabel(vocabulary.weekdayName(day))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityIdentifier("onboarding.day.\(day.rawValue)")
@@ -170,33 +177,41 @@ struct OnboardingStepView: View {
     private var daysSummary: some View {
         let count = selectedDays.count
         if TrainingWeek.allowedTrainingDays.contains(count) {
-            Text("\(count) días por semana")
-                .font(.headline)
-                .numericStyle()
-                .accessibilityIdentifier("onboarding.daysSummary")
+            Label {
+                Text("\(count) días por semana").numericStyle()
+            } icon: {
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.success)
+            }
+            .font(.headline)
+            .accessibilityIdentifier("onboarding.daysSummary")
         } else {
-            Label("Elige al menos 2 días", systemImage: "exclamationmark.circle")
+            OnboardingNote(text: "Elige al menos 2 días", tone: .warning)
                 .font(.headline)
-                .foregroundStyle(Color.warning)
                 .accessibilityIdentifier("onboarding.daysSummary")
         }
     }
 
     private var minutesStepper: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        OnboardingField(title: "Duración de cada sesión", icon: "timer", purpose: "Ajustamos cuántos ejercicios caben. Más tiempo no suma series.") {
             Stepper(value: minutes, in: TrainingWeek.allowedSessionMinutes, step: 5) {
                 Text("\(minutes.wrappedValue) min")
+                    .font(.title3.bold())
+                    .numericStyle()
+                    .contentTransition(.numericText(value: Double(minutes.wrappedValue)))
             }
+            .onboardingInput()
+            .sensoryFeedback(.selection, trigger: minutes.wrappedValue)
             .accessibilityLabel("Duración habitual de cada sesión en minutos")
             .accessibilityIdentifier("onboarding.minutesStepper")
         }
     }
 
     private var gymRow: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Por ahora armamos tu plan con equipo básico de gimnasio: barra, mancuernas, máquinas y poleas. Podrás elegir tu gimnasio más adelante.")
-                .font(.callout)
-                .foregroundStyle(Color.textSecondary)
+        VStack(alignment: .leading, spacing: DSpace.m) {
+            infoCard(
+                icon: "dumbbell",
+                text: "Por ahora armamos tu plan con equipo básico de gimnasio: barra, mancuernas, máquinas y poleas. Podrás elegir tu gimnasio más adelante."
+            )
             Button("Omitir este paso") {
                 onAnswer(.gym(nil))
             }
@@ -206,10 +221,11 @@ struct OnboardingStepView: View {
     }
 
     private var restrictionsRow: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Si tienes una molestia o algo que prefieras evitar, podrás registrarlo cuando quieras en Perfil › Restricciones.")
-                .font(.callout)
-                .foregroundStyle(Color.textSecondary)
+        VStack(alignment: .leading, spacing: DSpace.m) {
+            infoCard(
+                icon: "cross.case",
+                text: "Si tienes una molestia o algo que prefieras evitar, podrás registrarlo cuando quieras en Perfil › Restricciones."
+            )
             Button("Continuar sin añadir") {
                 onAnswer(.restrictions([]))
             }
@@ -218,41 +234,39 @@ struct OnboardingStepView: View {
         }
     }
 
+    private func infoCard(icon: String, text: LocalizedStringKey) -> some View {
+        HStack(alignment: .top, spacing: DSpace.m) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(Color.primaryAction)
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.callout)
+                .foregroundStyle(Color.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(DSpace.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardSurface(cornerRadius: DRadius.medium)
+    }
+
     // MARK: - Choice picker
 
     /// Opciones del paso: la vista sólo pinta el texto que ya viene localizado y reenvía
     /// la respuesta tipada de la opción; la elegida se marca con icono + borde + trait
     /// (no sólo con color).
     private var choicesPicker: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: DSpace.s) {
             ForEach(choices) { choice in
-                let isSelected = selected == choice.answer
-                Button {
+                let symbol = Self.icon(for: choice.answer)
+                OnboardingChoiceRow(
+                    title: Text(choice.label),
+                    icon: symbol.name,
+                    level: symbol.level,
+                    isSelected: selected == choice.answer
+                ) {
                     onAnswer(choice.answer)
-                } label: {
-                    HStack {
-                        Text(choice.label)
-                            .foregroundStyle(Color.textPrimary)
-                        Spacer()
-                        if isSelected {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(Color.primaryAction)
-                        }
-                    }
-                    .padding(12)
-                    .frame(minHeight: 44)
-                    .background(
-                        RoundedRectangle(cornerRadius: DRadius.small)
-                            .fill(Color.surface)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: DRadius.small)
-                            .strokeBorder(isSelected ? Color.primaryAction : Color.hairline, lineWidth: isSelected ? 2 : 1)
-                    )
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(choice.label)
-                .accessibilityAddTraits(isSelected ? .isSelected : [])
                 .accessibilityIdentifier("onboarding.option.\(choice.id)")
             }
         }
@@ -261,28 +275,45 @@ struct OnboardingStepView: View {
     // MARK: - Footer
 
     private var footer: some View {
-        HStack(spacing: 12) {
-            if canGoBack {
-                Button(action: onGoBack) {
-                    Label("Atrás", systemImage: "chevron.left")
+        VStack(spacing: DSpace.s) {
+            if footerState == .needsAnswer, let hint = hint(for: step) {
+                OnboardingNote(text: hint)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .transition(.opacity)
+            }
+            HStack(spacing: DSpace.s) {
+                if canGoBack {
+                    Button(action: onGoBack) {
+                        Label("Atrás", systemImage: "chevron.left")
+                    }
+                    .buttonStyle(SurfaceButtonStyle(minHeight: DButton.primaryHeight))
+                    .disabled(isFinishing)
+                    .accessibilityHint("Vuelve al paso anterior sin perder tus respuestas.")
                 }
-                .buttonStyle(SurfaceButtonStyle(minHeight: DButton.primaryHeight))
-                .accessibilityHint("Vuelve al paso anterior sin perder tus respuestas.")
+                OnboardingPrimaryButton(
+                    title: isAtEnd ? "Terminar" : "Siguiente",
+                    icon: isAtEnd ? "checkmark" : "chevron.right",
+                    state: footerState
+                ) {
+                    if isAtEnd {
+                        isFinishing = true
+                        onFinish()
+                    } else {
+                        onAdvance()
+                    }
+                }
+                .accessibilityIdentifier("onboarding.next")
             }
-
-            Button(action: { isAtEnd ? onFinish() : onAdvance() }) {
-                Label(isAtEnd ? "Terminar" : "Siguiente", systemImage: isAtEnd ? "checkmark" : "chevron.right")
-            }
-            .buttonStyle(.energy)
-            .disabled(!canAdvance)
-            .accessibilityIdentifier("onboarding.next")
         }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 16)
-        .padding(.top, 8)
+        .padding(.horizontal, DSpace.l)
+        .padding(.bottom, DSpace.m)
+        .padding(.top, DSpace.s)
+        .animation(.easeOut(duration: 0.15), value: footerState)
+        // Si cerrar el cuestionario falla, el paso vuelve a estar disponible.
+        .onChange(of: step) { _, _ in isFinishing = false }
     }
 
-    // MARK: - Titles
+    // MARK: - Textos e iconos (presentación)
 
     private func title(for step: OnboardingStep) -> String {
         switch step {
@@ -294,6 +325,81 @@ struct OnboardingStepView: View {
         case .gym: return "Gimnasio"
         case .variety: return "Variedad"
         case .restrictions: return "Restricciones"
+        }
+    }
+
+    private func subtitle(for step: OnboardingStep) -> String {
+        switch step {
+        case .goal: return "¿Qué quieres lograr primero? Puedes cambiarlo después."
+        case .phase: return "Cómo estás comiendo ahora. Ajusta el volumen de tu semana."
+        case .experience: return "Cuánto tiempo llevas entrenando con constancia."
+        case .daysPerWeek: return "Dejamos descanso entre sesiones para que recuperes. Elige al menos 2 días."
+        case .sessionMinutes: return "El tiempo que sueles tener para cada entrenamiento."
+        case .gym: return "Dónde vas a entrenar."
+        case .variety: return "Cuánto cambian tus ejercicios de una semana a otra."
+        case .restrictions: return "Algo que debamos evitar en tu plan."
+        }
+    }
+
+    /// Pista del pie cuando aún no se puede avanzar (los días ya explican su mínimo).
+    private func hint(for step: OnboardingStep) -> LocalizedStringKey? {
+        switch step {
+        case .goal, .phase, .experience, .variety: return "Elige una opción para seguir."
+        case .gym: return "Toca \"Omitir este paso\" para seguir."
+        case .restrictions: return "Toca \"Continuar sin añadir\" para seguir."
+        case .daysPerWeek, .sessionMinutes: return nil
+        }
+    }
+
+    static func icon(for step: OnboardingStep) -> String {
+        switch step {
+        case .goal: return "target"
+        case .phase: return "fork.knife"
+        case .experience: return "medal"
+        case .daysPerWeek: return "calendar"
+        case .sessionMinutes: return "timer"
+        case .gym: return "dumbbell"
+        case .variety: return "shuffle"
+        case .restrictions: return "cross.case"
+        }
+    }
+
+    /// Icono de cada opción (acompaña al texto; VoiceOver lee sólo el texto). La
+    /// experiencia usa barras que se llenan con el nivel.
+    static func icon(for answer: OnboardingAnswer) -> (name: String?, level: Double?) {
+        switch answer {
+        case .goal(let goal):
+            switch goal {
+            case .generalHealth: return ("heart", nil)
+            case .hypertrophy: return ("figure.strengthtraining.traditional", nil)
+            case .strength: return ("dumbbell", nil)
+            case .powerbuilding: return ("bolt", nil)
+            case .recomposition: return ("arrow.triangle.2.circlepath", nil)
+            case .bodybuilding: return ("trophy", nil)
+            }
+        case .phase(let phase):
+            switch phase {
+            case .surplus: return ("arrow.up.right", nil)
+            case .deficit: return ("arrow.down.right", nil)
+            case .maintenance: return ("equal", nil)
+            case .unspecified: return ("eye.slash", nil)
+            }
+        case .experience(let level):
+            switch level {
+            case .novice: return ("cellularbars", 0.2)
+            case .beginner: return ("cellularbars", 0.4)
+            case .intermediate: return ("cellularbars", 0.6)
+            case .advanced: return ("cellularbars", 0.8)
+            case .competitive: return ("cellularbars", 1)
+            }
+        case .variety(let variety):
+            switch variety {
+            case .stable: return ("pin", nil)
+            case .balanced: return ("scalemass", nil)
+            case .varied: return ("shuffle", nil)
+            }
+        case .trainingDays, .sessionMinutes, .gym, .restrictions:
+            return (nil, nil)
         }
     }
 }

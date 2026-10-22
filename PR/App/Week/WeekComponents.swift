@@ -135,13 +135,17 @@ struct WeekListView: View {
                             .foregroundStyle(entry.isToday ? Color.primaryAction : Color.textSecondary)
                         Spacer()
                         if let minutes = session.estimatedMinutes {
-                            Text("~\(minutes) min")
+                            Label("~\(minutes) min", systemImage: "clock")
                                 .font(.footnote)
                                 .numericStyle()
                                 .foregroundStyle(Color.textSecondary)
                         }
                     }
-                    HStack(alignment: .firstTextBaseline) {
+                    HStack(alignment: .center, spacing: DSpace.s) {
+                        IconBadge(
+                            systemName: entry.status == .completed ? "checkmark" : "figure.strengthtraining.traditional",
+                            isHighlighted: entry.isToday || entry.status == .completed
+                        )
                         Text(vocabulary.sessionName(session.title))
                             .font(.title3.bold())
                             .foregroundStyle(Color.textPrimary)
@@ -153,7 +157,7 @@ struct WeekListView: View {
                     }
                     MuscleChips(muscles: session.muscles)
                     HStack {
-                        Text("\(session.exercises.count) ejercicios · \(session.workSetCount) series")
+                        Label("\(session.exercises.count) ejercicios · \(session.workSetCount) series", systemImage: "list.bullet")
                             .font(.footnote)
                             .numericStyle()
                             .foregroundStyle(Color.textSecondary)
@@ -191,7 +195,7 @@ struct WeekListView: View {
                 if entry.status == .completed {
                     DayStatusLabel(status: entry.status)
                 } else {
-                    Text("Descanso")
+                    Label("Descanso", systemImage: "moon.zzz")
                         .font(.subheadline)
                         .foregroundStyle(Color.textSecondary)
                 }
@@ -259,11 +263,14 @@ struct DayDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: DSpace.m) {
                     VStack(alignment: .leading, spacing: DSpace.xs) {
-                        Text(vocabulary.sessionName(session.title))
-                            .font(.title2.bold())
+                        HStack(spacing: DSpace.s) {
+                            IconBadge(systemName: "figure.strengthtraining.traditional", scale: 1.25)
+                            Text(vocabulary.sessionName(session.title))
+                                .font(.title2.bold())
+                        }
                         MuscleChips(muscles: session.muscles)
                         HStack {
-                            Text(WeekText.summary(session))
+                            Label(WeekText.summary(session), systemImage: "list.bullet")
                                 .font(.footnote)
                                 .numericStyle()
                                 .foregroundStyle(Color.textSecondary)
@@ -273,7 +280,7 @@ struct DayDetailView: View {
                     }
                     VStack(spacing: 0) {
                         ForEach(Array(session.exercises.enumerated()), id: \.element.id) { index, line in
-                            ExerciseLineRow(line: line, last: lastPerformance[line.exerciseID])
+                            ExerciseLineRow(line: line, last: lastPerformance[line.exerciseID], number: index + 1)
                                 .padding(.vertical, DSpace.s)
                                 .accessibilityIdentifier("day.exercise.\(index)")
                             if index < session.exercises.count - 1 {
@@ -314,11 +321,7 @@ struct DayDetailView: View {
 
     private var restDetail: some View {
         VStack(spacing: DSpace.m) {
-            Image(systemName: "bed.double.fill")
-                .font(.largeTitle)
-                .imageScale(.large)
-                .foregroundStyle(Color.textSecondary)
-                .accessibilityHidden(true)
+            IconBadge(systemName: "bed.double.fill", scale: 2.5)
             Text("Descanso")
                 .font(.title3.bold())
             Text("Este día toca recuperar.")
@@ -366,6 +369,8 @@ struct MuscleChips: View {
 struct ExerciseLineRow: View {
     let line: TodayExerciseLine
     let last: LastPerformance?
+    /// Posición en la sesión (1, 2, 3…): un número en círculo marca el orden de un vistazo.
+    var number: Int?
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private let vocabulary = TrainingVocabularyPresenter(locale: AppEnvironment.presentationLocale)
@@ -374,21 +379,35 @@ struct ExerciseLineRow: View {
         let layout = dynamicTypeSize.isAccessibilitySize
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: DSpace.xs))
             : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: DSpace.s))
-        layout {
-            VStack(alignment: .leading, spacing: DSpace.xs) {
-                Text(line.name ?? String(localized: "Ejercicio"))
-                    .foregroundStyle(Color.textPrimary)
-                if let last {
-                    Text(vocabulary.lastTime(last))
+        HStack(alignment: .firstTextBaseline, spacing: DSpace.s) {
+            // Los símbolos numerados existen del 0 al 50: más allá, sin número.
+            if let number, (0...50).contains(number) {
+                Image(systemName: "\(number).circle.fill")
+                    .font(.title3)
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(Color.onAccent, Color.primaryAction)
+                    .accessibilityHidden(true)
+            }
+            layout {
+                VStack(alignment: .leading, spacing: DSpace.xs) {
+                    Text(line.name ?? String(localized: "Ejercicio"))
+                        .foregroundStyle(Color.textPrimary)
+                    if let last {
+                        Label {
+                            Text(vocabulary.lastTime(last))
+                        } icon: {
+                            Image(systemName: "clock.arrow.circlepath")
+                        }
                         .font(.footnote)
                         .numericStyle()
                         .foregroundStyle(Color.textSecondary)
+                    }
                 }
+                if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: DSpace.s) }
+                Text(vocabulary.setsAndReps(sets: line.workSetCount, repRange: line.repRange))
+                    .numericStyle()
+                    .foregroundStyle(Color.textSecondary)
             }
-            if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: DSpace.s) }
-            Text(vocabulary.setsAndReps(sets: line.workSetCount, repRange: line.repRange))
-                .numericStyle()
-                .foregroundStyle(Color.textSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)

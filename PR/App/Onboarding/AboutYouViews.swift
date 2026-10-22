@@ -23,32 +23,34 @@ struct AboutYouView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: DSpace.xs) {
-                Text("Cuéntanos de ti")
-                    .font(.title2.bold())
-                    .accessibilityAddTraits(.isHeader)
-                    .accessibilityIdentifier("aboutYou.title")
-                Text("Con esto ajustamos tu plan. Toma menos de un minuto.")
-                    .font(.callout)
-                    .foregroundStyle(Color.textSecondary)
+            OnboardingCenteredScroll {
+                VStack(spacing: DSpace.l) {
+                    OnboardingHeader(
+                        icon: "person.crop.circle",
+                        eyebrow: "Antes de empezar",
+                        title: "Cuéntanos de ti",
+                        subtitle: "Con esto ajustamos tu plan. Toma menos de un minuto.",
+                        titleIdentifier: "aboutYou.title"
+                    )
+                    .padding(.top, DSpace.l)
+                    AboutYouFields(answer: answer, onChange: onChange)
+                }
             }
-            .padding(.horizontal, DSpace.l)
-            .padding(.top, DSpace.m)
-            .padding(.bottom, DSpace.s)
-            ScrollView {
-                AboutYouFields(answer: answer, onChange: onChange)
-                    .padding(.horizontal, DSpace.l)
-                    .padding(.vertical, DSpace.s)
+            VStack(spacing: DSpace.s) {
+                if !answer.isComplete {
+                    OnboardingNote(text: "Completa los datos obligatorios para continuar.")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                OnboardingPrimaryButton(
+                    title: "Continuar",
+                    icon: "chevron.right",
+                    state: answer.isComplete ? .ready : .needsAnswer,
+                    action: onContinue
+                )
+                .accessibilityIdentifier("aboutYou.continue")
             }
-            .scrollDismissesKeyboard(.interactively)
-            Button(action: onContinue) {
-                Label("Continuar", systemImage: "chevron.right")
-            }
-            .buttonStyle(.energy)
-            .disabled(!answer.isComplete)
             .padding(.horizontal, DSpace.l)
             .padding(.vertical, DSpace.m)
-            .accessibilityIdentifier("aboutYou.continue")
         }
         .screenBackground()
     }
@@ -63,21 +65,29 @@ struct AboutYouFields: View {
     @State private var weightText = ""
     /// Unidad de la estatura en el selector (se guarda siempre en cm). Por defecto, la de la región.
     @State private var heightInFeet = Locale.current.measurementSystem == .us
+    @FocusState private var focused: Focus?
     @ScaledMetric(relativeTo: .body) private var wheelHeight = DSize.wheelPicker
+    /// Mismo ancho para los dos selectores de unidad (cm/ft-in y kg/lb): quedan alineados.
+    @ScaledMetric(relativeTo: .body) private var unitWidth = DSize.unitPicker
+
+    private enum Focus { case name, weight }
 
     var body: some View {
         VStack(alignment: .leading, spacing: DSpace.l) {
-            field("Nombre", optional: true, purpose: "Para saludarte. No sale de tu iPhone.") {
+            OnboardingField(title: "Nombre", icon: "person.text.rectangle", optional: true, purpose: "Para saludarte. No sale de tu iPhone.") {
                 TextField("Cómo quieres que te llamemos", text: binding(\.name))
                     .textContentType(.givenName)
                     .textInputAutocapitalization(.words)
                     .autocorrectionDisabled()
-                    .inputSurface()
+                    .submitLabel(.next)
+                    .focused($focused, equals: .name)
+                    .onSubmit { focused = .weight }
+                    .onboardingInput(isFocused: focused == .name)
                     .accessibilityIdentifier("aboutYou.name")
                 issueText(for: .name)
             }
 
-            field("Edad", purpose: "Para saber si el plan es para ti y cuidar la progresión.") {
+            OnboardingField(title: "Edad", icon: "birthday.cake", purpose: "Para saber si el plan es para ti y cuidar la progresión.") {
                 Picker("Edad", selection: binding(\.age)) {
                     Text("Elige tu edad").tag(Int?.none)
                     ForEach(AboutYou.selectableAges, id: \.self) { age in
@@ -86,11 +96,17 @@ struct AboutYouFields: View {
                 }
                 .pickerStyle(.wheel)
                 .frame(height: wheelHeight)
+                .frame(maxWidth: .infinity)
+                .clipped()
+                .background(Color.surfaceElevated, in: RoundedRectangle(cornerRadius: DRadius.medium))
+                .overlay {
+                    RoundedRectangle(cornerRadius: DRadius.medium).strokeBorder(Color.hairline, lineWidth: 1)
+                }
                 .accessibilityIdentifier("aboutYou.age")
                 issueText(for: .age)
             }
 
-            field("Sexo", purpose: "Para cargas iniciales de referencia. Nunca cambia las reglas de seguridad.") {
+            OnboardingField(title: "Sexo", icon: "person.2", purpose: "Para cargas iniciales de referencia. Nunca cambia las reglas de seguridad.") {
                 VStack(spacing: DSpace.s) {
                     ForEach(DeclaredSex.allCases, id: \.self) { sex in
                         sexOption(sex)
@@ -98,35 +114,26 @@ struct AboutYouFields: View {
                 }
             }
 
-            field("Estatura", optional: true, purpose: "Contexto de tu perfil; hoy ningún cálculo la usa.") {
+            OnboardingField(title: "Estatura", icon: "ruler", optional: true, purpose: "Contexto de tu perfil; hoy ningún cálculo la usa.") {
                 HStack(spacing: DSpace.s) {
                     heightPicker
-                    Picker("Unidad de estatura", selection: $heightInFeet) {
-                        Text("cm").tag(false)
-                        Text("ft/in").tag(true)
-                    }
-                    .pickerStyle(.segmented)
-                    .fixedSize()
-                    .accessibilityIdentifier("aboutYou.heightUnit")
+                    unitPicker("Unidad de estatura", selection: $heightInFeet, options: [(false, "cm"), (true, "ft/in")])
+                        .accessibilityIdentifier("aboutYou.heightUnit")
                 }
                 issueText(for: .height)
             }
 
-            field("Peso", purpose: "Para ejercicios con tu peso corporal y las fases de definición o volumen.") {
+            OnboardingField(title: "Peso", icon: "scalemass", purpose: "Para ejercicios con tu peso corporal y las fases de definición o volumen.") {
                 HStack(spacing: DSpace.s) {
                     TextField("Ej. 72.5", text: $weightText)
                         .keyboardType(.decimalPad)
                         .numericStyle()
-                        .inputSurface()
+                        .focused($focused, equals: .weight)
+                        .onboardingInput(isFocused: focused == .weight)
                         .accessibilityLabel("Peso")
                         .accessibilityIdentifier("aboutYou.weight")
-                    Picker("Unidad", selection: binding(\.weightUnit)) {
-                        Text("kg").tag(LoadUnit.kilograms)
-                        Text("lb").tag(LoadUnit.pounds)
-                    }
-                    .pickerStyle(.segmented)
-                    .fixedSize()
-                    .accessibilityIdentifier("aboutYou.weightUnit")
+                    unitPicker("Unidad", selection: binding(\.weightUnit), options: [(LoadUnit.kilograms, "kg"), (LoadUnit.pounds, "lb")])
+                        .accessibilityIdentifier("aboutYou.weightUnit")
                 }
                 if weightTextIsUnreadable {
                     issueLabel("Escribe tu peso con números, por ejemplo 72.5.", identifier: "aboutYou.issue.weight")
@@ -151,17 +158,33 @@ struct AboutYouFields: View {
         }
     }
 
+    /// Selector de unidad junto a un campo: segmentado, con el mismo alto que el campo.
+    private func unitPicker<Value: Hashable>(
+        _ title: LocalizedStringKey,
+        selection: Binding<Value>,
+        options: [(Value, String)]
+    ) -> some View {
+        Picker(title, selection: selection) {
+            ForEach(options.indices, id: \.self) { index in
+                Text(options[index].1).tag(options[index].0)
+            }
+        }
+        .pickerStyle(.segmented)
+        .controlSize(.large)
+        .frame(width: unitWidth)
+    }
+
     // MARK: Estatura
 
     /// Selector de estatura en cm o en pies y pulgadas; siempre registra centímetros.
-    @ViewBuilder
+    /// Menú con etiqueta propia: el texto arranca en el mismo margen que los demás campos.
     private var heightPicker: some View {
-        Group {
+        Menu {
             if heightInFeet {
                 Picker("Estatura", selection: inchesBinding) {
                     Text("Sin indicar").tag(Int?.none)
                     ForEach(AboutYou.selectableInches, id: \.self) { inches in
-                        Text("\(inches / 12) ft \(inches % 12) in").tag(Int?.some(inches))
+                        Text(Self.feetAndInches(inches)).tag(Int?.some(inches))
                     }
                 }
             } else {
@@ -172,12 +195,36 @@ struct AboutYouFields: View {
                     }
                 }
             }
+        } label: {
+            HStack(spacing: DSpace.s) {
+                heightText
+                    .numericStyle()
+                    .foregroundStyle(answer.heightCentimeters == nil ? Color.textSecondary : Color.textPrimary)
+                Spacer(minLength: DSpace.s)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color.textSecondary)
+                    .accessibilityHidden(true)
+            }
+            .onboardingInput()
+            .contentShape(RoundedRectangle(cornerRadius: DRadius.medium))
         }
-        .pickerStyle(.menu)
-        .tint(Color.textPrimary)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .inputSurface()
+        .accessibilityLabel("Estatura")
+        .accessibilityValue(heightText)
         .accessibilityIdentifier("aboutYou.height")
+    }
+
+    /// Estatura elegida en la unidad del selector, o "Sin indicar".
+    private var heightText: Text {
+        guard let centimeters = answer.heightCentimeters else { return Text("Sin indicar") }
+        if heightInFeet {
+            return Text(Self.feetAndInches(AboutYou.inches(fromCentimeters: centimeters)))
+        }
+        return Text("\(centimeters) cm")
+    }
+
+    private static func feetAndInches(_ inches: Int) -> String {
+        "\(inches / 12) ft \(inches % 12) in"
     }
 
     /// Pulgadas ↔ centímetros guardados (la conversión es del dominio).
@@ -236,9 +283,7 @@ struct AboutYouFields: View {
     }
 
     private func issueLabel(_ text: LocalizedStringKey, identifier: String) -> some View {
-        Label(text, systemImage: "exclamationmark.circle")
-            .font(.callout)
-            .foregroundStyle(Color.warning)
+        OnboardingNote(text: text, tone: .warning)
             .accessibilityIdentifier(identifier)
     }
 
@@ -257,57 +302,21 @@ struct AboutYouFields: View {
         )
     }
 
-    private func field<Content: View>(
-        _ title: LocalizedStringKey,
-        optional: Bool = false,
-        purpose: LocalizedStringKey,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: DSpace.s) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(title)
-                    .font(.headline)
-                if optional {
-                    Text("Opcional")
-                        .font(.caption)
-                        .foregroundStyle(Color.textSecondary)
-                }
-            }
-            content()
-            Text(purpose)
-                .font(.footnote)
-                .foregroundStyle(Color.textSecondary)
-        }
-    }
-
     private func sexOption(_ sex: DeclaredSex) -> some View {
-        let isSelected = answer.sex == sex
-        return Button {
+        OnboardingChoiceRow(title: Text(Self.label(sex)), icon: Self.icon(sex), isSelected: answer.sex == sex) {
             var copy = answer
             copy.sex = sex
             onChange(copy)
-        } label: {
-            HStack {
-                Text(Self.label(sex))
-                    .foregroundStyle(Color.textPrimary)
-                Spacer()
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(Color.primaryAction)
-                }
-            }
-            .padding(DSpace.m)
-            .frame(minHeight: DSize.dayChip)
-            .background(RoundedRectangle(cornerRadius: DRadius.small).fill(Color.surface))
-            .overlay(
-                RoundedRectangle(cornerRadius: DRadius.small)
-                    .strokeBorder(isSelected ? Color.primaryAction : Color.hairline, lineWidth: isSelected ? 2 : 1)
-            )
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(Self.label(sex)))
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityIdentifier("aboutYou.sex.\(sex.rawValue)")
+    }
+
+    private static func icon(_ sex: DeclaredSex) -> String {
+        switch sex {
+        case .male: "figure.stand"
+        case .female: "figure.stand.dress"
+        case .undisclosed: "hand.raised"
+        }
     }
 
     static func label(_ sex: DeclaredSex) -> LocalizedStringKey {
@@ -316,19 +325,6 @@ struct AboutYouFields: View {
         case .female: "Mujer"
         case .undisclosed: "Prefiero no decir"
         }
-    }
-}
-
-private extension View {
-    /// Campo de entrada sobre superficie elevada (texto primario: 13.7:1).
-    func inputSurface() -> some View {
-        padding(DSpace.m)
-            .frame(minHeight: DSize.dayChip)
-            .background(Color.surfaceElevated, in: RoundedRectangle(cornerRadius: DRadius.small))
-            .overlay {
-                RoundedRectangle(cornerRadius: DRadius.small)
-                    .strokeBorder(Color.hairline, lineWidth: 1)
-            }
     }
 }
 
