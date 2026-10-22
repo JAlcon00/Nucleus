@@ -13,6 +13,8 @@ import SwiftUI
 
 struct FlowLayout: Layout {
     var spacing: CGFloat = DSpace.xs
+    /// Separación entre filas; por defecto la misma que entre vistas.
+    var lineSpacing: CGFloat?
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         arrange(width: proposal.width ?? .infinity, subviews: subviews).size
@@ -28,25 +30,34 @@ struct FlowLayout: Layout {
         }
     }
 
-    /// Posición de cada vista y tamaño total, llenando filas de izquierda a derecha.
+    /// Posición de cada vista y tamaño total, llenando filas de izquierda a derecha. Cada
+    /// vista queda centrada en vertical dentro de su fila (una etiqueta junto a texto).
     private func arrange(width: CGFloat, subviews: Subviews) -> (origins: [CGPoint], size: CGSize) {
-        var origins: [CGPoint] = []
+        let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        var rows: [[Int]] = [[]]
         var x: CGFloat = 0
-        var y: CGFloat = 0
-        var rowHeight: CGFloat = 0
-        var widest: CGFloat = 0
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
+        for (index, size) in sizes.enumerated() {
             if x > 0, x + size.width > width {
+                rows.append([])
                 x = 0
-                y += rowHeight + spacing
-                rowHeight = 0
             }
-            origins.append(CGPoint(x: x, y: y))
+            rows[rows.count - 1].append(index)
             x += size.width + spacing
-            rowHeight = max(rowHeight, size.height)
-            widest = max(widest, x - spacing)
         }
-        return (origins, CGSize(width: widest, height: y + rowHeight))
+        var origins = Array(repeating: CGPoint.zero, count: sizes.count)
+        var y: CGFloat = 0
+        var widest: CGFloat = 0
+        for row in rows where !row.isEmpty {
+            let rowHeight = row.map { sizes[$0].height }.max() ?? 0
+            var rowX: CGFloat = 0
+            for index in row {
+                origins[index] = CGPoint(x: rowX, y: y + (rowHeight - sizes[index].height) / 2)
+                rowX += sizes[index].width + spacing
+            }
+            widest = max(widest, rowX - spacing)
+            y += rowHeight + (lineSpacing ?? spacing)
+        }
+        let height = max(y - (lineSpacing ?? spacing), 0)
+        return (origins, CGSize(width: widest, height: height))
     }
 }

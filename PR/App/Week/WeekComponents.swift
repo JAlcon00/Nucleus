@@ -391,10 +391,15 @@ struct ExerciseLineRow: View {
             }
             layout {
                 VStack(alignment: .leading, spacing: DSpace.xs) {
-                    Text(line.name ?? String(localized: "Ejercicio"))
-                        .foregroundStyle(Color.textPrimary)
-                    if let jointClass = line.jointClass {
-                        ExerciseKindTag(jointClass: jointClass)
+                    // La etiqueta sigue al nombre como una palabra más: si no cabe en la
+                    // línea, baja completa (nunca aprieta el nombre ni se corta).
+                    FlowLayout(spacing: DSpace.xs, lineSpacing: 0) {
+                        ForEach(Array(nameWords.enumerated()), id: \.offset) { _, word in
+                            Text(word).foregroundStyle(Color.textPrimary)
+                        }
+                        if let jointClass = line.jointClass {
+                            ExerciseKindTag(jointClass: jointClass)
+                        }
                     }
                     if let last {
                         Label {
@@ -415,6 +420,11 @@ struct ExerciseLineRow: View {
         .accessibilityElement(children: .combine)
     }
 
+    /// El nombre por palabras, para que la etiqueta fluya justo después de la última.
+    private var nameWords: [String] {
+        (line.name ?? String(localized: "Ejercicio")).split(separator: " ").map(String.init)
+    }
+
     /// "3 series" (destacado) y debajo "8–12 reps": explícito, sin el "3 × 8–12" que hay
     /// que saber leer.
     private var prescription: some View {
@@ -433,8 +443,10 @@ struct ExerciseLineRow: View {
     }
 }
 
-/// Etiqueta del tipo de ejercicio. Compuesto: varias articulaciones (suele ir primero y
-/// mover más carga); aislado: una sola. Icono + texto, nunca sólo color.
+/// Etiqueta del tipo de ejercicio, compacta como etiqueta de precio junto al nombre.
+/// Compuesto (varias articulaciones): rellena con el acento y texto `onAccent` (5.51:1).
+/// Aislado (una articulación): superficie elevada y texto primario. Icono + texto, nunca
+/// sólo color.
 struct ExerciseKindTag: View {
     let jointClass: JointClass
 
@@ -442,20 +454,26 @@ struct ExerciseKindTag: View {
 
     var body: some View {
         let isCompound = jointClass == .multiJoint
-        Label {
-            Text(vocabulary.exerciseKind(jointClass))
-                .foregroundStyle(Color.textPrimary)
-        } icon: {
+        HStack(spacing: DSpace.xs / 2) {
             Image(systemName: isCompound ? "square.stack.3d.up.fill" : "scope")
-                .foregroundStyle(isCompound ? Color.primaryAction : Color.textSecondary)
+                .imageScale(.small)
+            Text(vocabulary.exerciseKind(jointClass).uppercased(with: AppEnvironment.presentationLocale))
+                .tracking(0.4)
         }
-        .font(.caption.weight(.semibold))
-        .padding(.horizontal, DSpace.s)
-        .padding(.vertical, DSpace.xs)
-        .background(Color.surfaceElevated, in: Capsule())
+        .font(.caption2.weight(.bold))
+        .foregroundStyle(isCompound ? Color.onAccent : Color.textPrimary)
+        .padding(.horizontal, DSpace.xs + DSpace.xs / 2)
+        .padding(.vertical, DSpace.xs / 2)
+        .background(
+            isCompound ? AnyShapeStyle(Color.primaryAction) : AnyShapeStyle(Color.surfaceElevated),
+            in: RoundedRectangle(cornerRadius: DRadius.small / 2)
+        )
         .overlay {
-            Capsule().strokeBorder(isCompound ? Color.primaryAction.opacity(0.6) : Color.hairline, lineWidth: 1)
+            RoundedRectangle(cornerRadius: DRadius.small / 2)
+                .strokeBorder(isCompound ? Color.clear : Color.hairline, lineWidth: 1)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(vocabulary.exerciseKind(jointClass))
         .accessibilityIdentifier("exercise.kind")
     }
 }
