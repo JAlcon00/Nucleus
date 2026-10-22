@@ -44,9 +44,22 @@ final class PRUITests: XCTestCase {
         target.tap()
     }
 
+    /// "Cuéntanos de ti" (SCRUM-198): edad en la rueda, sexo y peso; luego Continuar.
+    private func completeAboutYou(_ app: XCUIApplication, age: Int = 30, file: StaticString = #filePath, line: UInt = #line) {
+        let wheel = app.pickerWheels.firstMatch
+        XCTAssertTrue(wheel.waitForExistence(timeout: 10), "No aparece la edad", file: file, line: line)
+        wheel.adjust(toPickerWheelValue: "\(age) años")
+        tap(app, "aboutYou.sex.male", file: file, line: line)
+        let weight = element(app, "aboutYou.weight")
+        weight.tap()
+        weight.typeText("72")
+        tap(app, "aboutYou.continue", file: file, line: line)
+    }
+
     /// Recorre el cuestionario completo hasta llegar a Hoy (días: los chips elegidos;
     /// por defecto lunes, miércoles y viernes).
     private func completeOnboarding(_ app: XCUIApplication, days: Set<String> = ["monday", "wednesday", "friday"]) {
+        completeAboutYou(app)
         tap(app, "onboarding.option.hypertrophy"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.maintenance"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.intermediate"); tap(app, "onboarding.next")
@@ -95,10 +108,32 @@ final class PRUITests: XCTestCase {
         for _ in 0..<presses { button.tap() }
     }
 
+    // MARK: - Sobre ti (SCRUM-198)
+
+    /// Lo primero tras iniciar sesión es "Cuéntanos de ti"; con menos de 18 años se explica
+    /// y no se puede continuar.
+    func testAboutYouComesFirstAndNeedsAnAdult() {
+        let app = launch()
+        XCTAssertTrue(element(app, "aboutYou.title").waitForExistence(timeout: 10))
+        XCTAssertFalse(element(app, "aboutYou.continue").isEnabled, "Sin datos no se continúa")
+        let wheel = app.pickerWheels.firstMatch
+        XCTAssertTrue(wheel.waitForExistence(timeout: 10))
+        wheel.adjust(toPickerWheelValue: "17 años")
+        tap(app, "aboutYou.sex.female")
+        let weight = element(app, "aboutYou.weight")
+        weight.tap()
+        weight.typeText("60")
+        XCTAssertTrue(element(app, "aboutYou.underage").waitForExistence(timeout: 5), "Debe explicar el mínimo de 18")
+        XCTAssertFalse(element(app, "aboutYou.continue").isEnabled, "Con 17 años no se arma plan")
+        wheel.adjust(toPickerWheelValue: "18 años")
+        XCTAssertTrue(element(app, "aboutYou.continue").isEnabled)
+    }
+
     // MARK: - Cuestionario
 
     func testOnboardingOptionsAreInSpanish() {
         let app = launch()
+        completeAboutYou(app)
         XCTAssertTrue(element(app, "onboarding.option.hypertrophy").waitForExistence(timeout: 10))
         XCTAssertEqual(element(app, "onboarding.option.hypertrophy").label, "Hipertrofia")
         XCTAssertEqual(element(app, "onboarding.option.generalHealth").label, "Salud general")
@@ -108,6 +143,7 @@ final class PRUITests: XCTestCase {
 
     func testSelectedOptionIsMarked() {
         let app = launch()
+        completeAboutYou(app)
         tap(app, "onboarding.option.strength")
         XCTAssertTrue(element(app, "onboarding.option.strength").isSelected, "La opción elegida no se ve marcada")
         XCTAssertFalse(element(app, "onboarding.option.hypertrophy").isSelected)
@@ -115,12 +151,14 @@ final class PRUITests: XCTestCase {
 
     func testOneTapOnAnOptionDoesNotSkipSteps() {
         let app = launch()
+        completeAboutYou(app)
         tap(app, "onboarding.option.hypertrophy")
         XCTAssertTrue(app.staticTexts["Paso 1 de 8"].exists, "Un toque no debe cambiar de paso")
     }
 
     func testDefaultDaysAndMinutesCanAdvanceWithoutTouchingTheSteppers() {
         let app = launch()
+        completeAboutYou(app)
         tap(app, "onboarding.option.hypertrophy"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.maintenance"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.intermediate"); tap(app, "onboarding.next")
@@ -131,6 +169,7 @@ final class PRUITests: XCTestCase {
     /// SCRUM-196: los días se eligen con chips; con uno solo no se puede avanzar.
     func testChoosingDaysNeedsAtLeastTwo() {
         let app = launch()
+        completeAboutYou(app)
         tap(app, "onboarding.option.hypertrophy"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.maintenance"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.intermediate"); tap(app, "onboarding.next")

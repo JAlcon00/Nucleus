@@ -6,12 +6,20 @@
 //
 //  Pestaña "Perfil" (SKILL §6). SCRUM-195: aquí viven las acciones terciarias que antes
 //  estaban en Hoy (restricciones, rehacer cuestionario, exportar), para que Hoy tenga una
-//  sola acción. Vista de composición: no contiene reglas de negocio.
+//  sola acción. SCRUM-198: "Sobre ti" se consulta y se edita aquí. Vista de composición:
+//  no contiene reglas de negocio.
 //
 
 import SwiftUI
+import PRDomain
 
 struct ProfileView: View {
+    /// "Sobre ti" guardado; `nil` en un perfil anterior (se ofrece completarlo).
+    var aboutYou: AboutYou?
+    /// "Hoy" del reloj de la app (para mostrar la edad a partir del año de nacimiento).
+    var now = Date()
+    /// Intento: completar o editar "Sobre ti".
+    var onEditAboutYou: () -> Void = {}
     /// Intento: rehacer el cuestionario (mismo flujo que un cambio de plan).
     var onRedoQuestionnaire: () -> Void = {}
 
@@ -20,6 +28,8 @@ struct ProfileView: View {
     var body: some View {
         NavigationStack {
             List {
+                aboutYouSection
+
                 Section("Mi entrenamiento") {
                     NavigationLink {
                         RestrictionManagementView(
@@ -73,11 +83,62 @@ struct ProfileView: View {
             }
         }
     }
+
+    private var aboutYouSection: some View {
+        Section {
+            if let aboutYou {
+                if let name = aboutYou.name {
+                    LabeledContent("Nombre", value: name)
+                }
+                LabeledContent("Edad") {
+                    Text("\(aboutYou.age(on: now, timeZone: .current)) años").numericStyle()
+                }
+                LabeledContent("Sexo") {
+                    Text(AboutYouFields.label(aboutYou.sex))
+                }
+                if let height = aboutYou.heightCentimeters {
+                    LabeledContent("Estatura") {
+                        Text("\(height) cm").numericStyle()
+                    }
+                }
+                LabeledContent("Peso") {
+                    Text(Self.weightText(aboutYou)).numericStyle()
+                }
+                Button("Editar", action: onEditAboutYou)
+                    .accessibilityIdentifier("profile.aboutYou.edit")
+            } else {
+                Button(action: onEditAboutYou) {
+                    Label("Completa tu perfil", systemImage: "person.crop.circle.badge.plus")
+                }
+                .accessibilityIdentifier("profile.aboutYou.complete")
+            }
+        } header: {
+            Text("Sobre ti")
+        } footer: {
+            Text("Se guarda solo en tu iPhone.")
+                .foregroundStyle(Color.textSecondary)
+        }
+        .listRowBackground(Color.surface)
+    }
+
+    private static func weightText(_ aboutYou: AboutYou) -> String {
+        let unit: UnitMass = aboutYou.weightUnit == .pounds ? .pounds : .kilograms
+        return Measurement(value: aboutYou.weight, unit: unit).formatted(
+            .measurement(width: .abbreviated, usage: .asProvided, numberFormatStyle: .number.precision(.fractionLength(0...1)))
+        )
+    }
 }
 
-#Preview {
+#Preview("Sin 'Sobre ti'") {
     ProfileView()
         .ironEnergyTheme()
+}
+
+#Preview("Con 'Sobre ti'") {
+    ProfileView(aboutYou: try? AboutYou(
+        name: "Ana", birthYear: 1992, sex: .female, heightCentimeters: 165, weight: 61.5, weightUnit: .kilograms
+    ))
+    .ironEnergyTheme()
 }
 
 #Preview("accessibility3") {

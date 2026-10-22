@@ -26,6 +26,13 @@ struct AppRootView: View {
                 SignInView(onSignIn: { await environment.session.signIn() })
             case .signingIn:
                 SigningInView(onRetry: { Task { await environment.session.retrySignIn() } })
+            case .onboarding where environment.onboarding.needsAboutYou:
+                // "Sobre ti" va antes del primer paso (SCRUM-198).
+                AboutYouView(
+                    answer: environment.onboarding.aboutYouAnswer,
+                    onChange: { environment.onboarding.updateAboutYou($0) },
+                    onContinue: { environment.onboarding.confirmAboutYou() }
+                )
             case .onboarding(let step, let index, let canGoBack, let canAdvance, let isAtEnd):
                 OnboardingStepView(
                     step: step,

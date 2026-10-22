@@ -79,6 +79,8 @@ public enum PlanChange: Equatable, Sendable {
     case regenerateInPlace
     /// Cambió objetivo, fase o número de días: bloque nuevo; el anterior se cierra y se conserva.
     case newBlock
+    /// Sólo cambió "Sobre ti" (SCRUM-198): se guarda el perfil; el bloque sigue igual.
+    case updateProfileOnly
 }
 
 public enum PlanChangeDecider {
@@ -86,6 +88,9 @@ public enum PlanChangeDecider {
         if old.goal != new.goal || old.phase != new.phase || old.trainingDaysPerWeek != new.trainingDaysPerWeek {
             return .newBlock
         }
-        return old == new ? .unchanged : .regenerateInPlace
+        if old.trainingFields == new.trainingFields {
+            return old.aboutYou == new.aboutYou ? .unchanged : .updateProfileOnly
+        }
+        return .regenerateInPlace
     }
 }

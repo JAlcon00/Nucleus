@@ -145,6 +145,9 @@ public struct OnboardingProfile: Codable, Sendable, Hashable {
     public var varietyPreference: VarietyPreference
     public var defaultGymID: GymID?
     public var restrictions: [TrainingRestriction]
+    /// "Sobre ti" (SCRUM-198). `nil` en perfiles anteriores: se pide completarlo una vez,
+    /// sin bloquear Hoy. No define el bloque: cambiarlo no regenera el plan.
+    public var aboutYou: AboutYou?
 
     /// Perfil de "N días": los primeros N desde el lunes (el comportamiento anterior a
     /// SCRUM-196). Lo usan los perfiles guardados antes y los tests.
@@ -192,6 +195,13 @@ public struct OnboardingProfile: Codable, Sendable, Hashable {
         self.restrictions = restrictions
     }
 
+    /// El perfil sin "Sobre ti": lo que define el plan de entrenamiento.
+    public var trainingFields: OnboardingProfile {
+        var copy = self
+        copy.aboutYou = nil
+        return copy
+    }
+
     /// Semana del perfil: los días elegidos (o los primeros N de un perfil de "N días").
     public func trainingWeek() throws -> TrainingWeek {
         if let trainingWeekdays {
@@ -204,7 +214,7 @@ public struct OnboardingProfile: Codable, Sendable, Hashable {
 
     private enum CodingKeys: String, CodingKey {
         case goal, phase, experience, trainingDaysPerWeek, trainingWeekdays
-        case usualSessionMinutes, varietyPreference, defaultGymID, restrictions
+        case usualSessionMinutes, varietyPreference, defaultGymID, restrictions, aboutYou
     }
 
     public init(from decoder: Decoder) throws {
@@ -232,6 +242,8 @@ public struct OnboardingProfile: Codable, Sendable, Hashable {
         varietyPreference = try container.decode(VarietyPreference.self, forKey: .varietyPreference)
         defaultGymID = try container.decodeIfPresent(GymID.self, forKey: .defaultGymID)
         restrictions = try container.decode([TrainingRestriction].self, forKey: .restrictions)
+        // Perfil anterior a SCRUM-198: sin "Sobre ti".
+        aboutYou = try container.decodeIfPresent(AboutYou.self, forKey: .aboutYou)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -247,6 +259,7 @@ public struct OnboardingProfile: Codable, Sendable, Hashable {
         try container.encode(varietyPreference, forKey: .varietyPreference)
         try container.encodeIfPresent(defaultGymID, forKey: .defaultGymID)
         try container.encode(restrictions, forKey: .restrictions)
+        try container.encodeIfPresent(aboutYou, forKey: .aboutYou)
     }
 }
 

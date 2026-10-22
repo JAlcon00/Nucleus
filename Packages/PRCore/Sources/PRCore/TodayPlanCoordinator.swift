@@ -570,6 +570,11 @@ public final class TodayPlanCoordinator {
             generation = .idle
             return true
         }
+        if let activeProfile, plan != nil, activeProfile.trainingFields == profile.trainingFields {
+            // Sólo cambió "Sobre ti" (SCRUM-198): se guarda el perfil; el bloque no cambia y
+            // Hoy no pasa por "cargando".
+            return await saveProfileOnly(profile, userID: userID)
+        }
         guard let userID, let planStore else {
             return load(profile: profile)
         }
@@ -592,6 +597,15 @@ public final class TodayPlanCoordinator {
                 )
                 activeProfile = profile
                 generation = .idle
+                return true
+            case .updateProfileOnly:
+                guard let previous else { return failActivation() }
+                var stored = previous.plan
+                stored.profile = profile
+                stored.updatedAt = saveClock()
+                generation = .saving
+                await persist(stored, block: previous.block, closing: nil, store: planStore)
+                try show(profile: profile, block: previous.block, explanation: previous.plan.explanation)
                 return true
             case .regenerateInPlace:
                 guard let previous else { return failActivation() }
@@ -646,6 +660,19 @@ public final class TodayPlanCoordinator {
         )
         activeProfile = profile
         generation = .idle
+    }
+
+    /// Guarda el perfil con su "Sobre ti" nuevo sobre el mismo bloque (SCRUM-198).
+    private func saveProfileOnly(_ profile: OnboardingProfile, userID: String?) async -> Bool {
+        activeProfile = profile
+        guard let userID, let planStore,
+              case .loaded(var stored, let block) = await planStore.loadPlan(userID: userID) else {
+            return true
+        }
+        stored.profile = profile
+        stored.updatedAt = saveClock()
+        await persist(stored, block: block, closing: nil, store: planStore)
+        return true
     }
 
     /// No se pudo generar el plan: se dice (nunca se inventa uno ni se muestra descanso).

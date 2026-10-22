@@ -128,6 +128,15 @@ public final class AppEnvironment {
         todayPlan.refreshState(activeSession: record)
     }
 
+    /// "Hoy" del reloj de la app (fijo en las pruebas de UI).
+    public var now: Date { clock() }
+
+    /// Perfil de la sesión ya contestado; `nil` mientras no hay plan.
+    public var completedProfile: OnboardingProfile? {
+        if case .completed(let profile) = onboarding.phase { return profile }
+        return nil
+    }
+
     private var exerciseNames: [ExerciseID: String] {
         Dictionary(catalog.exercises.map { ($0.id, $0.canonicalName) }, uniquingKeysWith: { first, _ in first })
     }
@@ -193,11 +202,15 @@ public final class AppEnvironment {
         #endif
         let mode = AuthLaunchMode.resolve(arguments: ProcessInfo.processInfo.arguments, isDebugBuild: isDebugBuild)
         self.authMode = mode
-        self.onboarding = OnboardingCoordinator(
-            authProvider: authProvider ?? mode.provider(appleID: SignInWithAppleProvider())
-        )
         let testOptions = UITestLaunchOptions.resolve(
             arguments: ProcessInfo.processInfo.arguments, isDebugBuild: isDebugBuild
+        )
+        // Con `-PRFixedDate` (sólo Debug) "hoy" es ese día; si no, el reloj real.
+        let fixedDate = testOptions.fixedDate(timeZone: .current)
+        self.fixedDate = fixedDate
+        self.onboarding = OnboardingCoordinator(
+            authProvider: authProvider ?? mode.provider(appleID: SignInWithAppleProvider()),
+            clock: { fixedDate ?? Date() }
         )
         self.basePersistence = persistence ?? Self.makeDefaultPersistence(isolated: testOptions.isolatedPersistence ? testOptions.isolatedDirectoryName : nil)
         let resolvedCatalog: ExerciseCatalog
@@ -215,9 +228,6 @@ public final class AppEnvironment {
             )
         }
         self.catalog = resolvedCatalog
-        // Con `-PRFixedDate` (sólo Debug) "hoy" es ese día; si no, el reloj real.
-        let fixedDate = testOptions.fixedDate(timeZone: .current)
-        self.fixedDate = fixedDate
         var planStore: PlanStore?
         if let persistence = self.basePersistence {
             do {
@@ -235,7 +245,8 @@ public final class AppEnvironment {
         self.session = AppSessionCoordinator(
             onboarding: self.onboarding,
             todayPlan: self.todayPlan,
-            planStore: planStore
+            planStore: planStore,
+            clock: { fixedDate ?? Date() }
         )
     }
 

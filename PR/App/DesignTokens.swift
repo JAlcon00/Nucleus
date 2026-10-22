@@ -56,6 +56,8 @@ enum DSize {
     static let markStroke: CGFloat = 2
     /// Trazo punteado de un día no realizado (no es un error: sólo se informa).
     static let missedDash: [CGFloat] = [3, 3]
+    /// Alto del selector de rueda (edad en "Sobre ti").
+    static let wheelPicker: CGFloat = 120
 }
 
 /// Tokens de movimiento. Con Reduce Motion se sustituye el desplazamiento/escala por un

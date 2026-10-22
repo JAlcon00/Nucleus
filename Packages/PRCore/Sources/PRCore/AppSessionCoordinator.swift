@@ -25,10 +25,36 @@ public final class AppSessionCoordinator {
     /// "Reintentar" pidió relanzar el inicio de sesión al terminar el intento cancelado.
     private var retryRequested = false
 
-    public init(onboarding: OnboardingCoordinator, todayPlan: TodayPlanCoordinator, planStore: PlanStore?) {
+    private let clock: () -> Date
+    private let timeZone: () -> TimeZone
+
+    public init(
+        onboarding: OnboardingCoordinator,
+        todayPlan: TodayPlanCoordinator,
+        planStore: PlanStore?,
+        clock: @escaping () -> Date = { Date() },
+        timeZone: @escaping () -> TimeZone = { .current }
+    ) {
         self.onboarding = onboarding
         self.todayPlan = todayPlan
         self.planStore = planStore
+        self.clock = clock
+        self.timeZone = timeZone
+    }
+
+    /// "Sobre ti" editado desde Perfil o completado tras el aviso (SCRUM-198). Actualiza el
+    /// perfil de la sesión; la activación lo guarda sin tocar el bloque. Devuelve `false` si
+    /// la respuesta no es válida (p. ej. menos de 18 años): no se guarda nada.
+    @discardableResult
+    public func updateAboutYou(_ answer: AboutYouAnswer) async -> Bool {
+        guard case .completed(var profile) = onboarding.phase,
+              answer.isComplete,
+              let aboutYou = try? answer.aboutYou(on: clock(), timeZone: timeZone()) else {
+            return false
+        }
+        profile.aboutYou = aboutYou
+        onboarding.showCompleted(profile)
+        return await todayPlan.activate(profile: profile, userID: onboarding.auth.profile?.userIdentifier)
     }
 
     /// Arranque de la app. `autoSignIn` es el modo simulado de Debug.

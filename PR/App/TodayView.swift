@@ -39,6 +39,12 @@ struct TodayView: View {
     var week: WeekOverview?
     /// "Última vez" por ejercicio (M1).
     var lastPerformance: [ExerciseID: LastPerformance] = [:]
+    /// Nombre para el saludo ("Hola, Ana"), si la persona lo dio (SCRUM-198).
+    var greetingName: String?
+    /// Perfil anterior sin "Sobre ti": aviso único para completarlo (no bloquea Hoy).
+    var asksToCompleteProfile = false
+    var onCompleteProfile: () -> Void = {}
+    var onDismissProfilePrompt: () -> Void = {}
 
     @State private var showingOrder = false
     /// Día de la tira abierto en detalle.
@@ -81,7 +87,11 @@ struct TodayView: View {
         }
         .accessibilityElement(children: .contain)
         .safeAreaInset(edge: .top) {
-            if let notice { noticeBanner(notice) }
+            if let notice {
+                noticeBanner(notice)
+            } else if asksToCompleteProfile, case .ready = screen {
+                profilePrompt
+            }
         }
     }
 
@@ -121,6 +131,34 @@ struct TodayView: View {
         .padding(.horizontal, 24)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("today.notice")
+    }
+
+    /// "Completa tu perfil" (SCRUM-198): una sola vez y sin bloquear Hoy.
+    private var profilePrompt: some View {
+        VStack(alignment: .leading, spacing: DSpace.s) {
+            Label("Completa tu perfil", systemImage: "person.crop.circle.badge.plus")
+                .font(.headline)
+            Text("Edad, sexo y peso ayudan a ajustar tus cargas iniciales. Se guardan solo en tu iPhone.")
+                .font(.callout)
+                .foregroundStyle(Color.textSecondary)
+            HStack(spacing: DSpace.m) {
+                Button("Completar", action: onCompleteProfile)
+                    .font(.callout.bold())
+                    .frame(minHeight: DSize.dayChip)
+                    .accessibilityIdentifier("today.profilePrompt.complete")
+                Button("Ahora no", action: onDismissProfilePrompt)
+                    .font(.callout)
+                    .foregroundStyle(Color.textSecondary)
+                    .frame(minHeight: DSize.dayChip)
+                    .accessibilityIdentifier("today.profilePrompt.dismiss")
+            }
+        }
+        .padding(DSpace.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardSurface(cornerRadius: DRadius.medium)
+        .padding(.horizontal, 24)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("today.profilePrompt")
     }
 
     private static func text(for notice: TodayPlanNotice) -> String {
@@ -226,6 +264,11 @@ struct TodayView: View {
     private func readyView(_ presentation: SessionPresentation) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
+                if let greetingName {
+                    Text("Hola, \(greetingName)")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.textSecondary)
+                }
                 Text(vocabulary.sessionName(presentation.title))
                     .font(.title2.bold())
                 sessionSummary(presentation)

@@ -18,6 +18,9 @@ import PRDomain
 struct AppTabBarView: View {
     @Environment(AppEnvironment.self) private var environment
     @Binding var selectedTab: AppTab
+    /// El aviso "Completa tu perfil" se muestra una sola vez (SCRUM-198).
+    @AppStorage("profile.aboutYouPromptShown") private var aboutYouPromptShown = false
+    @State private var editingAboutYou = false
     /// Intento: empezar la sesión planeada hoy (envía al composition root).
     var onStart: () -> Void
     /// Intento: continuar la sesión en curso (idem).
@@ -47,11 +50,33 @@ struct AppTabBarView: View {
             )
                 .tabItem { tabLabel(.plan) }
                 .tag(AppTab.plan)
-            ProfileView(onRedoQuestionnaire: onRedoQuestionnaire)
+            ProfileView(
+                aboutYou: environment.completedProfile?.aboutYou,
+                now: environment.now,
+                onEditAboutYou: { editingAboutYou = true },
+                onRedoQuestionnaire: onRedoQuestionnaire
+            )
                 .tabItem { tabLabel(.profile) }
                 .tag(AppTab.profile)
         }
         .tint(Color.primaryAction)
+        .sheet(isPresented: $editingAboutYou) {
+            AboutYouEditSheet(answer: aboutYouDraft) { answer in
+                await environment.session.updateAboutYou(answer)
+            }
+        }
+    }
+
+    /// Lo guardado de "Sobre ti" para editarlo (vacío en un perfil anterior).
+    private var aboutYouDraft: AboutYouAnswer {
+        guard let aboutYou = environment.completedProfile?.aboutYou else { return AboutYouAnswer() }
+        return AboutYouAnswer(aboutYou, on: environment.now, timeZone: .current)
+    }
+
+    /// Perfil anterior sin "Sobre ti": se pide completarlo una vez, sin bloquear Hoy.
+    private var asksToCompleteProfile: Bool {
+        guard let profile = environment.completedProfile else { return false }
+        return profile.aboutYou == nil && !aboutYouPromptShown
     }
 
     private var todayTab: some View {
@@ -68,7 +93,14 @@ struct AppTabBarView: View {
                 isStartingWorkout: isStartingWorkout,
                 onRetry: onRetryPlan,
                 week: environment.todayPlan.week,
-                lastPerformance: environment.todayPlan.lastPerformance
+                lastPerformance: environment.todayPlan.lastPerformance,
+                greetingName: environment.completedProfile?.aboutYou?.name,
+                asksToCompleteProfile: asksToCompleteProfile,
+                onCompleteProfile: {
+                    aboutYouPromptShown = true
+                    editingAboutYou = true
+                },
+                onDismissProfilePrompt: { aboutYouPromptShown = true }
             )
             .navigationTitle(AppTab.today.title)
         }
