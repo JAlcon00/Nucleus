@@ -61,6 +61,7 @@ jobs:
           fi
           sudo xcode-select -s "$selected/Contents/Developer"
           xcodebuild -version
+          swift --version
 
       - name: Simuladores disponibles
         run: xcrun simctl list runtimes

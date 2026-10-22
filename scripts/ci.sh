@@ -45,6 +45,11 @@ CI_LOG_DIR="$REPO_ROOT/.ci"
 mkdir -p "$CI_LOG_DIR"
 # Artefactos de SwiftPM fuera del repo (ver cabecera).
 SCRATCH_DIR="${PR_CI_SCRATCH:-${TMPDIR:-/tmp}/prcore-ci-build}"
+# Build system de SwiftPM fijo: el `native` (default hasta Swift 6.3 / Xcode 26.x) copia
+# `Localizable.xcstrings` crudo al bundle sin compilar los `.lproj`, así que en runtime
+# no hay inglés ni plurales y los tests de localización fallan. `swiftbuild` (default
+# desde Swift 6.4 / Xcode 27) compila el catálogo igual que Xcode con ambas toolchains.
+SWIFTPM_BUILD_SYSTEM="swiftbuild"
 
 log() { printf '%s\n' "$*" >&2; }
 
@@ -82,11 +87,13 @@ run_pbxproj_guard() {
 }
 
 run_package_build() {
-  ( cd "$PACKAGE_DIR" && run_step "build-core" swift build --scratch-path "$SCRATCH_DIR" )
+  ( cd "$PACKAGE_DIR" && run_step "build-core" swift build \
+      --build-system "$SWIFTPM_BUILD_SYSTEM" --scratch-path "$SCRATCH_DIR" )
 }
 
 run_package_tests() {
-  ( cd "$PACKAGE_DIR" && run_step "test-core" swift test --scratch-path "$SCRATCH_DIR" )
+  ( cd "$PACKAGE_DIR" && run_step "test-core" swift test \
+      --build-system "$SWIFTPM_BUILD_SYSTEM" --scratch-path "$SCRATCH_DIR" )
 }
 
 # Build Debug de un scheme sobre Simulator. $1 = scheme, $2 = plataforma
