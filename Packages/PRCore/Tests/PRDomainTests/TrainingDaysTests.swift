@@ -160,11 +160,11 @@ struct TrainingDaysTests {
 
     // MARK: - Cambio de plan
 
-    @Test("Mismos N días en otros días de la semana: se regenera el mismo bloque")
-    func movingDaysKeepsTheBlock() throws {
+    @Test("Mismos N días en otros días de la semana: bloque nuevo (cambio de plan, SCRUM-196)")
+    func movingDaysCreatesANewBlock() throws {
         let old = try makeProfile(chosen: [.monday, .tuesday, .wednesday])
         let new = try makeProfile(chosen: [.monday, .wednesday, .friday])
-        #expect(PlanChangeDecider.decide(old: old, new: new) == .regenerateInPlace)
+        #expect(PlanChangeDecider.decide(old: old, new: new) == .newBlock)
     }
 
     @Test("Otro número de días: bloque nuevo (como antes)")
