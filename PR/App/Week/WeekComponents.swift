@@ -391,15 +391,11 @@ struct ExerciseLineRow: View {
             }
             layout {
                 VStack(alignment: .leading, spacing: DSpace.xs) {
-                    // La etiqueta sigue al nombre como una palabra más: si no cabe en la
-                    // línea, baja completa (nunca aprieta el nombre ni se corta).
-                    FlowLayout(spacing: DSpace.xs, lineSpacing: 0) {
-                        ForEach(Array(nameWords.enumerated()), id: \.offset) { _, word in
-                            Text(word).foregroundStyle(Color.textPrimary)
-                        }
-                        if let jointClass = line.jointClass {
-                            ExerciseKindTag(jointClass: jointClass)
-                        }
+                    Text(line.name ?? String(localized: "Ejercicio"))
+                        .foregroundStyle(Color.textPrimary)
+                    // Siempre debajo del nombre: misma posición en todas las filas.
+                    if let jointClass = line.jointClass {
+                        ExerciseKindTag(jointClass: jointClass)
                     }
                     if let last {
                         Label {
@@ -418,11 +414,6 @@ struct ExerciseLineRow: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
-    }
-
-    /// El nombre por palabras, para que la etiqueta fluya justo después de la última.
-    private var nameWords: [String] {
-        (line.name ?? String(localized: "Ejercicio")).split(separator: " ").map(String.init)
     }
 
     /// "3 series" (destacado) y debajo "8–12 reps": explícito, sin el "3 × 8–12" que hay
