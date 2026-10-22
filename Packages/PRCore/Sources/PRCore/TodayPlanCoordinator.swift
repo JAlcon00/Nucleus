@@ -380,6 +380,36 @@ public final class TodayPlanCoordinator {
     public private(set) var history: [WorkoutSessionRecord] = []
     /// "Última vez" por ejercicio (M1), derivada del historial.
     public private(set) var lastPerformance: [ExerciseID: LastPerformance] = [:]
+    /// Cómo fue la última lectura del historial (Progreso, SCRUM-186).
+    public private(set) var historyStatus: HistoryStatus = .notLoaded
+    /// Títulos de las plantillas conocidas (bloque activo y anteriores) para nombrar cada
+    /// entrenamiento del historial aunque el plan haya cambiado.
+    private var knownTemplateTitles: [SessionTemplate.ID: String] = [:]
+
+    /// Lo que muestra Progreso: el registro desde el primer entrenamiento completado.
+    public var progress: ProgressScreen {
+        switch historyStatus {
+        case .notLoaded:
+            return .loading
+        case .failed:
+            return .failed
+        case .loaded(let unreadable):
+            var titles = knownTemplateTitles
+            for session in plan?.sessions ?? [] { titles[session.id] = session.title }
+            let names = Dictionary(catalog.exercises.map { ($0.id, $0.canonicalName) }, uniquingKeysWith: { first, _ in first })
+            let overview = ProgressOverviewBuilder().overview(
+                history: history,
+                templateTitles: titles,
+                exerciseNames: names,
+                plannedPerWeek: activeProfile?.trainingDaysPerWeek,
+                date: clock(),
+                timeZone: timeZone()
+            )
+            return overview.entries.isEmpty
+                ? .empty(unreadable: unreadable)
+                : .loaded(overview, unreadable: unreadable)
+        }
+    }
 
     /// "Tu semana" del plan activo (lunes a domingo); `nil` sin plan.
     public var week: WeekOverview? {
@@ -467,12 +497,26 @@ public final class TodayPlanCoordinator {
         generation = .idle
         history = []
         lastPerformance = [:]
+        historyStatus = .notLoaded
+        knownTemplateTitles = [:]
     }
 
     /// Historial leído del disco (lo pasa la capa de app): alimenta "Tu semana" y "última vez".
-    public func updateHistory(_ sessions: [WorkoutSessionRecord]) {
+    public func updateHistory(
+        _ sessions: [WorkoutSessionRecord],
+        unreadable: Int = 0,
+        knownTemplates: [SessionTemplate] = []
+    ) {
         history = sessions
         lastPerformance = LastPerformanceIndex.build(from: sessions)
+        for template in knownTemplates { knownTemplateTitles[template.id] = template.title }
+        historyStatus = .loaded(unreadable: unreadable)
+    }
+
+    /// El historial no se pudo leer (SCRUM-186). Si ya había uno en memoria se sigue
+    /// mostrando; si no, Progreso dice que falló y ofrece reintentar.
+    public func historyLoadFailed() {
+        if case .notLoaded = historyStatus { historyStatus = .failed }
     }
 
     /// Recalcula el estado de "Hoy" según haya o no un entrenamiento vivo (SCRUM-24): con

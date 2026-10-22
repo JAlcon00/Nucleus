@@ -360,6 +360,35 @@ final class PRUITests: XCTestCase {
         XCTAssertTrue(shown, "Al tocar Empezar debe verse la primera serie (pantalla negra)")
     }
 
+    // MARK: - Progreso (SCRUM-186)
+
+    /// Antes de entrenar Progreso está vacío; tras completar el primer entrenamiento queda
+    /// en el registro y se puede abrir su detalle.
+    func testProgressLogsTheFirstWorkout() {
+        let app = launch()
+        completeOnboarding(app)
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
+        openTab(app, "Progreso")
+        XCTAssertTrue(element(app, "progress.empty").waitForExistence(timeout: 10), "Sin entrenamientos debe estar vacío")
+
+        openTab(app, "Hoy")
+        tap(app, "today.start")
+        tap(app, "workout.completeSet")
+        let finish = app.buttons["Terminar"].firstMatch
+        XCTAssertTrue(finish.waitForExistence(timeout: 10))
+        finish.tap()
+        let complete = app.buttons["Completar sesión"].firstMatch
+        XCTAssertTrue(complete.waitForExistence(timeout: 5))
+        complete.tap()
+        tap(app, "summary.done")
+
+        openTab(app, "Progreso")
+        XCTAssertTrue(element(app, "progress.entry.0").waitForExistence(timeout: 10), "El primer entrenamiento debe quedar registrado")
+        XCTAssertTrue(element(app, "progress.summary").exists)
+        tap(app, "progress.entry.0")
+        XCTAssertTrue(element(app, "progress.detail").waitForExistence(timeout: 10))
+    }
+
     // MARK: - Exportar
 
     func testExportShowsEmptyStateBeforeAnyWorkout() {
