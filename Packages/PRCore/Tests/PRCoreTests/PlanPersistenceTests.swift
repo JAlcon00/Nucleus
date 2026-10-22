@@ -42,15 +42,29 @@ private struct AppInstance {
     let session: AppSessionCoordinator
 
     init(root: URL, apple: any AppleIDAuthProviding = StubApple()) throws {
+        let today = try trainingDay()
         persistence = try LocalPersistence(rootURL: root, log: PersistenceLog { _ in })
         planStore = try persistence.planStore()
         onboarding = OnboardingCoordinator(authProvider: apple)
         todayPlan = TodayPlanCoordinator(
             catalog: try ExerciseCatalogLoader.loadBundled(),
-            planStore: planStore
+            planStore: planStore,
+            clock: { today.date },
+            timeZone: { today.timeZone }
         )
         session = AppSessionCoordinator(onboarding: onboarding, todayPlan: todayPlan, planStore: planStore)
     }
+}
+
+/// "Hoy" fijo: lunes 19 oct 2026 a mediodía en Ciudad de México. Con 3 días por semana
+/// entrenan lunes…miércoles; con el reloj real, de jueves a domingo era descanso y
+/// `todayOrder` salía vacío según el día en que corriera el test.
+private func trainingDay() throws -> (date: Date, timeZone: TimeZone) {
+    let timeZone = try #require(TimeZone(identifier: "America/Mexico_City"))
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = timeZone
+    let date = try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 19, hour: 12)))
+    return (date, timeZone)
 }
 
 private func makeRoot() throws -> URL {

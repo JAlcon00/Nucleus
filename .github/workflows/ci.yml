@@ -61,6 +61,7 @@ jobs:
           fi
           sudo xcode-select -s "$selected/Contents/Developer"
           xcodebuild -version
+          swift --version
 
       - name: Simuladores disponibles
         run: xcrun simctl list runtimes
@@ -68,12 +69,29 @@ jobs:
       - name: make ci
         run: make ci
 
-      # Los logs de cada gate viven en `.ci/` (están en .gitignore, no en el repo).
+      # Los logs de cada gate viven en `.ci/` (están en .gitignore, no en el repo). Se vuelcan
+      # aquí para leer la falla sin descargar el artifact: primero las líneas de error/fallo y
+      # después el final de cada log.
+      - name: Mostrar logs de .ci/ si falló
+        if: failure()
+        run: |
+          shopt -s nullglob
+          for logfile in .ci/*.log; do
+            echo "::group::${logfile}: líneas de error"
+            grep -nE "error:|✘|failed|Fatal error" "$logfile" | head -n 300 || true
+            echo "::endgroup::"
+            echo "::group::${logfile}: últimas 150 líneas"
+            tail -n 150 "$logfile"
+            echo "::endgroup::"
+          done
+
+      # `.ci/` es una carpeta oculta: upload-artifact@v4 las ignora salvo `include-hidden-files`.
       - name: Subir logs de .ci/ si falló
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: ci-logs
           path: .ci/
+          include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 7
