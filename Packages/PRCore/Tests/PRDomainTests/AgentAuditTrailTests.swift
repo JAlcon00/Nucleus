@@ -72,8 +72,12 @@ final class AgentAuditTrailTests: XCTestCase {
     }
 
     func testNoRawUserTextStored() {
+        // Se revisan sólo los campos de contenido: `id` y `date` son aleatorios y su JSON
+        // puede contener "30" por casualidad (la prueba fallaba de forma intermitente).
         let record = AgentAuditRecord.intent(.setTimeConstraint(.hard(minutes: 30)))
-        XCTAssertFalse(jsonContains(record, needle: "30"))
+        let contentFields = [record.intentTag, record.intentDisplayName, record.actionName,
+                             record.outcome, record.resultCommand].compactMap { $0 } + record.notes
+        XCTAssertFalse(contentFields.contains { $0.contains("30") }, "el payload (minutos) no debe guardarse")
     }
 
     // MARK: - Journal append-only + orden

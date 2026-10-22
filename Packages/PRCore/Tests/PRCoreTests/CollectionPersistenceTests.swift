@@ -57,7 +57,7 @@ private final class LogRecorder: @unchecked Sendable {
     }
 }
 
-private enum Fixture {
+enum Fixture {
     static func completedSession(sets: Int, startedAt: Date) throws -> WorkoutSessionRecord {
         var session = WorkoutSessionRecord(startedAt: startedAt, endedAt: startedAt.addingTimeInterval(3600), lifecycle: .completed)
         for index in 0..<sets {

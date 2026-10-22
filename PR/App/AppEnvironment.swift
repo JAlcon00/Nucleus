@@ -57,7 +57,20 @@ public final class AppEnvironment {
     /// Persistencia local (SCRUM-23): una colección por subdirectorio bajo
     /// `Application Support/PR/persistence`. `nil` sólo si Application Support no está
     /// disponible (el workout sigue funcionando en memoria).
-    public let persistence: LocalPersistence?
+    public var persistence: LocalPersistence? {
+        guard let basePersistence, let userID = onboarding.auth.profile?.userIdentifier else { return nil }
+        do {
+            return try basePersistence.scoped(toUser: userID)
+        } catch {
+            // Sin la vista del usuario no se toca el historial (no se mezclaría con otra cuenta).
+            basePersistence.log.saveFailed(.workouts)
+            return nil
+        }
+    }
+
+    /// Persistencia sin usuario (raíz). El historial de entrenamientos siempre se abre por
+    /// `persistence`, que lo separa por cuenta (SCRUM-26).
+    private let basePersistence: LocalPersistence?
 
     /// Construye un coordinador de WORKOUT MODE para la sesión planeada hoy.
     /// Usa la plantilla del plan de hoy (si la hay) y los nombres del catálogo.
@@ -110,7 +123,7 @@ public final class AppEnvironment {
         let testOptions = UITestLaunchOptions.resolve(
             arguments: ProcessInfo.processInfo.arguments, isDebugBuild: isDebugBuild
         )
-        self.persistence = persistence ?? Self.makeDefaultPersistence(isolated: testOptions.isolatedPersistence ? testOptions.isolatedDirectoryName : nil)
+        self.basePersistence = persistence ?? Self.makeDefaultPersistence(isolated: testOptions.isolatedPersistence ? testOptions.isolatedDirectoryName : nil)
         let resolvedCatalog: ExerciseCatalog
         if let catalog {
             resolvedCatalog = catalog
@@ -129,7 +142,7 @@ public final class AppEnvironment {
         // Con `-PRFixedDate` (sólo Debug) "hoy" es ese día; si no, el reloj real.
         let fixedDate = testOptions.fixedDate(timeZone: .current)
         var planStore: PlanStore?
-        if let persistence = self.persistence {
+        if let persistence = self.basePersistence {
             do {
                 planStore = try persistence.planStore()
             } catch {

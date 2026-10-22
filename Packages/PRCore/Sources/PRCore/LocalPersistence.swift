@@ -74,17 +74,67 @@ public struct PersistenceLog: Sendable {
 public struct LocalPersistence: Sendable {
     public let rootURL: URL
     public let log: PersistenceLog
+    /// Clave derivada del usuario (SCRUM-26). Con ella, el historial de entrenamientos y la
+    /// cola de pendientes viven en `users/<clave>/<colección>/`: dos cuentas en el mismo
+    /// dispositivo no comparten su historial. `nil` = raíz sin usuario.
+    private let userKey: String?
 
     /// Crea la raíz si no existe. No migra: llamar a `migrateLegacyLayout()`.
     public init(rootURL: URL, log: PersistenceLog = .standard) throws {
         try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
         self.rootURL = rootURL
         self.log = log
+        self.userKey = nil
+    }
+
+    private init(rootURL: URL, log: PersistenceLog, userKey: String?) {
+        self.rootURL = rootURL
+        self.log = log
+        self.userKey = userKey
+    }
+
+    /// Colecciones que pertenecen a un usuario (su historial de entrenamientos).
+    private static let userScopedCollections: [PersistenceCollection] = [.workouts, .pendingOperations]
+
+    /// Vista de esta persistencia para UN usuario. La primera vez que cualquier usuario
+    /// entra, adopta el historial anterior a las cuentas (que estaba sin dueño): se mueve
+    /// verificado y una sola vez; los demás usuarios empiezan con historial vacío.
+    public func scoped(toUser userID: String) throws -> LocalPersistence {
+        let scoped = LocalPersistence(rootURL: rootURL, log: log, userKey: PlanStore.key(forUser: userID))
+        try scoped.adoptUnownedHistoryIfNeeded()
+        return scoped
+    }
+
+    private var adoptionMarker: URL {
+        rootURL.appendingPathComponent("users", isDirectory: true).appendingPathComponent(".unowned-history-adopted")
+    }
+
+    /// Mueve `workouts/` y `pending-operations/` sin dueño al usuario actual. Idempotente:
+    /// copia, verifica que se lee idéntico y recién entonces borra el origen; el marcador
+    /// se escribe al final, así un fallo a medias se reintenta sin perder ni duplicar nada.
+    private func adoptUnownedHistoryIfNeeded() throws {
+        guard userKey != nil, !FileManager.default.fileExists(atPath: adoptionMarker.path) else { return }
+        for collection in Self.userScopedCollections {
+            let source = try AtomicFileRepositoryStore(directory: rootURL.appendingPathComponent(collection.rawValue, isDirectory: true))
+            let destination = try store(for: collection)
+            for entry in try source.readAllEntries().entries {
+                if let existing = try destination.read(key: entry.key), existing != entry.data { continue }
+                try destination.write(key: entry.key, data: entry.data)
+                guard try destination.read(key: entry.key) == entry.data else { continue }
+                try source.delete(key: entry.key)
+            }
+        }
+        try FileManager.default.createDirectory(at: adoptionMarker.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data().write(to: adoptionMarker)
     }
 
     /// Almacén de UNA colección (su subdirectorio).
     public func store(for collection: PersistenceCollection) throws -> AtomicFileRepositoryStore {
-        try AtomicFileRepositoryStore(directory: rootURL.appendingPathComponent(collection.rawValue, isDirectory: true))
+        var base = rootURL
+        if let userKey, Self.userScopedCollections.contains(collection) {
+            base = rootURL.appendingPathComponent("users", isDirectory: true).appendingPathComponent(userKey, isDirectory: true)
+        }
+        return try AtomicFileRepositoryStore(directory: base.appendingPathComponent(collection.rawValue, isDirectory: true))
     }
 
     public func workoutRepository() throws -> FileWorkoutRepository {
