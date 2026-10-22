@@ -37,7 +37,14 @@ struct AppTabBarView: View {
             ProgressTabView()
                 .tabItem { tabLabel(.progress) }
                 .tag(AppTab.progress)
-            PlanView()
+            PlanView(
+                screen: environment.todayPlan.screen,
+                week: environment.todayPlan.week,
+                lastPerformance: environment.todayPlan.lastPerformance,
+                isStartingWorkout: isStartingWorkout,
+                onStart: canStartToday ? onStart : nil,
+                onRedoQuestionnaire: onRedoQuestionnaire
+            )
                 .tabItem { tabLabel(.plan) }
                 .tag(AppTab.plan)
             ProfileView(onRedoQuestionnaire: onRedoQuestionnaire)
@@ -59,10 +66,18 @@ struct AppTabBarView: View {
                 onStart: onStart,
                 onResume: onResume,
                 isStartingWorkout: isStartingWorkout,
-                onRetry: onRetryPlan
+                onRetry: onRetryPlan,
+                week: environment.todayPlan.week,
+                lastPerformance: environment.todayPlan.lastPerformance
             )
             .navigationTitle(AppTab.today.title)
         }
+    }
+
+    /// Hoy tiene una sesión lista para empezar (no hay un entrenamiento en curso).
+    private var canStartToday: Bool {
+        if case .ready(.readyToStart) = environment.todayPlan.screen { return true }
+        return false
     }
 
     @ViewBuilder

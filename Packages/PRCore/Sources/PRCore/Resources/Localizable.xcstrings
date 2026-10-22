@@ -277,6 +277,30 @@
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Sunday" } }
       }
+    },
+    "%lld series" : {
+      "comment" : "Número de series de un ejercicio sin rango de repeticiones",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%lld sets" } }
+      }
+    },
+    "%lld × %lld" : {
+      "comment" : "Series × repeticiones. Ej.: 3 × 10",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%1$lld × %2$lld" } }
+      }
+    },
+    "%lld × %lld–%lld" : {
+      "comment" : "Series × rango de repeticiones. Ej.: 3 × 8–12",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%1$lld × %2$lld–%3$lld" } }
+      }
+    },
+    "Última vez: %@ × %lld" : {
+      "comment" : "Mejor serie de la última sesión de un ejercicio. Ej.: Última vez: 60 kg × 10",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Last time: %1$@ × %2$lld" } }
+      }
     }
   },
   "version" : "1.0"

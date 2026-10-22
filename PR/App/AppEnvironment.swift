@@ -101,6 +101,19 @@ public final class AppEnvironment {
         refreshTodayState()
     }
 
+    /// Lee el historial del usuario para "Tu semana" y "última vez" (SCRUM-197). Si no se
+    /// puede leer, la semana se muestra igual, sólo sin días marcados como hechos (es una
+    /// lectura: no se pierde ni se escribe nada).
+    public func refreshHistory() async {
+        guard let persistence else { return }
+        do {
+            let sessions = try await persistence.workoutRepository().loadAllSessions().items
+            todayPlan.updateHistory(sessions)
+        } catch {
+            // Se conserva el historial anterior en memoria; el próximo arranque reintenta.
+        }
+    }
+
     /// El entrenamiento terminó (resumen cerrado): Hoy vuelve a su estado normal.
     public func workoutEnded() {
         if case .finished? = activeWorkout?.phase { activeWorkout = nil }

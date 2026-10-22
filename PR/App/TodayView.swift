@@ -8,7 +8,8 @@
 //  `TodayScreenDriver` (PRDomain) y reenvía intents (empezar/continuar). NO contiene
 //  reglas de negocio: sólo renderiza `TodayScreen` (SCRUM-193: cargando, listo o
 //  fallido; nunca descanso mientras carga) y, ya listo, los estados de descanso / sin
-//  workout / en curso. Funciona offline.
+//  workout / en curso. SCRUM-197: arriba, la tira de la semana (tocar un día abre su
+//  detalle) y cada ejercicio con "3 × 8–12" y "última vez". Funciona offline.
 //
 
 import SwiftUI
@@ -34,8 +35,14 @@ struct TodayView: View {
     var isStartingWorkout = false
     /// Intento: volver a generar el plan tras un fallo.
     var onRetry: () -> Void = {}
+    /// "Tu semana" (SCRUM-197): tira de 7 días arriba; `nil` sin plan.
+    var week: WeekOverview?
+    /// "Última vez" por ejercicio (M1).
+    var lastPerformance: [ExerciseID: LastPerformance] = [:]
 
     @State private var showingOrder = false
+    /// Día de la tira abierto en detalle.
+    @State private var selectedDay: WeekDay?
     /// Nombres de sesión en español (Push, Pull, Pierna…): el planificador guarda claves estables.
     private let vocabulary = TrainingVocabularyPresenter(locale: AppEnvironment.presentationLocale)
     /// Cuenta toques de Empezar/Continuar: dispara el háptico de confirmación.
@@ -48,20 +55,53 @@ struct TodayView: View {
                 loadingView
             case .failed:
                 failedView
-            case .ready(.restDay):
-                restDayView
-            case .ready(.readyToStart(let presentation)):
-                readyView(presentation)
-            case .ready(.activeWorkout(let presentation, let isPaused)):
-                activeView(presentation, isPaused: isPaused)
+            case .ready(let state):
+                VStack(spacing: 0) {
+                    if let week {
+                        WeekStripView(week: week, onSelect: { selectedDay = $0 })
+                            .padding(.horizontal, DSpace.m)
+                            .padding(.top, DSpace.s)
+                    }
+                    readyContent(state)
+                        .frame(maxHeight: .infinity)
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .screenBackground()
+        .navigationDestination(item: $selectedDay) { day in
+            if let entry = week?.days.first(where: { $0.day == day }) {
+                DayDetailView(
+                    entry: entry,
+                    lastPerformance: lastPerformance,
+                    isStartingWorkout: isStartingWorkout,
+                    onStart: canStartToday(entry) ? onStart : nil
+                )
+            }
+        }
         .accessibilityElement(children: .contain)
         .safeAreaInset(edge: .top) {
             if let notice { noticeBanner(notice) }
         }
+    }
+
+    @ViewBuilder
+    private func readyContent(_ state: TodayScreenState) -> some View {
+        switch state {
+        case .restDay:
+            restDayView
+        case .readyToStart(let presentation):
+            readyView(presentation)
+        case .activeWorkout(let presentation, let isPaused):
+            activeView(presentation, isPaused: isPaused)
+        }
+    }
+
+    /// Desde el detalle sólo se empieza el día de hoy con su sesión lista (nunca con un
+    /// entrenamiento en curso: para eso está "Continuar").
+    private func canStartToday(_ entry: WeekDayEntry) -> Bool {
+        guard entry.isToday, case .ready(.readyToStart) = screen else { return false }
+        return true
     }
 
     private func noticeBanner(_ notice: TodayPlanNotice) -> some View {
@@ -157,15 +197,28 @@ struct TodayView: View {
                 .foregroundStyle(Color.primaryAction)
             Text("Día de descanso")
                 .font(.title3.bold())
-            Text("Hoy toca recuperar. Vuelve mañana cuando toque entrenar.")
+            Text("Hoy toca recuperar.")
                 .font(.callout)
                 .foregroundStyle(Color.textSecondary)
                 .multilineTextAlignment(.center)
+            if let next = nextSessionText {
+                Text(next)
+                    .font(.callout.weight(.semibold))
+                    .multilineTextAlignment(.center)
+            }
         }
         .padding(.horizontal, 24)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Día de descanso.")
         .accessibilityIdentifier("today.restDay")
+    }
+
+    /// "Próxima sesión: Miércoles · Push" (la primera de la semana después de hoy).
+    private var nextSessionText: String? {
+        guard let week, let todayIndex = week.days.firstIndex(where: \.isToday) else { return nil }
+        guard let next = week.days[(todayIndex + 1)...].first(where: { $0.session != nil }),
+              let session = next.session else { return nil }
+        let day = vocabulary.weekdayName(next.day)
+        return String(localized: "Próxima sesión: \(day) · \(vocabulary.sessionName(session.title))")
     }
 
     // MARK: - Ready to start
@@ -190,53 +243,8 @@ struct TodayView: View {
             startButton(presentation)
         }
         .padding(24)
-        .sheet(isPresented: $showingOrder) { orderSheet }
-    }
-
-    /// Hoja "¿Por qué este orden?": posición, ejercicio y motivos del motor de orden.
-    private var orderSheet: some View {
-        NavigationStack {
-            List {
-                Section {
-                    ForEach(order) { line in
-                        VStack(alignment: .leading, spacing: DSpace.xs) {
-                            Text("\(line.rank). \(line.name ?? String(localized: "Ejercicio"))")
-                                .font(.headline)
-                            ForEach(Array(line.reasons.enumerated()), id: \.offset) { _, reason in
-                                Text(Self.text(for: reason))
-                                    .font(.callout)
-                                    .foregroundStyle(Color.textSecondary)
-                            }
-                        }
-                        .accessibilityElement(children: .combine)
-                    }
-                } footer: {
-                    VStack(alignment: .leading, spacing: DSpace.xs) {
-                        if orderReorderedByFatigue {
-                            Text("La fatiga acumulada cambió el orden para proteger los músculos prioritarios.")
-                        }
-                        Text("Precedencia: restricciones, rol funcional, prioridad muscular, demanda técnica y, al final, interferencia por fatiga.")
-                    }
-                }
-            }
-            .scrollContentBackground(.hidden)
-            .screenBackground()
-            .navigationTitle("¿Por qué este orden?")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Listo") { showingOrder = false }
-                }
-            }
-        }
-        .accessibilityIdentifier("today.orderSheet")
-    }
-
-    private static func text(for reason: TodayOrderReason) -> String {
-        switch reason {
-        case .functionalRole: String(localized: "Los ejercicios compuestos van primero, con los músculos frescos.")
-        case .musclePriority: String(localized: "Trabaja un músculo que priorizas, por eso se adelanta.")
-        case .technicalDemand: String(localized: "Es técnicamente exigente: mejor hacerlo sin fatiga.")
+        .sheet(isPresented: $showingOrder) {
+            OrderExplanationSheet(order: order, reorderedByFatigue: orderReorderedByFatigue)
         }
     }
 
@@ -245,16 +253,9 @@ struct TodayView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: DSpace.s) {
                 ForEach(Array(exercises.enumerated()), id: \.element.id) { index, line in
-                    HStack {
-                        Text(line.name ?? String(localized: "Ejercicio"))
-                        Spacer()
-                        Text("\(line.setCount) × series")
-                            .foregroundStyle(Color.textSecondary)
-                            .numericStyle()
-                    }
-                    .padding(.vertical, DSpace.xs)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("today.exercise.\(index)")
+                    ExerciseLineRow(line: line, last: lastPerformance[line.exerciseID])
+                        .padding(.vertical, DSpace.xs)
+                        .accessibilityIdentifier("today.exercise.\(index)")
                 }
             }
         }
@@ -362,6 +363,46 @@ private let previewPresentation = SessionPresentation(
 #Preview("Abriendo entrenamiento") {
     TodayView(screen: .ready(.readyToStart(previewPresentation)), onStart: {}, onResume: {}, isStartingWorkout: true)
         .ironEnergyTheme()
+}
+
+#Preview("Lista · con semana") {
+    TodayWeekPreview()
+}
+
+#Preview("Lista · con semana · accessibility3") {
+    TodayWeekPreview()
+        .dynamicTypeSize(.accessibility3)
+}
+
+/// Hoy con una semana real generada por el dominio (lunes, miércoles y viernes).
+private struct TodayWeekPreview: View {
+    var body: some View {
+        NavigationStack {
+            if let coordinator = Self.coordinator, let plan = coordinator.plan {
+                TodayView(
+                    screen: coordinator.screen,
+                    order: plan.todayOrder,
+                    exercises: plan.todayExercises,
+                    onStart: {},
+                    onResume: {},
+                    week: coordinator.week
+                )
+                .navigationTitle("Hoy")
+            }
+        }
+        .ironEnergyTheme()
+    }
+
+    @MainActor
+    private static var coordinator: TodayPlanCoordinator? {
+        guard let catalog = try? ExerciseCatalogLoader.loadBundled(),
+              let profile = try? OnboardingProfile(
+                goal: .hypertrophy, phase: .maintenance, experience: .intermediate,
+                trainingDays: [.monday, .wednesday, .friday], usualSessionMinutes: 55, varietyPreference: .balanced
+              ) else { return nil }
+        let coordinator = TodayPlanCoordinator(catalog: catalog)
+        return coordinator.load(profile: profile) ? coordinator : nil
+    }
 }
 
 #Preview("Día de descanso") {

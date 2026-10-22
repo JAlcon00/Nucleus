@@ -48,6 +48,14 @@ enum DSize {
     static let stepperButton: CGFloat = 56
     /// Chip de un día de la semana (L, M, Mi…): el mínimo táctil de 44 pt.
     static let dayChip: CGFloat = 44
+    /// Círculo de un día en la tira de la semana (el área de toque es `dayChip`).
+    static let weekDot: CGFloat = 32
+    /// Punto tenue de un día de descanso en la tira de la semana.
+    static let restDot: CGFloat = 6
+    /// Trazo de los círculos de la tira de la semana.
+    static let markStroke: CGFloat = 2
+    /// Trazo punteado de un día no realizado (no es un error: sólo se informa).
+    static let missedDash: [CGFloat] = [3, 3]
 }
 
 /// Tokens de movimiento. Con Reduce Motion se sustituye el desplazamiento/escala por un

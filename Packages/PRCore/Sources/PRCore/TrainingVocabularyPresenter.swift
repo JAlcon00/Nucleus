@@ -77,6 +77,43 @@ public struct TrainingVocabularyPresenter: Sendable {
         }
     }
 
+    /// Series de trabajo × rango de repeticiones (M1): "3 × 8–12", "3 × 10" o "2 series".
+    public func setsAndReps(sets: Int, repRange: ClosedRange<Int>?) -> String {
+        guard let repRange else {
+            return String(localized: LocalizedStringResource(
+                "\(sets) series", locale: locale, bundle: Self.bundle,
+                comment: "Número de series de un ejercicio sin rango de repeticiones"
+            ))
+        }
+        if repRange.lowerBound == repRange.upperBound {
+            return String(localized: LocalizedStringResource(
+                "\(sets) × \(repRange.lowerBound)", locale: locale, bundle: Self.bundle,
+                comment: "Series × repeticiones. Ej.: 3 × 10"
+            ))
+        }
+        return String(localized: LocalizedStringResource(
+            "\(sets) × \(repRange.lowerBound)–\(repRange.upperBound)", locale: locale, bundle: Self.bundle,
+            comment: "Series × rango de repeticiones. Ej.: 3 × 8–12"
+        ))
+    }
+
+    /// "Última vez: 60 kg × 10" (M1).
+    public func lastTime(_ performance: LastPerformance) -> String {
+        let unit: UnitMass
+        switch performance.unit {
+        case .kilograms: unit = .kilograms
+        case .pounds: unit = .pounds
+        }
+        let load = Measurement(value: performance.weight, unit: unit).formatted(
+            .measurement(width: .abbreviated, usage: .asProvided, numberFormatStyle: .number.precision(.fractionLength(0...1)))
+                .locale(locale)
+        )
+        return String(localized: LocalizedStringResource(
+            "Última vez: \(load) × \(performance.reps)", locale: locale, bundle: Self.bundle,
+            comment: "Mejor serie de la última sesión de un ejercicio. Ej.: Última vez: 60 kg × 10"
+        ))
+    }
+
     // MARK: - Privado
 
     /// Clave estable del planificador → nombre visible; `nil` si no es una clave conocida.

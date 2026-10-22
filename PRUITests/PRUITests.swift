@@ -62,6 +62,8 @@ final class PRUITests: XCTestCase {
         tap(app, "onboarding.skipGym"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.balanced"); tap(app, "onboarding.next")
         tap(app, "onboarding.skipRestrictions"); tap(app, "onboarding.next")
+        // SCRUM-197: tras "Armando tu semana" se presenta "Tu semana".
+        tap(app, "weekIntro.done")
     }
 
     /// Abre una pestaña por su nombre visible (en español, SCRUM-195). En iPad la barra de
@@ -220,6 +222,35 @@ final class PRUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Exportar"].exists, "Exportar ya no va en Hoy")
         XCTAssertFalse(app.buttons["Restricciones"].exists, "Restricciones ya no va en Hoy")
         XCTAssertFalse(app.buttons["Rehacer cuestionario"].exists, "Rehacer ya no va en Hoy")
+    }
+
+    // MARK: - Tu semana (SCRUM-197)
+
+    /// Lunes, miércoles y viernes (hoy es lunes): la semana alterna sesión y descanso, el
+    /// CTA sólo está en hoy y el detalle de otro día no deja empezar.
+    func testPlanShowsTheWeekWithRestBetweenSessions() {
+        let app = launch()
+        completeOnboarding(app)
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
+        openTab(app, "Plan")
+        for day in Self.weekdays {
+            XCTAssertTrue(element(app, "week.day.\(day)").waitForExistence(timeout: 10), "Falta el día '\(day)'")
+        }
+        XCTAssertTrue(element(app, "week.start").exists, "Hoy (lunes) debe tener Empezar")
+        tap(app, "week.day.wednesday")
+        XCTAssertTrue(element(app, "day.detail").waitForExistence(timeout: 10))
+        XCTAssertTrue(element(app, "day.exercise.0").exists, "El detalle lista los ejercicios")
+        XCTAssertFalse(element(app, "day.start").exists, "Sólo se empieza el día de hoy")
+    }
+
+    /// La tira de la semana en Hoy abre el detalle del día tocado.
+    func testTodayWeekStripOpensTheDay() {
+        let app = launch()
+        completeOnboarding(app)
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
+        XCTAssertTrue(element(app, "week.strip.monday").exists)
+        tap(app, "week.strip.friday")
+        XCTAssertTrue(element(app, "day.detail").waitForExistence(timeout: 10))
     }
 
     func testTodayListsTheExercisesOfTheSession() {

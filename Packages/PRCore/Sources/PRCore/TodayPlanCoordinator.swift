@@ -21,13 +21,26 @@ import PRDomain
 public struct TodayExerciseLine: Equatable, Sendable, Identifiable {
     public let exerciseID: ExerciseID
     public let name: String?
+    /// Todas las series (calentamiento incluido).
     public let setCount: Int
+    /// Series de trabajo (SCRUM-197, M1: "3 × 8–12").
+    public let workSetCount: Int
+    /// Rango de repeticiones de las series de trabajo; `nil` si sólo hay calentamiento.
+    public let repRange: ClosedRange<Int>?
     public var id: ExerciseID { exerciseID }
 
-    public init(exerciseID: ExerciseID, name: String?, setCount: Int) {
+    public init(
+        exerciseID: ExerciseID,
+        name: String?,
+        setCount: Int,
+        workSetCount: Int? = nil,
+        repRange: ClosedRange<Int>? = nil
+    ) {
         self.exerciseID = exerciseID
         self.name = name
         self.setCount = setCount
+        self.workSetCount = workSetCount ?? setCount
+        self.repRange = repRange
     }
 }
 
@@ -68,6 +81,8 @@ public struct TodayPlan: Equatable, Sendable {
     public let todayOrder: [TodayOrderLine]
     /// ¿La fatiga reordenó la sesión de hoy?
     public let todayOrderReorderedByFatigue: Bool
+    /// Explicación del bloque (orden de cada sesión), para "Tu semana" (SCRUM-197).
+    public let explanation: BlockExplanation?
 
     public init(
         block: TrainingBlock,
@@ -77,7 +92,8 @@ public struct TodayPlan: Equatable, Sendable {
         todayState: TodayScreenState,
         todayExercises: [TodayExerciseLine] = [],
         todayOrder: [TodayOrderLine] = [],
-        todayOrderReorderedByFatigue: Bool = false
+        todayOrderReorderedByFatigue: Bool = false,
+        explanation: BlockExplanation? = nil
     ) {
         self.block = block
         self.sessions = sessions
@@ -87,6 +103,7 @@ public struct TodayPlan: Equatable, Sendable {
         self.todayExercises = todayExercises
         self.todayOrder = todayOrder
         self.todayOrderReorderedByFatigue = todayOrderReorderedByFatigue
+        self.explanation = explanation
     }
 }
 
@@ -185,7 +202,8 @@ public struct TodayPlanBuilder: Sendable {
             todayState: state,
             todayExercises: exerciseLines(for: todayTemplate, catalog: catalog),
             todayOrder: orderLines(for: orderExplanation, catalog: catalog),
-            todayOrderReorderedByFatigue: orderExplanation?.reorderedByFatigue ?? false
+            todayOrderReorderedByFatigue: orderExplanation?.reorderedByFatigue ?? false,
+            explanation: explanation
         )
     }
 
@@ -207,17 +225,33 @@ public struct TodayPlanBuilder: Sendable {
         }
     }
 
-    /// Ejercicios de la plantilla en orden de aparición, con su número de series.
+    /// Ejercicios de la plantilla en orden de aparición, con su número de series, series de
+    /// trabajo y rango de repeticiones (el más amplio si las series difieren).
     func exerciseLines(for template: SessionTemplate?, catalog: ExerciseCatalog) -> [TodayExerciseLine] {
         guard let template else { return [] }
         let names = Dictionary(catalog.exercises.map { ($0.id, $0.canonicalName) }, uniquingKeysWith: { first, _ in first })
         var order: [ExerciseID] = []
         var counts: [ExerciseID: Int] = [:]
+        var workCounts: [ExerciseID: Int] = [:]
+        var ranges: [ExerciseID: ClosedRange<Int>] = [:]
         for planned in template.plannedSets {
             if counts[planned.exerciseID] == nil { order.append(planned.exerciseID) }
             counts[planned.exerciseID, default: 0] += 1
+            guard !planned.prescription.isWarmup else { continue }
+            workCounts[planned.exerciseID, default: 0] += 1
+            let range = planned.prescription.targetRepRange
+            if let current = ranges[planned.exerciseID] {
+                ranges[planned.exerciseID] = min(current.lowerBound, range.lowerBound)...max(current.upperBound, range.upperBound)
+            } else {
+                ranges[planned.exerciseID] = range
+            }
         }
-        return order.map { TodayExerciseLine(exerciseID: $0, name: names[$0], setCount: counts[$0] ?? 0) }
+        return order.map {
+            TodayExerciseLine(
+                exerciseID: $0, name: names[$0], setCount: counts[$0] ?? 0,
+                workSetCount: workCounts[$0] ?? 0, repRange: ranges[$0]
+            )
+        }
     }
 
     // MARK: - Defaults
@@ -342,6 +376,24 @@ public final class TodayPlanCoordinator {
     public private(set) var saveFailed = false
     /// En qué va la generación del plan (SCRUM-193).
     public private(set) var generation: PlanGeneration = .idle
+    /// Historial de entrenamientos del usuario ("Tu semana" y "última vez", SCRUM-197).
+    public private(set) var history: [WorkoutSessionRecord] = []
+    /// "Última vez" por ejercicio (M1), derivada del historial.
+    public private(set) var lastPerformance: [ExerciseID: LastPerformance] = [:]
+
+    /// "Tu semana" del plan activo (lunes a domingo); `nil` sin plan.
+    public var week: WeekOverview? {
+        guard let plan, let activeProfile else { return nil }
+        return WeekOverviewBuilder().overview(
+            profile: activeProfile,
+            block: plan.block,
+            explanation: plan.explanation ?? BlockExplanation(facts: [], ruleReferences: []),
+            catalog: catalog,
+            history: history,
+            date: clock(),
+            timeZone: timeZone()
+        )
+    }
 
     /// Lo que "Hoy" debe mostrar. Sin plan (o con uno nuevo en camino) es `loading`,
     /// nunca descanso por defecto.
@@ -413,6 +465,14 @@ public final class TodayPlanCoordinator {
         activeProfile = nil
         activeUserID = nil
         generation = .idle
+        history = []
+        lastPerformance = [:]
+    }
+
+    /// Historial leído del disco (lo pasa la capa de app): alimenta "Tu semana" y "última vez".
+    public func updateHistory(_ sessions: [WorkoutSessionRecord]) {
+        history = sessions
+        lastPerformance = LastPerformanceIndex.build(from: sessions)
     }
 
     /// Recalcula el estado de "Hoy" según haya o no un entrenamiento vivo (SCRUM-24): con
@@ -435,7 +495,8 @@ public final class TodayPlanCoordinator {
             todayState: state,
             todayExercises: current.todayExercises,
             todayOrder: current.todayOrder,
-            todayOrderReorderedByFatigue: current.todayOrderReorderedByFatigue
+            todayOrderReorderedByFatigue: current.todayOrderReorderedByFatigue,
+            explanation: current.explanation
         )
     }
 
