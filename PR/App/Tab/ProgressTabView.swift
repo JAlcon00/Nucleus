@@ -46,11 +46,7 @@ struct ProgressTabView: View {
 
     private func emptyState(unreadable: Int) -> some View {
         VStack(spacing: 12) {
-            Image(systemName: "chart.line.uptrend.xyaxis")
-                .font(.largeTitle)
-                .imageScale(.large)
-                .foregroundStyle(Color.primaryAction)
-                .accessibilityHidden(true)
+            IconBadge(systemName: "chart.line.uptrend.xyaxis", scale: 2.5)
             Text("Tu progreso")
                 .font(.title3.bold())
             Text("Cuando completes tu primer entrenamiento, aquí quedará su registro: series, cargas y récords.")
@@ -130,7 +126,7 @@ private struct ProgressLogView: View {
                     UnreadableRecordsNotice(count: unreadable)
                         .padding(.horizontal, DSpace.xs)
                 }
-                Text("Registro")
+                Label("Registro", systemImage: "list.bullet.rectangle")
                     .eyebrowStyle()
                     .foregroundStyle(Color.textSecondary)
                     .padding(.top, DSpace.s)
@@ -172,7 +168,10 @@ private struct ProgressLogView: View {
     private func stat(value: String, label: LocalizedStringKey, symbol: String, tint: Color) -> some View {
         VStack(spacing: DSpace.xs) {
             Image(systemName: symbol)
+                .font(.headline)
                 .foregroundStyle(tint)
+                .frame(width: DSize.iconBadge, height: DSize.iconBadge)
+                .background(Color.surfaceElevated, in: Circle())
                 .accessibilityHidden(true)
             Text(value)
                 .font(.title2.bold())
@@ -189,9 +188,24 @@ private struct ProgressLogView: View {
     }
 
     private func row(_ entry: WorkoutLogEntry) -> some View {
+        HStack(alignment: .center, spacing: DSpace.m) {
+            IconBadge(
+                systemName: entry.recordCount > 0 ? "trophy.fill" : "checkmark",
+                isHighlighted: entry.recordCount > 0
+            )
+            rowText(entry)
+        }
+        .padding(DSpace.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardSurface(cornerRadius: DRadius.medium)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+    }
+
+    private func rowText(_ entry: WorkoutLogEntry) -> some View {
         VStack(alignment: .leading, spacing: DSpace.xs) {
             HStack(alignment: .firstTextBaseline) {
-                Text(WorkoutLogText.date(entry))
+                Label(WorkoutLogText.date(entry), systemImage: "calendar")
                     .eyebrowStyle()
                     .foregroundStyle(Color.textSecondary)
                 Spacer()
@@ -211,16 +225,11 @@ private struct ProgressLogView: View {
                     .foregroundStyle(Color.textSecondary)
                     .accessibilityHidden(true)
             }
-            Text(WorkoutLogText.meta(entry, vocabulary: vocabulary))
+            Label(WorkoutLogText.meta(entry, vocabulary: vocabulary), systemImage: "clock")
                 .font(.footnote)
                 .numericStyle()
                 .foregroundStyle(Color.textSecondary)
         }
-        .padding(DSpace.m)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface(cornerRadius: DRadius.medium)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
     }
 }
 
@@ -236,9 +245,12 @@ struct WorkoutLogDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: DSpace.m) {
                 VStack(alignment: .leading, spacing: DSpace.xs) {
-                    Text(WorkoutLogText.title(entry, vocabulary: vocabulary))
-                        .font(.title2.bold())
-                    Text(WorkoutLogText.meta(entry, vocabulary: vocabulary))
+                    HStack(spacing: DSpace.s) {
+                        IconBadge(systemName: "figure.strengthtraining.traditional", scale: 1.25)
+                        Text(WorkoutLogText.title(entry, vocabulary: vocabulary))
+                            .font(.title2.bold())
+                    }
+                    Label(WorkoutLogText.meta(entry, vocabulary: vocabulary), systemImage: "clock")
                         .font(.subheadline)
                         .numericStyle()
                         .foregroundStyle(Color.textSecondary)
@@ -250,12 +262,20 @@ struct WorkoutLogDetailView: View {
                 }
                 ForEach(entry.exercises) { exercise in
                     VStack(alignment: .leading, spacing: DSpace.s) {
-                        Text(exercise.name ?? String(localized: "Ejercicio"))
-                            .font(.headline)
+                        Label {
+                            Text(exercise.name ?? String(localized: "Ejercicio"))
+                        } icon: {
+                            Image(systemName: "dumbbell.fill").foregroundStyle(Color.primaryAction)
+                        }
+                        .font(.headline)
                         ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, set in
                             HStack {
-                                Text("Serie \(index + 1)")
-                                    .foregroundStyle(Color.textSecondary)
+                                Label {
+                                    Text("Serie \(index + 1)")
+                                } icon: {
+                                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.success)
+                                }
+                                .foregroundStyle(Color.textSecondary)
                                 Spacer()
                                 Text(vocabulary.setText(weight: set.weight, unit: set.unit, reps: set.reps))
                                     .numericStyle()

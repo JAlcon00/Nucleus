@@ -58,6 +58,16 @@ enum DSize {
     static let missedDash: [CGFloat] = [3, 3]
     /// Alto del selector de rueda (edad en "Sobre ti").
     static let wheelPicker: CGFloat = 120
+    /// Alto de un campo o una opción del formulario inicial: todos iguales para que se alineen.
+    static let inputHeight: CGFloat = 52
+    /// Insignia del icono de un paso o una opción (círculo detrás del símbolo).
+    static let iconBadge: CGFloat = 32
+    /// Columna fija del icono junto al título de un campo (alinea los títulos entre sí).
+    static let fieldIcon: CGFloat = 24
+    /// Ancho de los selectores de unidad (cm/ft-in, kg/lb) junto a un campo.
+    static let unitPicker: CGFloat = 116
+    /// Grosor de cada segmento del indicador de pasos.
+    static let progressSegment: CGFloat = 4
 }
 
 /// Tokens de movimiento. Con Reduce Motion se sustituye el desplazamiento/escala por un
@@ -77,6 +87,15 @@ enum DMotion {
     static let minimumLoaderDuration: Duration = .milliseconds(800)
     /// Espera tras la que el inicio de sesión ofrece "Reintentar".
     static let slowSignInThreshold: Duration = .seconds(10)
+    /// Cambio de paso del cuestionario: el contenido nuevo entra desde la derecha.
+    static let slide: Animation = .spring(duration: 0.35)
+    /// Variante con Reduce Motion: sólo fundido.
+    static let slideReduced: Animation = .easeOut(duration: 0.2)
+
+    static func slide(reduceMotion: Bool) -> Animation {
+        reduceMotion ? slideReduced : slide
+    }
+
     /// Barrido del skeleton de carga (sin él con Reduce Motion).
     static let shimmer: Animation = .linear(duration: 1.4).repeatForever(autoreverses: false)
 }
