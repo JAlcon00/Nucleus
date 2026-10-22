@@ -6,8 +6,9 @@
 //
 //  Pantalla "Hoy" (plan §8, RF-005, PR-0601). Presenta el estado derivado por
 //  `TodayScreenDriver` (PRDomain) y reenvía intents (empezar/continuar). NO contiene
-//  reglas de negocio: sólo renderiza `TodayScreenState` y conserva estados claros de
-//  descanso / sin workout / en curso. Funciona offline.
+//  reglas de negocio: sólo renderiza `TodayScreen` (SCRUM-193: cargando, listo o
+//  fallido; nunca descanso mientras carga) y, ya listo, los estados de descanso / sin
+//  workout / en curso. Funciona offline.
 //
 
 import SwiftUI
@@ -15,8 +16,8 @@ import PRCore
 import PRDomain
 
 struct TodayView: View {
-    /// Estado derivado por `TodayScreenDriver` (se inyecta desde el composition root).
-    let state: TodayScreenState
+    /// Estado de la pantalla (se inyecta desde el composition root).
+    let screen: TodayScreen
     /// Explicación del orden de hoy (SCRUM-29).
     var order: [TodayOrderLine] = []
     var orderReorderedByFatigue = false
@@ -29,17 +30,27 @@ struct TodayView: View {
     let onStart: () -> Void
     /// Intento: continuar la sesión en curso.
     let onResume: () -> Void
+    /// El entrenamiento se está abriendo (lee historial): el botón queda "en curso".
+    var isStartingWorkout = false
+    /// Intento: volver a generar el plan tras un fallo.
+    var onRetry: () -> Void = {}
 
     @State private var showingOrder = false
+    /// Cuenta toques de Empezar/Continuar: dispara el háptico de confirmación.
+    @State private var startTaps = 0
 
     var body: some View {
         Group {
-            switch state {
-            case .restDay:
+            switch screen {
+            case .loading:
+                loadingView
+            case .failed:
+                failedView
+            case .ready(.restDay):
                 restDayView
-            case .readyToStart(let presentation):
+            case .ready(.readyToStart(let presentation)):
                 readyView(presentation)
-            case .activeWorkout(let presentation, let isPaused):
+            case .ready(.activeWorkout(let presentation, let isPaused)):
                 activeView(presentation, isPaused: isPaused)
             }
         }
@@ -73,6 +84,66 @@ struct TodayView: View {
         switch notice {
         case .planUpdated: String(localized: "Actualizamos tu plan: ahora trae mejores ejercicios y un volumen más realista.")
         }
+    }
+
+    // MARK: - Loading (SCRUM-193)
+
+    /// Skeleton con la forma de la tarjeta de hoy: título, resumen y 4 filas.
+    private var loadingView: some View {
+        VStack(alignment: .leading, spacing: DSpace.m) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Hoy")
+                    .font(.caption)
+                Text("Sesión de hoy")
+                    .font(.title2.bold())
+                Text("16 series · ~60 min")
+                    .font(.callout)
+            }
+            ForEach(0..<4, id: \.self) { _ in
+                HStack {
+                    Text("Ejercicio de la sesión")
+                    Spacer()
+                    Text("3 × 8–12")
+                }
+                .padding(.vertical, DSpace.xs)
+            }
+            Spacer()
+            RoundedRectangle(cornerRadius: DRadius.medium)
+                .frame(maxWidth: .infinity, minHeight: 50, maxHeight: 50)
+        }
+        .padding(24)
+        .redacted(reason: .placeholder)
+        .shimmering()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Cargando tu plan de hoy"))
+        .accessibilityIdentifier("today.loading")
+    }
+
+    // MARK: - Failed (SCRUM-193)
+
+    private var failedView: some View {
+        VStack(spacing: DSpace.l) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.largeTitle)
+                .foregroundStyle(Color.warning)
+                .accessibilityHidden(true)
+            Text("No pudimos armar tu plan")
+                .font(.title3.bold())
+            Text("Tus entrenamientos guardados siguen intactos. Intenta de nuevo.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Button(action: onRetry) {
+                Label("Reintentar", systemImage: "arrow.clockwise")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: 50)
+            }
+            .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier("today.retry")
+        }
+        .padding(24)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("today.failed")
     }
 
     // MARK: - Rest day
@@ -225,35 +296,75 @@ struct TodayView: View {
     }
 
     private func startButton(_ presentation: SessionPresentation) -> some View {
-        Button(action: onStart) {
-            Label("Empezar \(presentation.title)", systemImage: "play.fill")
-                .font(.headline)
-                .frame(maxWidth: .infinity, minHeight: 50)
+        Button {
+            startTaps += 1
+            onStart()
+        } label: {
+            LoadingButtonLabel(isLoading: isStartingWorkout, loadingAccessibilityLabel: "Abriendo entrenamiento") {
+                Label("Empezar \(presentation.title)", systemImage: "play.fill")
+            }
+            .font(.headline)
+            .frame(maxWidth: .infinity, minHeight: 50)
         }
         .buttonStyle(.borderedProminent)
+        .disabled(isStartingWorkout)
+        .sensoryFeedback(.impact(weight: .light), trigger: startTaps)
         .accessibilityHint("Inicia la sesión de hoy.")
         .accessibilityIdentifier("today.start")
     }
 
     private var resumeButton: some View {
-        Button(action: onResume) {
-            Label("Continuar", systemImage: "arrow.right.circle.fill")
-                .font(.headline)
-                .frame(maxWidth: .infinity, minHeight: 50)
+        Button {
+            startTaps += 1
+            onResume()
+        } label: {
+            LoadingButtonLabel(isLoading: isStartingWorkout, loadingAccessibilityLabel: "Abriendo entrenamiento") {
+                Label("Continuar", systemImage: "arrow.right.circle.fill")
+            }
+            .font(.headline)
+            .frame(maxWidth: .infinity, minHeight: 50)
         }
         .buttonStyle(.borderedProminent)
+        .disabled(isStartingWorkout)
+        .sensoryFeedback(.impact(weight: .light), trigger: startTaps)
         .accessibilityHint("Reanuda la sesión en curso.")
         .accessibilityIdentifier("today.resume")
     }
 }
 
+private let previewPresentation = SessionPresentation(
+    templateID: UUID(),
+    title: "Push",
+    workSetCount: 15,
+    warmupSetCount: 2,
+    estimatedMinutes: 55
+)
+
+#Preview("Cargando") {
+    TodayView(screen: .loading, onStart: {}, onResume: {})
+}
+
+#Preview("Cargando · oscuro") {
+    TodayView(screen: .loading, onStart: {}, onResume: {})
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Error · accessibility3") {
+    TodayView(screen: .failed, onStart: {}, onResume: {})
+        .dynamicTypeSize(.accessibility3)
+}
+
+#Preview("Abriendo entrenamiento") {
+    TodayView(screen: .ready(.readyToStart(previewPresentation)), onStart: {}, onResume: {}, isStartingWorkout: true)
+}
+
 #Preview("Día de descanso") {
-    TodayView(state: .restDay, onStart: {}, onResume: {})
+    TodayView(screen: .ready(.restDay), onStart: {}, onResume: {})
 }
 
 #Preview("Lista para empezar") {
     TodayView(
-        state: .readyToStart(
+        screen: .ready(.readyToStart(
             SessionPresentation(
                 templateID: UUID(),
                 title: "Torso y tríceps",
@@ -261,7 +372,7 @@ struct TodayView: View {
                 warmupSetCount: 2,
                 estimatedMinutes: 55
             )
-        ),
+        )),
         onStart: {},
         onResume: {}
     )
@@ -269,7 +380,7 @@ struct TodayView: View {
 
 #Preview("En curso") {
     TodayView(
-        state: .activeWorkout(
+        screen: .ready(.activeWorkout(
             SessionPresentation(
                 templateID: UUID(),
                 title: "Torso y tríceps",
@@ -278,7 +389,7 @@ struct TodayView: View {
                 estimatedMinutes: nil
             ),
             isPaused: false
-        ),
+        )),
         onStart: {},
         onResume: {}
     )

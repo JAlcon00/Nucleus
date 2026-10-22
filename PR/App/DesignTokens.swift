@@ -26,6 +26,16 @@ enum DRadius {
     static let large: CGFloat = 22
 }
 
+/// Tamaños de piezas gráficas que no son texto (escalan con `@ScaledMetric` donde se usan).
+enum DSize {
+    /// Anillo de progreso de un loader de paso completo.
+    static let progressRing: CGFloat = 96
+    /// Grosor del trazo de anillos de progreso.
+    static let ringStroke: CGFloat = 6
+    /// Hueco del icono de estado de una fila (✓, en curso, pendiente).
+    static let statusIcon: CGFloat = 28
+}
+
 /// Tokens de movimiento. Con Reduce Motion se sustituye el desplazamiento/escala por un
 /// fundido breve (mismo significado, sin movimiento).
 enum DMotion {
@@ -37,6 +47,14 @@ enum DMotion {
     static func celebration(reduceMotion: Bool) -> Animation {
         reduceMotion ? celebrationReduced : celebration
     }
+
+    /// Tiempo mínimo en pantalla de un loader de paso completo ("Armando tu semana"):
+    /// evita el parpadeo. Nunca se espera más de esto si la operación ya terminó.
+    static let minimumLoaderDuration: Duration = .milliseconds(800)
+    /// Espera tras la que el inicio de sesión ofrece "Reintentar".
+    static let slowSignInThreshold: Duration = .seconds(10)
+    /// Barrido del skeleton de carga (sin él con Reduce Motion).
+    static let shimmer: Animation = .linear(duration: 1.4).repeatForever(autoreverses: false)
 }
 
 /// Colores de acción semánticos (SKILL §74). Deciden el tono; no el color por pantalla.

@@ -51,6 +51,12 @@ public final class SignInWithAppleProvider: NSObject, AppleIDAuthProviding {
         }
     }
 
+    /// Cancela el flujo en curso (SCRUM-193). El delegado recibe `.canceled` y `authenticate()`
+    /// termina; nunca quedan dos peticiones vivas.
+    public func cancelAuthentication() async {
+        currentController?.cancel()
+    }
+
     private func startRequest() {
         let provider = ASAuthorizationAppleIDProvider()
         let request = provider.createRequest()

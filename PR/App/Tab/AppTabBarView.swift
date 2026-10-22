@@ -24,6 +24,10 @@ struct AppTabBarView: View {
     var onResume: () -> Void
     /// Intento: rehacer el cuestionario (mismo flujo que un cambio de plan).
     var onRedoQuestionnaire: () -> Void
+    /// El entrenamiento se está abriendo: Empezar/Continuar quedan "en curso".
+    var isStartingWorkout = false
+    /// Intento: volver a generar el plan tras un fallo (SCRUM-193).
+    var onRetryPlan: () -> Void = {}
 
     @State private var confirmingRedo = false
 
@@ -48,14 +52,16 @@ struct AppTabBarView: View {
     private var todayTab: some View {
         NavigationStack {
             TodayView(
-                state: environment.todayPlan.plan?.todayState ?? .restDay,
+                screen: environment.todayPlan.screen,
                 order: environment.todayPlan.plan?.todayOrder ?? [],
                 orderReorderedByFatigue: environment.todayPlan.plan?.todayOrderReorderedByFatigue ?? false,
                 exercises: environment.todayPlan.plan?.todayExercises ?? [],
                 notice: environment.todayPlan.notice,
                 onDismissNotice: { environment.todayPlan.dismissNotice() },
                 onStart: onStart,
-                onResume: onResume
+                onResume: onResume,
+                isStartingWorkout: isStartingWorkout,
+                onRetry: onRetryPlan
             )
             .toolbar {
                 ToolbarItemGroup(placement: .primaryAction) {

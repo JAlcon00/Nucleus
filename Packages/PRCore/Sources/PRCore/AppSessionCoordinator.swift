@@ -22,6 +22,8 @@ public final class AppSessionCoordinator {
     private let onboarding: OnboardingCoordinator
     private let todayPlan: TodayPlanCoordinator
     private let planStore: PlanStore?
+    /// "Reintentar" pidió relanzar el inicio de sesión al terminar el intento cancelado.
+    private var retryRequested = false
 
     public init(onboarding: OnboardingCoordinator, todayPlan: TodayPlanCoordinator, planStore: PlanStore?) {
         self.onboarding = onboarding
@@ -49,9 +51,23 @@ public final class AppSessionCoordinator {
     /// Inicio de sesión (botón de Apple o modo simulado): recuerda al usuario y busca su plan.
     public func signIn() async {
         await onboarding.signIn()
+        // "Reintentar" canceló el intento colgado: se lanza uno nuevo cuando el anterior ya
+        // terminó (nunca dos flujos de Apple a la vez).
+        if retryRequested {
+            retryRequested = false
+            if onboarding.phase == .signedOut { await onboarding.signIn() }
+        }
         guard case .signedIn(let user) = onboarding.auth.flowState else { return }
         try? planStore?.saveSession(userID: user.userIdentifier)
         await resume(userID: user.userIdentifier)
+    }
+
+    /// El inicio de sesión tarda demasiado (SCRUM-193): cancela el intento en curso y, en
+    /// cuanto termina, `signIn()` lo vuelve a lanzar.
+    public func retrySignIn() async {
+        guard onboarding.phase == .signingIn else { return }
+        retryRequested = true
+        await onboarding.auth.provider.cancelAuthentication()
     }
 
     /// El usuario terminó el cuestionario (primera vez o "Rehacer"): activa y guarda el plan.

@@ -25,8 +25,7 @@ struct AppRootView: View {
             case .signedOut:
                 SignInView(onSignIn: { await environment.session.signIn() })
             case .signingIn:
-                ProgressView("Conectando…")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                SigningInView(onRetry: { Task { await environment.session.retrySignIn() } })
             case .onboarding(let step, let index, let canGoBack, let canAdvance, let isAtEnd):
                 OnboardingStepView(
                     step: step,
@@ -40,11 +39,11 @@ struct AppRootView: View {
                     onAnswer: { environment.onboarding.select($0) },
                     onAdvance: { environment.onboarding.advance() },
                     onGoBack: { environment.onboarding.goBack() },
-                    onFinish: { environment.onboarding.complete() }
+                    onFinish: { finishOnboarding() }
                 )
             case .completed(let profile):
                 appContent
-                    .task(id: profile) {
+                    .task(id: PlanActivation(profile: profile, attempt: planAttempt)) {
                         // Activa y guarda el plan del perfil (SCRUM-26). Si venimos de un
                         // plan recordado, ya está activo y no se regenera.
                         _ = await environment.session.planCompleted(profile: profile)
@@ -90,6 +89,11 @@ struct AppRootView: View {
     /// Carga en curso del coordinador (lee historial local). Una sola a la vez: un
     /// doble toque no crea dos sesiones.
     @State private var workoutLoad: Task<Void, Never>?
+    /// Reintentos de generar el plan tras un fallo (relanza la activación).
+    @State private var planAttempt = 0
+    /// Recién terminado el cuestionario: se muestra "Armando tu semana" hasta que el plan
+    /// esté listo (o falle).
+    @State private var buildingWeek = false
 
     /// El contenido "de la app" tras completar el onboarding: tab bar + WORKOUT MODE.
     /// La sesión activa se presenta a nivel raíz (fullScreenCover) para reemplazar la
@@ -100,8 +104,20 @@ struct AppRootView: View {
             selectedTab: $selectedTab,
             onStart: { startWorkout() },
             onResume: { resumeWorkout() },
-            onRedoQuestionnaire: { environment.session.redoQuestionnaire() }
+            onRedoQuestionnaire: { environment.session.redoQuestionnaire() },
+            isStartingWorkout: workoutLoad != nil,
+            onRetryPlan: { planAttempt += 1 }
         )
+        .overlay {
+            if buildingWeek {
+                PlanBuildingView(
+                    generation: environment.todayPlan.generation,
+                    screen: environment.todayPlan.screen,
+                    onFinished: { withAnimation { buildingWeek = false } }
+                )
+                .transition(.opacity)
+            }
+        }
         .fullScreenCover(item: $workout) { coordinator in
             NavigationStack {
                 WorkoutModeView(
@@ -123,6 +139,14 @@ struct AppRootView: View {
             return .guided
         }
         return CoachingDetailMapper().initialDefault(for: profile.experience)
+    }
+
+    /// "Terminar" del cuestionario: si el perfil es válido, se arma la semana con loader.
+    private func finishOnboarding() {
+        environment.onboarding.complete()
+        if case .completed = environment.onboarding.phase {
+            buildingWeek = true
+        }
     }
 
     private func startWorkout() {
@@ -148,6 +172,12 @@ struct AppRootView: View {
             workout = coordinator
         }
     }
+}
+
+/// Identidad de la activación del plan: cambia con el perfil o con un reintento.
+private struct PlanActivation: Hashable {
+    let profile: OnboardingProfile
+    let attempt: Int
 }
 
 /// El perfil o el bloque guardados no se pueden leer: se ofrece rehacer el cuestionario.
