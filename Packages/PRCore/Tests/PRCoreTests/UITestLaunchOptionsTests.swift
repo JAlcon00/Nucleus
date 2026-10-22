@@ -25,6 +25,16 @@ struct UITestLaunchOptionsTests {
         #expect(options == .none)
     }
 
+    @Test("Demora del plan (SCRUM-193): sólo en Debug y sólo de 1 a 10 segundos")
+    func planDelay() {
+        #expect(UITestLaunchOptions.resolve(arguments: ["PR", "-PRUITestPlanDelay", "3"], isDebugBuild: true).planDelay == .seconds(3))
+        #expect(UITestLaunchOptions.resolve(arguments: ["PR", "-PRUITestPlanDelay", "3"], isDebugBuild: false).planDelay == nil)
+        for invalid in ["0", "11", "-2", "dos", ""] {
+            #expect(UITestLaunchOptions.resolve(arguments: ["PR", "-PRUITestPlanDelay", invalid], isDebugBuild: true).planDelay == nil)
+        }
+        #expect(UITestLaunchOptions.resolve(arguments: ["PR", "-PRUITestPlanDelay"], isDebugBuild: true).planDelay == nil)
+    }
+
     @Test("Debug sin argumentos = comportamiento normal")
     func debugWithoutArguments() {
         #expect(UITestLaunchOptions.resolve(arguments: ["PR"], isDebugBuild: true) == .none)
