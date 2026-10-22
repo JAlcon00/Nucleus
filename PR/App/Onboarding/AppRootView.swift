@@ -109,6 +109,9 @@ struct AppRootView: View {
             isStartingWorkout: workoutLoad != nil,
             onRetryPlan: { planAttempt += 1 }
         )
+        // Mientras "Armando tu semana" está encima, Hoy no se puede tocar ni leer con
+        // VoiceOver (sólo existe el loader).
+        .accessibilityHidden(buildingWeek)
         .overlay {
             if buildingWeek {
                 PlanBuildingView(
