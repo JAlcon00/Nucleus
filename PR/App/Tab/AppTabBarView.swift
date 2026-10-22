@@ -46,7 +46,7 @@ struct AppTabBarView: View {
                 .tabItem { tabLabel(.profile) }
                 .tag(AppTab.profile)
         }
-        .tint(.accentColor)
+        .tint(Color.primaryAction)
     }
 
     private var todayTab: some View {

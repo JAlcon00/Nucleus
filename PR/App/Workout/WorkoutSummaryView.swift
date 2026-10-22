@@ -62,7 +62,7 @@ struct WorkoutSummaryView: View {
                 if summary.nextAction == .completed {
                     Text("Sesión completada. Sigue en el plan.")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.textSecondary)
                         .multilineTextAlignment(.center)
                 }
 
@@ -73,7 +73,7 @@ struct WorkoutSummaryView: View {
             }
             .padding(DSpace.l)
         }
-        .background(Color(uiColor: .systemBackground))
+        .screenBackground()
         .onAppear { celebrate() }
     }
 
@@ -84,36 +84,41 @@ struct WorkoutSummaryView: View {
     }
 
     private func prCard(_ celebration: PRCelebrationPresentation) -> some View {
-        // Todo el texto en `.primary`: sobre el tinte de la tarjeta, verde de éxito
-        // (1.9:1) y `.secondary` (3.2:1) no alcanzan AA en modo claro. El trofeo
-        // verde es redundante: el significado lo lleva el texto.
+        // Los récords van en naranja fuego (reservado a logros, SCRUM-194): titular 6.51:1
+        // sobre la tarjeta y borde con el degradado de energía. El trofeo es redundante:
+        // el significado lo lleva el texto.
         VStack(spacing: DSpace.s) {
             Label {
                 Text(celebration.headline)
-                    .foregroundStyle(.primary)
             } icon: {
                 Image(systemName: "trophy.fill")
-                    .foregroundStyle(Color.success)
             }
             .font(.headline)
+            .foregroundStyle(Color.accentSecondary)
             ForEach(celebration.rows) { item in
                 VStack(spacing: DSpace.xs) {
                     Text(item.exerciseName)
                         .font(.subheadline)
                     Text(item.loadText)
-                        .font(.title2.bold().monospacedDigit())
+                        .font(.title2.bold())
+                        .numericStyle()
                 }
             }
             if let detail = celebration.detail {
                 Text(detail)
                     .font(.footnote)
+                    .foregroundStyle(Color.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }
-        .foregroundStyle(.primary)
+        .foregroundStyle(Color.textPrimary)
         .frame(maxWidth: .infinity)
         .padding(DSpace.l)
-        .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: DRadius.large))
+        .background(Color.surface, in: RoundedRectangle(cornerRadius: DRadius.large))
+        .overlay {
+            RoundedRectangle(cornerRadius: DRadius.large)
+                .strokeBorder(LinearGradient.energy, lineWidth: 2)
+        }
         .accessibilityElement(children: .combine)
     }
 
@@ -133,14 +138,15 @@ struct WorkoutSummaryView: View {
         VStack(spacing: DSpace.xs) {
             Image(systemName: symbol)
                 .font(.title3)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.textSecondary)
             Text(value)
-                .font(.headline.monospacedDigit())
+                .font(.headline)
+                .numericStyle()
                 .minimumScaleFactor(0.7)
                 .lineLimit(1)
             Text(title)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.textSecondary)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
@@ -195,18 +201,18 @@ private func previewSummaryView(
             onDone: {}
         )
     }
+    .ironEnergyTheme()
 }
 
-#Preview("PR · guided · claro") {
+#Preview("PR · guided") {
     previewSummaryView(records: [("Press banca", 85, .kilograms, 8)], level: .guided)
 }
 
-#Preview("PR · balanced · oscuro · varios en lb") {
+#Preview("PR · balanced · varios en lb") {
     previewSummaryView(
         records: [("Press banca", 185, .pounds, 6), ("Remo con barra", 155, .pounds, 8)],
         level: .balanced
     )
-    .preferredColorScheme(.dark)
 }
 
 #Preview("PR · advanced · accessibility3") {
@@ -228,4 +234,5 @@ private func previewSummaryView(
             onDone: {}
         )
     }
+    .ironEnergyTheme()
 }

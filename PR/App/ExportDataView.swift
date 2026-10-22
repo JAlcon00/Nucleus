@@ -91,10 +91,12 @@ struct ExportContentView: View {
                     Text("Tus entrenamientos siguen guardados en este dispositivo. Intenta de nuevo.")
                 } actions: {
                     Button("Reintentar", action: onRetry)
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.energy)
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .screenBackground()
         .navigationTitle("Exportar datos")
     }
 }
@@ -122,19 +124,21 @@ struct UnreadableRecordsNotice: View {
     NavigationStack {
         ExportContentView(state: .loading, exercises: [], onRetry: {})
     }
+    .ironEnergyTheme()
 }
 
 #Preview("Vacío") {
     NavigationStack {
         ExportContentView(state: .empty(unreadableCount: 0), exercises: [], onRetry: {})
     }
+    .ironEnergyTheme()
 }
 
-#Preview("Vacío con ilegibles · oscuro") {
+#Preview("Vacío con ilegibles") {
     NavigationStack {
         ExportContentView(state: .empty(unreadableCount: 1), exercises: [], onRetry: {})
     }
-    .preferredColorScheme(.dark)
+    .ironEnergyTheme()
 }
 
 #Preview("Error · accessibility3") {
@@ -142,4 +146,5 @@ struct UnreadableRecordsNotice: View {
         ExportContentView(state: .failed, exercises: [], onRetry: {})
     }
     .dynamicTypeSize(.accessibility3)
+    .ironEnergyTheme()
 }

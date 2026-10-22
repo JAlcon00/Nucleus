@@ -21,15 +21,16 @@ struct SignInView: View {
             Spacer()
 
             Image(systemName: "figure.strengthtraining.traditional")
-                .font(.system(size: 52))
-                .foregroundStyle(.tint)
+                .font(.largeTitle)
+                .imageScale(.large)
+                .foregroundStyle(Color.primaryAction)
 
             VStack(spacing: 6) {
                 Text("PR")
                     .font(.largeTitle.bold())
                 Text("Tu entrenador experto")
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.textSecondary)
             }
 
             Spacer()
@@ -38,10 +39,8 @@ struct SignInView: View {
                 Task { await onSignIn() }
             } label: {
                 Label("Continuar con Apple", systemImage: "apple.logo")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, minHeight: 50)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.energy)
             .accessibilityHint("Inicia sesión con Sign in with Apple para empezar el entrenamiento.")
             .padding(.horizontal, 24)
         }

@@ -35,7 +35,10 @@ struct RestrictionManagementView: View {
             } header: {
                 Text("Restricciones (\(restrictions.count))")
             }
+            .listRowBackground(Color.surface)
         }
+        .scrollContentBackground(.hidden)
+        .screenBackground()
         .navigationTitle("Restricciones")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -53,7 +56,7 @@ struct RestrictionManagementView: View {
                 .font(.headline)
             Text("Documenta aquí qué regiones/ejercicios evitar. Nunca diagnosticamos: tú decides qué registras.")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.textSecondary)
         }
         .padding(.vertical, 8)
     }
@@ -66,7 +69,7 @@ struct RestrictionManagementView: View {
                 if let side = restriction.side {
                     Text(side.rawValue.capitalized)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.textSecondary)
                 }
                 Spacer()
                 statusBadge(restriction.status)
@@ -76,13 +79,13 @@ struct RestrictionManagementView: View {
                 if !restriction.forbiddenPatterns.isEmpty {
                     Label("\(restriction.forbiddenPatterns.count) patrones", systemImage: "xmark.shield")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.textSecondary)
                 }
             }
             if let review = restriction.reviewDate {
                 Text("Revisión: \(review.formatted(date: .abbreviated, time: .shortened))")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.textSecondary)
             }
 
             switch restriction.status {
@@ -92,7 +95,7 @@ struct RestrictionManagementView: View {
             case .resolved:
                 Text("Resuelta. Se requiere acción explícita para re-activar.")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.textSecondary)
             case .active:
                 EmptyView()
             }
@@ -115,14 +118,14 @@ struct RestrictionManagementView: View {
             systemImage: source == .userReported ? "person" : "stethoscope"
         )
         .font(.footnote)
-        .foregroundStyle(source == .professionalGuidance ? .indigo : .secondary)
+        .foregroundStyle(source == .professionalGuidance ? Color.textPrimary : Color.textSecondary)
     }
 
     private func statusColor(_ status: RestrictionStatus) -> Color {
         switch status {
-        case .active: return .red
-        case .reviewNeeded: return .orange
-        case .resolved: return .green
+        case .active: return .destructive
+        case .reviewNeeded: return .warning
+        case .resolved: return .success
         }
     }
 }
@@ -147,10 +150,12 @@ struct RestrictionManagementView: View {
             onResolve: { _ in }
         )
     }
+    .ironEnergyTheme()
 }
 
 #Preview("Vacío") {
     NavigationStack {
         RestrictionManagementView(restrictions: [], onCreate: {}, onReview: { _ in }, onResolve: { _ in })
     }
+    .ironEnergyTheme()
 }

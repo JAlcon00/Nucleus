@@ -5,8 +5,9 @@
 //  Created by PR.
 //
 //  Piezas de carga reutilizables (SCRUM-193): brillo de skeleton que respeta Reduce
-//  Motion y etiqueta de botón "en curso" que no cambia de tamaño al cargar. Vistas
-//  puras: no deciden cuándo se carga, sólo cómo se ve.
+//  Motion y etiqueta de botón "en curso" que no cambia de tamaño al cargar (pensada para
+//  el CTA de energía: el indicador va en `onAccent`). Vistas puras: no deciden cuándo se
+//  carga, sólo cómo se ve.
 //
 
 import SwiftUI
@@ -25,6 +26,7 @@ private struct Shimmer: ViewModifier {
         } else {
             content
                 .mask {
+                    // Máscara: sólo cuenta la opacidad, el color no se ve.
                     LinearGradient(
                         stops: [
                             .init(color: .black.opacity(0.45), location: 0),
@@ -64,6 +66,7 @@ struct LoadingButtonLabel<Label: View>: View {
                 .opacity(isLoading ? 0 : 1)
             if isLoading {
                 ProgressView()
+                    .tint(Color.onAccent)
                     .accessibilityLabel(Text(loadingAccessibilityLabel))
             }
         }
@@ -78,6 +81,8 @@ struct LoadingButtonLabel<Label: View>: View {
     .redacted(reason: .placeholder)
     .shimmering()
     .padding()
+    .screenBackground()
+    .ironEnergyTheme()
 }
 
 #Preview("Botón en curso") {
@@ -87,6 +92,8 @@ struct LoadingButtonLabel<Label: View>: View {
         }
         .frame(maxWidth: .infinity, minHeight: 50)
     }
-    .buttonStyle(.borderedProminent)
+    .buttonStyle(.energy)
     .padding()
+    .screenBackground()
+    .ironEnergyTheme()
 }

@@ -61,6 +61,7 @@ struct AppRootView: View {
                     }
             }
         }
+        .screenBackground()
         .task { await environment.startIfNeeded() }
         .onChange(of: scenePhase) { _, newPhase in
             // Si Apple revocó la credencial mientras la app estaba en segundo plano.
@@ -189,23 +190,22 @@ private struct PlanUnreadableView: View {
         VStack(spacing: DSpace.l) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.largeTitle)
-                .foregroundStyle(.orange)
+                .foregroundStyle(Color.warning)
                 .accessibilityHidden(true)
             Text("No pudimos leer tu plan")
                 .font(.title2.bold())
             Text("Tus entrenamientos guardados siguen intactos. Contesta el cuestionario de nuevo para crear tu plan.")
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.textSecondary)
             Button(action: onRedo) {
                 Text("Rehacer cuestionario")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, minHeight: 50)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.energy)
             .accessibilityIdentifier("plan.unreadable.redo")
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .screenBackground()
         .accessibilityIdentifier("plan.unreadable")
     }
 }
@@ -213,4 +213,5 @@ private struct PlanUnreadableView: View {
 #Preview {
     AppRootView()
         .environment(AppEnvironment(authProvider: FakeAppleIDAuthProvider()))
+        .ironEnergyTheme()
 }

@@ -73,6 +73,7 @@ struct OnboardingStepView: View {
             }
             footer
         }
+        .screenBackground()
         .navigationBarBackButtonHidden(true)
     }
 
@@ -82,7 +83,7 @@ struct OnboardingStepView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Paso \(indexPlusOne) de \(stepCount)")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.textSecondary)
             Text(title(for: step))
                 .font(.title2.bold())
                 .accessibilityIdentifier("onboarding.title")
@@ -140,11 +141,11 @@ struct OnboardingStepView: View {
                 .font(.headline)
             Text("Puedes omitirlo ahora y elegir tu gimnasio más adelante.")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.textSecondary)
             Button("Omitir este paso") {
                 onAnswer(.gym(nil))
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.surface)
             .accessibilityIdentifier("onboarding.skipGym")
         }
     }
@@ -155,11 +156,11 @@ struct OnboardingStepView: View {
                 .font(.headline)
             Text("Sin restricciones por defecto; las gestionas en la app cuando quieras.")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.textSecondary)
             Button("Continuar sin añadir") {
                 onAnswer(.restrictions([]))
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.surface)
             .accessibilityIdentifier("onboarding.skipRestrictions")
         }
     }
@@ -180,21 +181,22 @@ struct OnboardingStepView: View {
                 } label: {
                     HStack {
                         Text(choice.label)
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(Color.textPrimary)
                         Spacer()
                         if isSelected {
                             Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(Color.accentColor)
+                                .foregroundStyle(Color.primaryAction)
                         }
                     }
                     .padding(12)
+                    .frame(minHeight: 44)
                     .background(
                         RoundedRectangle(cornerRadius: DRadius.small)
-                            .fill(Color(.secondarySystemBackground))
+                            .fill(Color.surface)
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: DRadius.small)
-                            .stroke(Color.accentColor, lineWidth: isSelected ? 2 : 0)
+                            .strokeBorder(isSelected ? Color.primaryAction : Color.hairline, lineWidth: isSelected ? 2 : 1)
                     )
                 }
                 .buttonStyle(.plain)
@@ -212,17 +214,15 @@ struct OnboardingStepView: View {
             if canGoBack {
                 Button(action: onGoBack) {
                     Label("Atrás", systemImage: "chevron.left")
-                        .frame(maxWidth: .infinity, minHeight: 50)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(SurfaceButtonStyle(minHeight: DButton.primaryHeight))
                 .accessibilityHint("Vuelve al paso anterior sin perder tus respuestas.")
             }
 
             Button(action: { isAtEnd ? onFinish() : onAdvance() }) {
                 Label(isAtEnd ? "Terminar" : "Siguiente", systemImage: isAtEnd ? "checkmark" : "chevron.right")
-                    .frame(maxWidth: .infinity, minHeight: 50)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.energy)
             .disabled(!canAdvance)
             .accessibilityIdentifier("onboarding.next")
         }
@@ -264,4 +264,5 @@ struct OnboardingStepView: View {
             onFinish: {}
         )
     }
+    .ironEnergyTheme()
 }

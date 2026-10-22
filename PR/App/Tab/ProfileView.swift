@@ -15,17 +15,19 @@ struct ProfileView: View {
         NavigationStack {
             VStack(spacing: 12) {
                 Image(systemName: "person.crop.circle")
-                    .font(.system(size: 44))
-                    .foregroundStyle(.tint)
+                    .font(.largeTitle)
+                    .imageScale(.large)
+                    .foregroundStyle(Color.primaryAction)
                 Text("Tu perfil")
                     .font(.title3.bold())
                 Text("Datos, preferencias y accesibilidad se gestionarán aquí.")
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.textSecondary)
                     .multilineTextAlignment(.center)
             }
             .padding(.horizontal, 24)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .screenBackground()
             .navigationTitle("Profile")
             .accessibilityElement(children: .combine)
         }
@@ -34,5 +36,5 @@ struct ProfileView: View {
 
 #Preview {
     ProfileView()
-        .environment(\.colorScheme, .light)
+        .ironEnergyTheme()
 }

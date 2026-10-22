@@ -16,17 +16,19 @@ struct PlanView: View {
         NavigationStack {
             VStack(spacing: 12) {
                 Image(systemName: "calendar.badge.plus")
-                    .font(.system(size: 44))
-                    .foregroundStyle(.tint)
+                    .font(.largeTitle)
+                    .imageScale(.large)
+                    .foregroundStyle(Color.primaryAction)
                 Text("Tu plan")
                     .font(.title3.bold())
                 Text("Todavía no tienes un plan semanal. Lo generarás y ajustarás aquí.")
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.textSecondary)
                     .multilineTextAlignment(.center)
             }
             .padding(.horizontal, 24)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .screenBackground()
             .navigationTitle("Plan")
             .accessibilityElement(children: .combine)
         }
@@ -35,5 +37,5 @@ struct PlanView: View {
 
 #Preview {
     PlanView()
-        .environment(\.colorScheme, .light)
+        .ironEnergyTheme()
 }

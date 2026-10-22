@@ -30,13 +30,13 @@ struct SigningInView: View {
                 .accessibilityHidden(true)
             Text("Conectando con Apple…")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.textSecondary)
             Spacer()
             if isSlow {
                 VStack(spacing: DSpace.s) {
                     Text("Está tardando más de lo normal. Revisa tu conexión.")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.textSecondary)
                         .multilineTextAlignment(.center)
                     Button {
                         isSlow = false
@@ -44,10 +44,8 @@ struct SigningInView: View {
                         onRetry()
                     } label: {
                         Text("Reintentar")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity, minHeight: 50)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.surface)
                     .accessibilityIdentifier("signIn.retry")
                 }
                 .padding(.horizontal, DSpace.l)
@@ -56,6 +54,7 @@ struct SigningInView: View {
         }
         .padding(.bottom, DSpace.m)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .screenBackground()
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("signIn.connecting")
         .task(id: attempt) {
@@ -71,10 +70,11 @@ struct SigningInView: View {
 
 #Preview("Conectando") {
     SigningInView(onRetry: {})
+        .ironEnergyTheme()
 }
 
-#Preview("Conectando · oscuro · accessibility3") {
+#Preview("Conectando · accessibility3") {
     SigningInView(onRetry: {})
-        .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility3)
+        .ironEnergyTheme()
 }

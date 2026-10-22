@@ -55,6 +55,7 @@ struct TodayView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .screenBackground()
         .accessibilityElement(children: .contain)
         .safeAreaInset(edge: .top) {
             if let notice { noticeBanner(notice) }
@@ -74,7 +75,7 @@ struct TodayView: View {
                 .accessibilityIdentifier("today.notice.dismiss")
         }
         .padding(DSpace.m)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: DRadius.medium))
+        .cardSurface(cornerRadius: DRadius.medium)
         .padding(.horizontal, 24)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("today.notice")
@@ -131,14 +132,14 @@ struct TodayView: View {
                 .font(.title3.bold())
             Text("Tus entrenamientos guardados siguen intactos. Intenta de nuevo.")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.textSecondary)
                 .multilineTextAlignment(.center)
             Button(action: onRetry) {
                 Label("Reintentar", systemImage: "arrow.clockwise")
                     .font(.headline)
                     .frame(maxWidth: .infinity, minHeight: 50)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.energy)
             .accessibilityIdentifier("today.retry")
         }
         .padding(24)
@@ -151,13 +152,14 @@ struct TodayView: View {
     private var restDayView: some View {
         VStack(spacing: 12) {
             Image(systemName: "bed.double.fill")
-                .font(.system(size: 44))
-                .foregroundStyle(.tint)
+                .font(.largeTitle)
+                .imageScale(.large)
+                .foregroundStyle(Color.primaryAction)
             Text("Día de descanso")
                 .font(.title3.bold())
             Text("Hoy toca recuperar. Vuelve mañana cuando toque entrenar.")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.textSecondary)
                 .multilineTextAlignment(.center)
         }
         .padding(.horizontal, 24)
@@ -173,7 +175,7 @@ struct TodayView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Hoy")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.textSecondary)
                 Text(presentation.title)
                     .font(.title2.bold())
                 sessionSummary(presentation)
@@ -206,7 +208,7 @@ struct TodayView: View {
                             ForEach(Array(line.reasons.enumerated()), id: \.offset) { _, reason in
                                 Text(Self.text(for: reason))
                                     .font(.callout)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Color.textSecondary)
                             }
                         }
                         .accessibilityElement(children: .combine)
@@ -220,6 +222,8 @@ struct TodayView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .screenBackground()
             .navigationTitle("¿Por qué este orden?")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -248,8 +252,8 @@ struct TodayView: View {
                         Text(line.name ?? String(localized: "Ejercicio"))
                         Spacer()
                         Text("\(line.setCount) × series")
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
+                            .foregroundStyle(Color.textSecondary)
+                            .numericStyle()
                     }
                     .padding(.vertical, DSpace.xs)
                     .accessibilityElement(children: .combine)
@@ -265,10 +269,10 @@ struct TodayView: View {
         VStack(alignment: .leading, spacing: 16) {
             Label(isPaused ? "En pausa" : "En curso", systemImage: isPaused ? "pause.circle.fill" : "figure.strengthtraining.traditional")
                 .font(.headline)
-                .foregroundStyle(isPaused ? .orange : .green)
+                .foregroundStyle(isPaused ? Color.warning : Color.success)
             Text("Tienes un entrenamiento en curso")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.textSecondary)
                 .accessibilityIdentifier("today.activeBanner")
             Text(presentation.title)
                 .font(.title2.bold())
@@ -290,7 +294,8 @@ struct TodayView: View {
             }
         }
         .font(.callout)
-        .foregroundStyle(.secondary)
+        .numericStyle()
+        .foregroundStyle(Color.textSecondary)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("today.sessionSummary")
     }
@@ -306,7 +311,7 @@ struct TodayView: View {
             .font(.headline)
             .frame(maxWidth: .infinity, minHeight: 50)
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(.energy)
         .disabled(isStartingWorkout)
         .sensoryFeedback(.impact(weight: .light), trigger: startTaps)
         .accessibilityHint("Inicia la sesión de hoy.")
@@ -324,7 +329,7 @@ struct TodayView: View {
             .font(.headline)
             .frame(maxWidth: .infinity, minHeight: 50)
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(.energy)
         .disabled(isStartingWorkout)
         .sensoryFeedback(.impact(weight: .light), trigger: startTaps)
         .accessibilityHint("Reanuda la sesión en curso.")
@@ -342,24 +347,29 @@ private let previewPresentation = SessionPresentation(
 
 #Preview("Cargando") {
     TodayView(screen: .loading, onStart: {}, onResume: {})
+        .ironEnergyTheme()
 }
 
-#Preview("Cargando · oscuro") {
+#Preview("Cargando · accessibility3") {
     TodayView(screen: .loading, onStart: {}, onResume: {})
-        .preferredColorScheme(.dark)
+        .dynamicTypeSize(.accessibility3)
+        .ironEnergyTheme()
 }
 
 #Preview("Error · accessibility3") {
     TodayView(screen: .failed, onStart: {}, onResume: {})
         .dynamicTypeSize(.accessibility3)
+        .ironEnergyTheme()
 }
 
 #Preview("Abriendo entrenamiento") {
     TodayView(screen: .ready(.readyToStart(previewPresentation)), onStart: {}, onResume: {}, isStartingWorkout: true)
+        .ironEnergyTheme()
 }
 
 #Preview("Día de descanso") {
     TodayView(screen: .ready(.restDay), onStart: {}, onResume: {})
+        .ironEnergyTheme()
 }
 
 #Preview("Lista para empezar") {
@@ -376,6 +386,7 @@ private let previewPresentation = SessionPresentation(
         onStart: {},
         onResume: {}
     )
+    .ironEnergyTheme()
 }
 
 #Preview("En curso") {
@@ -393,4 +404,5 @@ private let previewPresentation = SessionPresentation(
         onStart: {},
         onResume: {}
     )
+    .ironEnergyTheme()
 }

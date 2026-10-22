@@ -65,7 +65,7 @@ struct PlanBuildingView: View {
         }
         .padding(DSpace.l)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(uiColor: .systemBackground))
+        .screenBackground()
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("plan.building")
         .onAppear {
@@ -86,10 +86,10 @@ struct PlanBuildingView: View {
     private var ring: some View {
         ZStack {
             Circle()
-                .stroke(Color.secondary.opacity(0.2), lineWidth: DSize.ringStroke)
+                .stroke(Color.surfaceElevated, lineWidth: DSize.ringStroke)
             Circle()
                 .trim(from: 0, to: 0.7)
-                .stroke(Color.primaryAction, style: StrokeStyle(lineWidth: DSize.ringStroke, lineCap: .round))
+                .stroke(LinearGradient.energy, style: StrokeStyle(lineWidth: DSize.ringStroke, lineCap: .round))
                 .rotationEffect(.degrees(spinning ? 360 : 0))
                 .animation(spinning ? .linear(duration: 1).repeatForever(autoreverses: false) : nil, value: spinning)
             Image(systemName: "figure.strengthtraining.traditional")
@@ -112,14 +112,14 @@ struct PlanBuildingView: View {
                     ProgressView()
                 case .pending:
                     Image(systemName: "circle")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.textSecondary)
                 }
             }
             .frame(width: statusIconSize, height: statusIconSize)
             .accessibilityHidden(true)
             Text(step.title)
                 .font(.body)
-                .foregroundStyle(status == .pending ? .secondary : .primary)
+                .foregroundStyle(status == .pending ? Color.textSecondary : Color.textPrimary)
         }
         .accessibilityElement(children: .combine)
         .accessibilityValue(Text(accessibilityValue(status)))
@@ -153,14 +153,16 @@ struct PlanBuildingView: View {
 
 #Preview("Generando") {
     PlanBuildingView(generation: .generating, screen: .loading, onFinished: {})
+        .ironEnergyTheme()
 }
 
-#Preview("Guardando · oscuro") {
+#Preview("Guardando") {
     PlanBuildingView(generation: .saving, screen: .loading, onFinished: {})
-        .preferredColorScheme(.dark)
+        .ironEnergyTheme()
 }
 
 #Preview("Listo · accessibility3") {
     PlanBuildingView(generation: .idle, screen: .ready(.restDay), onFinished: {})
         .dynamicTypeSize(.accessibility3)
+        .ironEnergyTheme()
 }

@@ -15,17 +15,19 @@ struct ProgressTabView: View {
         NavigationStack {
             VStack(spacing: 12) {
                 Image(systemName: "chart.line.uptrend.xyaxis")
-                    .font(.system(size: 44))
-                    .foregroundStyle(.tint)
+                    .font(.largeTitle)
+                    .imageScale(.large)
+                    .foregroundStyle(Color.primaryAction)
                 Text("Tu progreso")
                     .font(.title3.bold())
                 Text("Después de tus primeras sesiones verás aquí tu evolución y tus PRs.")
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.textSecondary)
                     .multilineTextAlignment(.center)
             }
             .padding(.horizontal, 24)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .screenBackground()
             .navigationTitle("Progress")
             .accessibilityElement(children: .combine)
         }
@@ -34,5 +36,5 @@ struct ProgressTabView: View {
 
 #Preview {
     ProgressTabView()
-        .environment(\.colorScheme, .light)
+        .ironEnergyTheme()
 }
