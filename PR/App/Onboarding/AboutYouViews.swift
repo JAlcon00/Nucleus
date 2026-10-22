@@ -20,6 +20,8 @@ struct AboutYouView: View {
     let answer: AboutYouAnswer
     let onChange: (AboutYouAnswer) -> Void
     let onContinue: () -> Void
+    /// "Usar datos de Salud" (SCRUM-206); `nil` = no se ofrece.
+    var health: HealthPrefillCoordinator?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -33,7 +35,7 @@ struct AboutYouView: View {
                         titleIdentifier: "aboutYou.title"
                     )
                     .padding(.top, DSpace.l)
-                    AboutYouFields(answer: answer, onChange: onChange)
+                    AboutYouFields(answer: answer, onChange: onChange, health: health)
                 }
             }
             VStack(spacing: DSpace.s) {
@@ -61,6 +63,8 @@ struct AboutYouView: View {
 struct AboutYouFields: View {
     let answer: AboutYouAnswer
     let onChange: (AboutYouAnswer) -> Void
+    /// "Usar datos de Salud" (SCRUM-206); `nil` = no se ofrece.
+    var health: HealthPrefillCoordinator?
 
     @State private var weightText = ""
     /// Unidad de la estatura en el selector (se guarda siempre en cm). Por defecto, la de la región.
@@ -74,6 +78,13 @@ struct AboutYouFields: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DSpace.l) {
+            if let health, health.isOffered {
+                HealthPrefillButton(state: health.state) {
+                    focused = nil
+                    Task { onChange(await health.prefill(answer)) }
+                }
+            }
+
             OnboardingField(title: "Nombre", icon: "person.text.rectangle", optional: true, purpose: "Para saludarte. No sale de tu iPhone.") {
                 TextField("Cómo quieres que te llamemos", text: binding(\.name))
                     .textContentType(.givenName)
@@ -155,6 +166,12 @@ struct AboutYouFields: View {
             var copy = answer
             copy.weight = Double(text.replacingOccurrences(of: ",", with: "."))
             onChange(copy)
+        }
+        // El peso puede llegar de fuera del campo (Salud, SCRUM-206): el texto lo refleja.
+        // Si ya dice lo mismo (p. ej. "72." mientras se escribe) no se toca.
+        .onChange(of: answer.weight) { _, weight in
+            guard let weight, Double(weightText.replacingOccurrences(of: ",", with: ".")) != weight else { return }
+            weightText = weight.formatted(.number.precision(.fractionLength(0...1)).locale(Locale(identifier: "en_US_POSIX")))
         }
     }
 
@@ -333,6 +350,7 @@ struct AboutYouFields: View {
 /// Hoja para completar o editar "Sobre ti". Guarda sólo si el dominio lo acepta.
 struct AboutYouEditSheet: View {
     @State var answer: AboutYouAnswer
+    var health: HealthPrefillCoordinator?
     let onSave: (AboutYouAnswer) async -> Bool
 
     @Environment(\.dismiss) private var dismiss
@@ -343,7 +361,7 @@ struct AboutYouEditSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: DSpace.m) {
-                    AboutYouFields(answer: answer, onChange: { answer = $0 })
+                    AboutYouFields(answer: answer, onChange: { answer = $0 }, health: health)
                     if saveFailed {
                         Label("No se pudo guardar. Intenta de nuevo.", systemImage: "exclamationmark.triangle")
                             .font(.callout)
@@ -356,6 +374,7 @@ struct AboutYouEditSheet: View {
             .screenBackground()
             .navigationTitle("Sobre ti")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear { health?.reset() }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") { dismiss() }

@@ -61,6 +61,10 @@ public final class AppEnvironment {
     /// Consentimiento para compartir el perfil con la IA (SCRUM-202).
     public let aiConsent: AIConsentCoordinator
 
+    /// "Usar datos de Salud" en "Sobre ti" (SCRUM-206). Sólo lectura; en pruebas de UI no
+    /// se ofrece (no hay diálogo de permisos que tocar).
+    public let healthPrefill: HealthPrefillCoordinator
+
     /// Check-in diario de sueño (SCRUM-203).
     public let sleepCheckIns: SleepCheckInCoordinator
 
@@ -264,6 +268,10 @@ public final class AppEnvironment {
             #endif
         }
         self.aiConnection = aiConnection
+        self.healthPrefill = HealthPrefillCoordinator(
+            reader: testOptions.isolatedPersistence ? nil : HealthKitProfileReader(),
+            clock: { fixedDate ?? Date() }
+        )
         self.onboarding = OnboardingCoordinator(
             authProvider: authProvider ?? mode.provider(appleID: SignInWithAppleProvider()),
             clock: { fixedDate ?? Date() }

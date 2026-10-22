@@ -31,7 +31,8 @@ struct AppRootView: View {
                 AboutYouView(
                     answer: environment.onboarding.aboutYouAnswer,
                     onChange: { environment.onboarding.updateAboutYou($0) },
-                    onContinue: { environment.onboarding.confirmAboutYou() }
+                    onContinue: { environment.onboarding.confirmAboutYou() },
+                    health: environment.healthPrefill
                 )
             case .onboarding(let step, let index, let canGoBack, let canAdvance, let isAtEnd):
                 OnboardingStepView(

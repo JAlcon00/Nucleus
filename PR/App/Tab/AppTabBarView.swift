@@ -72,7 +72,7 @@ struct AppTabBarView: View {
         }
         .tint(Color.primaryAction)
         .sheet(isPresented: $editingAboutYou) {
-            AboutYouEditSheet(answer: aboutYouDraft) { answer in
+            AboutYouEditSheet(answer: aboutYouDraft, health: environment.healthPrefill) { answer in
                 await environment.session.updateAboutYou(answer)
             }
         }
