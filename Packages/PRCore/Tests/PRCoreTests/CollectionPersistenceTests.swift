@@ -190,6 +190,7 @@ struct LegacyPersistenceMigrationTests {
             ))),
             (.session, try Fixture.encoded(StoredSession(userID: "u"))),
             (.aiConsent, try Fixture.encoded(StoredAIConsent(consent: .granted(at: Date(timeIntervalSince1970: 0)), updatedAt: Date(timeIntervalSince1970: 0)))),
+            (.checkIns, try Fixture.encoded(SleepCheckIn(day: "2026-10-22", hours: 7, quality: .good))),
         ]
         #expect(samples.map(\.0).sorted { $0.rawValue < $1.rawValue }
             == PersistenceCollection.allCases.sorted { $0.rawValue < $1.rawValue })

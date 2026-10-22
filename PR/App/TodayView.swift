@@ -45,6 +45,12 @@ struct TodayView: View {
     var asksToCompleteProfile = false
     var onCompleteProfile: () -> Void = {}
     var onDismissProfilePrompt: () -> Void = {}
+    /// SCRUM-203: preguntar "¿Cómo dormiste?" (sólo en día de entrenamiento, una vez al día).
+    var asksSleepCheckIn = false
+    var onSleepCheckIn: (Double, SleepQuality) -> Void = { _, _ in }
+    var onSkipSleepCheckIn: () -> Void = {}
+    /// Aviso del ajuste del día que decidió el motor (ya traducido); `nil` sin ajuste.
+    var readinessNote: String?
 
     @State private var showingOrder = false
     /// Día de la tira abierto en detalle.
@@ -277,6 +283,20 @@ struct TodayView: View {
                 }
             }
             sessionSummary(presentation)
+            if asksSleepCheckIn {
+                SleepCheckInCard(onRecord: onSleepCheckIn, onSkip: onSkipSleepCheckIn)
+            } else if let readinessNote {
+                Label {
+                    Text(readinessNote).fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "moon.zzz.fill").foregroundStyle(Color.warning)
+                }
+                .font(.callout)
+                .padding(DSpace.m)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .cardSurface(cornerRadius: DRadius.medium)
+                .accessibilityIdentifier("today.readiness")
+            }
             exerciseList
             if !order.isEmpty {
                 Button {
@@ -382,6 +402,56 @@ struct TodayView: View {
         .sensoryFeedback(.impact(weight: .light), trigger: startTaps)
         .accessibilityHint("Reanuda la sesión en curso.")
         .accessibilityIdentifier("today.resume")
+    }
+}
+
+/// "¿Cómo dormiste?" (SCRUM-203): horas y si dormiste bien o mal. Opcional ("Ahora no").
+/// Sólo registra la respuesta; el ajuste lo decide el motor.
+private struct SleepCheckInCard: View {
+    let onRecord: (Double, SleepQuality) -> Void
+    let onSkip: () -> Void
+
+    /// Rango y paso del selector (las horas válidas las valida el dominio).
+    private static let hoursRange: ClosedRange<Double> = 3...12
+    @State private var hours: Double = 7
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DSpace.m) {
+            HStack(spacing: DSpace.s) {
+                IconBadge(systemName: "bed.double.fill")
+                Text("¿Cómo dormiste?")
+                    .font(.headline)
+                Spacer(minLength: DSpace.s)
+                Button("Ahora no", action: onSkip)
+                    .font(.callout)
+                    .foregroundStyle(Color.textSecondary)
+                    .frame(minHeight: DSize.dayChip)
+                    .accessibilityIdentifier("today.sleep.skip")
+            }
+            Stepper(value: $hours, in: Self.hoursRange, step: 0.5) {
+                Text("\(hours.formatted(.number.precision(.fractionLength(0...1)))) h")
+                    .font(.title3.bold())
+                    .numericStyle()
+            }
+            .accessibilityLabel("Horas que dormiste")
+            .accessibilityIdentifier("today.sleep.hours")
+            HStack(spacing: DSpace.s) {
+                Button { onRecord(hours, .good) } label: {
+                    Label("Dormí bien", systemImage: "sun.max.fill")
+                }
+                .buttonStyle(.surface)
+                .accessibilityIdentifier("today.sleep.good")
+                Button { onRecord(hours, .poor) } label: {
+                    Label("Dormí mal", systemImage: "cloud.moon.fill")
+                }
+                .buttonStyle(.surface)
+                .accessibilityIdentifier("today.sleep.poor")
+            }
+        }
+        .padding(DSpace.m)
+        .cardSurface(cornerRadius: DRadius.medium)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("today.sleep")
     }
 }
 

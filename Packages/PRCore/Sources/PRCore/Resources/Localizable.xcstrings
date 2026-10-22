@@ -380,6 +380,24 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Free-weight compound" } }
       }
     },
+    "Dormiste poco: hoy vas más ligero (RIR +1 y una serie menos en aislados)." : {
+      "comment" : "Ajuste del día por dormir pocas horas",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Short sleep: lighter day today (RIR +1 and one less set on isolation moves)." } }
+      }
+    },
+    "Dormiste mal: hoy vas más ligero (RIR +1 y una serie menos en aislados)." : {
+      "comment" : "Ajuste del día por dormir mal",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Poor sleep: lighter day today (RIR +1 and one less set on isolation moves)." } }
+      }
+    },
+    "Dormiste poco y mal: hoy vas más ligero (RIR +1 y una serie menos en aislados)." : {
+      "comment" : "Ajuste del día por dormir poco y mal",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Short and poor sleep: lighter day today (RIR +1 and one less set on isolation moves)." } }
+      }
+    },
     "%lld × %lld" : {
       "comment" : "Series × repeticiones. Ej.: 3 × 10",
       "localizations" : {

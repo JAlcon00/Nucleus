@@ -169,6 +169,23 @@ public struct TrainingVocabularyPresenter: Sendable {
         }
     }
 
+    /// Aviso del ajuste del día por el sueño (SCRUM-203); `nil` si no hay ajuste.
+    public func readinessNote(_ adjustment: ReadinessAdjustment) -> String? {
+        switch adjustment {
+        case .none:
+            return nil
+        case .lighter(let reason, _, _):
+            switch reason {
+            case .shortSleep:
+                return resource("Dormiste poco: hoy vas más ligero (RIR +1 y una serie menos en aislados).", "Ajuste del día por dormir pocas horas")
+            case .poorSleep:
+                return resource("Dormiste mal: hoy vas más ligero (RIR +1 y una serie menos en aislados).", "Ajuste del día por dormir mal")
+            case .shortAndPoorSleep:
+                return resource("Dormiste poco y mal: hoy vas más ligero (RIR +1 y una serie menos en aislados).", "Ajuste del día por dormir poco y mal")
+            }
+        }
+    }
+
     /// "Última vez: 60 kg × 10" (M1).
     public func lastTime(_ performance: LastPerformance) -> String {
         let load = self.load(performance.weight, unit: performance.unit)

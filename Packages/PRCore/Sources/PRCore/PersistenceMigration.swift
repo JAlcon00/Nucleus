@@ -103,6 +103,7 @@ public struct LegacyPersistenceMigration: Sendable {
         case .plans: return (try? decoder.decode(StoredPlan.self, from: data)) != nil
         case .session: return (try? decoder.decode(StoredSession.self, from: data)) != nil
         case .aiConsent: return (try? decoder.decode(StoredAIConsent.self, from: data)) != nil
+        case .checkIns: return (try? decoder.decode(SleepCheckIn.self, from: data)) != nil
         }
     }
 

@@ -17,6 +17,8 @@ import PRDomain
 
 struct AppTabBarView: View {
     @Environment(AppEnvironment.self) private var environment
+    /// Textos del ajuste del día (SCRUM-203).
+    private let vocabulary = TrainingVocabularyPresenter(locale: AppEnvironment.presentationLocale)
     @Binding var selectedTab: AppTab
     /// El aviso "Completa tu perfil" se muestra una sola vez (SCRUM-198).
     @AppStorage("profile.aboutYouPromptShown") private var aboutYouPromptShown = false
@@ -107,7 +109,11 @@ struct AppTabBarView: View {
                     aboutYouPromptShown = true
                     editingAboutYou = true
                 },
-                onDismissProfilePrompt: { aboutYouPromptShown = true }
+                onDismissProfilePrompt: { aboutYouPromptShown = true },
+                asksSleepCheckIn: environment.asksSleepCheckIn,
+                onSleepCheckIn: { hours, quality in environment.recordSleep(hours: hours, quality: quality) },
+                onSkipSleepCheckIn: { environment.sleepCheckIns.skip() },
+                readinessNote: environment.todayPlan.plan.flatMap { vocabulary.readinessNote($0.readiness) }
             )
             .navigationTitle(AppTab.today.title)
         }

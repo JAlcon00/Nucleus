@@ -295,6 +295,19 @@ final class PRUITests: XCTestCase {
         XCTAssertEqual(toggle.value as? String, "0", "Retirar aplica al instante")
     }
 
+    /// SCRUM-203: en un día de entrenamiento Hoy pregunta cómo dormiste; "Dormí mal"
+    /// aligera el día y lo explica; no se vuelve a preguntar.
+    func testSleepCheckInMakesTheDayLighter() {
+        let app = launch()
+        completeOnboarding(app)
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
+        XCTAssertTrue(element(app, "today.sleep").waitForExistence(timeout: 5), "Debe preguntar cómo dormiste")
+        tap(app, "today.sleep.poor")
+        XCTAssertTrue(element(app, "today.readiness").waitForExistence(timeout: 5), "Debe explicar el ajuste del día")
+        XCTAssertFalse(element(app, "today.sleep").exists, "No vuelve a preguntar hoy")
+        XCTAssertTrue(element(app, "today.start").exists, "Se puede entrenar igual")
+    }
+
     // MARK: - Hoy
 
     /// SCRUM-195: Hoy tiene una sola acción; lo terciario vive en Perfil. Pestañas en español.

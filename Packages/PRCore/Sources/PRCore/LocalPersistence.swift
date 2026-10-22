@@ -35,6 +35,8 @@ public enum PersistenceCollection: String, CaseIterable, Sendable, Hashable {
     case session
     /// Consentimiento para compartir el perfil con la IA, por usuario. SCRUM-202.
     case aiConsent = "ai-consent"
+    /// Check-in diario de sueño, por usuario y día. SCRUM-203.
+    case checkIns = "check-ins"
 }
 
 /// Registro de eventos de persistencia SIN datos personales: sólo colección y

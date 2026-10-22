@@ -96,6 +96,8 @@ public struct TodayPlan: Equatable, Sendable {
     public let todayOrderReorderedByFatigue: Bool
     /// Explicación del bloque (orden de cada sesión), para "Tu semana" (SCRUM-197).
     public let explanation: BlockExplanation?
+    /// Ajuste del día por el check-in de sueño (SCRUM-203); ya aplicado a `todayTemplate`.
+    public let readiness: ReadinessAdjustment
 
     public init(
         block: TrainingBlock,
@@ -106,7 +108,8 @@ public struct TodayPlan: Equatable, Sendable {
         todayExercises: [TodayExerciseLine] = [],
         todayOrder: [TodayOrderLine] = [],
         todayOrderReorderedByFatigue: Bool = false,
-        explanation: BlockExplanation? = nil
+        explanation: BlockExplanation? = nil,
+        readiness: ReadinessAdjustment = .none
     ) {
         self.block = block
         self.sessions = sessions
@@ -117,6 +120,7 @@ public struct TodayPlan: Equatable, Sendable {
         self.todayOrder = todayOrder
         self.todayOrderReorderedByFatigue = todayOrderReorderedByFatigue
         self.explanation = explanation
+        self.readiness = readiness
     }
 }
 
@@ -190,15 +194,18 @@ public struct TodayPlanBuilder: Sendable {
         catalog: ExerciseCatalog,
         driver: TodayScreenDriver,
         date: Date,
-        timeZone: TimeZone
+        timeZone: TimeZone,
+        readiness: ReadinessAdjustment = .none
     ) throws -> TodayPlan {
         let estimatedMinutes = profile.usualSessionMinutes
+        let jointClasses = Dictionary(catalog.exercises.map { ($0.id, $0.jointClass) }, uniquingKeysWith: { first, _ in first })
+        // SCRUM-203: el check-in de sueño sólo aligera la sesión de hoy (mismo ID).
         let todayTemplate = try todaySession(
             from: block.sessions,
             profile: profile,
             date: date,
             timeZone: timeZone
-        )
+        ).map { ReadinessEngine().apply(readiness, to: $0, jointClass: { jointClasses[$0] }) }
         let state = driver.derive(
             todayTemplate: todayTemplate,
             activeSession: nil,
@@ -216,7 +223,8 @@ public struct TodayPlanBuilder: Sendable {
             todayExercises: exerciseLines(for: todayTemplate, catalog: catalog, profile: profile),
             todayOrder: orderLines(for: orderExplanation, catalog: catalog),
             todayOrderReorderedByFatigue: orderExplanation?.reorderedByFatigue ?? false,
-            explanation: explanation
+            explanation: explanation,
+            readiness: readiness
         )
     }
 
@@ -482,6 +490,8 @@ public final class TodayPlanCoordinator {
     private let saveClock: () -> Date
     /// Perfil con el que se armó `plan`; evita regenerar al volver a entrar con el mismo.
     private var activeProfile: OnboardingProfile?
+    /// Ajuste del día vigente (SCRUM-203). Se aplica cada vez que se arma "Hoy".
+    public private(set) var readiness: ReadinessAdjustment = .none
     /// Usuario del plan activo (para buscar plantillas de bloques anteriores).
     private var activeUserID: String?
 
@@ -561,7 +571,9 @@ public final class TodayPlanCoordinator {
     public func refreshState(activeSession: WorkoutSessionRecord?) {
         guard let current = plan else { return }
         let template = activeSession.flatMap { session in
-            current.sessions.first { $0.id == session.templateID }
+            current.todayTemplate?.id == session.templateID
+                ? current.todayTemplate
+                : current.sessions.first { $0.id == session.templateID }
         } ?? current.todayTemplate
         let state = driver.derive(
             todayTemplate: template,
@@ -577,14 +589,17 @@ public final class TodayPlanCoordinator {
             todayExercises: current.todayExercises,
             todayOrder: current.todayOrder,
             todayOrderReorderedByFatigue: current.todayOrderReorderedByFatigue,
-            explanation: current.explanation
+            explanation: current.explanation,
+            readiness: current.readiness
         )
     }
 
     /// Plantillas conocidas del usuario: las del bloque activo y las de bloques anteriores.
     /// Sirve para retomar una sesión que se empezó con un plan que ya cambió.
     public func allKnownTemplates() async -> [SessionTemplate] {
-        var templates = plan?.sessions ?? []
+        // La sesión de hoy va primero: si el check-in la aligeró, se retoma tal cual se empezó.
+        var templates = (plan?.todayTemplate).map { [$0] } ?? []
+        templates.append(contentsOf: plan?.sessions ?? [])
         if let planStore, let activeUserID,
            case .loaded(let stored, _) = await planStore.loadPlan(userID: activeUserID) {
             for block in await planStore.blockHistory(of: stored) {
@@ -630,7 +645,7 @@ public final class TodayPlanCoordinator {
             }
             guard let today = try? builder.todayPlan(
                 profile: stored.profile, block: block, explanation: explanation,
-                catalog: catalog, driver: driver, date: clock(), timeZone: timeZone()
+                catalog: catalog, driver: driver, date: clock(), timeZone: timeZone(), readiness: readiness
             ) else { return .unreadable }
             plan = today
             activeProfile = stored.profile
@@ -674,7 +689,7 @@ public final class TodayPlanCoordinator {
                 guard let previous else { return failActivation() }
                 plan = try builder.todayPlan(
                     profile: profile, block: previous.block, explanation: previous.plan.explanation,
-                    catalog: catalog, driver: driver, date: clock(), timeZone: timeZone()
+                    catalog: catalog, driver: driver, date: clock(), timeZone: timeZone(), readiness: readiness
                 )
                 activeProfile = profile
                 generation = .idle
@@ -737,10 +752,23 @@ public final class TodayPlanCoordinator {
     private func show(profile: OnboardingProfile, block: TrainingBlock, explanation: BlockExplanation) throws {
         plan = try builder.todayPlan(
             profile: profile, block: block, explanation: explanation,
-            catalog: catalog, driver: driver, date: clock(), timeZone: timeZone()
+            catalog: catalog, driver: driver, date: clock(), timeZone: timeZone(), readiness: readiness
         )
         activeProfile = profile
         generation = .idle
+    }
+
+    /// SCRUM-203: aplica el ajuste del día (check-in de sueño) y vuelve a armar "Hoy" sobre
+    /// el mismo bloque. El bloque guardado no cambia. Sin plan, sólo recuerda el ajuste.
+    public func applyReadiness(_ adjustment: ReadinessAdjustment) {
+        readiness = adjustment
+        guard let current = plan, let profile = activeProfile, let explanation = current.explanation else { return }
+        if let today = try? builder.todayPlan(
+            profile: profile, block: current.block, explanation: explanation,
+            catalog: catalog, driver: driver, date: clock(), timeZone: timeZone(), readiness: adjustment
+        ) {
+            plan = today
+        }
     }
 
     /// Guarda el perfil con su "Sobre ti" nuevo sobre el mismo bloque (SCRUM-198).

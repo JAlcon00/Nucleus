@@ -70,6 +70,8 @@ public struct AgentProfileContext: Codable, Sendable, Hashable {
     public let variety: VarietyPreference
     /// Sólo las restricciones activas.
     public let restrictions: [AgentRestrictionSummary]
+    /// Check-in de sueño de hoy, si lo hay (SCRUM-203).
+    public let sleep: SleepCheckIn?
 }
 
 /// Arma el contexto para la IA. Puro: el reloj y la zona horaria se inyectan.
@@ -81,6 +83,7 @@ public struct AgentProfileContextBuilder: Sendable {
     public func context(
         profile: OnboardingProfile,
         consent: AIDataConsent,
+        sleep: SleepCheckIn? = nil,
         now: Date,
         timeZone: TimeZone
     ) -> AgentProfileContext? {
@@ -106,7 +109,8 @@ public struct AgentProfileContextBuilder: Sendable {
                         side: restriction.side,
                         forbiddenPatterns: MovementPattern.allCases.filter(restriction.forbiddenPatterns.contains)
                     )
-                }
+                },
+            sleep: sleep
         )
     }
 }

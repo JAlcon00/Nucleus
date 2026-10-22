@@ -54,6 +54,21 @@ public final class AppEnvironment {
     /// Consentimiento para compartir el perfil con la IA (SCRUM-202).
     public let aiConsent: AIConsentCoordinator
 
+    /// Check-in diario de sueño (SCRUM-203).
+    public let sleepCheckIns: SleepCheckInCoordinator
+
+    /// ¿Hoy pregunta "¿Cómo dormiste?"? Sólo en día de entrenamiento y sin entrenamiento vivo.
+    public var asksSleepCheckIn: Bool {
+        sleepCheckIns.needsCheckIn && activeWorkout == nil && todayPlan.plan?.todayTemplate != nil
+    }
+
+    /// Registra el check-in y aplica el ajuste del día que decide el motor.
+    public func recordSleep(hours: Double, quality: SleepQuality) {
+        guard let adjustment = sleepCheckIns.record(hours: hours, quality: quality) else { return }
+        todayPlan.applyReadiness(adjustment)
+        refreshTodayState()
+    }
+
     /// Catálogo de ejercicios resolvido (inmutable; fallback vacío documentado).
     public let catalog: ExerciseCatalog
 
@@ -270,6 +285,15 @@ public final class AppEnvironment {
             }
         }
         self.aiConsent = AIConsentCoordinator(store: consentStore, clock: { fixedDate ?? Date() })
+        var checkInStore: SleepCheckInStore?
+        if let persistence = self.basePersistence {
+            do {
+                checkInStore = try persistence.sleepCheckInStore()
+            } catch {
+                persistence.log.saveFailed(.checkIns)
+            }
+        }
+        self.sleepCheckIns = SleepCheckInCoordinator(store: checkInStore, clock: { fixedDate ?? Date() })
         self.todayPlan = TodayPlanCoordinator(
             catalog: resolvedCatalog,
             planStore: planStore,
@@ -280,6 +304,7 @@ public final class AppEnvironment {
             todayPlan: self.todayPlan,
             planStore: planStore,
             aiConsent: self.aiConsent,
+            sleepCheckIns: self.sleepCheckIns,
             clock: { fixedDate ?? Date() }
         )
     }

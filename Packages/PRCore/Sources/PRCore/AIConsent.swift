@@ -106,8 +106,8 @@ public final class AIConsentCoordinator {
     }
 
     /// Contexto para la IA, sólo con consentimiento; `nil` en cualquier otro caso.
-    public func context(for profile: OnboardingProfile) -> AgentProfileContext? {
-        AgentProfileContextBuilder().context(profile: profile, consent: consent, now: clock(), timeZone: timeZone())
+    public func context(for profile: OnboardingProfile, sleep: SleepCheckIn? = nil) -> AgentProfileContext? {
+        AgentProfileContextBuilder().context(profile: profile, consent: consent, sleep: sleep, now: clock(), timeZone: timeZone())
     }
 
     /// Guarda primero y sólo entonces cambia el estado: si no se pudo guardar, la decisión

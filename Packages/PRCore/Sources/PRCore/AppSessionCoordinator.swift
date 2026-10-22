@@ -24,6 +24,8 @@ public final class AppSessionCoordinator {
     private let planStore: PlanStore?
     /// Consentimiento para la IA (SCRUM-202): se lee del usuario antes de mostrar su app.
     private let aiConsent: AIConsentCoordinator?
+    /// Check-in de sueño de hoy (SCRUM-203): su ajuste se aplica al retomar la sesión.
+    private let sleepCheckIns: SleepCheckInCoordinator?
     /// "Reintentar" pidió relanzar el inicio de sesión al terminar el intento cancelado.
     private var retryRequested = false
 
@@ -35,6 +37,7 @@ public final class AppSessionCoordinator {
         todayPlan: TodayPlanCoordinator,
         planStore: PlanStore?,
         aiConsent: AIConsentCoordinator? = nil,
+        sleepCheckIns: SleepCheckInCoordinator? = nil,
         clock: @escaping () -> Date = { Date() },
         timeZone: @escaping () -> TimeZone = { .current }
     ) {
@@ -42,6 +45,7 @@ public final class AppSessionCoordinator {
         self.todayPlan = todayPlan
         self.planStore = planStore
         self.aiConsent = aiConsent
+        self.sleepCheckIns = sleepCheckIns
         self.clock = clock
         self.timeZone = timeZone
     }
@@ -121,6 +125,7 @@ public final class AppSessionCoordinator {
         guard state.requiresSignIn else { return }
         forgetSession()
         aiConsent?.load(userID: nil)
+        sleepCheckIns?.load(userID: nil)
         todayPlan.reset()
         onboarding.returnToSignIn()
     }
@@ -129,6 +134,10 @@ public final class AppSessionCoordinator {
 
     private func resume(userID: String) async {
         aiConsent?.load(userID: userID)
+        if let sleepCheckIns {
+            sleepCheckIns.load(userID: userID)
+            todayPlan.applyReadiness(sleepCheckIns.adjustment)
+        }
         onboarding.resumeSession(userIdentifier: userID)
         switch await todayPlan.restore(userID: userID) {
         case .none: onboarding.beginOnboarding()
