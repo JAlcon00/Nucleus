@@ -70,7 +70,7 @@ Cada funcionalidad se cierra cuando todas sus casillas están en `[x]`.
 - [x] Al completar la última serie aparece un resumen.
 - [x] El resumen muestra duración, series, volumen y récords calculados desde los datos guardados → SCRUM-25 (`WorkoutClosingTests`).
 - [x] El entrenamiento queda guardado una sola vez como completado → SCRUM-25 (`WorkoutClosingTests`: Export lo cuenta una vez).
-- [ ] Progreso muestra el registro desde el primer entrenamiento → SCRUM-186 (rama `SCRUM-186-progreso-historial`, commit `05e5a0d`, sin PR todavía).
+- [x] Progreso muestra el registro desde el primer entrenamiento → SCRUM-186 (`ProgressHistoryTests` (9), UI `testProgressLogsTheFirstWorkout`; `make ci` PRDomain 484, PRCore 387, XCTest 151; `make test-ui` 20/20).
 - [x] Exportar muestra el número real de entrenamientos y todas sus series → SCRUM-23.
 
 ### F-07 · Ajustar la sesión a mi tiempo (opcional) — SCRUM-187 (era de Joss)
