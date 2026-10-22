@@ -91,6 +91,108 @@
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "You beat your best recorded load." } }
       }
+    },
+    "Push" : {
+      "comment" : "Sesión de empuje: pecho, hombro y tríceps",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Push" } }
+      }
+    },
+    "Pull" : {
+      "comment" : "Sesión de jalón: espalda y bíceps",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pull" } }
+      }
+    },
+    "Pierna" : {
+      "comment" : "Sesión de tren inferior",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Legs" } }
+      }
+    },
+    "Torso" : {
+      "comment" : "Sesión de tren superior",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Upper body" } }
+      }
+    },
+    "Cuerpo completo" : {
+      "comment" : "Sesión de cuerpo completo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Full body" } }
+      }
+    },
+    "Pecho" : {
+      "comment" : "Grupo muscular",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Chest" } }
+      }
+    },
+    "Espalda" : {
+      "comment" : "Grupo muscular",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Back" } }
+      }
+    },
+    "Hombro" : {
+      "comment" : "Grupo muscular",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Shoulders" } }
+      }
+    },
+    "Bíceps" : {
+      "comment" : "Grupo muscular",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Biceps" } }
+      }
+    },
+    "Tríceps" : {
+      "comment" : "Grupo muscular",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Triceps" } }
+      }
+    },
+    "Antebrazo" : {
+      "comment" : "Grupo muscular",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Forearms" } }
+      }
+    },
+    "Cuádriceps" : {
+      "comment" : "Grupo muscular",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Quads" } }
+      }
+    },
+    "Femoral" : {
+      "comment" : "Grupo muscular: isquiotibiales",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Hamstrings" } }
+      }
+    },
+    "Glúteo" : {
+      "comment" : "Grupo muscular",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Glutes" } }
+      }
+    },
+    "Pantorrilla" : {
+      "comment" : "Grupo muscular",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Calves" } }
+      }
+    },
+    "Espalda baja" : {
+      "comment" : "Grupo muscular: erectores espinales",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Lower back" } }
+      }
+    },
+    "Abdomen" : {
+      "comment" : "Grupo muscular: core",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Core" } }
+      }
     }
   },
   "version" : "1.0"

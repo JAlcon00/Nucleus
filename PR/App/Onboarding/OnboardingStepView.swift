@@ -113,8 +113,6 @@ struct OnboardingStepView: View {
 
     private var daysStepper: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Días por semana")
-                .font(.headline)
             Stepper(value: days, in: TrainingWeek.allowedTrainingDays) {
                 Text("\(days.wrappedValue) días")
             }
@@ -125,8 +123,6 @@ struct OnboardingStepView: View {
 
     private var minutesStepper: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Minutos por sesión")
-                .font(.headline)
             Stepper(value: minutes, in: TrainingWeek.allowedSessionMinutes, step: 5) {
                 Text("\(minutes.wrappedValue) min")
             }
@@ -137,9 +133,7 @@ struct OnboardingStepView: View {
 
     private var gymRow: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Gimnasio")
-                .font(.headline)
-            Text("Puedes omitirlo ahora y elegir tu gimnasio más adelante.")
+            Text("Por ahora armamos tu plan con equipo básico de gimnasio: barra, mancuernas, máquinas y poleas. Podrás elegir tu gimnasio más adelante.")
                 .font(.callout)
                 .foregroundStyle(Color.textSecondary)
             Button("Omitir este paso") {
@@ -152,9 +146,7 @@ struct OnboardingStepView: View {
 
     private var restrictionsRow: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Restricciones")
-                .font(.headline)
-            Text("Sin restricciones por defecto; las gestionas en la app cuando quieras.")
+            Text("Si tienes una molestia o algo que prefieras evitar, podrás registrarlo cuando quieras en Perfil › Restricciones.")
                 .font(.callout)
                 .foregroundStyle(Color.textSecondary)
             Button("Continuar sin añadir") {
@@ -172,8 +164,6 @@ struct OnboardingStepView: View {
     /// (no sólo con color).
     private var choicesPicker: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title(for: step))
-                .font(.headline)
             ForEach(choices) { choice in
                 let isSelected = selected == choice.answer
                 Button {

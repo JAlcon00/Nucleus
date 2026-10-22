@@ -63,6 +63,14 @@ final class PRUITests: XCTestCase {
         tap(app, "onboarding.skipRestrictions"); tap(app, "onboarding.next")
     }
 
+    /// Abre una pestaña por su nombre visible (en español, SCRUM-195). En iPad la barra de
+    /// pestañas va arriba y no es un `tabBar`: se busca el botón por su nombre.
+    private func openTab(_ app: XCUIApplication, _ title: String, file: StaticString = #filePath, line: UInt = #line) {
+        let tab = app.buttons[title].firstMatch
+        XCTAssertTrue(tab.waitForExistence(timeout: 10), "No aparece la pestaña '\(title)'", file: file, line: line)
+        tab.tap()
+    }
+
     /// Lleva un Stepper de `from` a `target`. Si ya está en el objetivo no lo toca (la app
     /// debe registrar el valor por defecto igualmente: lo comprueba otra prueba).
     private func setStepper(_ app: XCUIApplication, id: String, to target: Int, from current: Int, step: Int = 1) {
@@ -157,11 +165,12 @@ final class PRUITests: XCTestCase {
         XCTAssertTrue(resumed.waitForExistence(timeout: 10), "Al continuar debe seguir la serie 4, con las 3 anteriores guardadas")
     }
 
-    func testRedoQuestionnaireFromTodayOpensTheQuestionnaire() {
+    func testRedoQuestionnaireFromProfileOpensTheQuestionnaire() {
         let app = launch()
         completeOnboarding(app)
         XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
-        tap(app, "today.redo")
+        openTab(app, "Perfil")
+        tap(app, "profile.redo")
         let confirm = app.buttons["Sí, rehacer"].firstMatch
         XCTAssertTrue(confirm.waitForExistence(timeout: 5))
         confirm.tap()
@@ -170,6 +179,19 @@ final class PRUITests: XCTestCase {
     }
 
     // MARK: - Hoy
+
+    /// SCRUM-195: Hoy tiene una sola acción; lo terciario vive en Perfil. Pestañas en español.
+    func testTodayHasASingleActionAndSpanishTabs() {
+        let app = launch()
+        completeOnboarding(app)
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
+        for title in ["Hoy", "Progreso", "Plan", "Perfil"] {
+            XCTAssertTrue(app.buttons[title].firstMatch.exists, "Falta la pestaña '\(title)'")
+        }
+        XCTAssertFalse(app.buttons["Exportar"].exists, "Exportar ya no va en Hoy")
+        XCTAssertFalse(app.buttons["Restricciones"].exists, "Restricciones ya no va en Hoy")
+        XCTAssertFalse(app.buttons["Rehacer cuestionario"].exists, "Rehacer ya no va en Hoy")
+    }
 
     func testTodayListsTheExercisesOfTheSession() {
         let app = launch()
@@ -222,7 +244,8 @@ final class PRUITests: XCTestCase {
         let app = launch()
         completeOnboarding(app)
         XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
-        app.buttons["Exportar"].tap()
+        openTab(app, "Perfil")
+        tap(app, "profile.export")
         XCTAssertTrue(app.staticTexts["Aún no tienes entrenamientos"].waitForExistence(timeout: 10))
     }
 }

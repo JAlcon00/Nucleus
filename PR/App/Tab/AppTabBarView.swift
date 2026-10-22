@@ -4,9 +4,9 @@
 //
 //  Created by PR.
 //
-//  Pestañas raíz de la app (SKILL §6: Today / Progress / Plan / Profile).
-//  La pestaña Today conserva su header, su barra de acciones (restricciones/exportar)
-//  y su presentación de WORKOUT MODE. La sesión activa se presenta a nivel raíz
+//  Pestañas raíz de la app (SKILL §6: Hoy / Progreso / Plan / Perfil).
+//  Hoy tiene una sola acción (Empezar o Continuar, SCRUM-195): restricciones, rehacer
+//  cuestionario y exportar viven en Perfil. La sesión activa se presenta a nivel raíz
 //  (fullScreenCover en AppRootView) para reemplazar la navegación temporalmente.
 //  Vista de composición: no contiene reglas de negocio.
 //
@@ -29,8 +29,6 @@ struct AppTabBarView: View {
     /// Intento: volver a generar el plan tras un fallo (SCRUM-193).
     var onRetryPlan: () -> Void = {}
 
-    @State private var confirmingRedo = false
-
     var body: some View {
         TabView(selection: $selectedTab) {
             todayTab
@@ -42,7 +40,7 @@ struct AppTabBarView: View {
             PlanView()
                 .tabItem { tabLabel(.plan) }
                 .tag(AppTab.plan)
-            ProfileView()
+            ProfileView(onRedoQuestionnaire: onRedoQuestionnaire)
                 .tabItem { tabLabel(.profile) }
                 .tag(AppTab.profile)
         }
@@ -63,43 +61,7 @@ struct AppTabBarView: View {
                 isStartingWorkout: isStartingWorkout,
                 onRetry: onRetryPlan
             )
-            .toolbar {
-                ToolbarItemGroup(placement: .primaryAction) {
-                    NavigationLink {
-                        RestrictionManagementView(
-                            restrictions: [],
-                            onCreate: {},
-                            onReview: { _ in },
-                            onResolve: { _ in }
-                        )
-                    } label: {
-                        Label("Restricciones", systemImage: "list.bullet.clipboard")
-                    }
-
-                    Button {
-                        confirmingRedo = true
-                    } label: {
-                        Label("Rehacer cuestionario", systemImage: "arrow.counterclockwise")
-                    }
-                    .accessibilityIdentifier("today.redo")
-
-                    NavigationLink {
-                        ExportDataView()
-                    } label: {
-                        Label("Exportar", systemImage: "square.and.arrow.up")
-                    }
-                }
-            }
-            .confirmationDialog(
-                "¿Rehacer el cuestionario?",
-                isPresented: $confirmingRedo,
-                titleVisibility: .visible
-            ) {
-                Button("Sí, rehacer") { onRedoQuestionnaire() }
-                Button("Cancelar", role: .cancel) {}
-            } message: {
-                Text("Si cambias objetivo, fase o días se crea un bloque nuevo. El anterior y su historial se conservan.")
-            }
+            .navigationTitle(AppTab.today.title)
         }
     }
 

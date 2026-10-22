@@ -4,7 +4,7 @@
 //
 //  Created by PR.
 //
-//  Pestaña "Progress" (SKILL §6). Estado vacío inicial (SKILL §32) hasta que haya
+//  Pestaña "Progreso" (SKILL §6). Estado vacío inicial (SKILL §32) hasta que haya
 //  sesiones registradas que alimentar los charts (PR-1004). Vista pura.
 //
 
@@ -28,7 +28,7 @@ struct ProgressTabView: View {
             .padding(.horizontal, 24)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .screenBackground()
-            .navigationTitle("Progress")
+            .navigationTitle("Progreso")
             .accessibilityElement(children: .combine)
         }
     }

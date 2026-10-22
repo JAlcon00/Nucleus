@@ -36,6 +36,8 @@ struct TodayView: View {
     var onRetry: () -> Void = {}
 
     @State private var showingOrder = false
+    /// Nombres de sesión en español (Push, Pull, Pierna…): el planificador guarda claves estables.
+    private let vocabulary = TrainingVocabularyPresenter(locale: AppEnvironment.presentationLocale)
     /// Cuenta toques de Empezar/Continuar: dispara el háptico de confirmación.
     @State private var startTaps = 0
 
@@ -93,8 +95,6 @@ struct TodayView: View {
     private var loadingView: some View {
         VStack(alignment: .leading, spacing: DSpace.m) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Hoy")
-                    .font(.caption)
                 Text("Sesión de hoy")
                     .font(.title2.bold())
                 Text("16 series · ~60 min")
@@ -173,10 +173,7 @@ struct TodayView: View {
     private func readyView(_ presentation: SessionPresentation) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Hoy")
-                    .font(.caption)
-                    .foregroundStyle(Color.textSecondary)
-                Text(presentation.title)
+                Text(vocabulary.sessionName(presentation.title))
                     .font(.title2.bold())
                 sessionSummary(presentation)
             }
@@ -274,7 +271,7 @@ struct TodayView: View {
                 .font(.subheadline)
                 .foregroundStyle(Color.textSecondary)
                 .accessibilityIdentifier("today.activeBanner")
-            Text(presentation.title)
+            Text(vocabulary.sessionName(presentation.title))
                 .font(.title2.bold())
             sessionSummary(presentation)
             Spacer()
@@ -306,7 +303,7 @@ struct TodayView: View {
             onStart()
         } label: {
             LoadingButtonLabel(isLoading: isStartingWorkout, loadingAccessibilityLabel: "Abriendo entrenamiento") {
-                Label("Empezar \(presentation.title)", systemImage: "play.fill")
+                Label("Empezar \(vocabulary.sessionName(presentation.title))", systemImage: "play.fill")
             }
             .font(.headline)
             .frame(maxWidth: .infinity, minHeight: 50)
