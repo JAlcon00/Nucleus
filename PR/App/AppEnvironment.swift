@@ -105,12 +105,20 @@ public final class AppEnvironment {
     /// puede leer, la semana se muestra igual, sólo sin días marcados como hechos (es una
     /// lectura: no se pierde ni se escribe nada).
     public func refreshHistory() async {
-        guard let persistence else { return }
+        guard let persistence else {
+            todayPlan.historyLoadFailed()
+            return
+        }
         do {
-            let sessions = try await persistence.workoutRepository().loadAllSessions().items
-            todayPlan.updateHistory(sessions)
+            let result = try await persistence.workoutRepository().loadAllSessions()
+            todayPlan.updateHistory(
+                result.items,
+                unreadable: result.unreadableCount,
+                knownTemplates: await todayPlan.allKnownTemplates()
+            )
         } catch {
-            // Se conserva el historial anterior en memoria; el próximo arranque reintenta.
+            // Se conserva el historial anterior en memoria; Progreso ofrece reintentar.
+            todayPlan.historyLoadFailed()
         }
     }
 

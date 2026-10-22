@@ -99,19 +99,33 @@ public struct TrainingVocabularyPresenter: Sendable {
 
     /// "Última vez: 60 kg × 10" (M1).
     public func lastTime(_ performance: LastPerformance) -> String {
-        let unit: UnitMass
-        switch performance.unit {
-        case .kilograms: unit = .kilograms
-        case .pounds: unit = .pounds
-        }
-        let load = Measurement(value: performance.weight, unit: unit).formatted(
-            .measurement(width: .abbreviated, usage: .asProvided, numberFormatStyle: .number.precision(.fractionLength(0...1)))
-                .locale(locale)
-        )
+        let load = self.load(performance.weight, unit: performance.unit)
         return String(localized: LocalizedStringResource(
             "Última vez: \(load) × \(performance.reps)", locale: locale, bundle: Self.bundle,
             comment: "Mejor serie de la última sesión de un ejercicio. Ej.: Última vez: 60 kg × 10"
         ))
+    }
+
+    /// Una serie hecha: "60 kg × 10" (Progreso, SCRUM-186).
+    public func setText(weight: Double, unit: LoadUnit, reps: Int) -> String {
+        let load = self.load(weight, unit: unit)
+        return String(localized: LocalizedStringResource(
+            "\(load) × \(reps)", locale: locale, bundle: Self.bundle,
+            comment: "Carga del récord: peso con unidad × repeticiones. Ej.: 85 kg × 8"
+        ))
+    }
+
+    /// Peso con unidad y como mucho un decimal: "1,580 kg", "82.5 kg".
+    public func load(_ weight: Double, unit: LoadUnit) -> String {
+        let mass: UnitMass
+        switch unit {
+        case .kilograms: mass = .kilograms
+        case .pounds: mass = .pounds
+        }
+        return Measurement(value: weight, unit: mass).formatted(
+            .measurement(width: .abbreviated, usage: .asProvided, numberFormatStyle: .number.precision(.fractionLength(0...1)))
+                .locale(locale)
+        )
     }
 
     // MARK: - Privado

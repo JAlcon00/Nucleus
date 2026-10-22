@@ -37,7 +37,10 @@ struct AppTabBarView: View {
             todayTab
                 .tabItem { tabLabel(.today) }
                 .tag(AppTab.today)
-            ProgressTabView()
+            ProgressTabView(
+                screen: environment.todayPlan.progress,
+                onRetry: { Task { await environment.refreshHistory() } }
+            )
                 .tabItem { tabLabel(.progress) }
                 .tag(AppTab.progress)
             PlanView(
