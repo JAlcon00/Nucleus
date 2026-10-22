@@ -467,6 +467,16 @@ Solo se empieza si los bloques 1 a 8 están en `[x]`.
 - **Migraciones con fixture:** las del plan (U3) y del perfil (U5) llevan test con fixture de la versión anterior. Son integridad de datos P0.
 - **Datos personales de U5:** no van a logs, analytics ni al LLM.
 
+### Excepción P2 · SCRUM-199 · Identidad visual v2 (2026-10-22)
+
+- Aprobada por Jesús: se ejecuta aunque este plan tiene casillas abiertas, porque es sólo de assets y configuración (no toca PRDomain ni PRCore).
+- Fuente: paquete `NucleusIdentidad.zip` (ícono claro/oscuro/tintado, AccentColor, `Brand Colors`, `Brand Logos`, `LaunchLogo`).
+- [x] Catálogos de iOS y Watch con ícono, acento, colores y logos; símbolos generados (`ironRed`, `logoHorizontal`…).
+- [x] Pantalla de arranque en `PR/Info.plist` (`LaunchBackground` + `LaunchLogo`), sin tocar `project.pbxproj`.
+- [x] Los 6 colores de marca de `DesignTokens.swift` salen del catálogo; ningún hex de la paleta en código Swift.
+- [x] Logo horizontal en el inicio de sesión e isotipo en "Conectando con Apple…".
+- [ ] 👤 Jesús: ícono oscuro y tintado (estilo de íconos de la pantalla de inicio), arranque en frío en iPhone SE y Pro Max, ícono del Watch.
+
 ## 4. Después del POC (no empezar todavía)
 
 En orden: Fase C (restricciones SCRUM-31, 32, 36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–40) → HealthKit, Watch, pestañas.

@@ -18,12 +18,17 @@ struct SigningInView: View {
     @State private var isSlow = false
     /// Cambiarlo reinicia la cuenta de la espera larga.
     @State private var attempt = 0
+    /// Isotipo de la marca (SCRUM-199); escala con el texto.
+    @ScaledMetric(relativeTo: .largeTitle) private var isotypeSize = DSize.brandIsotype
 
     var body: some View {
         VStack(spacing: DSpace.l) {
             Spacer()
-            Text("Nucleus")
-                .font(.largeTitle.bold())
+            Image(.logoIsotipo)
+                .resizable()
+                .scaledToFit()
+                .frame(width: isotypeSize, height: isotypeSize)
+                .accessibilityLabel("Nucleus")
             ProgressView()
                 .controlSize(.large)
                 .tint(Color.primaryAction)

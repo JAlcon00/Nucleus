@@ -68,6 +68,10 @@ enum DSize {
     static let unitPicker: CGFloat = 116
     /// Grosor de cada segmento del indicador de pasos.
     static let progressSegment: CGFloat = 4
+    /// Ancho del logo horizontal en el inicio de sesión (mínimo de marca: 96 pt).
+    static let brandLogo: CGFloat = 220
+    /// Isotipo de la marca en pantallas de espera (mínimo de marca: 20 pt).
+    static let brandIsotype: CGFloat = 72
 }
 
 /// Tokens de movimiento. Con Reduce Motion se sustituye el desplazamiento/escala por un
@@ -101,14 +105,18 @@ enum DMotion {
 }
 
 /// Paleta Iron Energy (valores crudos). Privada: las pantallas usan los roles de abajo.
+/// SCRUM-199: los seis colores de marca salen del catálogo de assets (`Brand Colors`, la
+/// misma fuente que el ícono y la pantalla de arranque); el resto de estados y la
+/// superficie elevada no son de marca y se quedan aquí. Se leen por nombre porque los
+/// símbolos generados (`Color.ironRed`…) están aislados al main actor y esta paleta no.
 nonisolated private enum IronEnergy {
-    static let carbon = Color(red: 13 / 255, green: 13 / 255, blue: 15 / 255)       // #0D0D0F
-    static let graphite = Color(red: 28 / 255, green: 28 / 255, blue: 33 / 255)     // #1C1C21
+    static let carbon = Color("IronCharcoal", bundle: .main)
+    static let graphite = Color("IronGraphite", bundle: .main)
     static let graphiteHigh = Color(red: 38 / 255, green: 38 / 255, blue: 45 / 255) // #26262D
-    static let ember = Color(red: 255 / 255, green: 61 / 255, blue: 46 / 255)       // #FF3D2E
-    static let fire = Color(red: 255 / 255, green: 122 / 255, blue: 26 / 255)       // #FF7A1A
-    static let steel = Color(red: 138 / 255, green: 143 / 255, blue: 152 / 255)     // #8A8F98
-    static let bone = Color(red: 245 / 255, green: 245 / 255, blue: 240 / 255)      // #F5F5F0
+    static let ember = Color("IronRed", bundle: .main)
+    static let fire = Color("IronFire", bundle: .main)
+    static let steel = Color("IronSteel", bundle: .main)
+    static let bone = Color("IronBone", bundle: .main)
     static let green = Color(red: 48 / 255, green: 209 / 255, blue: 88 / 255)       // #30D158
     static let amber = Color(red: 255 / 255, green: 197 / 255, blue: 61 / 255)      // #FFC53D
     static let coral = Color(red: 255 / 255, green: 107 / 255, blue: 107 / 255)     // #FF6B6B

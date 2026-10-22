@@ -9,6 +9,7 @@
 //  reglas de negocio: el botón oficial de Apple (`AppleSignInButton`) sólo delega en el
 //  coordinador. No persiste credenciales inseguras y el login no requiere HealthKit.
 //  SCRUM-195: marca Nucleus y botón oficial blanco sobre carbón (guías de Apple).
+//  SCRUM-199: logo de la identidad v2 (catálogo de assets).
 //
 
 import SwiftUI
@@ -17,19 +18,21 @@ struct SignInView: View {
     /// Intent: iniciar el flujo de Sign in with Apple.
     let onSignIn: () async -> Void
 
+    /// Ancho del logo horizontal (mínimo de marca: 96 pt); escala con el texto.
+    @ScaledMetric(relativeTo: .largeTitle) private var logoWidth = DSize.brandLogo
+
     var body: some View {
         VStack(spacing: DSpace.l) {
             Spacer()
 
-            Image(systemName: "figure.strengthtraining.traditional")
-                .font(.largeTitle)
-                .imageScale(.large)
-                .foregroundStyle(LinearGradient.energy)
-                .accessibilityHidden(true)
-
-            VStack(spacing: DSpace.s) {
-                Text("Nucleus")
-                    .font(.largeTitle.bold())
+            // Logo de marca (SCRUM-199): isotipo + "NUCLEUS" en vector, versión para
+            // fondo oscuro. VoiceOver lo lee como el encabezado "Nucleus".
+            VStack(spacing: DSpace.m) {
+                Image(.logoHorizontal)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: logoWidth)
+                    .accessibilityLabel("Nucleus")
                     .accessibilityAddTraits(.isHeader)
                 Text("Tu entrenador experto")
                     .font(.callout)
