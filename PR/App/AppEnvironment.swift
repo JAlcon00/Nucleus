@@ -75,6 +75,9 @@ public final class AppEnvironment {
     /// "Hoy" fijo para las pruebas de UI (sólo Debug); `nil` = reloj real.
     private let fixedDate: Date?
 
+    /// Demora de la activación del plan para las pruebas de UI (sólo Debug, SCRUM-193).
+    public let uiTestPlanDelay: Duration?
+
     /// Entrenamiento vivo (retomado tras un cierre o empezado ahora). `nil` si no hay ninguno.
     /// Hoy muestra "Continuar" mientras exista y no haya terminado (SCRUM-24).
     public private(set) var activeWorkout: WorkoutSessionCoordinator?
@@ -216,6 +219,7 @@ public final class AppEnvironment {
         // Con `-PRFixedDate` (sólo Debug) "hoy" es ese día; si no, el reloj real.
         let fixedDate = testOptions.fixedDate(timeZone: .current)
         self.fixedDate = fixedDate
+        self.uiTestPlanDelay = testOptions.planDelay
         self.onboarding = OnboardingCoordinator(
             authProvider: authProvider ?? mode.provider(appleID: SignInWithAppleProvider()),
             clock: { fixedDate ?? Date() }

@@ -68,6 +68,22 @@ struct AboutYouFlowTests {
         #expect(step == .goal, "El cuestionario sigue empezando en el objetivo")
     }
 
+    @Test("El nombre que Apple entrega en el primer inicio de sesión prellena 'Sobre ti'")
+    func appleNamePrefillsName() async throws {
+        let date = try today()
+        let onboarding = OnboardingCoordinator(
+            authProvider: FakeAppleIDAuthProvider(behavior: .success(userIdentifier: "apple-user", givenName: "  Jesús ")),
+            clock: { date }, timeZone: { utc }
+        )
+        await onboarding.signIn()
+        #expect(onboarding.aboutYouAnswer.name == "Jesús")
+        #expect(onboarding.auth.profile?.displayName == "Jesús")
+
+        let withoutName = OnboardingCoordinator(authProvider: FakeAppleIDAuthProvider(), clock: { date }, timeZone: { utc })
+        await withoutName.signIn()
+        #expect(withoutName.aboutYouAnswer.name.isEmpty, "Sin nombre de Apple no se inventa uno")
+    }
+
     @Test("Sin datos completos o con menos de 18 no se continúa")
     func confirmNeedsCompleteAdultAnswer() async throws {
         let onboarding = try coordinator()

@@ -12,6 +12,8 @@
 //    sin cambiar la fecha del simulador.
 //  - `-PRUITestStoreID <id>`: junto con el reset, el directorio temporal lleva ese id y se
 //    REUTILIZA al relanzar la app (para probar que cierra y reabre recordando el plan).
+//  - `-PRUITestPlanDelay <segundos>` (1…10): demora la activación del plan para probar que,
+//    mientras está pendiente, nunca se muestra "Día de descanso" (SCRUM-193).
 //  La decisión es pura y testeable; la app sólo pasa sus argumentos y si es Debug.
 //
 
@@ -21,6 +23,9 @@ public struct UITestLaunchOptions: Equatable, Sendable {
     public static let resetArgument = "-PRUITestReset"
     public static let fixedDateArgument = "-PRFixedDate"
     public static let storeIDArgument = "-PRUITestStoreID"
+    public static let planDelayArgument = "-PRUITestPlanDelay"
+    /// Demoras aceptadas, en segundos (fuera de este rango se ignora).
+    public static let allowedPlanDelaySeconds: ClosedRange<Int> = 1...10
 
     /// Usar persistencia aislada en un directorio temporal nuevo.
     public let isolatedPersistence: Bool
@@ -29,11 +34,19 @@ public struct UITestLaunchOptions: Equatable, Sendable {
 
     /// Identificador del directorio aislado; `nil` = uno nuevo en cada arranque.
     public let storeID: String?
+    /// Demora artificial de la activación del plan (sólo pruebas de UI); `nil` = ninguna.
+    public let planDelay: Duration?
 
-    public init(isolatedPersistence: Bool = false, fixedDay: DateComponents? = nil, storeID: String? = nil) {
+    public init(
+        isolatedPersistence: Bool = false,
+        fixedDay: DateComponents? = nil,
+        storeID: String? = nil,
+        planDelay: Duration? = nil
+    ) {
         self.isolatedPersistence = isolatedPersistence
         self.fixedDay = fixedDay
         self.storeID = storeID
+        self.planDelay = planDelay
     }
 
     /// Nombre del directorio temporal aislado: estable con `storeID`, nuevo si no hay.
@@ -51,7 +64,8 @@ public struct UITestLaunchOptions: Equatable, Sendable {
         return UITestLaunchOptions(
             isolatedPersistence: arguments.contains(resetArgument),
             fixedDay: fixedDay(in: arguments),
-            storeID: storeID(in: arguments)
+            storeID: storeID(in: arguments),
+            planDelay: planDelay(in: arguments)
         )
     }
 
@@ -69,6 +83,15 @@ public struct UITestLaunchOptions: Equatable, Sendable {
                   year: fixedDay.year, month: fixedDay.month, day: fixedDay.day
               ) else { return nil }
         return date
+    }
+
+    /// Segundos enteros dentro de `allowedPlanDelaySeconds`; cualquier otro valor se ignora.
+    private static func planDelay(in arguments: [String]) -> Duration? {
+        guard let index = arguments.firstIndex(of: planDelayArgument),
+              arguments.indices.contains(index + 1),
+              let seconds = Int(arguments[index + 1]),
+              allowedPlanDelaySeconds.contains(seconds) else { return nil }
+        return .seconds(seconds)
     }
 
     /// Sólo letras, números y guiones: nunca una ruta.

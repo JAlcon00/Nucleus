@@ -8,7 +8,8 @@
 //  sesiones guardadas, avisa de registros ilegibles y ofrece compartir JSON y CSV
 //  (user-controlled, `ShareLink`). Los archivos los construye `DataExportCoordinator`;
 //  si el JSON no se puede generar (p. ej. el guard de secretos lo rechaza) se dice,
-//  nunca se oculta. Sin reglas de negocio.
+//  nunca se oculta. "Sobre ti" (SCRUM-198) sólo entra al JSON si la persona lo elige
+//  (apagado por defecto). Sin reglas de negocio.
 //
 
 import SwiftUI
@@ -20,8 +21,11 @@ struct ExportView: View {
     let sessions: [WorkoutSessionRecord]
     let exercises: [Exercise]
     let unreadableCount: Int
+    /// "Sobre ti" guardado; `nil` si la persona no lo ha llenado.
+    var aboutYou: AboutYou?
 
     private let coordinator = DataExportCoordinator()
+    @State private var includeAboutYou = false
 
     /// Archivos de export (se construyen una vez al aparecer).
     private enum Files {
@@ -46,6 +50,17 @@ struct ExportView: View {
             }
             .listRowBackground(Color.surface)
 
+            if aboutYou != nil {
+                Section {
+                    Toggle("Incluir \"Sobre ti\"", isOn: $includeAboutYou)
+                        .accessibilityIdentifier("export.includeAboutYou")
+                } footer: {
+                    Text("Edad, sexo, estatura y peso. Por defecto no se incluyen.")
+                        .foregroundStyle(Color.textSecondary)
+                }
+                .listRowBackground(Color.surface)
+            }
+
             Section("Exportar") {
                 switch files {
                 case .preparing:
@@ -63,7 +78,7 @@ struct ExportView: View {
         }
         .scrollContentBackground(.hidden)
         .screenBackground()
-        .task { buildFiles() }
+        .task(id: includeAboutYou) { buildFiles() }
     }
 
     private var sessionCount: Text {
@@ -79,7 +94,8 @@ struct ExportView: View {
                 blocks: [],
                 gyms: [],
                 restrictions: [],
-                profile: nil
+                profile: nil,
+                aboutYou: includeAboutYou ? aboutYou : nil
             )
         } catch {
             json = nil
@@ -130,6 +146,17 @@ private func previewSessions(_ count: Int) -> [WorkoutSessionRecord] {
     NavigationStack {
         ExportView(sessions: previewSessions(1), exercises: [], unreadableCount: 1)
             .navigationTitle("Exportar datos")
+    }
+    .ironEnergyTheme()
+}
+
+#Preview("Con 'Sobre ti'") {
+    NavigationStack {
+        ExportView(
+            sessions: previewSessions(2), exercises: [], unreadableCount: 0,
+            aboutYou: try? AboutYou(name: "Ana", birthYear: 1992, sex: .female, heightCentimeters: 165, weight: 61.5, weightUnit: .kilograms)
+        )
+        .navigationTitle("Exportar datos")
     }
     .ironEnergyTheme()
 }

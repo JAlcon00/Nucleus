@@ -151,9 +151,7 @@ struct WeekListView: View {
                             .foregroundStyle(Color.textSecondary)
                             .accessibilityHidden(true)
                     }
-                    Text(WeekText.muscles(session, vocabulary: vocabulary))
-                        .font(.subheadline)
-                        .foregroundStyle(Color.textSecondary)
+                    MuscleChips(muscles: session.muscles)
                     HStack {
                         Text("\(session.exercises.count) ejercicios · \(session.workSetCount) series")
                             .font(.footnote)
@@ -263,9 +261,7 @@ struct DayDetailView: View {
                     VStack(alignment: .leading, spacing: DSpace.xs) {
                         Text(vocabulary.sessionName(session.title))
                             .font(.title2.bold())
-                        Text(WeekText.muscles(session, vocabulary: vocabulary))
-                            .font(.subheadline)
-                            .foregroundStyle(Color.textSecondary)
+                        MuscleChips(muscles: session.muscles)
                         HStack {
                             Text(WeekText.summary(session))
                                 .font(.footnote)
@@ -331,6 +327,35 @@ struct DayDetailView: View {
             DayStatusLabel(status: entry.status)
         }
         .padding(DSpace.l)
+    }
+}
+
+// MARK: - Chips de músculos
+
+/// Músculos principales de una sesión como chips ("Espalda", "Bíceps"…). Texto primario
+/// sobre superficie elevada (13.7:1); bajan de línea si no caben.
+struct MuscleChips: View {
+    let muscles: [MuscleGroup]
+
+    private let vocabulary = TrainingVocabularyPresenter(locale: AppEnvironment.presentationLocale)
+
+    var body: some View {
+        FlowLayout(spacing: DSpace.xs) {
+            ForEach(muscles, id: \.self) { muscle in
+                Text(vocabulary.muscleName(muscle))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.textPrimary)
+                    .padding(.horizontal, DSpace.s)
+                    .padding(.vertical, DSpace.xs)
+                    .background(Color.surfaceElevated, in: Capsule())
+                    .overlay {
+                        Capsule().strokeBorder(Color.hairline, lineWidth: 1)
+                    }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(muscles.map(vocabulary.muscleName).joined(separator: ", ")))
+        .accessibilityIdentifier("week.muscles")
     }
 }
 
@@ -441,11 +466,6 @@ enum WeekText {
     static func dayTitle(_ entry: WeekDayEntry, vocabulary: TrainingVocabularyPresenter) -> String {
         let name = vocabulary.weekdayName(entry.day)
         return entry.isToday ? "\(name) · \(String(localized: "Hoy"))" : name
-    }
-
-    /// "Espalda · Bíceps · Antebrazo".
-    static func muscles(_ session: WeekSession, vocabulary: TrainingVocabularyPresenter) -> String {
-        session.muscles.map(vocabulary.muscleName).joined(separator: " · ")
     }
 
     /// "5 ejercicios · 16 series · ~55 min".

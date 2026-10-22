@@ -33,6 +33,7 @@ struct ExportDataView: View {
         ExportContentView(
             state: state,
             exercises: environment.catalog.exercises,
+            aboutYou: environment.completedProfile?.aboutYou,
             onRetry: { loadAttempt += 1 }
         )
         .task(id: loadAttempt) { await load() }
@@ -63,6 +64,7 @@ struct ExportDataView: View {
 struct ExportContentView: View {
     let state: ExportDataView.LoadState
     let exercises: [Exercise]
+    var aboutYou: AboutYou?
     let onRetry: () -> Void
 
     var body: some View {
@@ -83,7 +85,7 @@ struct ExportContentView: View {
                     }
                 }
             case .loaded(let sessions, let unreadable):
-                ExportView(sessions: sessions, exercises: exercises, unreadableCount: unreadable)
+                ExportView(sessions: sessions, exercises: exercises, unreadableCount: unreadable, aboutYou: aboutYou)
             case .failed:
                 ContentUnavailableView {
                     Label("No pudimos leer tu historial", systemImage: "exclamationmark.triangle")

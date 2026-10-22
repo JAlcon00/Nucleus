@@ -26,9 +26,9 @@ final class PRUITests: XCTestCase {
 
     // MARK: - Helpers
 
-    private func launch(date: String = monday, storeID: String? = nil) -> XCUIApplication {
+    private func launch(date: String = monday, storeID: String? = nil, extraArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication(bundleIdentifier: Self.bundleID)
-        app.launchArguments = ["-PRFakeSignIn", "-PRUITestReset", "-PRFixedDate", date]
+        app.launchArguments = ["-PRFakeSignIn", "-PRUITestReset", "-PRFixedDate", date] + extraArguments
         if let storeID { app.launchArguments += ["-PRUITestStoreID", storeID] }
         app.launch()
         return app
@@ -56,9 +56,9 @@ final class PRUITests: XCTestCase {
         tap(app, "aboutYou.continue", file: file, line: line)
     }
 
-    /// Recorre el cuestionario completo hasta llegar a Hoy (días: los chips elegidos;
-    /// por defecto lunes, miércoles y viernes).
-    private func completeOnboarding(_ app: XCUIApplication, days: Set<String> = ["monday", "wednesday", "friday"]) {
+    /// Recorre el cuestionario sin cerrar la presentación final (para observar lo que pasa
+    /// mientras el plan se genera). Días: los chips elegidos; por defecto L, Mi y V.
+    private func answerQuestionnaire(_ app: XCUIApplication, days: Set<String> = ["monday", "wednesday", "friday"]) {
         completeAboutYou(app)
         tap(app, "onboarding.option.hypertrophy"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.maintenance"); tap(app, "onboarding.next")
@@ -75,6 +75,11 @@ final class PRUITests: XCTestCase {
         tap(app, "onboarding.skipGym"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.balanced"); tap(app, "onboarding.next")
         tap(app, "onboarding.skipRestrictions"); tap(app, "onboarding.next")
+    }
+
+    /// Recorre el cuestionario completo hasta llegar a Hoy (cierra "Tu semana").
+    private func completeOnboarding(_ app: XCUIApplication, days: Set<String> = ["monday", "wednesday", "friday"]) {
+        answerQuestionnaire(app, days: days)
         // SCRUM-197: tras "Armando tu semana" se presenta "Tu semana".
         tap(app, "weekIntro.done")
     }
@@ -188,6 +193,24 @@ final class PRUITests: XCTestCase {
         let app = launch()
         completeOnboarding(app)
         XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15), "Tras el cuestionario debe verse Hoy con sesión (lunes)")
+    }
+
+    // MARK: - Estados de carga (SCRUM-193)
+
+    /// Con el plan pendiente (demora a propósito) nunca aparece "Día de descanso": se ve la
+    /// carga ("Armando tu semana") y, cuando el plan llega, la semana y Hoy con su sesión.
+    func testPendingPlanNeverShowsRestDay() {
+        let app = launch(extraArguments: ["-PRUITestPlanDelay", "4"])
+        answerQuestionnaire(app)
+        XCTAssertTrue(element(app, "plan.building").waitForExistence(timeout: 5), "Mientras carga debe verse la carga")
+        for _ in 0..<3 {
+            XCTAssertFalse(element(app, "today.restDay").exists, "Nunca 'Día de descanso' mientras el plan está pendiente")
+            XCTAssertFalse(element(app, "today.start").exists, "Hoy no se puede tocar mientras carga")
+            sleep(1)
+        }
+        tap(app, "weekIntro.done")
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15), "El lunes, ya con plan, toca entrenar")
+        XCTAssertFalse(element(app, "today.restDay").exists)
     }
 
     // MARK: - Recordar perfil y plan (SCRUM-26)

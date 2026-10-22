@@ -45,15 +45,16 @@ public final class AppleIDAuthCoordinator {
         let result = await provider.authenticate()
 
         switch result {
-        case .success(let userIdentifier):
+        case .success(let userIdentifier, let givenName):
             guard !userIdentifier.isEmpty else {
                 flowState = .failed("Sign in with Apple no devolvió un identificador válido.")
                 return
             }
             let wasFirstLogin = profile == nil
+            let trimmedName = givenName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             let newProfile = LocalUserProfile(
                 userIdentifier: userIdentifier,
-                displayName: nil,
+                displayName: trimmedName.isEmpty ? nil : trimmedName,
                 isFirstLogin: wasFirstLogin
             )
             profile = newProfile
@@ -91,8 +92,9 @@ public final class AppleIDAuthCoordinator {
 /// AuthenticationServices real en unit tests). Permite simular success/cancel/failure.
 public actor FakeAppleIDAuthProvider: AppleIDAuthProviding {
     public enum FakeAuthBehavior: Sendable {
-        /// Autentica correctamente con el identificador dado (por defecto `"apple-user"`).
-        case success(userIdentifier: String)
+        /// Autentica correctamente con el identificador dado (por defecto `"apple-user"`) y,
+        /// si se indica, el nombre que Apple entrega en el primer inicio de sesión.
+        case success(userIdentifier: String, givenName: String? = nil)
         /// Devuelve el identificador vacío (caso límite: se trata como fallo).
         case emptyIdentifier
         /// El usuario cancela.
@@ -109,8 +111,8 @@ public actor FakeAppleIDAuthProvider: AppleIDAuthProviding {
 
     public func authenticate() async -> AppleIDAuthResult {
         switch behavior {
-        case .success(let userIdentifier):
-            return .success(userIdentifier: userIdentifier)
+        case .success(let userIdentifier, let givenName):
+            return .success(userIdentifier: userIdentifier, givenName: givenName)
         case .emptyIdentifier:
             return .success(userIdentifier: "")
         case .cancel:

@@ -51,6 +51,10 @@ struct AppRootView: View {
             case .completed(let profile):
                 appContent
                     .task(id: PlanActivation(profile: profile, attempt: planAttempt)) {
+                        // Sólo pruebas de UI (Debug): plan pendiente a propósito (SCRUM-193).
+                        if let delay = environment.uiTestPlanDelay {
+                            try? await Task.sleep(for: delay)
+                        }
                         // Activa y guarda el plan del perfil (SCRUM-26). Si venimos de un
                         // plan recordado, ya está activo y no se regenera.
                         _ = await environment.session.planCompleted(profile: profile)

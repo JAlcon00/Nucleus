@@ -29,9 +29,9 @@ private struct Shimmer: ViewModifier {
                     // Máscara: sólo cuenta la opacidad, el color no se ve.
                     LinearGradient(
                         stops: [
-                            .init(color: .black.opacity(0.45), location: 0),
-                            .init(color: .black, location: 0.5),
-                            .init(color: .black.opacity(0.45), location: 1),
+                            .init(color: .black.opacity(0.45), location: 0), // color-guard: allow (máscara)
+                            .init(color: .black, location: 0.5), // color-guard: allow (máscara)
+                            .init(color: .black.opacity(0.45), location: 1), // color-guard: allow (máscara)
                         ],
                         startPoint: UnitPoint(x: offset, y: 0.5),
                         endPoint: UnitPoint(x: offset + 1, y: 0.5)

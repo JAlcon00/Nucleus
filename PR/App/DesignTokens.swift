@@ -19,7 +19,7 @@
 import SwiftUI
 
 /// Tokens de espaciado semántico (SKILL §74).
-enum DSpace {
+nonisolated enum DSpace {
     static let xs: CGFloat = 4
     static let s: CGFloat = 8
     static let m: CGFloat = 16

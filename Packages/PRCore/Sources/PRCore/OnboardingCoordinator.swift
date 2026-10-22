@@ -93,6 +93,10 @@ public final class OnboardingCoordinator {
         switch auth.flowState {
         case .signedIn:
             needsAboutYou = true
+            // Apple entrega el nombre sólo la primera vez: prellena "Sobre ti" (SCRUM-198).
+            if aboutYouAnswer.name.isEmpty, let name = auth.profile?.displayName {
+                aboutYouAnswer.name = name
+            }
             phase = onboardingPhase(for: flowController)
         case .idle:
             // Auth cancelada por el usuario: no es un error, volvemos al gate.

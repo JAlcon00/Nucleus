@@ -85,9 +85,10 @@ extension SignInWithAppleProvider: ASAuthorizationControllerDelegate {
             finish(.failed(message: "No se pudo leer la credencial de Apple."))
             return
         }
-        // De la credencial SÓLO se usa el `user` opaco; el identityToken/código NO
-        // se conserva (RF-0401: no persistir el token de forma insegura).
-        finish(.success(userIdentifier: credential.user))
+        // De la credencial SÓLO se usan el `user` opaco y el nombre de pila (Apple lo
+        // entrega sólo la primera vez; prellena "Sobre ti" y no se guarda en la sesión). El
+        // identityToken/código NO se conserva (RF-0401: no persistir el token de forma insegura).
+        finish(.success(userIdentifier: credential.user, givenName: credential.fullName?.givenName))
     }
 
     public func authorizationController(
