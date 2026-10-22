@@ -314,6 +314,72 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Compound" } }
       }
     },
+    "RIR %lld" : {
+      "comment" : "Repeticiones en reserva objetivo. Ej.: RIR 2",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "RIR %lld" } }
+      }
+    },
+    "RIR %lld–%lld" : {
+      "comment" : "Rango de repeticiones en reserva objetivo. Ej.: RIR 1–2",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "RIR %1$lld–%2$lld" } }
+      }
+    },
+    "Ideal para dropset" : {
+      "comment" : "El ejercicio admite un dropset",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Good for a drop set" } }
+      }
+    },
+    "Sin dropset" : {
+      "comment" : "El ejercicio no admite dropset",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No drop set" } }
+      }
+    },
+    "Sólo en la última serie" : {
+      "comment" : "Cuándo hacer el dropset",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Last set only" } }
+      }
+    },
+    "Tienes una restricción en esta zona" : {
+      "comment" : "Motivo para no hacer dropset",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You have a restriction in this area" } }
+      }
+    },
+    "Semana de descarga" : {
+      "comment" : "Motivo para no hacer dropset",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Deload week" } }
+      }
+    },
+    "Primero domina la técnica" : {
+      "comment" : "Motivo para no hacer dropset: poca experiencia",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Master the technique first" } }
+      }
+    },
+    "Barra libre pesada" : {
+      "comment" : "Motivo para no hacer dropset",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Heavy free barbell" } }
+      }
+    },
+    "Peso corporal: no hay carga que bajar" : {
+      "comment" : "Motivo para no hacer dropset",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Bodyweight: no load to drop" } }
+      }
+    },
+    "Compuesto con peso libre" : {
+      "comment" : "Motivo para no hacer dropset",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Free-weight compound" } }
+      }
+    },
     "%lld × %lld" : {
       "comment" : "Series × repeticiones. Ej.: 3 × 10",
       "localizations" : {

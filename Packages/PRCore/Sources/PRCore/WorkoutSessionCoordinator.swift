@@ -28,13 +28,27 @@ public struct ActiveWorkoutSetUI: Equatable, Sendable {
     public let isWarmup: Bool
     /// Borrador con target precargados (one-tap si coincide).
     public let draft: SetCompletionDraft
+    /// RIR objetivo de esta serie (lo planeó el motor; SCRUM-200). `nil` en calentamiento.
+    public let targetRIR: ClosedRange<Int>?
+    /// Sólo en la última serie de trabajo del ejercicio: si conviene dropset.
+    public let dropset: DropsetAdvice?
 
-    public init(index: Int, total: Int, exerciseName: String, isWarmup: Bool, draft: SetCompletionDraft) {
+    public init(
+        index: Int,
+        total: Int,
+        exerciseName: String,
+        isWarmup: Bool,
+        draft: SetCompletionDraft,
+        targetRIR: ClosedRange<Int>? = nil,
+        dropset: DropsetAdvice? = nil
+    ) {
         self.index = index
         self.total = total
         self.exerciseName = exerciseName
         self.isWarmup = isWarmup
         self.draft = draft
+        self.targetRIR = targetRIR
+        self.dropset = dropset
     }
 }
 
@@ -85,6 +99,8 @@ public final class WorkoutSessionCoordinator: Identifiable {
     public private(set) var phase: WorkoutSessionPhase
 
     private let exerciseNames: [ExerciseID: String]
+    /// Consejo de dropset por ejercicio (lo decide `IntensityAdvisor`; SCRUM-200).
+    private let dropsetAdvice: [ExerciseID: DropsetAdvice]
     private var controller: ActiveWorkoutController
     private let completer: SetCompleter
     private let restTimer: RestTimer
@@ -123,6 +139,7 @@ public final class WorkoutSessionCoordinator: Identifiable {
     public init(
         template: SessionTemplate,
         exerciseNames: [ExerciseID: String] = [:],
+        dropsetAdvice: [ExerciseID: DropsetAdvice] = [:],
         completer: SetCompleter = SetCompleter(),
         restTimer: RestTimer = RestTimer(),
         summaryBuilder: WorkoutSummaryBuilder = WorkoutSummaryBuilder(),
@@ -139,6 +156,7 @@ public final class WorkoutSessionCoordinator: Identifiable {
     ) {
         self.template = template
         self.exerciseNames = exerciseNames
+        self.dropsetAdvice = dropsetAdvice
         self.controller = ActiveWorkoutController()
         self.completer = completer
         self.restTimer = restTimer
@@ -271,12 +289,19 @@ extension WorkoutSessionCoordinator {
             for: planned,
             lastPerformedWeight: lastPerformedWeightLookup(planned.exerciseID)
         )
+        let isWarmup = planned.prescription.isWarmup
+        // El dropset sólo se sugiere en la última serie de trabajo de ese ejercicio.
+        let isLastWorkSet = !isWarmup && !template.plannedSets[(index + 1)...].contains {
+            $0.exerciseID == planned.exerciseID && !$0.prescription.isWarmup
+        }
         return ActiveWorkoutSetUI(
             index: index,
             total: template.plannedSets.count,
             exerciseName: exerciseNames[planned.exerciseID] ?? exerciseFallbackName(planned.exerciseID),
-            isWarmup: planned.prescription.isWarmup,
-            draft: draft
+            isWarmup: isWarmup,
+            draft: draft,
+            targetRIR: isWarmup ? nil : planned.prescription.targetRIR,
+            dropset: isLastWorkSet ? dropsetAdvice[planned.exerciseID] : nil
         )
     }
 

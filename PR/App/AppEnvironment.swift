@@ -92,6 +92,7 @@ public final class AppEnvironment {
             switch try await persistence.recoverWorkout(
                 templates: templates,
                 exerciseNames: exerciseNames,
+                dropsetAdvice: dropsetAdvice,
                 celebrationPresenter: PRCelebrationPresenter(locale: Self.presentationLocale),
                 clock: clock
             ) {
@@ -152,6 +153,12 @@ public final class AppEnvironment {
         Dictionary(catalog.exercises.map { ($0.id, $0.canonicalName) }, uniquingKeysWith: { first, _ in first })
     }
 
+    /// Consejo de dropset por ejercicio para la persona (lo decide el dominio; SCRUM-200).
+    private var dropsetAdvice: [ExerciseID: DropsetAdvice] {
+        guard let profile = completedProfile else { return [:] }
+        return IntensityAdvisor().dropsetAdvice(for: catalog.exercises, profile: profile)
+    }
+
     private var clock: () -> Date {
         let fixed = fixedDate
         return { fixed ?? Date() }
@@ -179,19 +186,20 @@ public final class AppEnvironment {
                 coordinator = try await persistence.makeWorkoutCoordinator(
                     template: template,
                     exerciseNames: exerciseNames,
+                    dropsetAdvice: dropsetAdvice,
                     celebrationPresenter: presenter,
                     clock: clock
                 )
             } catch {
                 persistence.log.saveFailed(.workouts)
                 coordinator = WorkoutSessionCoordinator(
-                    template: template, exerciseNames: exerciseNames,
+                    template: template, exerciseNames: exerciseNames, dropsetAdvice: dropsetAdvice,
                     celebrationPresenter: presenter, clock: clock
                 )
             }
         } else {
             coordinator = WorkoutSessionCoordinator(
-                template: template, exerciseNames: exerciseNames,
+                template: template, exerciseNames: exerciseNames, dropsetAdvice: dropsetAdvice,
                 celebrationPresenter: presenter, clock: clock
             )
         }

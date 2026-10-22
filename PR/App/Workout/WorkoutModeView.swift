@@ -174,6 +174,22 @@ struct WorkoutModeView: View {
             Text("Serie \(set.index + 1) de \(set.total)")
                 .font(.subheadline)
                 .foregroundStyle(Color.textSecondary)
+            // SCRUM-200: a qué RIR llegar (lo planeó el motor) y, en la última serie de
+            // trabajo, si conviene dropset.
+            if let targetRIR = set.targetRIR {
+                RIRTag(range: targetRIR)
+                    .padding(.top, DSpace.xs)
+            }
+            if let dropset = set.dropset {
+                DropsetNote(advice: dropset, prominent: true)
+                    .padding(.horizontal, DSpace.m)
+                    .padding(.vertical, DSpace.s)
+                    .background(Color.surface, in: RoundedRectangle(cornerRadius: DRadius.medium))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: DRadius.medium).strokeBorder(Color.hairline, lineWidth: 1)
+                    }
+                    .padding(.top, DSpace.s)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, DSpace.l)

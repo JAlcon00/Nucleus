@@ -30,6 +30,10 @@ public struct TodayExerciseLine: Equatable, Sendable, Identifiable {
     /// Compuesto (multiarticular) o aislado (monoarticular), según el catálogo; `nil` si el
     /// ejercicio ya no está en el catálogo (no se adivina).
     public let jointClass: JointClass?
+    /// RIR objetivo de las series de trabajo, tal como lo dejó el motor (SCRUM-200).
+    public let targetRIR: ClosedRange<Int>?
+    /// ¿Conviene dropset en la última serie? `nil` si no se conoce el perfil o el ejercicio.
+    public let dropset: DropsetAdvice?
     public var id: ExerciseID { exerciseID }
 
     public init(
@@ -38,7 +42,9 @@ public struct TodayExerciseLine: Equatable, Sendable, Identifiable {
         setCount: Int,
         workSetCount: Int? = nil,
         repRange: ClosedRange<Int>? = nil,
-        jointClass: JointClass? = nil
+        jointClass: JointClass? = nil,
+        targetRIR: ClosedRange<Int>? = nil,
+        dropset: DropsetAdvice? = nil
     ) {
         self.exerciseID = exerciseID
         self.name = name
@@ -46,6 +52,8 @@ public struct TodayExerciseLine: Equatable, Sendable, Identifiable {
         self.workSetCount = workSetCount ?? setCount
         self.repRange = repRange
         self.jointClass = jointClass
+        self.targetRIR = targetRIR
+        self.dropset = dropset
     }
 }
 
@@ -205,7 +213,7 @@ public struct TodayPlanBuilder: Sendable {
             todayTemplate: todayTemplate,
             estimatedMinutes: estimatedMinutes,
             todayState: state,
-            todayExercises: exerciseLines(for: todayTemplate, catalog: catalog),
+            todayExercises: exerciseLines(for: todayTemplate, catalog: catalog, profile: profile),
             todayOrder: orderLines(for: orderExplanation, catalog: catalog),
             todayOrderReorderedByFatigue: orderExplanation?.reorderedByFatigue ?? false,
             explanation: explanation
@@ -232,10 +240,17 @@ public struct TodayPlanBuilder: Sendable {
 
     /// Ejercicios de la plantilla en orden de aparición, con su número de series, series de
     /// trabajo y rango de repeticiones (el más amplio si las series difieren).
-    func exerciseLines(for template: SessionTemplate?, catalog: ExerciseCatalog) -> [TodayExerciseLine] {
+    /// Con `profile`, cada línea dice además si conviene dropset (SCRUM-200: lo decide
+    /// `IntensityAdvisor` con la experiencia y las restricciones activas de la persona).
+    func exerciseLines(
+        for template: SessionTemplate?,
+        catalog: ExerciseCatalog,
+        profile: OnboardingProfile? = nil,
+        intensityAdvisor: IntensityAdvisor = IntensityAdvisor()
+    ) -> [TodayExerciseLine] {
         guard let template else { return [] }
-        let names = Dictionary(catalog.exercises.map { ($0.id, $0.canonicalName) }, uniquingKeysWith: { first, _ in first })
-        let jointClasses = Dictionary(catalog.exercises.map { ($0.id, $0.jointClass) }, uniquingKeysWith: { first, _ in first })
+        let exercises = Dictionary(catalog.exercises.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        var rirs: [ExerciseID: ClosedRange<Int>] = [:]
         var order: [ExerciseID] = []
         var counts: [ExerciseID: Int] = [:]
         var workCounts: [ExerciseID: Int] = [:]
@@ -245,6 +260,9 @@ public struct TodayPlanBuilder: Sendable {
             counts[planned.exerciseID, default: 0] += 1
             guard !planned.prescription.isWarmup else { continue }
             workCounts[planned.exerciseID, default: 0] += 1
+            if rirs[planned.exerciseID] == nil, let rir = planned.prescription.targetRIR {
+                rirs[planned.exerciseID] = rir
+            }
             let range = planned.prescription.targetRepRange
             if let current = ranges[planned.exerciseID] {
                 ranges[planned.exerciseID] = min(current.lowerBound, range.lowerBound)...max(current.upperBound, range.upperBound)
@@ -252,11 +270,23 @@ public struct TodayPlanBuilder: Sendable {
                 ranges[planned.exerciseID] = range
             }
         }
-        return order.map {
-            TodayExerciseLine(
-                exerciseID: $0, name: names[$0], setCount: counts[$0] ?? 0,
-                workSetCount: workCounts[$0] ?? 0, repRange: ranges[$0],
-                jointClass: jointClasses[$0]
+        return order.map { id in
+            let exercise = exercises[id]
+            let dropset = exercise.flatMap { exercise in
+                profile.map { profile in
+                    intensityAdvisor.advice(
+                        for: exercise,
+                        experience: profile.experience,
+                        isRestricted: IntensityAdvisor.isRestricted(exercise, by: profile.restrictions)
+                    ).dropset
+                }
+            }
+            return TodayExerciseLine(
+                exerciseID: id, name: exercise?.canonicalName, setCount: counts[id] ?? 0,
+                workSetCount: workCounts[id] ?? 0, repRange: ranges[id],
+                jointClass: exercise?.jointClass,
+                targetRIR: rirs[id],
+                dropset: dropset
             )
         }
     }

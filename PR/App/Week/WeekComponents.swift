@@ -394,8 +394,18 @@ struct ExerciseLineRow: View {
                     Text(line.name ?? String(localized: "Ejercicio"))
                         .foregroundStyle(Color.textPrimary)
                     // Siempre debajo del nombre: misma posición en todas las filas.
-                    if let jointClass = line.jointClass {
-                        ExerciseKindTag(jointClass: jointClass)
+                    if line.jointClass != nil || line.targetRIR != nil {
+                        HStack(spacing: DSpace.xs) {
+                            if let jointClass = line.jointClass {
+                                ExerciseKindTag(jointClass: jointClass)
+                            }
+                            if let targetRIR = line.targetRIR {
+                                RIRTag(range: targetRIR)
+                            }
+                        }
+                    }
+                    if let dropset = line.dropset {
+                        DropsetNote(advice: dropset)
                     }
                     if let last {
                         Label {
@@ -466,6 +476,58 @@ struct ExerciseKindTag: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(vocabulary.exerciseKind(jointClass))
         .accessibilityIdentifier("exercise.kind")
+    }
+}
+
+/// RIR objetivo como etiqueta neutra junto al tipo (lo decide el motor; SCRUM-200).
+struct RIRTag: View {
+    let range: ClosedRange<Int>
+
+    private let vocabulary = TrainingVocabularyPresenter(locale: AppEnvironment.presentationLocale)
+
+    var body: some View {
+        HStack(spacing: DSpace.xs / 2) {
+            Image(systemName: "gauge.with.dots.needle.67percent")
+                .imageScale(.small)
+                .foregroundStyle(Color.primaryAction)
+            Text(vocabulary.rir(range))
+                .tracking(0.4)
+        }
+        .font(.caption2.weight(.bold))
+        .numericStyle()
+        .foregroundStyle(Color.textPrimary)
+        .padding(.horizontal, DSpace.xs + DSpace.xs / 2)
+        .padding(.vertical, DSpace.xs / 2)
+        .background(Color.surfaceElevated, in: RoundedRectangle(cornerRadius: DRadius.small / 2))
+        .overlay {
+            RoundedRectangle(cornerRadius: DRadius.small / 2).strokeBorder(Color.hairline, lineWidth: 1)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Repeticiones en reserva: \(vocabulary.rir(range))"))
+        .accessibilityIdentifier("exercise.rir")
+    }
+}
+
+/// Si conviene dropset: ✓ "Ideal para dropset · Sólo en la última serie" o
+/// ✕ "Sin dropset · motivo". Icono + texto, nunca sólo color.
+struct DropsetNote: View {
+    let advice: DropsetAdvice
+    var prominent = false
+
+    private let vocabulary = TrainingVocabularyPresenter(locale: AppEnvironment.presentationLocale)
+
+    var body: some View {
+        let isRecommended = advice == .recommendedOnLastSet
+        Label {
+            Text("\(vocabulary.dropsetTitle(advice)) · \(vocabulary.dropsetDetail(advice))")
+                .foregroundStyle(isRecommended ? Color.textPrimary : Color.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: isRecommended ? "arrow.down.right.circle.fill" : "xmark.circle")
+                .foregroundStyle(isRecommended ? Color.accentSecondary : Color.textSecondary)
+        }
+        .font(prominent ? .callout.weight(.semibold) : .caption)
+        .accessibilityIdentifier("exercise.dropset")
     }
 }
 

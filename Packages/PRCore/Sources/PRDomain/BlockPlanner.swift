@@ -144,6 +144,8 @@ public struct BlockPlanner: Sendable {
     private let orderEngine: ExerciseOrderEngine
     private let fatigueEngine: FatigueInterferenceEngine
     private let durationEstimator: DurationEstimator
+    /// RIR objetivo por tipo de ejercicio (SCRUM-200).
+    private let intensityAdvisor: IntensityAdvisor
 
     public init(
         splitSelector: SplitSelector = SplitSelector(),
@@ -151,9 +153,11 @@ public struct BlockPlanner: Sendable {
         assigner: ExerciseAssigner = ExerciseAssigner(),
         orderEngine: ExerciseOrderEngine = ExerciseOrderEngine(),
         fatigueEngine: FatigueInterferenceEngine = FatigueInterferenceEngine(),
-        durationEstimator: DurationEstimator = DurationEstimator()
+        durationEstimator: DurationEstimator = DurationEstimator(),
+        intensityAdvisor: IntensityAdvisor = IntensityAdvisor()
     ) {
         self.durationEstimator = durationEstimator
+        self.intensityAdvisor = intensityAdvisor
         self.splitSelector = splitSelector
         self.volumeAllocator = volumeAllocator
         self.assigner = assigner
@@ -298,8 +302,11 @@ public struct BlockPlanner: Sendable {
             }
             var plannedSets: [PlannedSet] = []
             for item in exercises {
+                // SCRUM-200: cada ejercicio con el RIR de su tipo (barra libre, compuesto, aislado).
+                var exerciseRx = rx
+                exerciseRx.targetRIR = intensityAdvisor.targetRIR(for: item.exercise)
                 for _ in 0..<item.sets {
-                    plannedSets.append(PlannedSet(exerciseID: item.exercise.id, prescription: rx))
+                    plannedSets.append(PlannedSet(exerciseID: item.exercise.id, prescription: exerciseRx))
                 }
             }
             sessions.append(SessionTemplate(title: day.title, plannedSets: plannedSets))

@@ -139,7 +139,7 @@ public struct WeekOverviewBuilder: Sendable {
             templateID: template.id,
             title: template.title,
             muscles: mainMuscles(of: template, catalog: catalog),
-            exercises: lineBuilder.exerciseLines(for: template, catalog: catalog),
+            exercises: lineBuilder.exerciseLines(for: template, catalog: catalog, profile: profile),
             workSetCount: template.plannedSets.filter { !$0.prescription.isWarmup }.count,
             estimatedMinutes: profile.usualSessionMinutes,
             order: lineBuilder.orderLines(for: orderExplanation, catalog: catalog),

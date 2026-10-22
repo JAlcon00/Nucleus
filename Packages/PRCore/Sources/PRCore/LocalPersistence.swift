@@ -160,6 +160,7 @@ public struct LocalPersistence: Sendable {
     public func makeWorkoutCoordinator(
         template: SessionTemplate,
         exerciseNames: [ExerciseID: String] = [:],
+        dropsetAdvice: [ExerciseID: DropsetAdvice] = [:],
         celebrationPresenter: PRCelebrationPresenter = PRCelebrationPresenter(),
         clock: @escaping () -> Date = { Date() },
         restoring: WorkoutSessionRecord? = nil,
@@ -179,6 +180,7 @@ public struct LocalPersistence: Sendable {
         return WorkoutSessionCoordinator(
             template: template,
             exerciseNames: exerciseNames,
+            dropsetAdvice: dropsetAdvice,
             recordBaselines: PersonalRecordBaselineBuilder.baselines(from: history),
             celebrationPresenter: celebrationPresenter,
             clock: clock,
@@ -221,6 +223,7 @@ public struct LocalPersistence: Sendable {
     public func recoverWorkout(
         templates: [SessionTemplate],
         exerciseNames: [ExerciseID: String] = [:],
+        dropsetAdvice: [ExerciseID: DropsetAdvice] = [:],
         celebrationPresenter: PRCelebrationPresenter = PRCelebrationPresenter(),
         clock: @escaping () -> Date = { Date() },
         onPersisted: @escaping @Sendable (Result<WorkoutID, any Error>) async -> Void = { _ in }
@@ -249,6 +252,7 @@ public struct LocalPersistence: Sendable {
         let coordinator = try await makeWorkoutCoordinator(
             template: template,
             exerciseNames: exerciseNames,
+            dropsetAdvice: dropsetAdvice,
             celebrationPresenter: celebrationPresenter,
             clock: clock,
             restoring: record,

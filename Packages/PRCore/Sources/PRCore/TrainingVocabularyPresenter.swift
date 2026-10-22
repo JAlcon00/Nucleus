@@ -130,6 +130,45 @@ public struct TrainingVocabularyPresenter: Sendable {
         ))
     }
 
+    /// RIR objetivo (SCRUM-200): "RIR 2" o "RIR 1–2".
+    public func rir(_ range: ClosedRange<Int>) -> String {
+        if range.lowerBound == range.upperBound {
+            return String(localized: LocalizedStringResource(
+                "RIR \(range.lowerBound)", locale: locale, bundle: Self.bundle,
+                comment: "Repeticiones en reserva objetivo. Ej.: RIR 2"
+            ))
+        }
+        return String(localized: LocalizedStringResource(
+            "RIR \(range.lowerBound)–\(range.upperBound)", locale: locale, bundle: Self.bundle,
+            comment: "Rango de repeticiones en reserva objetivo. Ej.: RIR 1–2"
+        ))
+    }
+
+    /// Título del consejo de dropset: "Ideal para dropset" o "Sin dropset".
+    public func dropsetTitle(_ advice: DropsetAdvice) -> String {
+        switch advice {
+        case .recommendedOnLastSet: return resource("Ideal para dropset", "El ejercicio admite un dropset")
+        case .notRecommended: return resource("Sin dropset", "El ejercicio no admite dropset")
+        }
+    }
+
+    /// Detalle del consejo: cuándo hacerlo o por qué no.
+    public func dropsetDetail(_ advice: DropsetAdvice) -> String {
+        switch advice {
+        case .recommendedOnLastSet:
+            return resource("Sólo en la última serie", "Cuándo hacer el dropset")
+        case .notRecommended(let blocker):
+            switch blocker {
+            case .restriction: return resource("Tienes una restricción en esta zona", "Motivo para no hacer dropset")
+            case .deload: return resource("Semana de descarga", "Motivo para no hacer dropset")
+            case .experience: return resource("Primero domina la técnica", "Motivo para no hacer dropset: poca experiencia")
+            case .heavyFreeBarbell: return resource("Barra libre pesada", "Motivo para no hacer dropset")
+            case .bodyweight: return resource("Peso corporal: no hay carga que bajar", "Motivo para no hacer dropset")
+            case .freeWeightCompound: return resource("Compuesto con peso libre", "Motivo para no hacer dropset")
+            }
+        }
+    }
+
     /// "Última vez: 60 kg × 10" (M1).
     public func lastTime(_ performance: LastPerformance) -> String {
         let load = self.load(performance.weight, unit: performance.unit)
