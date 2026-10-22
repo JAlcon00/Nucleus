@@ -67,16 +67,14 @@ struct WatchWorkoutView: View {
     private func weightReps(_ p: WatchSetPresentation) -> some View {
         HStack(alignment: .lastTextBaseline, spacing: 6) {
             Text(weightText(p.weight))
-                .font(.system(size: WatchType.setValueSize, weight: .bold, design: .rounded))
-                .monospacedDigit()
+                .font(.system(size: 30, weight: .bold, design: .rounded))
             Text(unitText(p.unit))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text("×")
                 .foregroundStyle(.secondary)
             Text("\(p.reps)")
-                .font(.system(size: WatchType.setValueSize, weight: .bold, design: .rounded))
-                .monospacedDigit()
+                .font(.system(size: 30, weight: .bold, design: .rounded))
         }
     }
 

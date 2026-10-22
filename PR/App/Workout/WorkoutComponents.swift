@@ -40,9 +40,10 @@ struct PrimaryActionButton: View {
                     .font(.headline)
                     .lineLimit(1)
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, minHeight: 52)
+            .contentShape(Rectangle())
         }
-        .buttonStyle(.energy)
+        .buttonStyle(.borderedProminent)
         .accessibilityHint(title)
         .accessibilityIdentifier(identifier ?? "")
     }
@@ -71,8 +72,8 @@ struct SetInputControl: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DSpace.xs) {
             Text(label.uppercased())
-                .eyebrowStyle()
-                .foregroundStyle(Color.textSecondary)
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             HStack(spacing: DSpace.m) {
                 Button {
@@ -80,7 +81,7 @@ struct SetInputControl: View {
                 } label: {
                     minusLabel
                 }
-                .buttonStyle(SurfaceButtonStyle(minHeight: DSize.stepperButton, fillsWidth: false))
+                .buttonStyle(.bordered)
                 .accessibilityLabel("Reducir \(label.lowercased())")
 
                 Button { presentEditor() } label: {
@@ -91,7 +92,7 @@ struct SetInputControl: View {
                         if !suffix.isEmpty {
                             Text(suffix)
                                 .font(.caption)
-                                .foregroundStyle(Color.textSecondary)
+                                .foregroundStyle(.secondary)
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -106,9 +107,10 @@ struct SetInputControl: View {
                 } label: {
                     plusLabel
                 }
-                .buttonStyle(SurfaceButtonStyle(minHeight: DSize.stepperButton, fillsWidth: false))
+                .buttonStyle(.bordered)
                 .accessibilityLabel("Aumentar \(label.lowercased())")
             }
+            .tint(.secondary)
 
             if isEditing {
                 textField
@@ -123,11 +125,15 @@ struct SetInputControl: View {
     private var minusLabel: some View {
         Image(systemName: "minus")
             .font(.title3.weight(.bold))
+            .frame(minWidth: 56, minHeight: 56)
+            .contentShape(Rectangle())
     }
 
     private var plusLabel: some View {
         Image(systemName: "plus")
             .font(.title3.weight(.bold))
+            .frame(minWidth: 56, minHeight: 56)
+            .contentShape(Rectangle())
     }
 
     private var textField: some View {
@@ -175,8 +181,6 @@ struct RestTimerView: View {
     let onSkip: () -> Void
     let onExtend: () -> Void
 
-    @ScaledMetric(relativeTo: .largeTitle) private var digitsSize = DSize.timerDigits
-
     private var minutes: Int { remainingSeconds / 60 }
     private var seconds: Int { remainingSeconds % 60 }
     private var text: String {
@@ -187,22 +191,22 @@ struct RestTimerView: View {
         VStack(spacing: DSpace.l) {
             Text("Descanso")
                 .font(.headline)
-                .foregroundStyle(Color.textSecondary)
+                .foregroundStyle(.secondary)
 
             Text(text)
-                .font(.system(size: digitsSize, weight: .bold, design: .rounded))
+                .font(.system(size: 64, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .accessibilityLabel("Descanso \(minutes) minutos \(seconds) segundos")
 
             HStack(spacing: DSpace.m) {
                 Button("Saltar", action: onSkip)
-                    .buttonStyle(.surface)
+                    .buttonStyle(.bordered)
                     .accessibilityHint("Termina el descanso ahora")
                 Button("+30 s", action: onExtend)
-                    .buttonStyle(.surface)
+                    .buttonStyle(.borderedProminent)
                     .accessibilityHint("Añade 30 segundos de descanso")
             }
-            .padding(.horizontal, DSpace.l)
+            .frame(minHeight: 52)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
@@ -214,28 +218,19 @@ struct RestTimerView: View {
 #Preview("Botón primario") {
     PrimaryActionButton("Completar serie", systemImage: "checkmark") {}
         .padding()
-        .screenBackground()
-        .ironEnergyTheme()
 }
 
 #Preview("Peso") {
     SetInputControl(label: "Peso", value: .constant(82.5), step: 2.5, suffix: "kg")
         .padding()
-        .screenBackground()
-        .ironEnergyTheme()
 }
 
-#Preview("Reps · accessibility3") {
+#Preview("Reps") {
     SetInputControl(label: "Repeticiones", value: .constant(8), step: 1, suffix: "")
         .padding()
-        .screenBackground()
-        .dynamicTypeSize(.accessibility3)
-        .ironEnergyTheme()
 }
 
 #Preview("Descanso") {
     RestTimerView(remainingSeconds: 138, onSkip: {}, onExtend: {})
         .padding()
-        .screenBackground()
-        .ironEnergyTheme()
 }

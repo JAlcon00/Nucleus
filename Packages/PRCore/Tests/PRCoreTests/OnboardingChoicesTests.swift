@@ -83,7 +83,7 @@ struct OnboardingChoicesTests {
     @Test("Al llegar a días y minutos, el valor por defecto ya está registrado y se puede avanzar")
     func defaultsAreSeeded() async {
         let coordinator = await coordinatorAtDays()
-        #expect(coordinator.currentAnswer == .trainingDays(OnboardingDefaults.trainingDays))
+        #expect(coordinator.currentAnswer == .daysPerWeek(OnboardingDefaults.trainingDaysPerWeek))
         guard case .onboarding(let step, _, _, let canAdvance, _) = coordinator.phase else {
             Issue.record("Debía estar en el cuestionario, fase \(coordinator.phase)")
             return
@@ -101,15 +101,15 @@ struct OnboardingChoicesTests {
     @Test("El valor por defecto no pisa una respuesta ya dada al volver atrás")
     func defaultDoesNotOverwriteAnswer() async {
         let coordinator = await coordinatorAtDays()
-        coordinator.select(.trainingDays([.monday, .wednesday, .friday]))
+        coordinator.select(.daysPerWeek(3))
         coordinator.advance()
         coordinator.goBack()
-        #expect(coordinator.currentAnswer == .trainingDays([.monday, .wednesday, .friday]))
+        #expect(coordinator.currentAnswer == .daysPerWeek(3))
     }
 
     @Test("Sólo días y minutos tienen valor por defecto; el resto exige elegir")
     func onlyNumericStepsHaveDefaults() {
-        #expect(OnboardingDefaults.answer(for: .daysPerWeek) == .trainingDays([.monday, .tuesday, .thursday, .friday]))
+        #expect(OnboardingDefaults.answer(for: .daysPerWeek) == .daysPerWeek(4))
         #expect(OnboardingDefaults.answer(for: .sessionMinutes) == .sessionMinutes(60))
         for step in [OnboardingStep.goal, .phase, .experience, .variety, .gym, .restrictions] {
             #expect(OnboardingDefaults.answer(for: step) == nil)

@@ -41,14 +41,15 @@ struct OnboardingStepView: View {
 
     /// Valores de los selectores: salen de la respuesta guardada (o del valor por defecto
     /// que el coordinador registra al llegar al paso); nunca de estado local desfasado.
-    private var selectedDays: Set<WeekDay> {
-        if case .trainingDays(let value)? = selected { return value }
-        return OnboardingDefaults.trainingDays
+    private var days: Binding<Int> {
+        Binding(
+            get: {
+                if case .daysPerWeek(let value)? = selected { return value }
+                return OnboardingDefaults.trainingDaysPerWeek
+            },
+            set: { onAnswer(.daysPerWeek($0)) }
+        )
     }
-
-    /// Iniciales y nombres de los días (SCRUM-196).
-    private let vocabulary = TrainingVocabularyPresenter(locale: AppEnvironment.presentationLocale)
-    @ScaledMetric(relativeTo: .headline) private var dayChipSize = DSize.dayChip
 
     private var minutes: Binding<Int> {
         Binding(
@@ -72,7 +73,6 @@ struct OnboardingStepView: View {
             }
             footer
         }
-        .screenBackground()
         .navigationBarBackButtonHidden(true)
     }
 
@@ -82,7 +82,7 @@ struct OnboardingStepView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Paso \(indexPlusOne) de \(stepCount)")
                 .font(.caption)
-                .foregroundStyle(Color.textSecondary)
+                .foregroundStyle(.secondary)
             Text(title(for: step))
                 .font(.title2.bold())
                 .accessibilityIdentifier("onboarding.title")
@@ -100,7 +100,7 @@ struct OnboardingStepView: View {
         case .goal, .phase, .experience, .variety:
             choicesPicker
         case .daysPerWeek:
-            daysPicker
+            daysStepper
         case .sessionMinutes:
             minutesStepper
         case .gym:
@@ -110,70 +110,22 @@ struct OnboardingStepView: View {
         }
     }
 
-    /// "¿Qué días puedes entrenar?" (SCRUM-196): 7 chips; el número sale de los elegidos.
-    private var daysPicker: some View {
-        VStack(alignment: .leading, spacing: DSpace.m) {
-            Text("Dejamos descanso entre sesiones para que recuperes. Elige al menos 2 días.")
-                .font(.callout)
-                .foregroundStyle(Color.textSecondary)
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: DSpace.xs) {
-                    ForEach(WeekDay.allCases, id: \.self) { dayChip($0) }
-                }
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: dayChipSize), spacing: DSpace.s)], spacing: DSpace.s) {
-                    ForEach(WeekDay.allCases, id: \.self) { dayChip($0) }
-                }
+    private var daysStepper: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Días por semana")
+                .font(.headline)
+            Stepper(value: days, in: TrainingWeek.allowedTrainingDays) {
+                Text("\(days.wrappedValue) días")
             }
-            daysSummary
-        }
-    }
-
-    private func dayChip(_ day: WeekDay) -> some View {
-        let isSelected = selectedDays.contains(day)
-        return Button {
-            var days = selectedDays
-            if isSelected { days.remove(day) } else { days.insert(day) }
-            onAnswer(.trainingDays(days))
-        } label: {
-            Text(vocabulary.weekdayInitial(day))
-                .font(.headline)
-                .foregroundStyle(isSelected ? Color.onAccent : Color.textPrimary)
-                .frame(maxWidth: .infinity, minHeight: dayChipSize)
-                .frame(minWidth: dayChipSize)
-                .background {
-                    Circle()
-                        .fill(isSelected ? AnyShapeStyle(LinearGradient.energy) : AnyShapeStyle(Color.surface))
-                }
-                .overlay {
-                    Circle()
-                        .strokeBorder(isSelected ? Color.clear : Color.hairline, lineWidth: 1)
-                }
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(vocabulary.weekdayName(day))
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .accessibilityIdentifier("onboarding.day.\(day.rawValue)")
-    }
-
-    @ViewBuilder
-    private var daysSummary: some View {
-        let count = selectedDays.count
-        if TrainingWeek.allowedTrainingDays.contains(count) {
-            Text("\(count) días por semana")
-                .font(.headline)
-                .numericStyle()
-                .accessibilityIdentifier("onboarding.daysSummary")
-        } else {
-            Label("Elige al menos 2 días", systemImage: "exclamationmark.circle")
-                .font(.headline)
-                .foregroundStyle(Color.warning)
-                .accessibilityIdentifier("onboarding.daysSummary")
+            .accessibilityLabel("Días de entrenamiento por semana")
+            .accessibilityIdentifier("onboarding.daysStepper")
         }
     }
 
     private var minutesStepper: some View {
         VStack(alignment: .leading, spacing: 12) {
+            Text("Minutos por sesión")
+                .font(.headline)
             Stepper(value: minutes, in: TrainingWeek.allowedSessionMinutes, step: 5) {
                 Text("\(minutes.wrappedValue) min")
             }
@@ -184,26 +136,30 @@ struct OnboardingStepView: View {
 
     private var gymRow: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Por ahora armamos tu plan con equipo básico de gimnasio: barra, mancuernas, máquinas y poleas. Podrás elegir tu gimnasio más adelante.")
+            Text("Gimnasio")
+                .font(.headline)
+            Text("Puedes omitirlo ahora y elegir tu gimnasio más adelante.")
                 .font(.callout)
-                .foregroundStyle(Color.textSecondary)
+                .foregroundStyle(.secondary)
             Button("Omitir este paso") {
                 onAnswer(.gym(nil))
             }
-            .buttonStyle(.surface)
+            .buttonStyle(.bordered)
             .accessibilityIdentifier("onboarding.skipGym")
         }
     }
 
     private var restrictionsRow: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Si tienes una molestia o algo que prefieras evitar, podrás registrarlo cuando quieras en Perfil › Restricciones.")
+            Text("Restricciones")
+                .font(.headline)
+            Text("Sin restricciones por defecto; las gestionas en la app cuando quieras.")
                 .font(.callout)
-                .foregroundStyle(Color.textSecondary)
+                .foregroundStyle(.secondary)
             Button("Continuar sin añadir") {
                 onAnswer(.restrictions([]))
             }
-            .buttonStyle(.surface)
+            .buttonStyle(.bordered)
             .accessibilityIdentifier("onboarding.skipRestrictions")
         }
     }
@@ -215,6 +171,8 @@ struct OnboardingStepView: View {
     /// (no sólo con color).
     private var choicesPicker: some View {
         VStack(alignment: .leading, spacing: 8) {
+            Text(title(for: step))
+                .font(.headline)
             ForEach(choices) { choice in
                 let isSelected = selected == choice.answer
                 Button {
@@ -222,22 +180,21 @@ struct OnboardingStepView: View {
                 } label: {
                     HStack {
                         Text(choice.label)
-                            .foregroundStyle(Color.textPrimary)
+                            .foregroundStyle(.primary)
                         Spacer()
                         if isSelected {
                             Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(Color.primaryAction)
+                                .foregroundStyle(Color.accentColor)
                         }
                     }
                     .padding(12)
-                    .frame(minHeight: 44)
                     .background(
                         RoundedRectangle(cornerRadius: DRadius.small)
-                            .fill(Color.surface)
+                            .fill(Color(.secondarySystemBackground))
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: DRadius.small)
-                            .strokeBorder(isSelected ? Color.primaryAction : Color.hairline, lineWidth: isSelected ? 2 : 1)
+                            .stroke(Color.accentColor, lineWidth: isSelected ? 2 : 0)
                     )
                 }
                 .buttonStyle(.plain)
@@ -255,15 +212,17 @@ struct OnboardingStepView: View {
             if canGoBack {
                 Button(action: onGoBack) {
                     Label("Atrás", systemImage: "chevron.left")
+                        .frame(maxWidth: .infinity, minHeight: 50)
                 }
-                .buttonStyle(SurfaceButtonStyle(minHeight: DButton.primaryHeight))
+                .buttonStyle(.bordered)
                 .accessibilityHint("Vuelve al paso anterior sin perder tus respuestas.")
             }
 
             Button(action: { isAtEnd ? onFinish() : onAdvance() }) {
                 Label(isAtEnd ? "Terminar" : "Siguiente", systemImage: isAtEnd ? "checkmark" : "chevron.right")
+                    .frame(maxWidth: .infinity, minHeight: 50)
             }
-            .buttonStyle(.energy)
+            .buttonStyle(.borderedProminent)
             .disabled(!canAdvance)
             .accessibilityIdentifier("onboarding.next")
         }
@@ -279,7 +238,7 @@ struct OnboardingStepView: View {
         case .goal: return "Objetivo"
         case .phase: return "Fase"
         case .experience: return "Experiencia"
-        case .daysPerWeek: return "¿Qué días puedes entrenar?"
+        case .daysPerWeek: return "Días por semana"
         case .sessionMinutes: return "Minutos por sesión"
         case .gym: return "Gimnasio"
         case .variety: return "Variedad"
@@ -305,5 +264,4 @@ struct OnboardingStepView: View {
             onFinish: {}
         )
     }
-    .ironEnergyTheme()
 }

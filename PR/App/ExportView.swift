@@ -44,7 +44,6 @@ struct ExportView: View {
                     UnreadableRecordsNotice(count: unreadableCount)
                 }
             }
-            .listRowBackground(Color.surface)
 
             Section("Exportar") {
                 switch files {
@@ -59,10 +58,7 @@ struct ExportView: View {
                     shareLink(csv, title: "Series (CSV)", icon: "tablecells")
                 }
             }
-            .listRowBackground(Color.surface)
         }
-        .scrollContentBackground(.hidden)
-        .screenBackground()
         .task { buildFiles() }
     }
 
@@ -123,15 +119,14 @@ private func previewSessions(_ count: Int) -> [WorkoutSessionRecord] {
         ExportView(sessions: previewSessions(2), exercises: [], unreadableCount: 0)
             .navigationTitle("Exportar datos")
     }
-    .ironEnergyTheme()
 }
 
-#Preview("1 sesión + ilegible") {
+#Preview("1 sesión + ilegible · oscuro") {
     NavigationStack {
         ExportView(sessions: previewSessions(1), exercises: [], unreadableCount: 1)
             .navigationTitle("Exportar datos")
     }
-    .ironEnergyTheme()
+    .preferredColorScheme(.dark)
 }
 
 #Preview("3 sesiones · accessibility3") {
@@ -140,5 +135,4 @@ private func previewSessions(_ count: Int) -> [WorkoutSessionRecord] {
             .navigationTitle("Exportar datos")
     }
     .dynamicTypeSize(.accessibility3)
-    .ironEnergyTheme()
 }

@@ -35,10 +35,6 @@ public protocol AppleIDAuthProviding: Sendable {
     /// Estado de la credencial de un usuario ya conocido (SCRUM-26). Se consulta al
     /// arrancar para saber si Apple la revocó. Sin conexión devuelve `.unavailable`.
     func credentialState(forUserIdentifier userIdentifier: String) async -> AppleCredentialState
-
-    /// Cancela el inicio de sesión en curso, si lo hay (SCRUM-193: "Reintentar" tras una
-    /// espera larga). El `authenticate()` pendiente termina como `.canceled`.
-    func cancelAuthentication() async
 }
 
 extension AppleIDAuthProviding {
@@ -46,9 +42,6 @@ extension AppleIDAuthProviding {
     public func credentialState(forUserIdentifier userIdentifier: String) async -> AppleCredentialState {
         .authorized
     }
-
-    /// Por defecto (fakes, modo simulado) no hay nada que cancelar: responden al instante.
-    public func cancelAuthentication() async {}
 }
 
 /// Estado de la credencial de Apple de un usuario.

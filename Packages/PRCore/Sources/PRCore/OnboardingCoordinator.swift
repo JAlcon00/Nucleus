@@ -55,24 +55,12 @@ public final class OnboardingCoordinator {
     /// Fase actual visible por la UI.
     public private(set) var phase: OnboardingPhase = .signedOut
 
-    /// "Sobre ti" (SCRUM-198): respuesta en curso. Va antes del primer paso.
-    public private(set) var aboutYouAnswer = AboutYouAnswer()
-    /// `true` mientras falta confirmar "Sobre ti" (la UI lo muestra antes del primer paso).
-    public private(set) var needsAboutYou = false
-
-    private let clock: () -> Date
-    private let timeZone: () -> TimeZone
-
     public init(
         authProvider: (any AppleIDAuthProviding)? = nil,
         auth: AppleIDAuthCoordinator? = nil,
         flowController: OnboardingFlowController = OnboardingFlowController(),
-        builder: OnboardingProfileBuilder = OnboardingProfileBuilder(),
-        clock: @escaping () -> Date = { Date() },
-        timeZone: @escaping () -> TimeZone = { .current }
+        builder: OnboardingProfileBuilder = OnboardingProfileBuilder()
     ) {
-        self.clock = clock
-        self.timeZone = timeZone
         if let auth {
             self.auth = auth
         } else {
@@ -92,7 +80,6 @@ public final class OnboardingCoordinator {
 
         switch auth.flowState {
         case .signedIn:
-            needsAboutYou = true
             phase = onboardingPhase(for: flowController)
         case .idle:
             // Auth cancelada por el usuario: no es un error, volvemos al gate.
@@ -117,33 +104,15 @@ public final class OnboardingCoordinator {
         phase = .completed(profile)
     }
 
-    /// No hay plan guardado: empieza el cuestionario (primero "Sobre ti").
+    /// No hay plan guardado: empieza el cuestionario.
     public func beginOnboarding() {
-        needsAboutYou = true
         phase = onboardingPhase(for: flowController)
-    }
-
-    // MARK: - SCRUM-198: "Sobre ti"
-
-    /// Registra lo que la persona va llenando en "Sobre ti".
-    public func updateAboutYou(_ answer: AboutYouAnswer) {
-        aboutYouAnswer = answer
-    }
-
-    /// "Continuar" en "Sobre ti": sólo avanza con edad (≥ 18), sexo y peso válidos.
-    @discardableResult
-    public func confirmAboutYou() -> Bool {
-        guard aboutYouAnswer.isComplete else { return false }
-        needsAboutYou = false
-        return true
     }
 
     /// Vuelve al login sin tocar datos locales (credencial revocada, SCRUM-26).
     public func returnToSignIn() {
         auth.signOut()
         flowController = OnboardingFlowController()
-        aboutYouAnswer = AboutYouAnswer()
-        needsAboutYou = false
         phase = .signedOut
     }
 
@@ -161,20 +130,13 @@ public final class OnboardingCoordinator {
                 (.goal, .goal(profile.goal)),
                 (.phase, .phase(profile.phase)),
                 (.experience, .experience(profile.experience)),
-                (.daysPerWeek, .trainingDays(profile.trainingWeekdays ?? [])),
+                (.daysPerWeek, .daysPerWeek(profile.trainingDaysPerWeek)),
                 (.sessionMinutes, .sessionMinutes(profile.usualSessionMinutes)),
                 (.gym, .gym(profile.defaultGymID)),
                 (.variety, .variety(profile.varietyPreference)),
                 (.restrictions, .restrictions(profile.restrictions)),
             ]
             for (step, answer) in answers { draft = draft.settingAnswer(answer, for: step) }
-        }
-        // "Sobre ti" ya contestado se edita en Perfil; un perfil anterior sin él lo pide.
-        if let aboutYou = profile?.aboutYou {
-            aboutYouAnswer = AboutYouAnswer(aboutYou, on: clock(), timeZone: timeZone())
-            needsAboutYou = false
-        } else {
-            needsAboutYou = true
         }
         flowController = OnboardingFlowController(draft: draft)
         phase = onboardingPhase(for: flowController)
@@ -218,10 +180,7 @@ public final class OnboardingCoordinator {
     /// obligatorios sin responder o los valores son inválidos (no inventa respuestas).
     public func complete() {
         do {
-            var profile = try builder.build(from: flowController.draft)
-            if !needsAboutYou, aboutYouAnswer.isComplete {
-                profile.aboutYou = try aboutYouAnswer.aboutYou(on: clock(), timeZone: timeZone())
-            }
+            let profile = try builder.build(from: flowController.draft)
             phase = .completed(profile)
         } catch {
             phase = .failed("No se pudo completar el perfil: \(localizedDescription(of: error))")
@@ -260,8 +219,8 @@ public final class OnboardingCoordinator {
         switch buildError {
         case .missingAnswer(let step):
             return "Falta responder \(step.rawValue)."
-        case .invalidTrainingDays:
-            return "Elige al menos 2 días para entrenar."
+        case .invalidTrainingDays(let days):
+            return "\(days) días no está en el rango permitido (2...7)."
         case .invalidSessionMinutes(let minutes):
             return "\(minutes) minutos no están en el rango permitido (30...240)."
         }

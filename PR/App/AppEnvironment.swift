@@ -101,19 +101,6 @@ public final class AppEnvironment {
         refreshTodayState()
     }
 
-    /// Lee el historial del usuario para "Tu semana" y "última vez" (SCRUM-197). Si no se
-    /// puede leer, la semana se muestra igual, sólo sin días marcados como hechos (es una
-    /// lectura: no se pierde ni se escribe nada).
-    public func refreshHistory() async {
-        guard let persistence else { return }
-        do {
-            let sessions = try await persistence.workoutRepository().loadAllSessions().items
-            todayPlan.updateHistory(sessions)
-        } catch {
-            // Se conserva el historial anterior en memoria; el próximo arranque reintenta.
-        }
-    }
-
     /// El entrenamiento terminó (resumen cerrado): Hoy vuelve a su estado normal.
     public func workoutEnded() {
         if case .finished? = activeWorkout?.phase { activeWorkout = nil }
@@ -126,15 +113,6 @@ public final class AppEnvironment {
             record = try? activeWorkout?.snapshot().session
         }
         todayPlan.refreshState(activeSession: record)
-    }
-
-    /// "Hoy" del reloj de la app (fijo en las pruebas de UI).
-    public var now: Date { clock() }
-
-    /// Perfil de la sesión ya contestado; `nil` mientras no hay plan.
-    public var completedProfile: OnboardingProfile? {
-        if case .completed(let profile) = onboarding.phase { return profile }
-        return nil
     }
 
     private var exerciseNames: [ExerciseID: String] {
@@ -202,15 +180,11 @@ public final class AppEnvironment {
         #endif
         let mode = AuthLaunchMode.resolve(arguments: ProcessInfo.processInfo.arguments, isDebugBuild: isDebugBuild)
         self.authMode = mode
+        self.onboarding = OnboardingCoordinator(
+            authProvider: authProvider ?? mode.provider(appleID: SignInWithAppleProvider())
+        )
         let testOptions = UITestLaunchOptions.resolve(
             arguments: ProcessInfo.processInfo.arguments, isDebugBuild: isDebugBuild
-        )
-        // Con `-PRFixedDate` (sólo Debug) "hoy" es ese día; si no, el reloj real.
-        let fixedDate = testOptions.fixedDate(timeZone: .current)
-        self.fixedDate = fixedDate
-        self.onboarding = OnboardingCoordinator(
-            authProvider: authProvider ?? mode.provider(appleID: SignInWithAppleProvider()),
-            clock: { fixedDate ?? Date() }
         )
         self.basePersistence = persistence ?? Self.makeDefaultPersistence(isolated: testOptions.isolatedPersistence ? testOptions.isolatedDirectoryName : nil)
         let resolvedCatalog: ExerciseCatalog
@@ -228,6 +202,9 @@ public final class AppEnvironment {
             )
         }
         self.catalog = resolvedCatalog
+        // Con `-PRFixedDate` (sólo Debug) "hoy" es ese día; si no, el reloj real.
+        let fixedDate = testOptions.fixedDate(timeZone: .current)
+        self.fixedDate = fixedDate
         var planStore: PlanStore?
         if let persistence = self.basePersistence {
             do {
@@ -245,8 +222,7 @@ public final class AppEnvironment {
         self.session = AppSessionCoordinator(
             onboarding: self.onboarding,
             todayPlan: self.todayPlan,
-            planStore: planStore,
-            clock: { fixedDate ?? Date() }
+            planStore: planStore
         )
     }
 
