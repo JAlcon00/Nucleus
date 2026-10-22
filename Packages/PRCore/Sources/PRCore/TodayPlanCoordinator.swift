@@ -325,6 +325,8 @@ public final class TodayPlanCoordinator {
     private let saveClock: () -> Date
     /// Perfil con el que se armó `plan`; evita regenerar al volver a entrar con el mismo.
     private var activeProfile: OnboardingProfile?
+    /// Usuario del plan activo (para buscar plantillas de bloques anteriores).
+    private var activeUserID: String?
 
     public init(
         builder: TodayPlanBuilder = TodayPlanBuilder(),
@@ -369,6 +371,44 @@ public final class TodayPlanCoordinator {
         plan = nil
         notice = nil
         activeProfile = nil
+        activeUserID = nil
+    }
+
+    /// Recalcula el estado de "Hoy" según haya o no un entrenamiento vivo (SCRUM-24): con
+    /// uno en curso Hoy ofrece "Continuar" en lugar de "Empezar". `nil` = sin entrenamiento vivo.
+    public func refreshState(activeSession: WorkoutSessionRecord?) {
+        guard let current = plan else { return }
+        let template = activeSession.flatMap { session in
+            current.sessions.first { $0.id == session.templateID }
+        } ?? current.todayTemplate
+        let state = driver.derive(
+            todayTemplate: template,
+            activeSession: activeSession,
+            estimatedMinutes: current.estimatedMinutes
+        )
+        plan = TodayPlan(
+            block: current.block,
+            sessions: current.sessions,
+            todayTemplate: current.todayTemplate,
+            estimatedMinutes: current.estimatedMinutes,
+            todayState: state,
+            todayExercises: current.todayExercises,
+            todayOrder: current.todayOrder,
+            todayOrderReorderedByFatigue: current.todayOrderReorderedByFatigue
+        )
+    }
+
+    /// Plantillas conocidas del usuario: las del bloque activo y las de bloques anteriores.
+    /// Sirve para retomar una sesión que se empezó con un plan que ya cambió.
+    public func allKnownTemplates() async -> [SessionTemplate] {
+        var templates = plan?.sessions ?? []
+        if let planStore, let activeUserID,
+           case .loaded(let stored, _) = await planStore.loadPlan(userID: activeUserID) {
+            for block in await planStore.blockHistory(of: stored) {
+                templates.append(contentsOf: block.sessions)
+            }
+        }
+        return templates
     }
 
     /// Descarta el aviso ya mostrado.
@@ -382,6 +422,7 @@ public final class TodayPlanCoordinator {
     /// Si el plan se guardó con un generador anterior se regenera conservando el ID del bloque.
     public func restore(userID: String) async -> PlanRestoreOutcome {
         guard let planStore else { return .none }
+        activeUserID = userID
         switch await planStore.loadPlan(userID: userID) {
         case .none:
             return .none
@@ -426,6 +467,7 @@ public final class TodayPlanCoordinator {
         guard let userID, let planStore else {
             return load(profile: profile)
         }
+        activeUserID = userID
         let previous: (plan: StoredPlan, block: TrainingBlock)?
         switch await planStore.loadPlan(userID: userID) {
         case .loaded(let stored, let block): previous = (stored, block)

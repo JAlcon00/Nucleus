@@ -312,6 +312,8 @@ public struct WorkoutSessionRecord: Identifiable, Codable, Sendable, Hashable {
     public var sets: [SetRecord]
     /// Referencia estable al workout de HealthKit asociado (para reconciliar, §14.2/§15.2).
     public var healthWorkoutReferenceID: UUID?
+    /// Descanso en curso, guardado como hora de fin (SCRUM-24). `nil` = sin descanso.
+    public var rest: RestSnapshot?
 
     public init(
         id: WorkoutID = WorkoutID(),
@@ -320,8 +322,10 @@ public struct WorkoutSessionRecord: Identifiable, Codable, Sendable, Hashable {
         endedAt: Date? = nil,
         lifecycle: WorkoutLifecycleState = .planned,
         sets: [SetRecord] = [],
-        healthWorkoutReferenceID: UUID? = nil
+        healthWorkoutReferenceID: UUID? = nil,
+        rest: RestSnapshot? = nil
     ) {
+        self.rest = rest
         self.id = id
         self.templateID = templateID
         self.startedAt = startedAt

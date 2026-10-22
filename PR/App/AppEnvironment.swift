@@ -72,6 +72,58 @@ public final class AppEnvironment {
     /// `persistence`, que lo separa por cuenta (SCRUM-26).
     private let basePersistence: LocalPersistence?
 
+    /// "Hoy" fijo para las pruebas de UI (sólo Debug); `nil` = reloj real.
+    private let fixedDate: Date?
+
+    /// Entrenamiento vivo (retomado tras un cierre o empezado ahora). `nil` si no hay ninguno.
+    /// Hoy muestra "Continuar" mientras exista y no haya terminado (SCRUM-24).
+    public private(set) var activeWorkout: WorkoutSessionCoordinator?
+
+    /// Al abrir: drena la cola de pendientes y retoma el entrenamiento que quedó abierto
+    /// ("Tienes un entrenamiento en curso"). Si hay dos activas por error retoma la más
+    /// reciente y abandona la otra sin tocar sus series.
+    public func recoverWorkout() async {
+        guard activeWorkout == nil, let persistence else { return }
+        let templates = await todayPlan.allKnownTemplates()
+        do {
+            switch try await persistence.recoverWorkout(
+                templates: templates,
+                exerciseNames: exerciseNames,
+                celebrationPresenter: PRCelebrationPresenter(locale: Self.presentationLocale),
+                clock: clock
+            ) {
+            case .none: activeWorkout = nil
+            case .restored(let coordinator): activeWorkout = coordinator
+            }
+        } catch {
+            persistence.log.saveFailed(.workouts)
+        }
+        refreshTodayState()
+    }
+
+    /// El entrenamiento terminó (resumen cerrado): Hoy vuelve a su estado normal.
+    public func workoutEnded() {
+        if case .finished? = activeWorkout?.phase { activeWorkout = nil }
+        refreshTodayState()
+    }
+
+    private func refreshTodayState() {
+        var record: WorkoutSessionRecord?
+        if let activeWorkout, case .finished = activeWorkout.phase {} else {
+            record = try? activeWorkout?.snapshot().session
+        }
+        todayPlan.refreshState(activeSession: record)
+    }
+
+    private var exerciseNames: [ExerciseID: String] {
+        Dictionary(catalog.exercises.map { ($0.id, $0.canonicalName) }, uniquingKeysWith: { first, _ in first })
+    }
+
+    private var clock: () -> Date {
+        let fixed = fixedDate
+        return { fixed ?? Date() }
+    }
+
     /// Construye un coordinador de WORKOUT MODE para la sesión planeada hoy.
     /// Usa la plantilla del plan de hoy (si la hay) y los nombres del catálogo.
     /// Devuelve `nil` para un día de descanso (sin sesión).
@@ -79,28 +131,39 @@ public final class AppEnvironment {
     /// cablea `LocalPersistence`. Si no hay almacén durable, el coordinador funciona igual
     /// en memoria (nunca se pierde la sesión viva).
     public func makeWorkoutCoordinator() async -> WorkoutSessionCoordinator? {
-        guard let template = todayPlan.plan?.todayTemplate else { return nil }
-        var names: [ExerciseID: String] = [:]
-        for exercise in catalog.exercises {
-            names[exercise.id] = exercise.canonicalName
+        // Si ya hay un entrenamiento vivo (retomado o empezado) se continúa ese: nunca dos.
+        if let activeWorkout {
+            switch activeWorkout.phase {
+            case .finished: break
+            case .idle, .active, .resting, .paused: return activeWorkout
+            }
         }
+        guard let template = todayPlan.plan?.todayTemplate else { return nil }
         let presenter = PRCelebrationPresenter(locale: Self.presentationLocale)
+        let coordinator: WorkoutSessionCoordinator
         if let persistence {
             do {
-                return try await persistence.makeWorkoutCoordinator(
+                coordinator = try await persistence.makeWorkoutCoordinator(
                     template: template,
-                    exerciseNames: names,
-                    celebrationPresenter: presenter
+                    exerciseNames: exerciseNames,
+                    celebrationPresenter: presenter,
+                    clock: clock
                 )
             } catch {
                 persistence.log.saveFailed(.workouts)
+                coordinator = WorkoutSessionCoordinator(
+                    template: template, exerciseNames: exerciseNames,
+                    celebrationPresenter: presenter, clock: clock
+                )
             }
+        } else {
+            coordinator = WorkoutSessionCoordinator(
+                template: template, exerciseNames: exerciseNames,
+                celebrationPresenter: presenter, clock: clock
+            )
         }
-        return WorkoutSessionCoordinator(
-            template: template,
-            exerciseNames: names,
-            celebrationPresenter: presenter
-        )
+        activeWorkout = coordinator
+        return coordinator
     }
 
     public init(
@@ -141,6 +204,7 @@ public final class AppEnvironment {
         self.catalog = resolvedCatalog
         // Con `-PRFixedDate` (sólo Debug) "hoy" es ese día; si no, el reloj real.
         let fixedDate = testOptions.fixedDate(timeZone: .current)
+        self.fixedDate = fixedDate
         var planStore: PlanStore?
         if let persistence = self.basePersistence {
             do {

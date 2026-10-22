@@ -48,6 +48,8 @@ struct AppRootView: View {
                         // Activa y guarda el plan del perfil (SCRUM-26). Si venimos de un
                         // plan recordado, ya está activo y no se regenera.
                         _ = await environment.session.planCompleted(profile: profile)
+                        // Retoma el entrenamiento que quedó abierto, si lo hay (SCRUM-24).
+                        await environment.recoverWorkout()
                     }
             case .planUnreadable:
                 PlanUnreadableView(onRedo: { environment.session.redoQuestionnaire() })
@@ -104,7 +106,10 @@ struct AppRootView: View {
             NavigationStack {
                 WorkoutModeView(
                     coordinator: coordinator,
-                    onDone: { workout = nil },
+                    onDone: {
+                        workout = nil
+                        environment.workoutEnded()
+                    },
                     coachingLevel: coachingLevel
                 )
             }

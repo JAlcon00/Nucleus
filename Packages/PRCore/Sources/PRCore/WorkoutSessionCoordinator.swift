@@ -106,6 +106,17 @@ public final class WorkoutSessionCoordinator: Identifiable {
     /// Hook (async, best-effort) al cerrar la sesión para persistir el registro durabile
     /// en el repositorio local. La UI del coordinador permanece sincrónica (PR-0203/PR-0302).
     private let onSessionFinished: (WorkoutSessionRecord) async -> Void
+    /// Escritura durable y SÍNCRONA del registro de la sesión (SCRUM-24). Se llama al
+    /// iniciar y en cada cambio de estado (serie, pausa, reanudar, descanso, fin) ANTES de
+    /// que la UI avance; nunca desde `tick()`. `nil` = sin disco (sólo memoria).
+    private let persistSession: ((WorkoutSessionRecord) throws -> Void)?
+
+    /// `true` si la última escritura a disco falló: la sesión sigue viva en memoria pero la
+    /// UI debe avisar (nunca se traga el error de un dato de entrenamiento).
+    public private(set) var persistenceFailed = false
+
+    /// Resumen de la sesión ya cerrada. Se calcula UNA vez; después `tick()` sólo lo lee.
+    private var finalSummary: WorkoutSummary?
 
     private var rest: RestTimerState = RestTimerState(recommendedSeconds: 0)
 
@@ -122,7 +133,9 @@ public final class WorkoutSessionCoordinator: Identifiable {
         initialPhase: WorkoutSessionPhase = .idle,
         pendingQueue: PendingOperationQueueStore? = nil,
         setPersistenceGuard: SetPersistenceGuard = SetPersistenceGuard(),
-        onSessionFinished: @escaping (WorkoutSessionRecord) async -> Void = { _ in }
+        onSessionFinished: @escaping (WorkoutSessionRecord) async -> Void = { _ in },
+        persistSession: ((WorkoutSessionRecord) throws -> Void)? = nil,
+        restoring record: WorkoutSessionRecord? = nil
     ) {
         self.template = template
         self.exerciseNames = exerciseNames
@@ -138,6 +151,21 @@ public final class WorkoutSessionCoordinator: Identifiable {
         self.pendingQueue = pendingQueue
         self.setPersistenceGuard = setPersistenceGuard
         self.onSessionFinished = onSessionFinished
+        self.persistSession = persistSession
+        if let record {
+            // Retomar una sesión guardada (SCRUM-24): el descanso se recalcula contra el
+            // reloj con la hora de fin guardada; si ya pasó, queda en 0 y la serie lista.
+            do {
+                self.controller = try ActiveWorkoutController.restore(
+                    from: ActiveWorkoutSnapshot(session: record, lastTransitionAt: clock())
+                )
+                self.rest = record.rest?.timerState(at: clock()) ?? RestTimerState(recommendedSeconds: 0)
+                self.phase = currentPhase()
+            } catch {
+                // Estado final: no se restaura (se queda idle; quien llama decide).
+                self.phase = .idle
+            }
+        }
     }
 }
 
@@ -151,6 +179,7 @@ extension WorkoutSessionCoordinator {
         do {
             _ = try controller.start(from: template, at: now ?? clock())
             rest = RestTimerState(recommendedSeconds: 0)
+            persistLive()   // la sesión ya está en disco como `active` desde el primer momento
             let next = currentPhase()
             phase = next
             return next
@@ -165,6 +194,7 @@ extension WorkoutSessionCoordinator {
         guard let current = currentSet() else { throw WorkoutSessionError.notActive }
         do {
             _ = try controller.pause(at: now ?? clock())
+            persistLive()
             let next: WorkoutSessionPhase = .paused(current)
             phase = next
             return next
@@ -178,6 +208,7 @@ extension WorkoutSessionCoordinator {
         guard let current = currentSet() else { throw WorkoutSessionError.notActive }
         do {
             _ = try controller.resume(at: now ?? clock())
+            persistLive()
             let next: WorkoutSessionPhase =
                 rest.isActive ? .resting(current, rest: rest) : .active(current)
             phase = next
@@ -190,13 +221,14 @@ extension WorkoutSessionCoordinator {
     /// Cierra la sesión (finish → complete) y genera el resumen (PR-0605).
     @discardableResult
     public func complete(now: Date? = nil) throws -> WorkoutSessionPhase {
-        do {
-            _ = try controller.finish(at: now ?? clock())
-            _ = try controller.complete(at: now ?? clock())
-        } catch {
-            throw WorkoutSessionError.invalidTransition
+        // Completar una sesión ya completada es idempotente (p. ej. la última serie la cerró
+        // y la UI vuelve a pedir el cierre): no cambia nada ni vuelve a escribir. Cualquier
+        // OTRA transición desde un estado final se rechaza.
+        if controller.current?.session.lifecycle == .completed {
+            return finalizeSession()
         }
-        return closeAsFinished()
+        try completeSession(at: now ?? clock())
+        return finalizeSession()
     }
 
     /// Abandona la sesión activa (no borra los sets ya realizados).
@@ -207,7 +239,7 @@ extension WorkoutSessionCoordinator {
         } catch {
             throw WorkoutSessionError.notActive
         }
-        return closeAsFinished()
+        return finalizeSession()
     }
 
     /// Celebración de los récords del resumen (PR-1004): el dominio decide qué y la
@@ -255,7 +287,7 @@ extension WorkoutSessionCoordinator {
         input: SetCompletionInput? = nil,
         now: Date? = nil
     ) throws -> WorkoutSessionPhase {
-        guard let session = controller.current?.session else { throw WorkoutSessionError.notActive }
+        let session = try activeSessionForSet()
         guard let current = currentSet() else { throw WorkoutSessionError.allSetsCompleted }
         let planned = template.plannedSets[current.index]
 
@@ -283,7 +315,7 @@ extension WorkoutSessionCoordinator {
         unit: LoadUnit? = nil,
         now: Date? = nil
     ) throws -> WorkoutSessionPhase {
-        guard let session = controller.current?.session else { throw WorkoutSessionError.notActive }
+        let session = try activeSessionForSet()
         guard let current = currentSet() else { throw WorkoutSessionError.allSetsCompleted }
         let planned = template.plannedSets[current.index]
         do {
@@ -303,9 +335,21 @@ extension WorkoutSessionCoordinator {
         }
     }
 
+    /// La sesión en la que se puede registrar una serie: sólo una sesión `active`. En un
+    /// estado final (completada/abandonada) no se agrega nada; en pausa hay que reanudar.
+    private func activeSessionForSet() throws -> WorkoutSessionRecord {
+        guard let session = controller.current?.session else { throw WorkoutSessionError.notActive }
+        switch session.lifecycle {
+        case .active: return session
+        case .completed, .abandoned: throw WorkoutSessionError.notActive
+        case .planned, .preparing, .paused, .finishing: throw WorkoutSessionError.invalidTransition
+        }
+    }
+
     /// Skip del descanso activo.
     public func skipRest() {
         rest = restTimer.skip(rest)
+        persistRest()
         publishActivePhase()
     }
 
@@ -313,6 +357,7 @@ extension WorkoutSessionCoordinator {
     public func extendRest(by seconds: Int = 30) {
         guard rest.isActive else { return }
         rest = restTimer.extend(rest, by: seconds, now: clock())
+        persistRest()
         publishActivePhase()
     }
 
@@ -324,19 +369,28 @@ extension WorkoutSessionCoordinator {
         phase = currentPhase()
     }
 
-    /// Presenta una fase actualizada a partir del reloj inyectado.
+    /// Presenta una fase actualizada a partir del reloj inyectado. NUNCA escribe en disco:
+    /// `tick()` se llama cada segundo y sólo los cambios de estado persisten.
     private func currentPhase() -> WorkoutSessionPhase {
-        if let current = currentSet() {
-            switch controller.current?.session.lifecycle {
-            case .paused?:
-                return .paused(current)
-            case .completed?, .abandoned?:
-                return closeAsFinished()
-            default:
-                return rest.isActive ? .resting(current, rest: rest) : .active(current)
-            }
+        guard let session = controller.current?.session else { return phase }
+        switch session.lifecycle {
+        case .completed, .abandoned:
+            return finalSummary.map(WorkoutSessionPhase.finished) ?? finalizeSession()
+        case .planned, .preparing, .active, .paused, .finishing:
+            break
         }
-        return closeAsFinished()
+        guard let current = currentSet() else {
+            // Todas las series hechas pero la sesión no llegó a cerrarse (p. ej. cierre
+            // forzado justo después de la última serie): se completa ahora.
+            do {
+                try completeSession(at: clock())
+            } catch {
+                return phase
+            }
+            return finalizeSession()
+        }
+        if session.lifecycle == .paused { return .paused(current) }
+        return rest.isActive ? .resting(current, rest: rest) : .active(current)
     }
 
     private func publishActivePhase() {
@@ -347,46 +401,107 @@ extension WorkoutSessionCoordinator {
         _ updated: WorkoutSessionRecord,
         planned: PlannedSet
     ) -> WorkoutSessionPhase {
-        // Persistir el set en la sesión viva ANTES de transicionar la UI (PR-0603).
-        controller = ActiveWorkoutController(
-            state: ActiveWorkoutState(session: updated, lastTransitionAt: clock())
-        )
-        // Encolar el set como operación crítica durabile (offline-first, PR-0203):
-        // durable e idempotente → un retry no duplica SetRecord y la app funciona con
-        // el backend apagado. La escritura local de la cola es sincrónica y atómica.
-        if let set = updated.sets.last, let pendingQueue {
-            _ = try? setPersistenceGuard.enqueueSetSave(
-                set,
-                in: updated.id,
-                queue: pendingQueue,
-                now: clock()
-            )
-        }
-        if let current = currentSet() {
-            rest = restTimer.autoStart(
+        // El descanso nace junto con la serie: se guarda como hora de fin en el MISMO
+        // registro, en una sola escritura atómica.
+        var session = updated
+        let hasNext = updated.sets.count < template.plannedSets.count
+        let nextRest = hasNext
+            ? restTimer.autoStart(
                 afterCompletedWarmup: planned.prescription.isWarmup,
                 prescription: planned.prescription,
                 now: clock()
             )
-            let next: WorkoutSessionPhase =
-                rest.isActive ? .resting(current, rest: rest) : .active(current)
-            phase = next
-            return next
+            : RestTimerState(recommendedSeconds: 0)
+        session.rest = nextRest.isActive ? RestSnapshot(nextRest) : nil
+        controller.replaceSession(session, at: clock())
+
+        // Encolar el set como operación crítica durable (offline-first, PR-0203): idempotente,
+        // un retry no duplica SetRecord. Un fallo se registra en `persistenceFailed`.
+        if let set = session.sets.last, let pendingQueue {
+            do {
+                _ = try setPersistenceGuard.enqueueSetSave(set, in: session.id, queue: pendingQueue, now: clock())
+            } catch {
+                persistenceFailed = true
+            }
         }
-        rest = RestTimerState(recommendedSeconds: 0)
-        return closeAsFinished()
+        // Persistir ANTES de transicionar la UI (PR-0603).
+        persistLive()
+
+        guard hasNext else {
+            // Última serie: la sesión pasa a `completed` y se muestra el resumen (SCRUM-25).
+            do {
+                try completeSession(at: clock())
+            } catch {
+                persistenceFailed = true
+            }
+            rest = RestTimerState(recommendedSeconds: 0)
+            return finalizeSession()
+        }
+        rest = nextRest
+        guard let current = currentSet() else { return finalizeSession() }
+        let next: WorkoutSessionPhase = rest.isActive ? .resting(current, rest: rest) : .active(current)
+        phase = next
+        return next
     }
 
-    private func closeAsFinished() -> WorkoutSessionPhase {
+    // MARK: - Persistencia (SCRUM-24)
+
+    /// Guarda la sesión viva. Un fallo no interrumpe el entrenamiento (sigue en memoria) pero
+    /// queda a la vista en `persistenceFailed`; una escritura posterior exitosa lo limpia
+    /// porque contiene todas las series.
+    private func persistLive() {
+        guard let persistSession, let live = controller.current?.session else { return }
+        do {
+            try persistSession(live)
+            persistenceFailed = false
+        } catch {
+            persistenceFailed = true
+        }
+    }
+
+    /// Refleja el descanso actual (omitir/extender) en el registro y lo guarda.
+    private func persistRest() {
+        guard var session = controller.current?.session else { return }
+        session.rest = rest.isActive ? RestSnapshot(rest) : nil
+        controller.replaceSession(session, at: clock())
+        persistLive()
+    }
+
+    // MARK: - Cierre (SCRUM-25)
+
+    /// finishing → completed (desde pausa reanuda primero). Una sesión en estado final
+    /// rechaza cualquier otra transición.
+    private func completeSession(at now: Date) throws {
+        do {
+            if controller.current?.session.lifecycle == .paused {
+                _ = try controller.resume(at: now)
+            }
+            _ = try controller.finish(at: now)
+            _ = try controller.complete(at: now)
+        } catch {
+            throw WorkoutSessionError.invalidTransition
+        }
+    }
+
+    /// Cierra la presentación: guarda el registro final UNA vez, calcula el resumen UNA vez
+    /// y avisa UNA vez. Llamarla de nuevo (p. ej. desde `tick()`) sólo devuelve el resumen.
+    @discardableResult
+    private func finalizeSession() -> WorkoutSessionPhase {
+        if let finalSummary {
+            let done: WorkoutSessionPhase = .finished(finalSummary)
+            phase = done
+            return done
+        }
         let summary: WorkoutSummary
         if let live = controller.current?.session {
+            persistLive()
             summary = summaryBuilder.summarize(live, now: clock(), baselines: recordBaselines)
-            // Cerrar con persistencia durabile del registro final (best-effort, async):
-            // el repositorio local se actualiza fuera del hilo de la UI del coordinador.
-            Task { await onSessionFinished(live) }
+            let hook = onSessionFinished
+            Task { await hook(live) }
         } else {
             summary = summaryBuilder.summarize(WorkoutSessionRecord(lifecycle: .completed))
         }
+        finalSummary = summary
         let next: WorkoutSessionPhase = .finished(summary)
         phase = next
         return next

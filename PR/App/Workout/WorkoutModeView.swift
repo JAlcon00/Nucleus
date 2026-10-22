@@ -54,6 +54,17 @@ struct WorkoutModeView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .top) {
+            if coordinator.persistenceFailed {
+                Label("No se pudo guardar en el dispositivo. Sigue entrenando: lo reintentamos en la siguiente serie.", systemImage: "exclamationmark.triangle.fill")
+                    .font(.callout)
+                    .padding(DSpace.m)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: DRadius.medium))
+                    .padding(.horizontal, DSpace.m)
+                    .accessibilityIdentifier("workout.persistenceWarning")
+            }
+        }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 if isLive {

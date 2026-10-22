@@ -65,6 +65,12 @@ public struct PersistenceLog: Sendable {
         sink("persistence.migration failed")
     }
 
+    /// Se encontró más de una sesión activa (error): se retomó la más reciente y las demás
+    /// pasaron a `abandoned` con sus series intactas. Sólo el conteo, sin contenido.
+    public func recoveredExtraActiveSessions(count: Int) {
+        sink("persistence.recovery extraActiveSessions=\(count)")
+    }
+
     public func saveFailed(_ collection: PersistenceCollection) {
         sink("persistence.write failed collection=\(collection.rawValue)")
     }
@@ -146,15 +152,17 @@ public struct LocalPersistence: Sendable {
     }
 
     /// Coordinador de WORKOUT MODE cableado a esta persistencia: cola de pendientes,
-    /// baselines de PR desde el historial y guardado de la sesión al terminar.
-    /// `onPersisted` informa el resultado de cada guardado (éxito o fallo, que además
-    /// se registra): nunca se descarta en silencio un error de escritura.
+    /// baselines de PR desde el historial y guardado DURABLE de la sesión al iniciar, en cada
+    /// serie y al terminar (SCRUM-24). `restoring` retoma una sesión guardada.
+    /// `onPersisted` informa el resultado del guardado final (éxito o fallo, que además se
+    /// registra): nunca se descarta en silencio un error de escritura.
     @MainActor
     public func makeWorkoutCoordinator(
         template: SessionTemplate,
         exerciseNames: [ExerciseID: String] = [:],
         celebrationPresenter: PRCelebrationPresenter = PRCelebrationPresenter(),
         clock: @escaping () -> Date = { Date() },
+        restoring: WorkoutSessionRecord? = nil,
         onPersisted: @escaping @Sendable (Result<WorkoutID, any Error>) async -> Void = { _ in }
     ) async throws -> WorkoutSessionCoordinator {
         let workouts = try workoutRepository()
@@ -167,6 +175,7 @@ public struct LocalPersistence: Sendable {
             history = []
         }
         let log = self.log
+        let outcome = PersistOutcome()
         return WorkoutSessionCoordinator(
             template: template,
             exerciseNames: exerciseNames,
@@ -175,15 +184,80 @@ public struct LocalPersistence: Sendable {
             clock: clock,
             pendingQueue: queue,
             onSessionFinished: { session in
-                do {
-                    try await workouts.save(session)
-                    await onPersisted(.success(session.id))
-                } catch {
+                if let error = outcome.lastError {
                     log.saveFailed(.workouts)
                     await onPersisted(.failure(error))
+                } else {
+                    await onPersisted(.success(session.id))
                 }
-            }
+            },
+            persistSession: { session in
+                do {
+                    try workouts.persist(session)
+                    outcome.record(nil)
+                } catch {
+                    log.saveFailed(.workouts)
+                    outcome.record(error)
+                    throw error
+                }
+            },
+            restoring: restoring
         )
+    }
+
+    /// Qué encontró la app al abrir respecto de un entrenamiento sin cerrar.
+    public enum WorkoutRecoveryOutcome {
+        case none
+        /// Hay una sesión en curso, lista para continuar ("Tienes un entrenamiento en curso").
+        case restored(WorkoutSessionCoordinator)
+    }
+
+    /// Recupera el entrenamiento que quedó abierto (SCRUM-24): primero drena la cola de
+    /// pendientes (idempotente), luego revisa las sesiones guardadas con
+    /// `WorkoutRecoveryPlanner`. Si hay varias activas, retoma la más reciente y abandona las
+    /// demás sin tocar sus series. Si la plantilla de la sesión ya no existe, la abandona
+    /// conservando sus series (no se puede continuar sin saber qué toca después).
+    @MainActor
+    public func recoverWorkout(
+        templates: [SessionTemplate],
+        exerciseNames: [ExerciseID: String] = [:],
+        celebrationPresenter: PRCelebrationPresenter = PRCelebrationPresenter(),
+        clock: @escaping () -> Date = { Date() },
+        onPersisted: @escaping @Sendable (Result<WorkoutID, any Error>) async -> Void = { _ in }
+    ) async throws -> WorkoutRecoveryOutcome {
+        let workouts = try workoutRepository()
+        let queue = try pendingOperationQueue()
+        _ = await SetPersistenceGuard().drain(queue: queue, workoutRepository: workouts)
+
+        let sessions = try await workouts.loadAllSessions().items
+        let plan = WorkoutRecoveryPlanner().plan(for: sessions, now: clock())
+        for updated in plan.updates {
+            try workouts.persist(updated)
+        }
+        if plan.extraActiveCount > 0 {
+            log.recoveredExtraActiveSessions(count: plan.extraActiveCount)
+        }
+        guard let record = plan.restore else { return .none }
+        guard let template = templates.first(where: { $0.id == record.templateID }) else {
+            var abandoned = record
+            abandoned.lifecycle = .abandoned
+            abandoned.endedAt = abandoned.endedAt ?? clock()
+            abandoned.rest = nil
+            try workouts.persist(abandoned)
+            return .none
+        }
+        let coordinator = try await makeWorkoutCoordinator(
+            template: template,
+            exerciseNames: exerciseNames,
+            celebrationPresenter: celebrationPresenter,
+            clock: clock,
+            restoring: record,
+            onPersisted: onPersisted
+        )
+        // Si ya estaban todas las series (cierre forzado tras la última), el coordinador la
+        // cerró al restaurar y quedó guardada como completada: no hay nada que retomar.
+        if case .finished = coordinator.phase { return .none }
+        return .restored(coordinator)
     }
 
     /// Mueve los archivos del layout antiguo (todo en la raíz) a su colección. Segura de
@@ -197,5 +271,18 @@ public struct LocalPersistence: Sendable {
             log.migration(report)
         }
         return report
+    }
+}
+
+
+/// Último resultado de escritura de una sesión, compartido entre el guardado y el aviso final.
+private final class PersistOutcome: @unchecked Sendable {
+    private let lock = NSLock()
+    private var error: (any Error)?
+
+    var lastError: (any Error)? { lock.withLock { error } }
+
+    func record(_ newError: (any Error)?) {
+        lock.withLock { error = newError }
     }
 }

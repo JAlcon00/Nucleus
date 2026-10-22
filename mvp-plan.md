@@ -96,8 +96,8 @@ Diagnóstico verificado en el código el 2026-10-20: todos los bugs descritos ab
 | 1 | SCRUM-23 | Historial y export correctos (colecciones separadas) | P0 | — | [ ] criterios [x]; falta 👤 manual |
 | 2 | SCRUM-27 | Días correctos de la semana | P0 | — (su test de integración final espera al #6) | [ ] criterios [x]; falta integración con #6 y 👤 manual |
 | 3 | SCRUM-189 | CI en GitHub | P0 soporte | — | [ ] |
-| 4 | SCRUM-24 | No perder el workout si la app se cierra | P0 | 1 | [ ] |
-| 5 | SCRUM-25 | Cerrar bien la sesión al terminar | P0 | 4 | [ ] |
+| 4 | SCRUM-24 | No perder el workout si la app se cierra | P0 | 1 | [ ] criterios [x]; falta 👤 manual |
+| 5 | SCRUM-25 | Cerrar bien la sesión al terminar | P0 | 4 | [x] |
 | 6 | SCRUM-26 | Recordar perfil y plan | P0 | 1 | [ ] criterios [x]; falta 👤 manual |
 | 7 | SCRUM-28 | Volumen real y una sesión distinta por día | P0 | 2, 6 | [ ] criterios [x]; falta 👤 manual |
 | 8 | SCRUM-29 | Ejercicios en orden correcto | P0 | 7 | [x] |
@@ -220,20 +220,20 @@ Evidencia: commit `64c95d9`; `make ci` → `✔ Test run with 439 tests in 69 su
 - No hay restauración del workout activo.
 
 **Criterios:**
-- [ ] Al iniciar un entrenamiento, la sesión ya está guardada en disco con estado `active`.
-- [ ] Al completar una serie, queda persistida **antes** de que la UI avance, en menos de 100 ms medidos en el test.
-- [ ] Con 5 series hechas, tras un cierre forzado y reabrir:
+- [x] Al iniciar un entrenamiento, la sesión ya está guardada en disco con estado `active`.
+- [x] Al completar una serie, queda persistida **antes** de que la UI avance, en menos de 100 ms medidos en el test.
+- [x] Con 5 series hechas, tras un cierre forzado y reabrir:
   - aparece "Tienes un entrenamiento en curso";
   - al continuar están las 5 series y sigue la 6.
-- [ ] El descanso se guarda como **hora de fin**, no como contador. Ejemplo: descanso de 120 s, cierre a los 30 s, reabrir 40 s después: quedan unos 50 s. Si ya terminó, muestra 0 y la siguiente serie lista.
-- [ ] Al arrancar, la cola de pendientes se drena y queda vacía. Si el drenado corre dos veces, no se duplica ninguna serie.
-- [ ] En modo avión el resultado es idéntico.
-- [ ] "Terminar sin completar" con confirmación deja la sesión `abandoned` y conserva las series hechas.
-- [ ] Si hay 2 sesiones activas por error:
+- [x] El descanso se guarda como **hora de fin**, no como contador. Ejemplo: descanso de 120 s, cierre a los 30 s, reabrir 40 s después: quedan unos 50 s. Si ya terminó, muestra 0 y la siguiente serie lista.
+- [x] Al arrancar, la cola de pendientes se drena y queda vacía. Si el drenado corre dos veces, no se duplica ninguna serie.
+- [x] En modo avión el resultado es idéntico.
+- [x] "Terminar sin completar" con confirmación deja la sesión `abandoned` y conserva las series hechas.
+- [x] Si hay 2 sesiones activas por error:
   - se restaura la más reciente;
   - la otra queda `abandoned` con sus series intactas;
   - el evento se registra.
-- [ ] Ninguna escritura de datos del workout usa `try?`.
+- [x] Ninguna escritura de datos del workout usa `try?`.
 
 **Tests:**
 - Unitarios: guardado al iniciar y en cada serie, drenado idempotente, descanso restante calculado desde la hora de fin.
@@ -241,6 +241,8 @@ Evidencia: commit `64c95d9`; `make ci` → `✔ Test run with 439 tests in 69 su
   - `AppEnvironment` sobre un directorio: registrar 5 series y descartar la instancia;
   - crear otra instancia sobre el mismo directorio y verificar que la restauración es exacta;
   - repetir con la cola llena.
+
+Evidencia: `make ci` → `✔ Test run with 451 tests in 71 suites passed` + `✔ Test run with 332 tests in 62 suites passed` (2026-10-21); `PRCoreTests/WorkoutRecoveryTests.swift` (14), `PRDomainTests/WorkoutRecoveryPlannerTests.swift` (7); UI en Xcode, simulador: `testForceQuitMidWorkoutOffersToContinue` (cierre forzado real tras 3 series ⇒ "Tienes un entrenamiento en curso" ⇒ continúa en la serie 4). Diseño: `persistSession` síncrono en `WorkoutSessionCoordinator`, descanso como `RestSnapshot` (hora de fin) dentro del `WorkoutSessionRecord`, `WorkoutRecoveryPlanner` (puro) + `LocalPersistence.recoverWorkout`. "Modo avión idéntico": todo es disco local, sin red (la cobertura es la misma suite; 👤 lo confirma en dispositivo). Los `try?` que quedaban sobre datos de workout se reemplazaron por manejo explícito (`persistenceFailed` + aviso en pantalla).
 
 **👤 Manual (Jesús):** cierre forzado desde el selector de apps, en simulador y en iPhone, también en modo avión.
 
@@ -253,17 +255,19 @@ Evidencia: commit `64c95d9`; `make ci` → `✔ Test run with 439 tests in 69 su
 - `tick()` llama a `currentPhase()`, que llama a `closeAsFinished()`, que lanza `Task { await onSessionFinished(live) }` **en cada tick**: guardados repetidos y concurrentes.
 
 **Criterios:**
-- [ ] Al completar la última serie, la sesión pasa a `completed` con hora de fin y se muestra el resumen.
-- [ ] Durante 60 s en el resumen no hay ninguna escritura adicional (verificado con un store espía).
-- [ ] `tick()` nunca escribe en disco. Solo persisten los cambios de estado: serie, pausa, reanudación, fin y abandono.
-- [ ] Si faltan series, "Terminar" ofrece "Completar" (`completed`) o "Abandonar" (`abandoned`), y ambas conservan las series hechas.
-- [ ] Desde un estado final, cualquier otra transición se rechaza.
-- [ ] En Export el entrenamiento aparece una sola vez y como completado.
-- [ ] El resumen muestra duración, series de trabajo, volumen y récords, calculados desde los datos guardados.
+- [x] Al completar la última serie, la sesión pasa a `completed` con hora de fin y se muestra el resumen.
+- [x] Durante 60 s en el resumen no hay ninguna escritura adicional (verificado con un store espía).
+- [x] `tick()` nunca escribe en disco. Solo persisten los cambios de estado: serie, pausa, reanudación, fin y abandono.
+- [x] Si faltan series, "Terminar" ofrece "Completar" (`completed`) o "Abandonar" (`abandoned`), y ambas conservan las series hechas.
+- [x] Desde un estado final, cualquier otra transición se rechaza.
+- [x] En Export el entrenamiento aparece una sola vez y como completado.
+- [x] El resumen muestra duración, series de trabajo, volumen y récords, calculados desde los datos guardados.
 
 **Tests:**
 - Unitarios: transiciones válidas e inválidas del lifecycle, y `tick()` sin efectos de persistencia.
 - Integración: flujo completo como la UI, con un store espía que cuente las escrituras.
+
+Evidencia: misma corrida de `make ci` que el bloque 4; `PRCoreTests/WorkoutClosingTests.swift` (10, con `SpyStore` que cuenta escrituras). Hallazgo: `completeCurrentSet()` aceptaba series en una sesión abandonada; ahora rechaza todo lo que no sea `active`. `complete()` sobre una sesión ya completada es idempotente (no vuelve a escribir).
 
 **Antes de cambiar:** buscar con grep todos los lectores de `lifecycle`.
 

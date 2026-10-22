@@ -195,6 +195,10 @@ struct TodayView: View {
             Label(isPaused ? "En pausa" : "En curso", systemImage: isPaused ? "pause.circle.fill" : "figure.strengthtraining.traditional")
                 .font(.headline)
                 .foregroundStyle(isPaused ? .orange : .green)
+            Text("Tienes un entrenamiento en curso")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("today.activeBanner")
             Text(presentation.title)
                 .font(.title2.bold())
             sessionSummary(presentation)
@@ -239,6 +243,7 @@ struct TodayView: View {
         }
         .buttonStyle(.borderedProminent)
         .accessibilityHint("Reanuda la sesión en curso.")
+        .accessibilityIdentifier("today.resume")
     }
 }
 

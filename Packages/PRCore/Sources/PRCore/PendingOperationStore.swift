@@ -119,37 +119,64 @@ public struct SetPersistenceGuard: Sendable {
         return true
     }
 
-    /// Re-aplica todas las operaciones `saveSet` pendientes de forma idempotente y
-    /// devuelve cuántas se aplicaron. Elimina de la cola las exitosas (o las ilegibles);
-    /// conserva las que no se pudieron aplicar (sesión aún inexistente) para reintentar.
-    public func drainSetOperations(
+    /// Resultado de drenar la cola.
+    public struct DrainResult: Equatable, Sendable {
+        /// Sets que se aplicaron a su sesión.
+        public var applied = 0
+        /// Operaciones que se conservaron en la cola para reintentar (sesión aún inexistente,
+        /// error de lectura/escritura). No se pierden: el siguiente drenado las reintenta.
+        public var retained = 0
+        /// Operaciones ilegibles que se descartaron.
+        public var discarded = 0
+    }
+
+    /// Re-aplica todas las operaciones `saveSet` pendientes de forma idempotente. Quita de la
+    /// cola las cumplidas (aplicadas o ya presentes); conserva las que no se pudieron aplicar.
+    /// Ningún error se traga: cada caso queda contado en el resultado.
+    public func drain(
         queue: PendingOperationQueueStore,
         workoutRepository: any WorkoutRepository
-    ) async -> Int {
-        let pending = (try? queue.load().operations(kind: .saveSet)) ?? []
-        var applied = 0
+    ) async -> DrainResult {
+        var result = DrainResult()
+        let pending: [PendingOperation]
+        do {
+            pending = try queue.load().operations(kind: .saveSet)
+        } catch {
+            result.retained = 1   // cola ilegible: no se toca, se reintenta
+            return result
+        }
         for op in pending {
             guard let envelope = try? JSONDecoder().decode(StoredSetSave.self, from: op.payload) else {
-                try? queue.remove(id: op.id)
+                do {
+                    try queue.remove(id: op.id)
+                    result.discarded += 1
+                } catch {
+                    result.retained += 1
+                }
                 continue
             }
             do {
-                let result = try await applySetLocally(
+                let applied = try await applySetLocally(
                     envelope.set,
                     in: envelope.sessionID,
                     workoutRepository: workoutRepository
                 )
-                if result {
-                    applied += 1
-                }
-                // Aplicado (o ya presente por idempotencia): lo damos por cumplido y lo sacamos.
+                if applied { result.applied += 1 }
+                // Aplicado (o ya presente por idempotencia): se da por cumplido.
                 try queue.remove(id: op.id)
             } catch {
-                // Sesión no encontrada (workout aún no persistido): lo mantenemos en cola
-                // para reintentarlo más tarde (no se pierde el dato).
-                continue
+                // Sesión no encontrada u otro fallo: se conserva para reintentar.
+                result.retained += 1
             }
         }
-        return applied
+        return result
+    }
+
+    /// Versión que devuelve sólo cuántos sets se aplicaron (compatibilidad).
+    public func drainSetOperations(
+        queue: PendingOperationQueueStore,
+        workoutRepository: any WorkoutRepository
+    ) async -> Int {
+        await drain(queue: queue, workoutRepository: workoutRepository).applied
     }
 }

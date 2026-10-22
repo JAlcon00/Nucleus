@@ -81,6 +81,16 @@ anterior (`completed`) y crea uno nuevo; otros cambios regeneran el mismo bloque
 generador anterior se migra conservando el ID. Cobertura:
 `PRCoreTests/PlanPersistenceTests.swift` y `PRUITests` (reabrir y rehacer).
 
+## Entrenamiento que sobrevive al cierre y cierre de sesión (SCRUM-24 / SCRUM-25, RF-007)
+
+`WorkoutSessionCoordinator` guarda la sesión de forma síncrona al iniciar y en cada cambio de
+estado (nunca desde `tick()`); el descanso va como hora de fin (`RestSnapshot`).
+`WorkoutRecoveryPlanner` (PRDomain) decide qué retomar/abandonar/completar y
+`LocalPersistence.recoverWorkout` drena la cola de pendientes (idempotente) y restaura.
+Una sesión en estado final rechaza otras transiciones y fija `endedAt`. Cobertura:
+`PRCoreTests/WorkoutRecoveryTests.swift`, `WorkoutClosingTests.swift`,
+`PRDomainTests/WorkoutRecoveryPlannerTests.swift` y la prueba de UI de cierre forzado.
+
 ## Persistencia local (EPIC-02)
 
 Implementada en PR-0202 detrás de los protocolos `Repository` con un almacén

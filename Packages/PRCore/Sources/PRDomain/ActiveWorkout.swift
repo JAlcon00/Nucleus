@@ -145,8 +145,23 @@ public struct ActiveWorkoutController: Sendable {
         } catch {
             throw ActiveWorkoutError.invalidTransition(from: state.session.lifecycle.rawValue)
         }
+        // Hora de fin: se fija al llegar a un estado final y ya no cambia (SCRUM-25). Sin
+        // ella la duración del resumen seguiría creciendo con el reloj.
+        switch target {
+        case .completed, .abandoned:
+            state.session.endedAt = state.session.endedAt ?? now
+            state.session.rest = nil
+        case .planned, .preparing, .active, .paused, .finishing:
+            break
+        }
         state.lastTransitionAt = now
         self.state = state
         return state
+    }
+
+    /// Reemplaza la sesión viva por una versión actualizada (set registrado, descanso…).
+    /// No cambia el lifecycle: eso sólo lo hacen las transiciones validadas.
+    public mutating func replaceSession(_ session: WorkoutSessionRecord, at now: Date) {
+        state = ActiveWorkoutState(session: session, lastTransitionAt: now)
     }
 }

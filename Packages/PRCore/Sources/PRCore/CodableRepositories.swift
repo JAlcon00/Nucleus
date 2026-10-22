@@ -140,6 +140,12 @@ public final class FileWorkoutRepository: WorkoutRepository, @unchecked Sendable
     }
 
     public func save(_ session: WorkoutSessionRecord) async throws {
+        try persist(session)
+    }
+
+    /// Escritura SÍNCRONA y atómica de la sesión (SCRUM-24): el coordinador del workout la
+    /// usa para que cada serie esté en disco antes de que la UI avance.
+    public func persist(_ session: WorkoutSessionRecord) throws {
         try store.write(key: session.id.rawValue.persistenceKey, data: JSONBlob.encode(session))
     }
 

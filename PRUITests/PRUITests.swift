@@ -129,6 +129,34 @@ final class PRUITests: XCTestCase {
         XCTAssertEqual(element(reopened, "today.sessionSummary").label, firstSummary, "Debe ser el mismo plan")
     }
 
+    /// SCRUM-24: cierre forzado a mitad del entrenamiento ⇒ al reabrir ofrece continuar y
+    /// sigue en la serie siguiente (no vuelve a empezar).
+    func testForceQuitMidWorkoutOffersToContinue() {
+        let storeID = "ui-\(UUID().uuidString.prefix(8))"
+        let app = launch(storeID: storeID)
+        completeOnboarding(app)
+        tap(app, "today.start")
+        for _ in 1...3 {
+            tap(app, "workout.completeSet")
+            let skip = app.buttons["Saltar"].firstMatch
+            if skip.waitForExistence(timeout: 2) { skip.tap() }
+        }
+        let thirdDone = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label CONTAINS 'Serie 4 de'")
+        ).firstMatch
+        XCTAssertTrue(thirdDone.waitForExistence(timeout: 10), "Tras 3 series debe tocar la 4")
+
+        app.terminate()   // cierre forzado
+        let reopened = launch(storeID: storeID)
+        XCTAssertTrue(element(reopened, "today.activeBanner").waitForExistence(timeout: 20),
+                      "Debe decir 'Tienes un entrenamiento en curso'")
+        tap(reopened, "today.resume")
+        let resumed = reopened.descendants(matching: .any).matching(
+            NSPredicate(format: "label CONTAINS 'Serie 4 de'")
+        ).firstMatch
+        XCTAssertTrue(resumed.waitForExistence(timeout: 10), "Al continuar debe seguir la serie 4, con las 3 anteriores guardadas")
+    }
+
     func testRedoQuestionnaireFromTodayOpensTheQuestionnaire() {
         let app = launch()
         completeOnboarding(app)
