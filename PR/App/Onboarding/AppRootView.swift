@@ -117,9 +117,10 @@ struct AppRootView: View {
                 PlanBuildingView(
                     generation: environment.todayPlan.generation,
                     screen: environment.todayPlan.screen,
-                    onFinished: { withAnimation { buildingWeek = false } }
+                    // Sin fundido de salida: Hoy vuelve a ser tocable y legible para
+                    // VoiceOver en el mismo instante en que el loader desaparece.
+                    onFinished: { buildingWeek = false }
                 )
-                .transition(.opacity)
             }
         }
         .fullScreenCover(item: $workout) { coordinator in
