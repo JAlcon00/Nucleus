@@ -206,7 +206,7 @@ Evidencia: commit `64c95d9`; `make ci` → `✔ Test run with 439 tests in 69 su
 
 **👤 Humano (Jesús):** en GitHub › Settings › Branches, proteger `main` y exigir el check de CI, para que un PR en rojo no se pueda fusionar.
 
-**Estado (2026-10-21):** `.github/workflows/ci.yml` escrito (YAML válido; `make ci` en `macos-26`, Xcode fijado con `XCODE_VERSION: "27.1"`, falla con la lista de versiones si el runner no la trae, sube `.ci/` como artifact si falla). Los tres criterios siguen en `[ ]` porque sólo se pueden comprobar con la **primera corrida real en GitHub, tras el `git push`**. Si el job falla por falta de Xcode 27.1 / `macos-26`, se documenta aquí y no se desactiva ningún gate. Las pruebas de UI (`make test-ui`) quedan fuera del CI.
+**Estado (2026-10-21):** `.github/workflows/ci.yml` corre `make ci` en `macos-26`. **Primera corrida real: falló porque el runner no trae Xcode 27.1** (el riesgo previsto). Se cambió a una lista explícita `XCODE_CANDIDATES: "27.1 27.0 26.5"` (usa la primera instalada, la imprime y falla con la lista de versiones si no hay ninguna). Piso 26.5 = deployment target; el código no usa APIs de iOS 27, así que 26.5 debería compilar. Ningún gate se desactivó. Los criterios siguen en `[ ]` hasta ver una corrida en verde; si vuelve a fallar, pegar el paso "Versiones disponibles" del log. Las pruebas de UI (`make test-ui`) quedan fuera del CI.
 
 **Riesgo:** que el runner de GitHub no tenga todavía Xcode 27.1 o un simulador iOS 27. El agente debe documentarlo y no desactivar gates para ponerlo en verde.
 

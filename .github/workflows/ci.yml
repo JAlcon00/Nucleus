@@ -4,9 +4,12 @@
 # pull request y en cada push a `main`. Es el MISMO comando que se usa en local: lo que pasa
 # aquí es lo que pasa en la máquina del desarrollador.
 #
-# La versión de Xcode se fija explícitamente (XCODE_VERSION). Si el runner no la trae, el job
-# FALLA con la lista de versiones disponibles: no se baja de versión ni se desactiva ningún
-# gate para ponerlo en verde.
+# La versión de Xcode se elige de una lista EXPLÍCITA en orden de preferencia
+# (XCODE_CANDIDATES). Se usa la primera instalada en el runner y queda impresa en el log. Si
+# no hay ninguna, el job FALLA con la lista de versiones disponibles: no se desactiva ningún
+# gate para ponerlo en verde. Piso: Xcode 26.5 (SDK de iOS 26.5 = deployment target del
+# proyecto). El código no usa APIs de iOS 27 (van detrás de #available), así que 26.5 compila;
+# 27.x es lo preferido porque es la versión vigente del equipo.
 #
 # Las pruebas de UI (`make test-ui`) quedan fuera: necesitan un simulador con sesión gráfica y
 # hoy sólo corren de forma fiable desde Xcode.
@@ -26,8 +29,8 @@ permissions:
   contents: read
 
 env:
-  # VERIFICAR: que el runner `macos-26` traiga Xcode 27.x (requisito del proyecto: iOS 27 SDK).
-  XCODE_VERSION: "27.1"
+  # Orden de preferencia. Corrida del 2026-10-21: `macos-26` NO trae Xcode 27.1.
+  XCODE_CANDIDATES: "27.1 27.0 26.5"
 
 jobs:
   ci:
@@ -38,17 +41,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Seleccionar Xcode ${{ env.XCODE_VERSION }}
+      - name: Seleccionar Xcode (${{ env.XCODE_CANDIDATES }})
         run: |
           set -euo pipefail
-          candidate="/Applications/Xcode_${XCODE_VERSION}.app"
-          if [[ ! -d "$candidate" ]]; then
-            echo "::error::Xcode ${XCODE_VERSION} no está instalado en este runner."
+          selected=""
+          for version in ${XCODE_CANDIDATES}; do
+            candidate="/Applications/Xcode_${version}.app"
+            if [[ -d "$candidate" ]]; then
+              selected="$candidate"
+              echo "Xcode elegido: ${version}"
+              break
+            fi
+          done
+          if [[ -z "$selected" ]]; then
+            echo "::error::Ninguna de las versiones de Xcode (${XCODE_CANDIDATES}) está instalada en este runner."
             echo "Versiones disponibles:"
             ls -d /Applications/Xcode*.app || true
             exit 1
           fi
-          sudo xcode-select -s "$candidate/Contents/Developer"
+          sudo xcode-select -s "$selected/Contents/Developer"
           xcodebuild -version
 
       - name: Simuladores disponibles
