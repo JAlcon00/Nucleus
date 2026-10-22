@@ -202,6 +202,7 @@ struct RestTimerView: View {
                     .buttonStyle(.surface)
                     .accessibilityHint("Añade 30 segundos de descanso")
             }
+            .padding(.horizontal, DSpace.l)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
