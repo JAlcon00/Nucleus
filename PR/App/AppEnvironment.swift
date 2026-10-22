@@ -21,12 +21,19 @@ public final class AppEnvironment {
     /// Version del core embebido (para diagnóstico sin datos sensibles).
     public let coreVersion: String
 
-    /// Proveedor LLM con la API key inyectada en runtime (NVIDIAKeyLoader).
-    /// NUNCA embebe la key: se lee de entorno/.env en runtime (§22/§42). Es un shim
-    /// de prototipado; en producción la app habla con nuestro backend.
-    public var llmProvider: any LLMProvider {
-        NVIDIAHostedProvider()
-    }
+    /// Conexión con la IA (SCRUM-204). Debug: llave leída en runtime sólo de la Mac del
+    /// desarrollador (`NVIDIA_API_KEY` o `.env` ignorado). Release: apagada, sin buscar
+    /// la llave. NUNCA embebe la llave (§22/§42); antes de TestFlight va a un backend.
+    public let aiConnection: AIConnection = {
+        #if DEBUG
+        AIConnection.resolve(build: .debug)
+        #else
+        AIConnection.resolve(build: .release)
+        #endif
+    }()
+
+    /// Fachada de la IA: nunca lanza; una falla es "no disponible" y la app sigue local.
+    public var aiCoach: AICoach { AICoach(connection: aiConnection) }
 
     /// Coordinador de onboarding (EPIC-04, PR-0401 + PR-0402 wiring): gate de Sign in
     /// with Apple + flujo de pasos + perfil mínimo. Usa el provider real de producción;

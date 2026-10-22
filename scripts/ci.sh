@@ -89,6 +89,8 @@ run_pbxproj_guard() {
   "$REPO_ROOT/scripts/check_color_tokens.sh" "$REPO_ROOT"
   log "[ci] 1/5 guard: ningún log con datos de \"Sobre ti\" (SCRUM-198)"
   "$REPO_ROOT/scripts/check_privacy_logs.sh" "$REPO_ROOT"
+  log "[ci] 1/5 guard: ninguna llave de la IA en el repo (SCRUM-204)"
+  "$REPO_ROOT/scripts/check_secrets.sh" "$REPO_ROOT"
 }
 
 run_package_build() {

@@ -11,6 +11,7 @@
 //
 
 import SwiftUI
+import PRCore
 import PRDomain
 
 struct ProfileView: View {
@@ -26,6 +27,8 @@ struct ProfileView: View {
     var aiConsentGranted = false
     /// Intento: dar o retirar el consentimiento (retirarlo aplica al instante).
     var onSetAIConsent: (Bool) -> Void = { _ in }
+    /// Estado de la conexión con la IA (SCRUM-204): sólo se informa, no se decide aquí.
+    var aiStatus: AIConnectionStatus = .offline(.releaseBuild)
 
     @State private var confirmingRedo = false
 
@@ -136,6 +139,18 @@ struct ProfileView: View {
             }
             .tint(Color.primaryAction)
             .accessibilityIdentifier("profile.aiConsent")
+            LabeledContent {
+                Text(aiStatusText)
+            } label: {
+                Label {
+                    Text("Conexión")
+                } icon: {
+                    Image(systemName: aiStatus.isLive ? "bolt.horizontal.circle.fill" : "iphone")
+                        .foregroundStyle(aiStatus.isLive ? Color.success : Color.textSecondary)
+                }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("profile.aiStatus")
         } header: {
             Text("Inteligencia artificial")
         } footer: {
@@ -145,6 +160,14 @@ struct ProfileView: View {
                 .foregroundStyle(Color.textSecondary)
         }
         .listRowBackground(Color.surface)
+    }
+
+    private var aiStatusText: String {
+        switch aiStatus {
+        case .live: return String(localized: "Conectada (desarrollo)")
+        case .offline(.missingKey): return String(localized: "Modo local (sin llave)")
+        case .offline(.releaseBuild): return String(localized: "Modo local")
+        }
     }
 
     private var aboutYouSection: some View {

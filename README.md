@@ -444,6 +444,24 @@ También se puede invocar el script directamente (misma función, logs en `.ci/`
 Cualquier gate que falle hace fallar el pipeline (exit != 0). Los logs reproducibles de
 cada fase quedan en `.ci/` (ignorados por git).
 
+## IA en desarrollo (SCRUM-204)
+
+La IA (NVIDIA) sólo se conecta en compilaciones **Debug** y con una llave que vive en tu
+Mac, nunca en el repo. En **Release** la IA queda apagada y la app ni siquiera busca la
+llave: el plan lo arma el motor local. Antes de TestFlight la llave se mueve a un backend.
+
+- **Simulador:** crea un `.env` en la raíz del repo (ya está en `.gitignore`) con
+  `NVIDIA_API_KEY=<tu llave>`.
+- **iPhone físico:** en Xcode, *Product › Scheme › Manage Schemes…*, duplica `PR`, desmarca
+  *Shared* (queda en `xcuserdata/`, ignorado) y en *Run › Arguments › Environment Variables*
+  agrega `NVIDIA_API_KEY`. Nunca en el scheme compartido.
+- Perfil › Inteligencia artificial › Conexión muestra "Conectada (desarrollo)" o
+  "Modo local". Cualquier falla de la IA (sin red, cuota, respuesta inválida) es "no
+  disponible" y la app sigue con el motor local.
+- `make guards` corre `scripts/check_secrets.sh`: falla si hay algo con forma de llave
+  `nvapi-…`, una asignación literal de `NVIDIA_API_KEY` o esa variable en un scheme
+  versionado.
+
 ---
 
 # Entitlements y privacidad

@@ -466,6 +466,7 @@ Solo se empieza si los bloques 1 a 8 están en `[x]`.
 - **Copy del plan:** el plan lo arma el motor, no la IA. Nunca "La IA está creando tu rutina".
 - **Migraciones con fixture:** las del plan (U3) y del perfil (U5) llevan test con fixture de la versión anterior. Son integridad de datos P0.
 - **Datos personales de U5:** no van a logs ni a analytics. Al LLM sólo con consentimiento explícito (SCRUM-202, decisión de Jesús 2026-10-22): edad, sexo, estatura, peso, objetivo, fase, experiencia, restricciones activas (sin notas), días, minutos, variedad y check-in de sueño; nunca el nombre ni IDs. Se puede retirar en Perfil y aplica al instante.
+- **Llave de la IA (SCRUM-204):** sólo en Debug y sólo en la Mac del desarrollador (`NVIDIA_API_KEY` o `.env` ignorado; scheme local no compartido para iPhone). Release no la busca y usa el motor local. Toda falla de la IA es "no disponible", nunca bloquea el plan. `check_secrets.sh` en `make guards`. Antes de TestFlight la llave va a un backend.
 
 ### Excepción P2 · SCRUM-199 · Identidad visual v2 (2026-10-22)
 

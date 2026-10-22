@@ -63,7 +63,8 @@ struct AppTabBarView: View {
                 aiConsentGranted: environment.aiConsent.consent.allowsSharing,
                 onSetAIConsent: { granted in
                     if granted { environment.aiConsent.grant() } else { environment.aiConsent.decline() }
-                }
+                },
+                aiStatus: environment.aiConnection.status
             )
                 .tabItem { tabLabel(.profile) }
                 .tag(AppTab.profile)
