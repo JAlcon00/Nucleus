@@ -1,0 +1,68 @@
+# SCRUM-189 — CI en GitHub.
+#
+# Corre `make ci` (guard + swift build/test de PRCore + build iOS + build watchOS) en cada
+# pull request y en cada push a `main`. Es el MISMO comando que se usa en local: lo que pasa
+# aquí es lo que pasa en la máquina del desarrollador.
+#
+# La versión de Xcode se fija explícitamente (XCODE_VERSION). Si el runner no la trae, el job
+# FALLA con la lista de versiones disponibles: no se baja de versión ni se desactiva ningún
+# gate para ponerlo en verde.
+#
+# Las pruebas de UI (`make test-ui`) quedan fuera: necesitan un simulador con sesión gráfica y
+# hoy sólo corren de forma fiable desde Xcode.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Un push nuevo a la misma rama cancela la corrida anterior (ahorra minutos de macOS).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # VERIFICAR: que el runner `macos-26` traiga Xcode 27.x (requisito del proyecto: iOS 27 SDK).
+  XCODE_VERSION: "27.1"
+
+jobs:
+  ci:
+    name: make ci
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Seleccionar Xcode ${{ env.XCODE_VERSION }}
+        run: |
+          set -euo pipefail
+          candidate="/Applications/Xcode_${XCODE_VERSION}.app"
+          if [[ ! -d "$candidate" ]]; then
+            echo "::error::Xcode ${XCODE_VERSION} no está instalado en este runner."
+            echo "Versiones disponibles:"
+            ls -d /Applications/Xcode*.app || true
+            exit 1
+          fi
+          sudo xcode-select -s "$candidate/Contents/Developer"
+          xcodebuild -version
+
+      - name: Simuladores disponibles
+        run: xcrun simctl list runtimes
+
+      - name: make ci
+        run: make ci
+
+      # Los logs de cada gate viven en `.ci/` (están en .gitignore, no en el repo).
+      - name: Subir logs de .ci/ si falló
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-logs
+          path: .ci/
+          if-no-files-found: ignore
+          retention-days: 7

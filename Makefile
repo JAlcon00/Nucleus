@@ -27,7 +27,7 @@ test-ios:
 test-watch:
 	./scripts/ci.sh build-watch
 
-# Pruebas de UI (XCUIAutomation) en el simulador. Aún fuera de `make ci`: la prueba de
-# volumen realista espera a SCRUM-28.
+# Pruebas de UI (XCUIAutomation) en el simulador. Fuera de `make ci` (y del CI de GitHub):
+# tardan ~4 min y necesitan sesión gráfica; desde Xcode corren siempre.
 test-ui:
 	./scripts/ci.sh test-ui

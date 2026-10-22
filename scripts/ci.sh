@@ -114,8 +114,8 @@ run_scheme_build() {
       build )
 }
 
-# Pruebas de UI (XCUIAutomation) sobre el simulador. Aparte de `all` mientras la prueba
-# de volumen realista siga en rojo hasta SCRUM-28 (bloque 7); después se suma a `all`.
+# Pruebas de UI (XCUIAutomation) sobre el simulador. Aparte de `all`: tardan ~4 min y
+# necesitan sesión gráfica con simulador (el CI de GitHub no las corre).
 run_ui_tests() {
   local destination_id
   destination_id="$(
