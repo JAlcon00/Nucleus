@@ -53,14 +53,21 @@ struct WorkoutModeView: View {
                 )
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .screenBackground()
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .top) {
             if coordinator.persistenceFailed {
-                Label("No se pudo guardar en el dispositivo. Sigue entrenando: lo reintentamos en la siguiente serie.", systemImage: "exclamationmark.triangle.fill")
+                Label {
+                    Text("No se pudo guardar en el dispositivo. Sigue entrenando: lo reintentamos en la siguiente serie.")
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(Color.warning)
+                }
                     .font(.callout)
                     .padding(DSpace.m)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: DRadius.medium))
+                    .cardSurface(cornerRadius: DRadius.medium)
                     .padding(.horizontal, DSpace.m)
                     .accessibilityIdentifier("workout.persistenceWarning")
             }
@@ -157,16 +164,16 @@ struct WorkoutModeView: View {
     private func setHeader(_ set: ActiveWorkoutSetUI) -> some View {
         VStack(spacing: DSpace.xs) {
             if set.isWarmup {
-                Text("CALENTAMIENTO")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.orange)
+                Label("CALENTAMIENTO", systemImage: "flame.fill")
+                    .eyebrowStyle()
+                    .foregroundStyle(Color.warning)
             }
             Text(set.exerciseName)
                 .font(.title2.bold())
                 .multilineTextAlignment(.center)
             Text("Serie \(set.index + 1) de \(set.total)")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.textSecondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, DSpace.l)
@@ -220,7 +227,7 @@ struct WorkoutModeView: View {
         VStack(spacing: DSpace.l) {
             Label("En pausa", systemImage: "pause.circle.fill")
                 .font(.headline)
-                .foregroundStyle(.orange)
+                .foregroundStyle(Color.warning)
             Text(set.exerciseName)
                 .font(.title2.bold())
             PrimaryActionButton("Reanudar", systemImage: "play.fill") {
@@ -232,7 +239,7 @@ struct WorkoutModeView: View {
 
     private var emptyView: some View {
         Text("Sin sesión activa")
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Color.textSecondary)
     }
 
     // MARK: - Ticker para el descanso (cuenta desde wall-clock, SKILL §41/§42)
@@ -253,6 +260,15 @@ struct WorkoutModeView: View {
     NavigationStack {
         WorkoutModeView(coordinator: makePreviewCoordinator())
     }
+    .ironEnergyTheme()
+}
+
+#Preview("Serie activa · accessibility3") {
+    NavigationStack {
+        WorkoutModeView(coordinator: makePreviewCoordinator())
+    }
+    .dynamicTypeSize(.accessibility3)
+    .ironEnergyTheme()
 }
 
 @MainActor
@@ -290,23 +306,23 @@ private struct CoachingCardBanner: View {
         HStack(alignment: .top, spacing: DSpace.s) {
             Image(systemName: icon(for: card.kind))
                 .font(.title3)
-                .foregroundStyle(.tint)
+                .foregroundStyle(Color.primaryAction)
             VStack(alignment: .leading, spacing: 4) {
                 Text(card.title)
                     .font(.callout.weight(.semibold))
                 Text(card.message)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.textSecondary)
             }
             Spacer(minLength: 0)
             Button(action: onDismiss) {
                 Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.textSecondary)
                     .accessibilityLabel("Descartar consejo")
             }
         }
         .padding(DSpace.m)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: DRadius.medium))
+        .cardSurface(cornerRadius: DRadius.medium)
         .accessibilityElement(children: .contain)
     }
 

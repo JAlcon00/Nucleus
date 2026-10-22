@@ -18,6 +18,7 @@ struct PRApp: App {
         WindowGroup {
             ContentView()
                 .environment(environment)
+                .ironEnergyTheme()
         }
     }
 }

@@ -116,7 +116,7 @@ struct OnboardingCoordinatorTests {
             .goal(.hypertrophy),
             .phase(.surplus),
             .experience(.intermediate),
-            .daysPerWeek(4),
+            .trainingDays([.monday, .tuesday, .thursday, .friday]),
             .sessionMinutes(60),
             .gym(nil),
             .variety(.balanced),

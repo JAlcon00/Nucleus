@@ -6,8 +6,9 @@
 //
 //  Pantalla gate de autenticación (EPIC-04, PR-0401). Renderiza el estado del
 //  `OnboardingCoordinator` (signedOut/signingIn) y envía el intent `signIn`. NO contiene
-//  reglas de negocio ni AuthenticationServices; sólo un botón que delega en el coordinador.
-//  No persiste credenciales inseguras y el login no requiere HealthKit.
+//  reglas de negocio: el botón oficial de Apple (`AppleSignInButton`) sólo delega en el
+//  coordinador. No persiste credenciales inseguras y el login no requiere HealthKit.
+//  SCRUM-195: marca Nucleus y botón oficial blanco sobre carbón (guías de Apple).
 //
 
 import SwiftUI
@@ -17,39 +18,54 @@ struct SignInView: View {
     let onSignIn: () async -> Void
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: DSpace.l) {
             Spacer()
 
             Image(systemName: "figure.strengthtraining.traditional")
-                .font(.system(size: 52))
-                .foregroundStyle(.tint)
+                .font(.largeTitle)
+                .imageScale(.large)
+                .foregroundStyle(LinearGradient.energy)
+                .accessibilityHidden(true)
 
-            VStack(spacing: 6) {
-                Text("PR")
+            VStack(spacing: DSpace.s) {
+                Text("Nucleus")
                     .font(.largeTitle.bold())
+                    .accessibilityAddTraits(.isHeader)
                 Text("Tu entrenador experto")
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.textSecondary)
             }
 
             Spacer()
 
-            Button {
+            AppleSignInButton {
                 Task { await onSignIn() }
-            } label: {
-                Label("Continuar con Apple", systemImage: "apple.logo")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, minHeight: 50)
             }
-            .buttonStyle(.borderedProminent)
+            .frame(maxWidth: .infinity, minHeight: DButton.primaryHeight, maxHeight: DButton.primaryHeight)
             .accessibilityHint("Inicia sesión con Sign in with Apple para empezar el entrenamiento.")
-            .padding(.horizontal, 24)
+            .accessibilityIdentifier("signIn.apple")
+            .padding(.horizontal, DSpace.l)
+
+            Text("Tus entrenamientos se guardan en este iPhone.")
+                .font(.footnote)
+                .foregroundStyle(Color.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, DSpace.l)
         }
+        .padding(.bottom, DSpace.m)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .screenBackground()
         .accessibilityElement(children: .contain)
     }
 }
 
 #Preview {
     SignInView(onSignIn: {})
+        .ironEnergyTheme()
+}
+
+#Preview("accessibility3") {
+    SignInView(onSignIn: {})
+        .dynamicTypeSize(.accessibility3)
+        .ironEnergyTheme()
 }

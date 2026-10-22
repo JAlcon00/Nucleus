@@ -7,13 +7,18 @@ struct OnboardingTests {
 
     // MARK: - Fixtures
 
+    /// Los primeros `count` días desde el lunes (SCRUM-196: la respuesta son días, no un número).
+    private func firstDays(_ count: Int) -> Set<WeekDay> {
+        Set(WeekDay.allCases.prefix(count))
+    }
+
     /// Borrador completo y válido (novice hypertrophy, definición, 3 días, 60 min).
     private func completeDraft() -> OnboardingDraft {
         var draft = OnboardingDraft()
         draft = draft.settingAnswer(.goal(.hypertrophy), for: .goal)
         draft = draft.settingAnswer(.phase(.deficit), for: .phase)
         draft = draft.settingAnswer(.experience(.novice), for: .experience)
-        draft = draft.settingAnswer(.daysPerWeek(3), for: .daysPerWeek)
+        draft = draft.settingAnswer(.trainingDays(firstDays(3)), for: .daysPerWeek)
         draft = draft.settingAnswer(.sessionMinutes(60), for: .sessionMinutes)
         draft = draft.settingAnswer(.variety(.balanced), for: .variety)
         return draft
@@ -37,11 +42,13 @@ struct OnboardingTests {
         #expect(profile.restrictions.isEmpty)
     }
 
-    @Test("validación 2...7 días: 1 y 8 lanzan error")
+    @Test("validación 2...7 días: ninguno o uno lanzan error")
     func daysOutOfRangeThrows() throws {
-        for invalidDays in [1, 8] {
+        // SCRUM-196: la respuesta son días de la semana, así que más de 7 ya no se puede
+        // representar; los inválidos que quedan son elegir menos de 2.
+        for invalidDays in [0, 1] {
             var draft = completeDraft()
-            draft = draft.settingAnswer(.daysPerWeek(invalidDays), for: .daysPerWeek)
+            draft = draft.settingAnswer(.trainingDays(firstDays(invalidDays)), for: .daysPerWeek)
             #expect(throws: OnboardingProfileBuilder.BuildError.invalidTrainingDays(invalidDays)) {
                 _ = try OnboardingProfileBuilder().build(from: draft)
             }
@@ -63,7 +70,7 @@ struct OnboardingTests {
     func boundaryValuesAccepted() throws {
         for days in [2, 7] {
             var draft = completeDraft()
-            draft = draft.settingAnswer(.daysPerWeek(days), for: .daysPerWeek)
+            draft = draft.settingAnswer(.trainingDays(firstDays(days)), for: .daysPerWeek)
             let profile = try OnboardingProfileBuilder().build(from: draft)
             #expect(profile.trainingDaysPerWeek == days)
         }
@@ -83,7 +90,7 @@ struct OnboardingTests {
             _ = try OnboardingProfileBuilder().build(from: minutesDraft)
         }
         var daysDraft = completeDraft()
-        daysDraft = daysDraft.settingAnswer(.daysPerWeek(1), for: .daysPerWeek)
+        daysDraft = daysDraft.settingAnswer(.trainingDays(firstDays(1)), for: .daysPerWeek)
         #expect(throws: OnboardingProfileBuilder.BuildError.invalidTrainingDays(1)) {
             _ = try OnboardingProfileBuilder().build(from: daysDraft)
         }
@@ -120,7 +127,7 @@ struct OnboardingTests {
         flow = flow.answering(.goal(.strength)).advance()      // → phase
         flow = flow.answering(.phase(.surplus)).advance()       // → experience
         flow = flow.answering(.experience(.advanced)).advance() // → days
-        flow = flow.answering(.daysPerWeek(4)).advance()        // → session
+        flow = flow.answering(.trainingDays(firstDays(4))).advance()        // → session
         flow = flow.answering(.sessionMinutes(90)).advance()    // → gym
         #expect(flow.currentStep == .gym)
         #expect(flow.draft.isCompleted == false)
@@ -135,7 +142,7 @@ struct OnboardingTests {
         #expect(flow.draft.answer(for: .goal) == .goal(.strength))
         #expect(flow.draft.answer(for: .phase) == .phase(.surplus))
         #expect(flow.draft.answer(for: .experience) == .experience(.advanced))
-        #expect(flow.draft.answer(for: .daysPerWeek) == .daysPerWeek(4))
+        #expect(flow.draft.answer(for: .daysPerWeek) == .trainingDays(firstDays(4)))
         #expect(flow.draft.answer(for: .sessionMinutes) == .sessionMinutes(90))
     }
 
@@ -154,7 +161,7 @@ struct OnboardingTests {
         flow = flow.answering(.goal(.generalHealth)).advance()
         flow = flow.answering(.phase(.maintenance)).advance()
         flow = flow.answering(.experience(.beginner)).advance()
-        flow = flow.answering(.daysPerWeek(5)).advance()
+        flow = flow.answering(.trainingDays(firstDays(5))).advance()
         flow = flow.answering(.sessionMinutes(45)).advance()
         // gym permite avanzar sin responder (opcional).
         #expect(flow.currentStep == .gym)
@@ -170,7 +177,7 @@ struct OnboardingTests {
         flow = flow.answering(.goal(.bodybuilding)).advance()   // → phase
         flow = flow.answering(.phase(.surplus)).advance()        // → experience
         flow = flow.answering(.experience(.intermediate)).advance() // → days
-        flow = flow.answering(.daysPerWeek(6)).advance()         // → session
+        flow = flow.answering(.trainingDays(firstDays(6))).advance()         // → session
         flow = flow.answering(.sessionMinutes(120)).advance()    // → gym
         flow = flow.advance()                                    // gym opcional → variety
         flow = flow.answering(.variety(.varied)).advance()       // → restrictions
@@ -194,7 +201,7 @@ struct OnboardingTests {
         end = end.answering(.goal(.recomposition)).advance()      // → phase
         end = end.answering(.phase(.maintenance)).advance()       // → experience
         end = end.answering(.experience(.competitive)).advance()  // → days
-        end = end.answering(.daysPerWeek(2)).advance()            // → session
+        end = end.answering(.trainingDays(firstDays(2))).advance()            // → session
         end = end.answering(.sessionMinutes(30)).advance()        // → gym
         end = end.advance()                                       // gym opcional → variety
         end = end.answering(.variety(.stable)).advance()          // → restrictions

@@ -44,12 +44,26 @@ final class PRUITests: XCTestCase {
         target.tap()
     }
 
-    /// Recorre el cuestionario completo hasta llegar a Hoy (días: lo que pida el stepper).
-    private func completeOnboarding(_ app: XCUIApplication, days: Int = 3) {
+    /// "Cuéntanos de ti" (SCRUM-198): edad en la rueda, sexo y peso; luego Continuar.
+    private func completeAboutYou(_ app: XCUIApplication, age: Int = 30, file: StaticString = #filePath, line: UInt = #line) {
+        let wheel = app.pickerWheels.firstMatch
+        XCTAssertTrue(wheel.waitForExistence(timeout: 10), "No aparece la edad", file: file, line: line)
+        wheel.adjust(toPickerWheelValue: "\(age) años")
+        tap(app, "aboutYou.sex.male", file: file, line: line)
+        let weight = element(app, "aboutYou.weight")
+        weight.tap()
+        weight.typeText("72")
+        tap(app, "aboutYou.continue", file: file, line: line)
+    }
+
+    /// Recorre el cuestionario completo hasta llegar a Hoy (días: los chips elegidos;
+    /// por defecto lunes, miércoles y viernes).
+    private func completeOnboarding(_ app: XCUIApplication, days: Set<String> = ["monday", "wednesday", "friday"]) {
+        completeAboutYou(app)
         tap(app, "onboarding.option.hypertrophy"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.maintenance"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.intermediate"); tap(app, "onboarding.next")
-        setStepper(app, id: "onboarding.daysStepper", to: days, from: 4)
+        selectDays(app, days)
         tap(app, "onboarding.next")
         // Rodeo del bug "el valor por defecto no se registra": sube y baja un paso. La
         // prueba `testDefaultDaysAndMinutes...` exige que esto no haga falta.
@@ -61,6 +75,27 @@ final class PRUITests: XCTestCase {
         tap(app, "onboarding.skipGym"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.balanced"); tap(app, "onboarding.next")
         tap(app, "onboarding.skipRestrictions"); tap(app, "onboarding.next")
+        // SCRUM-197: tras "Armando tu semana" se presenta "Tu semana".
+        tap(app, "weekIntro.done")
+    }
+
+    /// Abre una pestaña por su nombre visible (en español, SCRUM-195). En iPad la barra de
+    /// pestañas va arriba y no es un `tabBar`: se busca el botón por su nombre.
+    private func openTab(_ app: XCUIApplication, _ title: String, file: StaticString = #filePath, line: UInt = #line) {
+        let tab = app.buttons[title].firstMatch
+        XCTAssertTrue(tab.waitForExistence(timeout: 10), "No aparece la pestaña '\(title)'", file: file, line: line)
+        tab.tap()
+    }
+
+    private static let weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
+    /// Deja elegidos exactamente estos días (SCRUM-196): toca sólo los chips que no coinciden.
+    private func selectDays(_ app: XCUIApplication, _ wanted: Set<String>, file: StaticString = #filePath, line: UInt = #line) {
+        for day in Self.weekdays {
+            let chip = element(app, "onboarding.day.\(day)")
+            XCTAssertTrue(chip.waitForExistence(timeout: 10), "No aparece el día '\(day)'", file: file, line: line)
+            if chip.isSelected != wanted.contains(day) { chip.tap() }
+        }
     }
 
     /// Lleva un Stepper de `from` a `target`. Si ya está en el objetivo no lo toca (la app
@@ -73,10 +108,32 @@ final class PRUITests: XCTestCase {
         for _ in 0..<presses { button.tap() }
     }
 
+    // MARK: - Sobre ti (SCRUM-198)
+
+    /// Lo primero tras iniciar sesión es "Cuéntanos de ti"; con menos de 18 años se explica
+    /// y no se puede continuar.
+    func testAboutYouComesFirstAndNeedsAnAdult() {
+        let app = launch()
+        XCTAssertTrue(element(app, "aboutYou.title").waitForExistence(timeout: 10))
+        XCTAssertFalse(element(app, "aboutYou.continue").isEnabled, "Sin datos no se continúa")
+        let wheel = app.pickerWheels.firstMatch
+        XCTAssertTrue(wheel.waitForExistence(timeout: 10))
+        wheel.adjust(toPickerWheelValue: "17 años")
+        tap(app, "aboutYou.sex.female")
+        let weight = element(app, "aboutYou.weight")
+        weight.tap()
+        weight.typeText("60")
+        XCTAssertTrue(element(app, "aboutYou.underage").waitForExistence(timeout: 5), "Debe explicar el mínimo de 18")
+        XCTAssertFalse(element(app, "aboutYou.continue").isEnabled, "Con 17 años no se arma plan")
+        wheel.adjust(toPickerWheelValue: "18 años")
+        XCTAssertTrue(element(app, "aboutYou.continue").isEnabled)
+    }
+
     // MARK: - Cuestionario
 
     func testOnboardingOptionsAreInSpanish() {
         let app = launch()
+        completeAboutYou(app)
         XCTAssertTrue(element(app, "onboarding.option.hypertrophy").waitForExistence(timeout: 10))
         XCTAssertEqual(element(app, "onboarding.option.hypertrophy").label, "Hipertrofia")
         XCTAssertEqual(element(app, "onboarding.option.generalHealth").label, "Salud general")
@@ -86,6 +143,7 @@ final class PRUITests: XCTestCase {
 
     func testSelectedOptionIsMarked() {
         let app = launch()
+        completeAboutYou(app)
         tap(app, "onboarding.option.strength")
         XCTAssertTrue(element(app, "onboarding.option.strength").isSelected, "La opción elegida no se ve marcada")
         XCTAssertFalse(element(app, "onboarding.option.hypertrophy").isSelected)
@@ -93,17 +151,37 @@ final class PRUITests: XCTestCase {
 
     func testOneTapOnAnOptionDoesNotSkipSteps() {
         let app = launch()
+        completeAboutYou(app)
         tap(app, "onboarding.option.hypertrophy")
         XCTAssertTrue(app.staticTexts["Paso 1 de 8"].exists, "Un toque no debe cambiar de paso")
     }
 
     func testDefaultDaysAndMinutesCanAdvanceWithoutTouchingTheSteppers() {
         let app = launch()
+        completeAboutYou(app)
         tap(app, "onboarding.option.hypertrophy"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.maintenance"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.intermediate"); tap(app, "onboarding.next")
-        XCTAssertTrue(app.steppers["onboarding.daysStepper"].waitForExistence(timeout: 10))
+        XCTAssertTrue(element(app, "onboarding.day.monday").waitForExistence(timeout: 10))
         XCTAssertTrue(element(app, "onboarding.next").isEnabled, "Con los días por defecto se debe poder avanzar")
+    }
+
+    /// SCRUM-196: los días se eligen con chips; con uno solo no se puede avanzar.
+    func testChoosingDaysNeedsAtLeastTwo() {
+        let app = launch()
+        completeAboutYou(app)
+        tap(app, "onboarding.option.hypertrophy"); tap(app, "onboarding.next")
+        tap(app, "onboarding.option.maintenance"); tap(app, "onboarding.next")
+        tap(app, "onboarding.option.intermediate"); tap(app, "onboarding.next")
+        // Por defecto: lunes, martes, jueves y viernes (descanso intercalado).
+        for day in Self.weekdays {
+            let expected = ["monday", "tuesday", "thursday", "friday"].contains(day)
+            XCTAssertEqual(element(app, "onboarding.day.\(day)").isSelected, expected, "Día por defecto '\(day)'")
+        }
+        selectDays(app, ["sunday"])
+        XCTAssertFalse(element(app, "onboarding.next").isEnabled, "Con un solo día no se debe poder avanzar")
+        selectDays(app, ["monday", "sunday"])
+        XCTAssertTrue(element(app, "onboarding.next").isEnabled)
     }
 
     func testOnboardingReachesToday() {
@@ -157,11 +235,12 @@ final class PRUITests: XCTestCase {
         XCTAssertTrue(resumed.waitForExistence(timeout: 10), "Al continuar debe seguir la serie 4, con las 3 anteriores guardadas")
     }
 
-    func testRedoQuestionnaireFromTodayOpensTheQuestionnaire() {
+    func testRedoQuestionnaireFromProfileOpensTheQuestionnaire() {
         let app = launch()
         completeOnboarding(app)
         XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
-        tap(app, "today.redo")
+        openTab(app, "Perfil")
+        tap(app, "profile.redo")
         let confirm = app.buttons["Sí, rehacer"].firstMatch
         XCTAssertTrue(confirm.waitForExistence(timeout: 5))
         confirm.tap()
@@ -170,6 +249,48 @@ final class PRUITests: XCTestCase {
     }
 
     // MARK: - Hoy
+
+    /// SCRUM-195: Hoy tiene una sola acción; lo terciario vive en Perfil. Pestañas en español.
+    func testTodayHasASingleActionAndSpanishTabs() {
+        let app = launch()
+        completeOnboarding(app)
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
+        for title in ["Hoy", "Progreso", "Plan", "Perfil"] {
+            XCTAssertTrue(app.buttons[title].firstMatch.exists, "Falta la pestaña '\(title)'")
+        }
+        XCTAssertFalse(app.buttons["Exportar"].exists, "Exportar ya no va en Hoy")
+        XCTAssertFalse(app.buttons["Restricciones"].exists, "Restricciones ya no va en Hoy")
+        XCTAssertFalse(app.buttons["Rehacer cuestionario"].exists, "Rehacer ya no va en Hoy")
+    }
+
+    // MARK: - Tu semana (SCRUM-197)
+
+    /// Lunes, miércoles y viernes (hoy es lunes): la semana alterna sesión y descanso, el
+    /// CTA sólo está en hoy y el detalle de otro día no deja empezar.
+    func testPlanShowsTheWeekWithRestBetweenSessions() {
+        let app = launch()
+        completeOnboarding(app)
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
+        openTab(app, "Plan")
+        for day in Self.weekdays {
+            XCTAssertTrue(element(app, "week.day.\(day)").waitForExistence(timeout: 10), "Falta el día '\(day)'")
+        }
+        XCTAssertTrue(element(app, "week.start").exists, "Hoy (lunes) debe tener Empezar")
+        tap(app, "week.day.wednesday")
+        XCTAssertTrue(element(app, "day.detail").waitForExistence(timeout: 10))
+        XCTAssertTrue(element(app, "day.exercise.0").exists, "El detalle lista los ejercicios")
+        XCTAssertFalse(element(app, "day.start").exists, "Sólo se empieza el día de hoy")
+    }
+
+    /// La tira de la semana en Hoy abre el detalle del día tocado.
+    func testTodayWeekStripOpensTheDay() {
+        let app = launch()
+        completeOnboarding(app)
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
+        XCTAssertTrue(element(app, "week.strip.monday").exists)
+        tap(app, "week.strip.friday")
+        XCTAssertTrue(element(app, "day.detail").waitForExistence(timeout: 10))
+    }
 
     func testTodayListsTheExercisesOfTheSession() {
         let app = launch()
@@ -193,7 +314,7 @@ final class PRUITests: XCTestCase {
 
     func testSundayIsRestDayWithoutStartButton() {
         let app = launch(date: Self.sunday)
-        completeOnboarding(app, days: 3)
+        completeOnboarding(app, days: ["monday", "wednesday", "friday"])
         XCTAssertTrue(element(app, "today.restDay").waitForExistence(timeout: 15), "El domingo debe ser día de descanso")
         XCTAssertFalse(element(app, "today.start").exists)
     }
@@ -222,7 +343,8 @@ final class PRUITests: XCTestCase {
         let app = launch()
         completeOnboarding(app)
         XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
-        app.buttons["Exportar"].tap()
+        openTab(app, "Perfil")
+        tap(app, "profile.export")
         XCTAssertTrue(app.staticTexts["Aún no tienes entrenamientos"].waitForExistence(timeout: 10))
     }
 }

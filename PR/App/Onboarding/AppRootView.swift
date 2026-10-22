@@ -25,8 +25,14 @@ struct AppRootView: View {
             case .signedOut:
                 SignInView(onSignIn: { await environment.session.signIn() })
             case .signingIn:
-                ProgressView("Conectando…")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                SigningInView(onRetry: { Task { await environment.session.retrySignIn() } })
+            case .onboarding where environment.onboarding.needsAboutYou:
+                // "Sobre ti" va antes del primer paso (SCRUM-198).
+                AboutYouView(
+                    answer: environment.onboarding.aboutYouAnswer,
+                    onChange: { environment.onboarding.updateAboutYou($0) },
+                    onContinue: { environment.onboarding.confirmAboutYou() }
+                )
             case .onboarding(let step, let index, let canGoBack, let canAdvance, let isAtEnd):
                 OnboardingStepView(
                     step: step,
@@ -40,16 +46,18 @@ struct AppRootView: View {
                     onAnswer: { environment.onboarding.select($0) },
                     onAdvance: { environment.onboarding.advance() },
                     onGoBack: { environment.onboarding.goBack() },
-                    onFinish: { environment.onboarding.complete() }
+                    onFinish: { finishOnboarding() }
                 )
             case .completed(let profile):
                 appContent
-                    .task(id: profile) {
+                    .task(id: PlanActivation(profile: profile, attempt: planAttempt)) {
                         // Activa y guarda el plan del perfil (SCRUM-26). Si venimos de un
                         // plan recordado, ya está activo y no se regenera.
                         _ = await environment.session.planCompleted(profile: profile)
                         // Retoma el entrenamiento que quedó abierto, si lo hay (SCRUM-24).
                         await environment.recoverWorkout()
+                        // Historial para "Tu semana" y "última vez" (SCRUM-197).
+                        await environment.refreshHistory()
                     }
             case .planUnreadable:
                 PlanUnreadableView(onRedo: { environment.session.redoQuestionnaire() })
@@ -62,6 +70,7 @@ struct AppRootView: View {
                     }
             }
         }
+        .screenBackground()
         .task { await environment.startIfNeeded() }
         .onChange(of: scenePhase) { _, newPhase in
             // Si Apple revocó la credencial mientras la app estaba en segundo plano.
@@ -90,6 +99,13 @@ struct AppRootView: View {
     /// Carga en curso del coordinador (lee historial local). Una sola a la vez: un
     /// doble toque no crea dos sesiones.
     @State private var workoutLoad: Task<Void, Never>?
+    /// Reintentos de generar el plan tras un fallo (relanza la activación).
+    @State private var planAttempt = 0
+    /// Recién terminado el cuestionario: se muestra "Armando tu semana" hasta que el plan
+    /// esté listo (o falle).
+    @State private var buildingWeek = false
+    /// Tras armar la semana, se presenta "Tu semana" (SCRUM-197).
+    @State private var showingWeekIntro = false
 
     /// El contenido "de la app" tras completar el onboarding: tab bar + WORKOUT MODE.
     /// La sesión activa se presenta a nivel raíz (fullScreenCover) para reemplazar la
@@ -100,8 +116,30 @@ struct AppRootView: View {
             selectedTab: $selectedTab,
             onStart: { startWorkout() },
             onResume: { resumeWorkout() },
-            onRedoQuestionnaire: { environment.session.redoQuestionnaire() }
+            onRedoQuestionnaire: { environment.session.redoQuestionnaire() },
+            isStartingWorkout: workoutLoad != nil,
+            onRetryPlan: { planAttempt += 1 }
         )
+        // Mientras "Armando tu semana" está encima, Hoy no se puede tocar ni leer con
+        // VoiceOver (sólo existe el loader).
+        .accessibilityHidden(buildingWeek)
+        .overlay {
+            if buildingWeek {
+                PlanBuildingView(
+                    generation: environment.todayPlan.generation,
+                    screen: environment.todayPlan.screen,
+                    // Sin fundido de salida: Hoy vuelve a ser tocable y legible para
+                    // VoiceOver en el mismo instante en que el loader desaparece.
+                    onFinished: {
+                        buildingWeek = false
+                        if case .ready = environment.todayPlan.screen { showingWeekIntro = true }
+                    }
+                )
+            }
+        }
+        .sheet(isPresented: $showingWeekIntro) {
+            WeekIntroView(week: environment.todayPlan.week, onDone: { showingWeekIntro = false })
+        }
         .fullScreenCover(item: $workout) { coordinator in
             NavigationStack {
                 WorkoutModeView(
@@ -109,6 +147,8 @@ struct AppRootView: View {
                     onDone: {
                         workout = nil
                         environment.workoutEnded()
+                        // La semana marca el día como hecho.
+                        Task { await environment.refreshHistory() }
                     },
                     coachingLevel: coachingLevel
                 )
@@ -123,6 +163,14 @@ struct AppRootView: View {
             return .guided
         }
         return CoachingDetailMapper().initialDefault(for: profile.experience)
+    }
+
+    /// "Terminar" del cuestionario: si el perfil es válido, se arma la semana con loader.
+    private func finishOnboarding() {
+        environment.onboarding.complete()
+        if case .completed = environment.onboarding.phase {
+            buildingWeek = true
+        }
     }
 
     private func startWorkout() {
@@ -150,32 +198,64 @@ struct AppRootView: View {
     }
 }
 
+/// Identidad de la activación del plan: cambia con el perfil o con un reintento.
+private struct PlanActivation: Hashable {
+    let profile: OnboardingProfile
+    let attempt: Int
+}
+
+/// "Tu semana" recién armada (SCRUM-197): se presenta al terminar el cuestionario.
+private struct WeekIntroView: View {
+    let week: WeekOverview?
+    let onDone: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                if let week {
+                    WeekListView(week: week)
+                }
+                Button(action: onDone) {
+                    Label("Ir a Hoy", systemImage: "arrow.right")
+                }
+                .buttonStyle(.energy)
+                .padding(DSpace.m)
+                .accessibilityIdentifier("weekIntro.done")
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .screenBackground()
+            .navigationTitle("Tu semana")
+        }
+        .ironEnergyTheme()
+        .accessibilityIdentifier("weekIntro")
+    }
+}
+
 /// El perfil o el bloque guardados no se pueden leer: se ofrece rehacer el cuestionario.
-/// No se borra el historial de entrenamientos.
-private struct PlanUnreadableView: View {
+/// No se borra el historial de entrenamientos. También es el estado de error de Plan.
+struct PlanUnreadableView: View {
     let onRedo: () -> Void
 
     var body: some View {
         VStack(spacing: DSpace.l) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.largeTitle)
-                .foregroundStyle(.orange)
+                .foregroundStyle(Color.warning)
                 .accessibilityHidden(true)
             Text("No pudimos leer tu plan")
                 .font(.title2.bold())
             Text("Tus entrenamientos guardados siguen intactos. Contesta el cuestionario de nuevo para crear tu plan.")
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.textSecondary)
             Button(action: onRedo) {
                 Text("Rehacer cuestionario")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, minHeight: 50)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.energy)
             .accessibilityIdentifier("plan.unreadable.redo")
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .screenBackground()
         .accessibilityIdentifier("plan.unreadable")
     }
 }
@@ -183,4 +263,5 @@ private struct PlanUnreadableView: View {
 #Preview {
     AppRootView()
         .environment(AppEnvironment(authProvider: FakeAppleIDAuthProvider()))
+        .ironEnergyTheme()
 }

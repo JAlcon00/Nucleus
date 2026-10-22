@@ -426,6 +426,34 @@ Solo se empieza si los bloques 1 a 8 están en `[x]`.
 
 ---
 
+## 3.1 Bloques UX del POC (agregados el 2026-10-22)
+
+- **Fuente:** `docs/ux/auditoria-ui-2026-10-22.md`. Es la auditoría y la spec completa: tokens, contrastes medidos, referencias de Hevy/Alpha/Fitbod y la maqueta de "Tu semana".
+- **Excepción a la congelación de P1:** estas historias **sí entran**. Son el pulido del demo (F-02, F-03, S-05), y los bloques P0 1 a 8 ya tienen sus criterios cumplidos.
+- **Orden:** empiezan después del bloque 8 y antes de los bloques de soporte 10 a 13.
+- **Forma de trabajo:** cada bloque se trabaja como historia completa, con la DoD de la sección 3 y el modo de AGENTS.md (U3 y U5 van primero en modo lógica).
+
+| # | Jira | Qué | Prioridad | Depende de | Estado |
+|---|---|---|---|---|---|
+| U2 | SCRUM-193 | Estados de carga reales; Hoy nunca muestra "Descanso" mientras carga | P1 (primero) | — | [x] |
+| U1 | SCRUM-194 | Paleta Iron Energy, tema oscuro, `EnergyButtonStyle` (texto negro sobre el acento) | P1 | U2 | [x] |
+| U6 | SCRUM-195 | Pestañas en español, Sign in with Apple oficial, acciones terciarias a Perfil | P1 | U1 | [x] |
+| U3 | SCRUM-196 | Elegir días (L/Mi/V…) con descanso intercalado + migración del plan | P1 | — | [x] |
+| U4 | SCRUM-197 | "Tu semana": Lunes · Pull, Miércoles · Push…, tira semanal en Hoy | P1 | U3 | [x] |
+| U5 | SCRUM-198 | "Sobre ti": nombre, edad, sexo, estatura y peso (local, con migración) | P1 | U1 + 👤 decisión de edad mínima (2026-10-21: **18 años**) | [x] |
+
+- **Decisiones de producto (2026-10-21):** edad mínima 18 años; nombres de sesión Push · Pull · Pierna (Torso/Pierna en Upper/Lower, Cuerpo completo en Full Body).
+- Evidencia: `make ci` → "Test run with 482 tests in 73 suites passed" (PRDomain), "Test run with 373 tests in 68 suites passed" (PRCore), XCTest 151 sin fallos, build iOS y watchOS OK, sin warnings nuevos. Tests por bloque: U2 `TodayLoadingStateTests` (8); U6 `TrainingVocabularyPresenterTests` (8); U3 `TrainingDaysTests` (20, con fixture del perfil anterior) y `PlanDaysMigrationTests` (2, plan real reescrito como la versión anterior); U4 `WeekOverviewTests` (12); U5 `AboutYouTests` (11, con fixture del perfil anterior) y `AboutYouFlowTests` (5).
+- Evidencia UI: `make test-ui` (iPad A16, iOS 27.1) → 18 de 18 pruebas de `PRUITests` en verde, con las nuevas de pestañas en español, chips de días, "Tu semana", tira semanal y "Sobre ti" con el mínimo de 18.
+- 👤 Pendiente en dispositivo (Jesús): VoiceOver real, sol directo, Liquid Glass del tab bar sobre carbón con Reduce Transparency e Increase Contrast y la transparencia de iOS 27 en ambos extremos; layout en iPhone pequeño (las pruebas de UI corren en iPad).
+
+**Reglas que no se negocian en estos bloques:**
+- **Contraste:** nunca texto blanco sobre `#FF3D2E` (3.22:1) ni sobre `#FF7A1A` (2.39:1). Sobre el acento se usa `onAccent` (negro carbón).
+- **Colores en un solo lugar:** ningún color fuera de `DesignTokens.swift`.
+- **Copy del plan:** el plan lo arma el motor, no la IA. Nunca "La IA está creando tu rutina".
+- **Migraciones con fixture:** las del plan (U3) y del perfil (U5) llevan test con fixture de la versión anterior. Son integridad de datos P0.
+- **Datos personales de U5:** no van a logs, analytics ni al LLM.
+
 ## 4. Después del POC (no empezar todavía)
 
 En orden: Fase C (restricciones SCRUM-31, 32, 36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–40) → HealthKit, Watch, pestañas.

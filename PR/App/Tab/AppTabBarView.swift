@@ -4,9 +4,9 @@
 //
 //  Created by PR.
 //
-//  Pestañas raíz de la app (SKILL §6: Today / Progress / Plan / Profile).
-//  La pestaña Today conserva su header, su barra de acciones (restricciones/exportar)
-//  y su presentación de WORKOUT MODE. La sesión activa se presenta a nivel raíz
+//  Pestañas raíz de la app (SKILL §6: Hoy / Progreso / Plan / Perfil).
+//  Hoy tiene una sola acción (Empezar o Continuar, SCRUM-195): restricciones, rehacer
+//  cuestionario y exportar viven en Perfil. La sesión activa se presenta a nivel raíz
 //  (fullScreenCover en AppRootView) para reemplazar la navegación temporalmente.
 //  Vista de composición: no contiene reglas de negocio.
 //
@@ -18,14 +18,19 @@ import PRDomain
 struct AppTabBarView: View {
     @Environment(AppEnvironment.self) private var environment
     @Binding var selectedTab: AppTab
+    /// El aviso "Completa tu perfil" se muestra una sola vez (SCRUM-198).
+    @AppStorage("profile.aboutYouPromptShown") private var aboutYouPromptShown = false
+    @State private var editingAboutYou = false
     /// Intento: empezar la sesión planeada hoy (envía al composition root).
     var onStart: () -> Void
     /// Intento: continuar la sesión en curso (idem).
     var onResume: () -> Void
     /// Intento: rehacer el cuestionario (mismo flujo que un cambio de plan).
     var onRedoQuestionnaire: () -> Void
-
-    @State private var confirmingRedo = false
+    /// El entrenamiento se está abriendo: Empezar/Continuar quedan "en curso".
+    var isStartingWorkout = false
+    /// Intento: volver a generar el plan tras un fallo (SCRUM-193).
+    var onRetryPlan: () -> Void = {}
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -35,66 +40,76 @@ struct AppTabBarView: View {
             ProgressTabView()
                 .tabItem { tabLabel(.progress) }
                 .tag(AppTab.progress)
-            PlanView()
+            PlanView(
+                screen: environment.todayPlan.screen,
+                week: environment.todayPlan.week,
+                lastPerformance: environment.todayPlan.lastPerformance,
+                isStartingWorkout: isStartingWorkout,
+                onStart: canStartToday ? onStart : nil,
+                onRedoQuestionnaire: onRedoQuestionnaire
+            )
                 .tabItem { tabLabel(.plan) }
                 .tag(AppTab.plan)
-            ProfileView()
+            ProfileView(
+                aboutYou: environment.completedProfile?.aboutYou,
+                now: environment.now,
+                onEditAboutYou: { editingAboutYou = true },
+                onRedoQuestionnaire: onRedoQuestionnaire
+            )
                 .tabItem { tabLabel(.profile) }
                 .tag(AppTab.profile)
         }
-        .tint(.accentColor)
+        .tint(Color.primaryAction)
+        .sheet(isPresented: $editingAboutYou) {
+            AboutYouEditSheet(answer: aboutYouDraft) { answer in
+                await environment.session.updateAboutYou(answer)
+            }
+        }
+    }
+
+    /// Lo guardado de "Sobre ti" para editarlo (vacío en un perfil anterior).
+    private var aboutYouDraft: AboutYouAnswer {
+        guard let aboutYou = environment.completedProfile?.aboutYou else { return AboutYouAnswer() }
+        return AboutYouAnswer(aboutYou, on: environment.now, timeZone: .current)
+    }
+
+    /// Perfil anterior sin "Sobre ti": se pide completarlo una vez, sin bloquear Hoy.
+    private var asksToCompleteProfile: Bool {
+        guard let profile = environment.completedProfile else { return false }
+        return profile.aboutYou == nil && !aboutYouPromptShown
     }
 
     private var todayTab: some View {
         NavigationStack {
             TodayView(
-                state: environment.todayPlan.plan?.todayState ?? .restDay,
+                screen: environment.todayPlan.screen,
                 order: environment.todayPlan.plan?.todayOrder ?? [],
                 orderReorderedByFatigue: environment.todayPlan.plan?.todayOrderReorderedByFatigue ?? false,
                 exercises: environment.todayPlan.plan?.todayExercises ?? [],
                 notice: environment.todayPlan.notice,
                 onDismissNotice: { environment.todayPlan.dismissNotice() },
                 onStart: onStart,
-                onResume: onResume
+                onResume: onResume,
+                isStartingWorkout: isStartingWorkout,
+                onRetry: onRetryPlan,
+                week: environment.todayPlan.week,
+                lastPerformance: environment.todayPlan.lastPerformance,
+                greetingName: environment.completedProfile?.aboutYou?.name,
+                asksToCompleteProfile: asksToCompleteProfile,
+                onCompleteProfile: {
+                    aboutYouPromptShown = true
+                    editingAboutYou = true
+                },
+                onDismissProfilePrompt: { aboutYouPromptShown = true }
             )
-            .toolbar {
-                ToolbarItemGroup(placement: .primaryAction) {
-                    NavigationLink {
-                        RestrictionManagementView(
-                            restrictions: [],
-                            onCreate: {},
-                            onReview: { _ in },
-                            onResolve: { _ in }
-                        )
-                    } label: {
-                        Label("Restricciones", systemImage: "list.bullet.clipboard")
-                    }
-
-                    Button {
-                        confirmingRedo = true
-                    } label: {
-                        Label("Rehacer cuestionario", systemImage: "arrow.counterclockwise")
-                    }
-                    .accessibilityIdentifier("today.redo")
-
-                    NavigationLink {
-                        ExportDataView()
-                    } label: {
-                        Label("Exportar", systemImage: "square.and.arrow.up")
-                    }
-                }
-            }
-            .confirmationDialog(
-                "¿Rehacer el cuestionario?",
-                isPresented: $confirmingRedo,
-                titleVisibility: .visible
-            ) {
-                Button("Sí, rehacer") { onRedoQuestionnaire() }
-                Button("Cancelar", role: .cancel) {}
-            } message: {
-                Text("Si cambias objetivo, fase o días se crea un bloque nuevo. El anterior y su historial se conservan.")
-            }
+            .navigationTitle(AppTab.today.title)
         }
+    }
+
+    /// Hoy tiene una sesión lista para empezar (no hay un entrenamiento en curso).
+    private var canStartToday: Bool {
+        if case .ready(.readyToStart) = environment.todayPlan.screen { return true }
+        return false
     }
 
     @ViewBuilder

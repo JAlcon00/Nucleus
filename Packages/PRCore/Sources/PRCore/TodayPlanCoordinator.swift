@@ -21,13 +21,26 @@ import PRDomain
 public struct TodayExerciseLine: Equatable, Sendable, Identifiable {
     public let exerciseID: ExerciseID
     public let name: String?
+    /// Todas las series (calentamiento incluido).
     public let setCount: Int
+    /// Series de trabajo (SCRUM-197, M1: "3 × 8–12").
+    public let workSetCount: Int
+    /// Rango de repeticiones de las series de trabajo; `nil` si sólo hay calentamiento.
+    public let repRange: ClosedRange<Int>?
     public var id: ExerciseID { exerciseID }
 
-    public init(exerciseID: ExerciseID, name: String?, setCount: Int) {
+    public init(
+        exerciseID: ExerciseID,
+        name: String?,
+        setCount: Int,
+        workSetCount: Int? = nil,
+        repRange: ClosedRange<Int>? = nil
+    ) {
         self.exerciseID = exerciseID
         self.name = name
         self.setCount = setCount
+        self.workSetCount = workSetCount ?? setCount
+        self.repRange = repRange
     }
 }
 
@@ -68,6 +81,8 @@ public struct TodayPlan: Equatable, Sendable {
     public let todayOrder: [TodayOrderLine]
     /// ¿La fatiga reordenó la sesión de hoy?
     public let todayOrderReorderedByFatigue: Bool
+    /// Explicación del bloque (orden de cada sesión), para "Tu semana" (SCRUM-197).
+    public let explanation: BlockExplanation?
 
     public init(
         block: TrainingBlock,
@@ -77,7 +92,8 @@ public struct TodayPlan: Equatable, Sendable {
         todayState: TodayScreenState,
         todayExercises: [TodayExerciseLine] = [],
         todayOrder: [TodayOrderLine] = [],
-        todayOrderReorderedByFatigue: Bool = false
+        todayOrderReorderedByFatigue: Bool = false,
+        explanation: BlockExplanation? = nil
     ) {
         self.block = block
         self.sessions = sessions
@@ -87,6 +103,7 @@ public struct TodayPlan: Equatable, Sendable {
         self.todayExercises = todayExercises
         self.todayOrder = todayOrder
         self.todayOrderReorderedByFatigue = todayOrderReorderedByFatigue
+        self.explanation = explanation
     }
 }
 
@@ -106,8 +123,8 @@ public enum TodayPlanError: Error, Equatable, Sendable {
 ///   explícitas; tratar todas igual es una elección determinista y conservadora.
 /// - Equipment: conjunto básico de gimnasio `knownAvailable` (barbell/dumbbell/machine/
 ///   cable/bodyweight) como seed documentado; el perfil de gym real la refina en PR-0901.
-/// - Rotación semanal (`TrainingWeek`, SCRUM-27): los primeros `trainingDaysPerWeek`
-///   días desde el lunes son de entrenamiento y cada uno tiene su slot 0…N-1; el resto
+/// - Rotación semanal (`TrainingWeek`, SCRUM-27/196): los días elegidos son de
+///   entrenamiento y cada uno tiene su slot 0…N-1 en orden de lunes a domingo; el resto
 ///   es descanso. La plantilla del día es `sessions[slot % sessions.count]`.
 /// - Duración estimada: `profile.usualSessionMinutes` (estimación del usuario; el
 ///   cálculo por ejercicio real es PR-0801).
@@ -165,7 +182,7 @@ public struct TodayPlanBuilder: Sendable {
         let estimatedMinutes = profile.usualSessionMinutes
         let todayTemplate = try todaySession(
             from: block.sessions,
-            trainingDaysPerWeek: profile.trainingDaysPerWeek,
+            profile: profile,
             date: date,
             timeZone: timeZone
         )
@@ -185,7 +202,8 @@ public struct TodayPlanBuilder: Sendable {
             todayState: state,
             todayExercises: exerciseLines(for: todayTemplate, catalog: catalog),
             todayOrder: orderLines(for: orderExplanation, catalog: catalog),
-            todayOrderReorderedByFatigue: orderExplanation?.reorderedByFatigue ?? false
+            todayOrderReorderedByFatigue: orderExplanation?.reorderedByFatigue ?? false,
+            explanation: explanation
         )
     }
 
@@ -207,17 +225,33 @@ public struct TodayPlanBuilder: Sendable {
         }
     }
 
-    /// Ejercicios de la plantilla en orden de aparición, con su número de series.
+    /// Ejercicios de la plantilla en orden de aparición, con su número de series, series de
+    /// trabajo y rango de repeticiones (el más amplio si las series difieren).
     func exerciseLines(for template: SessionTemplate?, catalog: ExerciseCatalog) -> [TodayExerciseLine] {
         guard let template else { return [] }
         let names = Dictionary(catalog.exercises.map { ($0.id, $0.canonicalName) }, uniquingKeysWith: { first, _ in first })
         var order: [ExerciseID] = []
         var counts: [ExerciseID: Int] = [:]
+        var workCounts: [ExerciseID: Int] = [:]
+        var ranges: [ExerciseID: ClosedRange<Int>] = [:]
         for planned in template.plannedSets {
             if counts[planned.exerciseID] == nil { order.append(planned.exerciseID) }
             counts[planned.exerciseID, default: 0] += 1
+            guard !planned.prescription.isWarmup else { continue }
+            workCounts[planned.exerciseID, default: 0] += 1
+            let range = planned.prescription.targetRepRange
+            if let current = ranges[planned.exerciseID] {
+                ranges[planned.exerciseID] = min(current.lowerBound, range.lowerBound)...max(current.upperBound, range.upperBound)
+            } else {
+                ranges[planned.exerciseID] = range
+            }
         }
-        return order.map { TodayExerciseLine(exerciseID: $0, name: names[$0], setCount: counts[$0] ?? 0) }
+        return order.map {
+            TodayExerciseLine(
+                exerciseID: $0, name: names[$0], setCount: counts[$0] ?? 0,
+                workSetCount: workCounts[$0] ?? 0, repRange: ranges[$0]
+            )
+        }
     }
 
     // MARK: - Defaults
@@ -270,14 +304,14 @@ public struct TodayPlanBuilder: Sendable {
     /// Elige la plantilla de hoy con la semana del dominio (`TrainingWeek`, SCRUM-27).
     private func todaySession(
         from sessions: [SessionTemplate],
-        trainingDaysPerWeek: Int,
+        profile: OnboardingProfile,
         date: Date,
         timeZone: TimeZone
     ) throws -> SessionTemplate? {
         guard !sessions.isEmpty else { return nil }
         let week: TrainingWeek
         do {
-            week = try TrainingWeek(trainingDaysPerWeek: trainingDaysPerWeek)
+            week = try profile.trainingWeek()
         } catch {
             throw TodayPlanError.invalidInput
         }
@@ -292,6 +326,32 @@ public enum TodayPlanNotice: Equatable, Sendable {
     /// Un plan guardado con un generador anterior (volumen inflado, ejercicios genéricos) se regeneró,
     /// conservando el ID del bloque.
     case planUpdated
+}
+
+/// Lo que la pantalla "Hoy" puede mostrar (SCRUM-193). Mientras el plan no está listo es
+/// `loading`: nunca se presenta como día de descanso un plan que todavía no existe.
+public enum TodayScreen: Equatable, Sendable {
+    /// El plan se está leyendo o generando.
+    case loading
+    /// Plan listo: estado derivado del día (descanso, lista para empezar o en curso).
+    case ready(TodayScreenState)
+    /// No se pudo generar el plan; se puede reintentar.
+    case failed
+}
+
+/// En qué va la generación del plan (SCRUM-193). Sólo pasos que ocurren de verdad: la UI
+/// los marca conforme se cumplen y nunca alarga la espera.
+public enum PlanGeneration: Equatable, Sendable {
+    /// Nada en curso.
+    case idle
+    /// Leyendo el plan anterior del disco.
+    case reading
+    /// Repartiendo el volumen y ordenando los ejercicios del bloque.
+    case generating
+    /// Guardando el bloque en el dispositivo.
+    case saving
+    /// El último intento no pudo generar el plan.
+    case failed
 }
 
 /// Qué encontró la app al intentar recordar el plan del usuario.
@@ -314,6 +374,36 @@ public final class TodayPlanCoordinator {
     public private(set) var notice: TodayPlanNotice?
     /// `true` si el último guardado del plan falló (el plan sigue usable en memoria).
     public private(set) var saveFailed = false
+    /// En qué va la generación del plan (SCRUM-193).
+    public private(set) var generation: PlanGeneration = .idle
+    /// Historial de entrenamientos del usuario ("Tu semana" y "última vez", SCRUM-197).
+    public private(set) var history: [WorkoutSessionRecord] = []
+    /// "Última vez" por ejercicio (M1), derivada del historial.
+    public private(set) var lastPerformance: [ExerciseID: LastPerformance] = [:]
+
+    /// "Tu semana" del plan activo (lunes a domingo); `nil` sin plan.
+    public var week: WeekOverview? {
+        guard let plan, let activeProfile else { return nil }
+        return WeekOverviewBuilder().overview(
+            profile: activeProfile,
+            block: plan.block,
+            explanation: plan.explanation ?? BlockExplanation(facts: [], ruleReferences: []),
+            catalog: catalog,
+            history: history,
+            date: clock(),
+            timeZone: timeZone()
+        )
+    }
+
+    /// Lo que "Hoy" debe mostrar. Sin plan (o con uno nuevo en camino) es `loading`,
+    /// nunca descanso por defecto.
+    public var screen: TodayScreen {
+        switch generation {
+        case .reading, .generating, .saving: return .loading
+        case .failed: return .failed
+        case .idle: return plan.map { .ready($0.todayState) } ?? .loading
+        }
+    }
 
     private let builder: TodayPlanBuilder
     private let catalog: ExerciseCatalog
@@ -359,9 +449,11 @@ public final class TodayPlanCoordinator {
                 timeZone: timeZone()
             )
             activeProfile = profile
+            generation = .idle
             return true
         } catch {
             plan = nil
+            generation = .failed
             return false
         }
     }
@@ -372,6 +464,15 @@ public final class TodayPlanCoordinator {
         notice = nil
         activeProfile = nil
         activeUserID = nil
+        generation = .idle
+        history = []
+        lastPerformance = [:]
+    }
+
+    /// Historial leído del disco (lo pasa la capa de app): alimenta "Tu semana" y "última vez".
+    public func updateHistory(_ sessions: [WorkoutSessionRecord]) {
+        history = sessions
+        lastPerformance = LastPerformanceIndex.build(from: sessions)
     }
 
     /// Recalcula el estado de "Hoy" según haya o no un entrenamiento vivo (SCRUM-24): con
@@ -394,7 +495,8 @@ public final class TodayPlanCoordinator {
             todayState: state,
             todayExercises: current.todayExercises,
             todayOrder: current.todayOrder,
-            todayOrderReorderedByFatigue: current.todayOrderReorderedByFatigue
+            todayOrderReorderedByFatigue: current.todayOrderReorderedByFatigue,
+            explanation: current.explanation
         )
     }
 
@@ -451,6 +553,7 @@ public final class TodayPlanCoordinator {
             ) else { return .unreadable }
             plan = today
             activeProfile = stored.profile
+            generation = .idle
             return .restored(stored.profile)
         }
     }
@@ -463,11 +566,21 @@ public final class TodayPlanCoordinator {
     /// Devuelve `false` si no se pudo generar el plan (nunca inventa uno).
     @discardableResult
     public func activate(profile: OnboardingProfile, userID: String?) async -> Bool {
-        if activeProfile == profile, plan != nil { return true }
+        if activeProfile == profile, plan != nil {
+            generation = .idle
+            return true
+        }
+        if let activeProfile, plan != nil, activeProfile.trainingFields == profile.trainingFields {
+            // Sólo cambió "Sobre ti" (SCRUM-198): se guarda el perfil; el bloque no cambia y
+            // Hoy no pasa por "cargando".
+            return await saveProfileOnly(profile, userID: userID)
+        }
         guard let userID, let planStore else {
             return load(profile: profile)
         }
         activeUserID = userID
+        // Mientras llega el plan nuevo, "Hoy" muestra carga (nunca el plan anterior ni descanso).
+        generation = .reading
         let previous: (plan: StoredPlan, block: TrainingBlock)?
         switch await planStore.loadPlan(userID: userID) {
         case .loaded(let stored, let block): previous = (stored, block)
@@ -477,15 +590,26 @@ public final class TodayPlanCoordinator {
         do {
             switch change {
             case .unchanged:
-                guard let previous else { return false }
+                guard let previous else { return failActivation() }
                 plan = try builder.todayPlan(
                     profile: profile, block: previous.block, explanation: previous.plan.explanation,
                     catalog: catalog, driver: driver, date: clock(), timeZone: timeZone()
                 )
                 activeProfile = profile
+                generation = .idle
+                return true
+            case .updateProfileOnly:
+                guard let previous else { return failActivation() }
+                var stored = previous.plan
+                stored.profile = profile
+                stored.updatedAt = saveClock()
+                generation = .saving
+                await persist(stored, block: previous.block, closing: nil, store: planStore)
+                try show(profile: profile, block: previous.block, explanation: previous.plan.explanation)
                 return true
             case .regenerateInPlace:
-                guard let previous else { return false }
+                guard let previous else { return failActivation() }
+                generation = .generating
                 let result = try builder.generate(
                     profile: profile, catalog: catalog, planner: planner, blockID: previous.block.id
                 )
@@ -497,10 +621,12 @@ public final class TodayPlanCoordinator {
                 stored.generatorVersion = StoredPlan.currentGeneratorVersion
                 stored.explanation = result.explanation
                 stored.updatedAt = saveClock()
+                generation = .saving
                 await persist(stored, block: block, closing: nil, store: planStore)
                 try show(profile: profile, block: block, explanation: result.explanation)
                 return true
             case .newBlock:
+                generation = .generating
                 let result = try builder.generate(profile: profile, catalog: catalog, planner: planner)
                 var block = result.block
                 block.status = .active
@@ -517,13 +643,13 @@ public final class TodayPlanCoordinator {
                     explanation: result.explanation,
                     updatedAt: saveClock()
                 )
+                generation = .saving
                 await persist(stored, block: block, closing: closed, store: planStore)
                 try show(profile: profile, block: block, explanation: result.explanation)
                 return true
             }
         } catch {
-            plan = nil
-            return false
+            return failActivation()
         }
     }
 
@@ -533,6 +659,27 @@ public final class TodayPlanCoordinator {
             catalog: catalog, driver: driver, date: clock(), timeZone: timeZone()
         )
         activeProfile = profile
+        generation = .idle
+    }
+
+    /// Guarda el perfil con su "Sobre ti" nuevo sobre el mismo bloque (SCRUM-198).
+    private func saveProfileOnly(_ profile: OnboardingProfile, userID: String?) async -> Bool {
+        activeProfile = profile
+        guard let userID, let planStore,
+              case .loaded(var stored, let block) = await planStore.loadPlan(userID: userID) else {
+            return true
+        }
+        stored.profile = profile
+        stored.updatedAt = saveClock()
+        await persist(stored, block: block, closing: nil, store: planStore)
+        return true
+    }
+
+    /// No se pudo generar el plan: se dice (nunca se inventa uno ni se muestra descanso).
+    private func failActivation() -> Bool {
+        plan = nil
+        generation = .failed
+        return false
     }
 
     /// Guarda y deja constancia si falló: el error no se traga (se expone en `saveFailed`).
