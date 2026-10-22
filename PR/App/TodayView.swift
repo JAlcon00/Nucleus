@@ -71,7 +71,7 @@ struct TodayView: View {
 
     private static func text(for notice: TodayPlanNotice) -> String {
         switch notice {
-        case .planUpdated: String(localized: "Actualizamos tu plan para que las sesiones tengan un volumen realista.")
+        case .planUpdated: String(localized: "Actualizamos tu plan: ahora trae mejores ejercicios y un volumen más realista.")
         }
     }
 

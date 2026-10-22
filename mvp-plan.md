@@ -324,6 +324,12 @@ Evidencia: `make ci` → `✔ Test run with 443 tests in 70 suites passed` + `�
 
 ---
 
+### Mejora de calidad de la asignación de ejercicios (fuera del plan original, 2026-10-21)
+
+**Problema (hallado en la prueba manual):** con el catálogo real, espalda recibía encogimientos, pecho "Vueltas al mundo" y "Press guillotina", y piernas sólo aductores y peso muerto en polea: sin sentadilla, sin curl femoral, sin remo ni jalón.
+**Cambio:** lista curada por músculo (`exercise-staples.json`, 63 ejercicios, orden de preferencia; sentadilla → prensa → extensión, press de banca → inclinado → cruce, remo → jalón…). `ExerciseAssigner` elige el primero permitido como ancla y los siguientes como rotatables; sin ejercicios de referencia disponibles usa la selección genérica, ahora prefiriendo los que trabajan el músculo como principal. Un plan guardado con generador anterior se regenera (`currentGeneratorVersion = 3`, mismo ID de bloque) y avisa.
+Evidencia: `make ci` → `✔ Test run with 451 tests in 71 suites passed` + `✔ Test run with 338 tests in 63 suites passed` (2026-10-21); `ExerciseSelectionQualityTests` (básicos presentes en 3/4/6 días, nada de guillotina/vueltas al mundo/encogimientos/aductores, cada referencia trabaja el músculo como principal); UI en Xcode: 5 de 5 relacionadas. **Límite:** la lista es una curación del equipo (revisable por Jesús); no cubre equipo fuera de barra/mancuernas/máquina/polea/peso corporal. 👤 Jesús: revisar que las rutinas generadas le parezcan razonables.
+
 ### Bloque 8 — SCRUM-29 · Ejercicios en el orden correcto (P0)
 
 **Bug actual:** `BlockPlanner` recibe `orderEngine` y `fatigueEngine` pero nunca los llama. Puede salir tríceps antes del press de banca.

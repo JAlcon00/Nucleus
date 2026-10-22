@@ -124,8 +124,10 @@ public struct ExerciseAssignmentInput: Sendable {
 ///   equipment no disponible; si es unknown, no se descarta nada (la UI pregunta).
 /// - Restricciones: se excluyen ejercicios con patrón prohibido o ID prohibido;
 ///   si un ejercicio está en la lista explícitamente permitida, se respeta.
-/// - El mejor candidato por familia se marca `anchor`; el resto de la familia,
-///   `rotatable` (con tantos como indique la variedad/necesidad).
+/// - Con ejercicios de referencia disponibles (lista curada, `Exercise.staple`), el primero
+///   por orden de preferencia es el `anchor` y los siguientes los `rotatable` (tantos como
+///   indique la variedad). Sin ellos, el mejor candidato por familia es el `anchor` y el resto
+///   de la familia los `rotatable`, prefiriendo los que trabajan el músculo como principal.
 public struct ExerciseAssigner: Sendable {
     public init() {}
 
@@ -140,9 +142,39 @@ public struct ExerciseAssigner: Sendable {
             )
         }
 
+        // Nº de rotatables según variedad (configurable, respeta anchors).
+        let rotatableCount = Self.rotatableCount(for: input.varietyPreference)
+
+        // 1) Ejercicios de referencia del músculo (lista curada, en orden de preferencia).
+        //    El primero permitido es el anchor; los siguientes rotan entre días. La lista está
+        //    ordenada para que lo consecutivo sea complementario (sentadilla → prensa →
+        //    extensión), por eso los rotatables NO se limitan a la familia del anchor.
+        let staples = permitted
+            .filter { $0.staple?.muscle == input.muscleGroupID }
+            .sorted { ($0.staple?.rank ?? .max) < ($1.staple?.rank ?? .max) }
+        if let anchor = staples.first {
+            var assignments = [AssignedExercise(exercise: anchor.id, role: .anchor)]
+            for rotatable in staples.dropFirst().prefix(rotatableCount) {
+                assignments.append(AssignedExercise(exercise: rotatable.id, role: .rotatable))
+            }
+            return MuscleExerciseAssignment(
+                muscleGroupID: input.muscleGroupID,
+                familyID: anchor.substitutionFamilyID,
+                assignments: assignments
+            )
+        }
+
+        // 2) Sin ejercicios de referencia disponibles (equipo limitado, restricciones o un
+        //    catálogo sin lista curada): selección genérica. Se prefieren los que trabajan el
+        //    músculo como PRINCIPAL antes que los que lo trabajan de rebote.
+        let primaryFirst = permitted.filter { exercise in
+            exercise.primaryMuscles.contains { $0.muscleGroupID == input.muscleGroupID }
+        }
+        let candidates = primaryFirst.isEmpty ? permitted : primaryFirst
+
         // Preferimos el ejercicio más representativo como anchor: el de menor
         // estabilidad demandada y menor coste sistémico (más programable).
-        let sorted = permitted.sorted { lhs, rhs in
+        let sorted = candidates.sorted { lhs, rhs in
             if lhs.stabilityDemand.score != rhs.stabilityDemand.score {
                 return lhs.stabilityDemand.score < rhs.stabilityDemand.score
             }
@@ -157,11 +189,8 @@ public struct ExerciseAssigner: Sendable {
             )
         }
 
-        // Determinamos cuántos rotatables mantener según variedad.
-        let rotatableCount = Self.rotatableCount(for: input.varietyPreference)
-
         var assignments: [AssignedExercise] = [AssignedExercise(exercise: anchorExercise.id, role: .anchor)]
-        let rotatables = permitted
+        let rotatables = candidates
             .filter { $0.substitutionFamilyID == anchorFamily && $0.id != anchorExercise.id }
             .prefix(rotatableCount)
         for rotatable in rotatables {

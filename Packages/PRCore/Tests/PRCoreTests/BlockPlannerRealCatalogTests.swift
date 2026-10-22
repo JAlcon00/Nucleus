@@ -143,3 +143,100 @@ struct SpanishCatalogNamesTests {
         #expect(english.exercises.first?.canonicalName == "Barbell Bench Press")
     }
 }
+
+@Suite("Calidad de la asignación de ejercicios (catálogo real)")
+struct ExerciseSelectionQualityTests {
+
+    private let builder = TodayPlanBuilder()
+
+    private func result(days: Int) throws -> (BlockPlanningResult, [ExerciseID: Exercise]) {
+        let catalog = try ExerciseCatalogLoader.loadBundled()
+        let input = BlockPlanningInput(
+            goal: .hypertrophy, phase: .maintenance, experience: .intermediate,
+            trainingDaysPerWeek: days, priorities: builder.defaultPriorities(), plannedWeeks: 6,
+            varietyPreference: .balanced, catalog: catalog.exercises, restrictions: [],
+            equipmentKnownness: builder.defaultEquipmentKnownness(), sessionMinutes: 60
+        )
+        let byID = Dictionary(catalog.exercises.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return (try TodayPlanBuilder.defaultPlanner().plan(input: input), byID)
+    }
+
+    @Test("Toda la lista curada existe en el dataset y cada músculo tiene referencias con el equipo por defecto",
+          arguments: [MuscleGroup.chest, .back, .shoulders, .biceps, .triceps, .quadriceps, .hamstrings, .glutes])
+    func everyMuscleHasStaples(muscle: MuscleGroup) throws {
+        let catalog = try ExerciseCatalogLoader.loadBundled()
+        let staples = catalog.exercises.filter { $0.staple?.muscle == muscle }
+        #expect(staples.count >= 4, "\(muscle): sólo \(staples.count) ejercicios de referencia")
+        let defaultEquipment: Set<EquipmentType> = [.barbell, .dumbbell, .machine, .cable, .bodyweight]
+        #expect(staples.contains { defaultEquipment.contains($0.equipment) })
+        // Cada ejercicio de referencia trabaja de verdad ese músculo (como principal).
+        #expect(staples.allSatisfy { exercise in
+            exercise.primaryMuscles.contains { $0.muscleGroupID == muscle }
+        }, "\(muscle): hay un ejercicio de referencia que no lo trabaja como principal")
+    }
+
+    @Test("Cada ejercicio de la lista curada del recurso se encuentra en el catálogo")
+    func curatedIDsResolve() throws {
+        let catalog = try ExerciseCatalogLoader.loadBundled()
+        let total = catalog.exercises.filter { $0.staple != nil }.count
+        // 10 músculos curados, 63 ids en exercise-staples.json; ningún id de la lista quedó sin resolver.
+        #expect(total == 63, "esperados 63 ejercicios de referencia, hay \(total)")
+    }
+
+    @Test("Los ejercicios nunca recomendados quedan fuera del plan (guillotina, vueltas al mundo, encogimientos)",
+          arguments: [2, 3, 4, 6])
+    func noBadExercises(days: Int) throws {
+        let (plan, byID) = try result(days: days)
+        let names = plan.block.sessions
+            .flatMap { $0.plannedSets.map(\.exerciseID) }
+            .compactMap { byID[$0]?.canonicalName.lowercased() }
+        for forbidden in ["guillotina", "vueltas al mundo", "encogimiento", "aducción", "aductor"] {
+            #expect(!names.contains { $0.contains(forbidden) }, "\(days) días incluye '\(forbidden)'")
+        }
+    }
+
+    @Test("El plan trae los básicos: sentadilla/prensa, peso muerto rumano o curl femoral, press de banca, remo o jalón",
+          arguments: [3, 4, 6])
+    func hasTheBasics(days: Int) throws {
+        let (plan, byID) = try result(days: days)
+        let names = Set(plan.block.sessions
+            .flatMap { $0.plannedSets.map(\.exerciseID) }
+            .compactMap { byID[$0]?.canonicalName.lowercased() })
+        func has(_ fragments: String...) -> Bool { names.contains { name in fragments.contains { name.contains($0) } } }
+        #expect(has("sentadilla", "prensa"), "falta una pierna de cuádriceps")
+        #expect(has("rumano", "curl femoral"), "falta cadena posterior")
+        #expect(has("press de banca"), "falta press de pecho")
+        #expect(has("remo", "jalón"), "falta espalda de verdad (remo/jalón)")
+        #expect(has("press de hombro", "press militar"), "falta press de hombro")
+    }
+
+    @Test("Todo ejercicio programado para un músculo lo trabaja como principal")
+    func plannedExercisesTargetTheirMuscle() throws {
+        let (plan, byID) = try result(days: 4)
+        let targeted = Set(plan.block.muscleTargets.map(\.muscleGroupID))
+        for session in plan.block.sessions {
+            let exercises = Set(session.plannedSets.map(\.exerciseID)).compactMap { byID[$0] }
+            for exercise in exercises {
+                let primaries = Set(exercise.primaryMuscles.map(\.muscleGroupID))
+                #expect(!primaries.isDisjoint(with: targeted), "\(exercise.canonicalName) no trabaja un músculo objetivo")
+            }
+        }
+    }
+
+    @Test("Con un catálogo sin lista curada se usa la selección genérica (no falla)")
+    func fallbackWithoutStaples() throws {
+        let raw = Data("""
+        [{"id":"Some_Press","name":"Some Press","force":"push","level":"beginner","mechanic":"compound",
+          "equipment":"barbell","primaryMuscles":["chest"],"secondaryMuscles":["triceps"],"category":"strength"},
+         {"id":"Some_Fly","name":"Some Fly","force":"push","level":"beginner","mechanic":"isolation",
+          "equipment":"dumbbell","primaryMuscles":["chest"],"secondaryMuscles":[],"category":"strength"}]
+        """.utf8)
+        let catalog = try ExerciseCatalogLoader.load(from: raw)
+        let assignment = try ExerciseAssigner().assign(input: ExerciseAssignmentInput(
+            muscleGroupID: .chest, catalog: catalog.exercises, varietyPreference: .balanced,
+            restrictions: [], equipmentKnownness: .knownAvailable([.barbell, .dumbbell])
+        ))
+        #expect(assignment.anchor != nil)
+        #expect(catalog.exercises.allSatisfy { $0.staple == nil })
+    }
+}

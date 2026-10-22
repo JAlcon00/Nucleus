@@ -81,6 +81,12 @@ anterior (`completed`) y crea uno nuevo; otros cambios regeneran el mismo bloque
 generador anterior se migra conservando el ID. Cobertura:
 `PRCoreTests/PlanPersistenceTests.swift` y `PRUITests` (reabrir y rehacer).
 
+## Calidad de la asignación de ejercicios (RF-034, mejora sobre SCRUM-28/29)
+
+`Resources/exercise-staples.json` (ejercicios de referencia por músculo) → `Exercise.staple` →
+`ExerciseAssigner` (ancla y rotatables por orden de preferencia; genérico si no hay). Cobertura:
+`PRCoreTests/BlockPlannerRealCatalogTests.swift` (`ExerciseSelectionQualityTests`).
+
 ## Entrenamiento que sobrevive al cierre y cierre de sesión (SCRUM-24 / SCRUM-25, RF-007)
 
 `WorkoutSessionCoordinator` guarda la sesión de forma síncrona al iniciar y en cada cambio de

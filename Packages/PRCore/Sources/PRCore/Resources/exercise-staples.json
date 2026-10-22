@@ -1,0 +1,85 @@
+{
+ "chest": [
+  "Barbell_Bench_Press_-_Medium_Grip",
+  "Incline_Dumbbell_Press",
+  "Dumbbell_Bench_Press",
+  "Cable_Crossover",
+  "Machine_Bench_Press",
+  "Dumbbell_Flyes",
+  "Pushups"
+ ],
+ "back": [
+  "Bent_Over_Barbell_Row",
+  "Wide-Grip_Lat_Pulldown",
+  "Seated_Cable_Rows",
+  "One-Arm_Dumbbell_Row",
+  "Close-Grip_Front_Lat_Pulldown",
+  "T-Bar_Row_with_Handle",
+  "Pullups",
+  "Straight-Arm_Pulldown"
+ ],
+ "shoulders": [
+  "Dumbbell_Shoulder_Press",
+  "Side_Lateral_Raise",
+  "Seated_Barbell_Military_Press",
+  "Cable_Seated_Lateral_Raise",
+  "Face_Pull",
+  "Cable_Rear_Delt_Fly",
+  "Machine_Shoulder_Military_Press",
+  "Arnold_Dumbbell_Press"
+ ],
+ "biceps": [
+  "Barbell_Curl",
+  "Incline_Dumbbell_Curl",
+  "Hammer_Curls",
+  "Preacher_Curl",
+  "Standing_Biceps_Cable_Curl",
+  "Concentration_Curls"
+ ],
+ "triceps": [
+  "Triceps_Pushdown",
+  "EZ-Bar_Skullcrusher",
+  "Cable_Rope_Overhead_Triceps_Extension",
+  "Dips_-_Triceps_Version",
+  "Standing_Dumbbell_Triceps_Extension",
+  "Triceps_Pushdown_-_Rope_Attachment",
+  "Bench_Dips"
+ ],
+ "quadriceps": [
+  "Barbell_Squat",
+  "Leg_Press",
+  "Leg_Extensions",
+  "Dumbbell_Lunges",
+  "Hack_Squat",
+  "Front_Barbell_Squat",
+  "Split_Squat_with_Dumbbells"
+ ],
+ "hamstrings": [
+  "Romanian_Deadlift",
+  "Seated_Leg_Curl",
+  "Lying_Leg_Curls",
+  "Stiff-Legged_Dumbbell_Deadlift",
+  "Good_Morning",
+  "Standing_Leg_Curl"
+ ],
+ "glutes": [
+  "Barbell_Hip_Thrust",
+  "Barbell_Glute_Bridge",
+  "One-Legged_Cable_Kickback",
+  "Single_Leg_Glute_Bridge",
+  "Glute_Kickback"
+ ],
+ "calves": [
+  "Standing_Calf_Raises",
+  "Seated_Calf_Raise",
+  "Standing_Dumbbell_Calf_Raise",
+  "Calf_Press"
+ ],
+ "core": [
+  "Cable_Crunch",
+  "Hanging_Leg_Raise",
+  "Plank",
+  "Crunches",
+  "Barbell_Ab_Rollout_-_On_Knees"
+ ]
+}

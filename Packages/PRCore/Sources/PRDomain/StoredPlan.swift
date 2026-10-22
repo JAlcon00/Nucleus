@@ -17,8 +17,10 @@ public struct StoredPlan: Codable, Sendable, Equatable {
     /// Versión actual del generador de bloques. Subirla fuerza la migración de los
     /// planes guardados con una versión menor.
     /// 1 = volumen inflado (antes de SCRUM-28, nunca se llegó a guardar así);
-    /// 2 = volumen real repartido por día y orden por rol/fatiga (SCRUM-28/29).
-    public static let currentGeneratorVersion = 2
+    /// 2 = volumen real repartido por día y orden por rol/fatiga (SCRUM-28/29);
+    /// 3 = ejercicios de referencia por músculo (sentadilla, press, remo… en vez del primer
+    ///     candidato por coincidencia de datos).
+    public static let currentGeneratorVersion = 3
 
     public let userID: String
     public var profile: OnboardingProfile

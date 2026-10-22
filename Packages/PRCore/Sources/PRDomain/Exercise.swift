@@ -240,6 +240,20 @@ public struct ExerciseFamily: Identifiable, Codable, Sendable, Hashable {
 
 // MARK: - Exercise
 
+/// Marca de ejercicio "de referencia" para un músculo (lista curada, orden de preferencia).
+/// Sólo los ejercicios marcados se prefieren al armar un plan: así un músculo recibe
+/// sentadilla/press/remo y no el primer candidato por coincidencia de datos.
+public struct StapleSelection: Codable, Sendable, Hashable {
+    public var muscle: MuscleGroup.ID
+    /// Posición en la lista curada del músculo (0 = el primero que se elige).
+    public var rank: Int
+
+    public init(muscle: MuscleGroup.ID, rank: Int) {
+        self.muscle = muscle
+        self.rank = rank
+    }
+}
+
 /// Un ejercicio del catálogo de conocimiento (PR-0102).
 /// Modela biomecánica y función programática; NO un mero nombre+músculo.
 public struct Exercise: Identifiable, Codable, Sendable, Equatable {
@@ -261,6 +275,8 @@ public struct Exercise: Identifiable, Codable, Sendable, Equatable {
     public var defaultRoles: Set<ExerciseRole>
     public var contraindicationTags: Set<RestrictionTag>
     public var substitutionFamilyID: ExerciseFamily.ID
+    /// Si es ejercicio de referencia de un músculo (SCRUM-28/29: calidad de la asignación).
+    public var staple: StapleSelection?
 
     public init(
         id: ExerciseID = ExerciseID(),
@@ -280,8 +296,10 @@ public struct Exercise: Identifiable, Codable, Sendable, Equatable {
         loadability: Loadability,
         defaultRoles: Set<ExerciseRole>,
         contraindicationTags: Set<RestrictionTag> = [],
-        substitutionFamilyID: ExerciseFamily.ID
+        substitutionFamilyID: ExerciseFamily.ID,
+        staple: StapleSelection? = nil
     ) {
+        self.staple = staple
         self.id = id
         self.canonicalName = canonicalName
         self.aliases = aliases

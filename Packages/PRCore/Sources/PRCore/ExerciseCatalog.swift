@@ -414,13 +414,31 @@ public enum ExerciseCatalogLoader {
         if let namesURL = Bundle.module.url(forResource: "exercise-names-es", withExtension: "json") {
             spanishNames = try JSONDecoder().decode([String: String].self, from: Data(contentsOf: namesURL))
         }
-        return try load(from: data, spanishNames: spanishNames)
+        // Lista curada de ejercicios de referencia por músculo (id del dataset, en orden de
+        // preferencia). Sin el recurso el catálogo funciona igual, con la asignación genérica.
+        var staples: [String: [String]] = [:]
+        if let staplesURL = Bundle.module.url(forResource: "exercise-staples", withExtension: "json") {
+            staples = try JSONDecoder().decode([String: [String]].self, from: Data(contentsOf: staplesURL))
+        }
+        return try load(from: data, spanishNames: spanishNames, staples: staples)
     }
 
     /// Mapea datos crudos JSON del dataset a `ExerciseCatalog`. `spanishNames` es opcional:
     /// el nombre en español pasa a `canonicalName` y el original en inglés queda como alias
     /// (la búsqueda sigue encontrando "bench press"). Los IDs no dependen del nombre.
-    public static func load(from data: Data, spanishNames: [String: String] = [:]) throws -> ExerciseCatalog {
+    public static func load(
+        from data: Data,
+        spanishNames: [String: String] = [:],
+        staples: [String: [String]] = [:]
+    ) throws -> ExerciseCatalog {
+        // id del dataset → su lugar en la lista curada (un ejercicio es de referencia de UN músculo).
+        var stapleByID: [String: StapleSelection] = [:]
+        for (muscleName, ids) in staples {
+            guard let muscle = MuscleGroup(rawValue: muscleName) else { continue }
+            for (rank, id) in ids.enumerated() where stapleByID[id] == nil {
+                stapleByID[id] = StapleSelection(muscle: muscle, rank: rank)
+            }
+        }
         let entries: [FreeExerciseDBEntry]
         do {
             entries = try JSONDecoder().decode([FreeExerciseDBEntry].self, from: data)
@@ -522,7 +540,8 @@ public enum ExerciseCatalogLoader {
                     isCompound: isMultiJoint
                 ),
                 contraindicationTags: [],
-                substitutionFamilyID: family.id
+                substitutionFamilyID: family.id,
+                staple: stapleByID[entry.id]
             )
             exercises.append(exercise)
         }

@@ -289,7 +289,7 @@ public struct TodayPlanBuilder: Sendable {
 
 /// Aviso breve que "Hoy" muestra cuando la app tocó el plan por su cuenta.
 public enum TodayPlanNotice: Equatable, Sendable {
-    /// Un plan guardado con un generador anterior (volumen inflado) se regeneró,
+    /// Un plan guardado con un generador anterior (volumen inflado, ejercicios genéricos) se regeneró,
     /// conservando el ID del bloque.
     case planUpdated
 }
