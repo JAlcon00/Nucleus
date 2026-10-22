@@ -97,6 +97,39 @@ public struct TrainingVocabularyPresenter: Sendable {
         ))
     }
 
+    /// Tipo de ejercicio para su etiqueta: "Compuesto" (multiarticular) o "Aislado".
+    public func exerciseKind(_ jointClass: JointClass) -> String {
+        switch jointClass {
+        case .multiJoint: return resource("Compuesto", "Ejercicio multiarticular (varias articulaciones)")
+        case .singleJoint: return resource("Aislado", "Ejercicio monoarticular (una articulación)")
+        }
+    }
+
+    /// Series de trabajo con su palabra: "1 serie", "3 series".
+    public func workSets(_ sets: Int) -> String {
+        if sets == 1 {
+            return resource("1 serie", "Una sola serie de trabajo")
+        }
+        return String(localized: LocalizedStringResource(
+            "\(sets) series", locale: locale, bundle: Self.bundle,
+            comment: "Número de series de un ejercicio sin rango de repeticiones"
+        ))
+    }
+
+    /// Repeticiones por serie con su palabra: "10 reps", "8–12 reps".
+    public func reps(_ range: ClosedRange<Int>) -> String {
+        if range.lowerBound == range.upperBound {
+            return String(localized: LocalizedStringResource(
+                "\(range.lowerBound) reps", locale: locale, bundle: Self.bundle,
+                comment: "Repeticiones por serie. Ej.: 10 reps"
+            ))
+        }
+        return String(localized: LocalizedStringResource(
+            "\(range.lowerBound)–\(range.upperBound) reps", locale: locale, bundle: Self.bundle,
+            comment: "Rango de repeticiones por serie. Ej.: 8–12 reps"
+        ))
+    }
+
     /// "Última vez: 60 kg × 10" (M1).
     public func lastTime(_ performance: LastPerformance) -> String {
         let load = self.load(performance.weight, unit: performance.unit)

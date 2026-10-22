@@ -27,6 +27,9 @@ public struct TodayExerciseLine: Equatable, Sendable, Identifiable {
     public let workSetCount: Int
     /// Rango de repeticiones de las series de trabajo; `nil` si sólo hay calentamiento.
     public let repRange: ClosedRange<Int>?
+    /// Compuesto (multiarticular) o aislado (monoarticular), según el catálogo; `nil` si el
+    /// ejercicio ya no está en el catálogo (no se adivina).
+    public let jointClass: JointClass?
     public var id: ExerciseID { exerciseID }
 
     public init(
@@ -34,13 +37,15 @@ public struct TodayExerciseLine: Equatable, Sendable, Identifiable {
         name: String?,
         setCount: Int,
         workSetCount: Int? = nil,
-        repRange: ClosedRange<Int>? = nil
+        repRange: ClosedRange<Int>? = nil,
+        jointClass: JointClass? = nil
     ) {
         self.exerciseID = exerciseID
         self.name = name
         self.setCount = setCount
         self.workSetCount = workSetCount ?? setCount
         self.repRange = repRange
+        self.jointClass = jointClass
     }
 }
 
@@ -230,6 +235,7 @@ public struct TodayPlanBuilder: Sendable {
     func exerciseLines(for template: SessionTemplate?, catalog: ExerciseCatalog) -> [TodayExerciseLine] {
         guard let template else { return [] }
         let names = Dictionary(catalog.exercises.map { ($0.id, $0.canonicalName) }, uniquingKeysWith: { first, _ in first })
+        let jointClasses = Dictionary(catalog.exercises.map { ($0.id, $0.jointClass) }, uniquingKeysWith: { first, _ in first })
         var order: [ExerciseID] = []
         var counts: [ExerciseID: Int] = [:]
         var workCounts: [ExerciseID: Int] = [:]
@@ -249,7 +255,8 @@ public struct TodayPlanBuilder: Sendable {
         return order.map {
             TodayExerciseLine(
                 exerciseID: $0, name: names[$0], setCount: counts[$0] ?? 0,
-                workSetCount: workCounts[$0] ?? 0, repRange: ranges[$0]
+                workSetCount: workCounts[$0] ?? 0, repRange: ranges[$0],
+                jointClass: jointClasses[$0]
             )
         }
     }

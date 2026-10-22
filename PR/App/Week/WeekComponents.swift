@@ -364,8 +364,9 @@ struct MuscleChips: View {
 
 // MARK: - Fila de ejercicio (M1)
 
-/// "Press de banca · 3 × 8–12" y, si existe, "Última vez: 60 kg × 10". Con tamaños de
-/// accesibilidad las cifras pasan debajo del nombre.
+/// Ejercicio de la sesión: número de orden, nombre, etiqueta "Compuesto" o "Aislado" y,
+/// a la derecha, "3 series" sobre "8–12 reps". Si existe, "Última vez: 60 kg × 10". Con
+/// tamaños de accesibilidad las cifras pasan debajo del nombre.
 struct ExerciseLineRow: View {
     let line: TodayExerciseLine
     let last: LastPerformance?
@@ -377,8 +378,8 @@ struct ExerciseLineRow: View {
 
     var body: some View {
         let layout = dynamicTypeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: DSpace.xs))
-            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: DSpace.s))
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: DSpace.s))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: DSpace.s))
         HStack(alignment: .firstTextBaseline, spacing: DSpace.s) {
             // Los símbolos numerados existen del 0 al 50: más allá, sin número.
             if let number, (0...50).contains(number) {
@@ -392,6 +393,9 @@ struct ExerciseLineRow: View {
                 VStack(alignment: .leading, spacing: DSpace.xs) {
                     Text(line.name ?? String(localized: "Ejercicio"))
                         .foregroundStyle(Color.textPrimary)
+                    if let jointClass = line.jointClass {
+                        ExerciseKindTag(jointClass: jointClass)
+                    }
                     if let last {
                         Label {
                             Text(vocabulary.lastTime(last))
@@ -404,13 +408,55 @@ struct ExerciseLineRow: View {
                     }
                 }
                 if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: DSpace.s) }
-                Text(vocabulary.setsAndReps(sets: line.workSetCount, repRange: line.repRange))
-                    .numericStyle()
-                    .foregroundStyle(Color.textSecondary)
+                prescription
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
+    }
+
+    /// "3 series" (destacado) y debajo "8–12 reps": explícito, sin el "3 × 8–12" que hay
+    /// que saber leer.
+    private var prescription: some View {
+        VStack(alignment: dynamicTypeSize.isAccessibilitySize ? .leading : .trailing, spacing: DSpace.xs) {
+            Text(vocabulary.workSets(line.workSetCount))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.textPrimary)
+            if let repRange = line.repRange {
+                Text(vocabulary.reps(repRange))
+                    .font(.footnote)
+                    .foregroundStyle(Color.textSecondary)
+            }
+        }
+        .numericStyle()
+        .fixedSize()
+    }
+}
+
+/// Etiqueta del tipo de ejercicio. Compuesto: varias articulaciones (suele ir primero y
+/// mover más carga); aislado: una sola. Icono + texto, nunca sólo color.
+struct ExerciseKindTag: View {
+    let jointClass: JointClass
+
+    private let vocabulary = TrainingVocabularyPresenter(locale: AppEnvironment.presentationLocale)
+
+    var body: some View {
+        let isCompound = jointClass == .multiJoint
+        Label {
+            Text(vocabulary.exerciseKind(jointClass))
+                .foregroundStyle(Color.textPrimary)
+        } icon: {
+            Image(systemName: isCompound ? "square.stack.3d.up.fill" : "scope")
+                .foregroundStyle(isCompound ? Color.primaryAction : Color.textSecondary)
+        }
+        .font(.caption.weight(.semibold))
+        .padding(.horizontal, DSpace.s)
+        .padding(.vertical, DSpace.xs)
+        .background(Color.surfaceElevated, in: Capsule())
+        .overlay {
+            Capsule().strokeBorder(isCompound ? Color.primaryAction.opacity(0.6) : Color.hairline, lineWidth: 1)
+        }
+        .accessibilityIdentifier("exercise.kind")
     }
 }
 

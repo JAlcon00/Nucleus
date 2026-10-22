@@ -284,6 +284,36 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "%lld sets" } }
       }
     },
+    "%lld reps" : {
+      "comment" : "Repeticiones por serie. Ej.: 10 reps",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%lld reps" } }
+      }
+    },
+    "%lld–%lld reps" : {
+      "comment" : "Rango de repeticiones por serie. Ej.: 8–12 reps",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%1$lld–%2$lld reps" } }
+      }
+    },
+    "1 serie" : {
+      "comment" : "Una sola serie de trabajo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "1 set" } }
+      }
+    },
+    "Aislado" : {
+      "comment" : "Ejercicio monoarticular (una articulación)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Isolation" } }
+      }
+    },
+    "Compuesto" : {
+      "comment" : "Ejercicio multiarticular (varias articulaciones)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Compound" } }
+      }
+    },
     "%lld × %lld" : {
       "comment" : "Series × repeticiones. Ej.: 3 × 10",
       "localizations" : {
