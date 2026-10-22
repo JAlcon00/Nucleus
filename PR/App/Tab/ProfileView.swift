@@ -22,6 +22,10 @@ struct ProfileView: View {
     var onEditAboutYou: () -> Void = {}
     /// Intento: rehacer el cuestionario (mismo flujo que un cambio de plan).
     var onRedoQuestionnaire: () -> Void = {}
+    /// ¿La IA puede usar los datos del perfil? (SCRUM-202)
+    var aiConsentGranted = false
+    /// Intento: dar o retirar el consentimiento (retirarlo aplica al instante).
+    var onSetAIConsent: (Bool) -> Void = { _ in }
 
     @State private var confirmingRedo = false
 
@@ -30,6 +34,7 @@ struct ProfileView: View {
             List {
                 profileHeader
                 aboutYouSection
+                aiSection
 
                 Section("Mi entrenamiento") {
                     NavigationLink {
@@ -115,6 +120,29 @@ struct ProfileView: View {
             }
             .padding(.vertical, DSpace.s)
             .accessibilityElement(children: .combine)
+        }
+        .listRowBackground(Color.surface)
+    }
+
+    /// SCRUM-202: dar o retirar el consentimiento para la IA.
+    private var aiSection: some View {
+        Section {
+            Toggle(isOn: Binding(get: { aiConsentGranted }, set: onSetAIConsent)) {
+                Label {
+                    Text("Personalizar con IA")
+                } icon: {
+                    Image(systemName: "sparkles").foregroundStyle(Color.primaryAction)
+                }
+            }
+            .tint(Color.primaryAction)
+            .accessibilityIdentifier("profile.aiConsent")
+        } header: {
+            Text("Inteligencia artificial")
+        } footer: {
+            Text(aiConsentGranted
+                 ? "La IA usa tu perfil y tu check-in para adaptar tu rutina. Nunca tu nombre."
+                 : "La IA no recibe tus datos. Tu plan lo arma el motor de Nucleus en este iPhone.")
+                .foregroundStyle(Color.textSecondary)
         }
         .listRowBackground(Color.surface)
     }

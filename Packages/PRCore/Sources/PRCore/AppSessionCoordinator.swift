@@ -22,6 +22,8 @@ public final class AppSessionCoordinator {
     private let onboarding: OnboardingCoordinator
     private let todayPlan: TodayPlanCoordinator
     private let planStore: PlanStore?
+    /// Consentimiento para la IA (SCRUM-202): se lee del usuario antes de mostrar su app.
+    private let aiConsent: AIConsentCoordinator?
     /// "Reintentar" pidió relanzar el inicio de sesión al terminar el intento cancelado.
     private var retryRequested = false
 
@@ -32,12 +34,14 @@ public final class AppSessionCoordinator {
         onboarding: OnboardingCoordinator,
         todayPlan: TodayPlanCoordinator,
         planStore: PlanStore?,
+        aiConsent: AIConsentCoordinator? = nil,
         clock: @escaping () -> Date = { Date() },
         timeZone: @escaping () -> TimeZone = { .current }
     ) {
         self.onboarding = onboarding
         self.todayPlan = todayPlan
         self.planStore = planStore
+        self.aiConsent = aiConsent
         self.clock = clock
         self.timeZone = timeZone
     }
@@ -116,6 +120,7 @@ public final class AppSessionCoordinator {
         let state = await onboarding.auth.provider.credentialState(forUserIdentifier: userID)
         guard state.requiresSignIn else { return }
         forgetSession()
+        aiConsent?.load(userID: nil)
         todayPlan.reset()
         onboarding.returnToSignIn()
     }
@@ -123,6 +128,7 @@ public final class AppSessionCoordinator {
     // MARK: - Privado
 
     private func resume(userID: String) async {
+        aiConsent?.load(userID: userID)
         onboarding.resumeSession(userIdentifier: userID)
         switch await todayPlan.restore(userID: userID) {
         case .none: onboarding.beginOnboarding()

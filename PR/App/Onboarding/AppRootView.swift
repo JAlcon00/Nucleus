@@ -48,6 +48,13 @@ struct AppRootView: View {
                     onGoBack: { environment.onboarding.goBack() },
                     onFinish: { finishOnboarding() }
                 )
+            case .completed where environment.aiConsent.needsDecision:
+                // SCRUM-202: antes de armar el plan, la persona decide si la IA usa sus datos.
+                AIConsentView(
+                    saveFailed: environment.aiConsent.saveFailed,
+                    onAccept: { environment.aiConsent.grant() },
+                    onDecline: { environment.aiConsent.decline() }
+                )
             case .completed(let profile):
                 appContent
                     .task(id: PlanActivation(profile: profile, attempt: planAttempt)) {

@@ -33,6 +33,8 @@ public enum PersistenceCollection: String, CaseIterable, Sendable, Hashable {
     case plans
     /// Sesión recordada: sólo el identificador opaco del usuario. SCRUM-26.
     case session
+    /// Consentimiento para compartir el perfil con la IA, por usuario. SCRUM-202.
+    case aiConsent = "ai-consent"
 }
 
 /// Registro de eventos de persistencia SIN datos personales: sólo colección y

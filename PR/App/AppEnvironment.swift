@@ -51,6 +51,9 @@ public final class AppEnvironment {
     /// Arranque y sesión (SCRUM-26): recuerda al usuario y su plan entre arranques.
     public let session: AppSessionCoordinator
 
+    /// Consentimiento para compartir el perfil con la IA (SCRUM-202).
+    public let aiConsent: AIConsentCoordinator
+
     /// Catálogo de ejercicios resolvido (inmutable; fallback vacío documentado).
     public let catalog: ExerciseCatalog
 
@@ -257,6 +260,16 @@ public final class AppEnvironment {
                 persistence.log.saveFailed(.plans)
             }
         }
+        var consentStore: AIConsentStore?
+        if let persistence = self.basePersistence {
+            do {
+                consentStore = try persistence.aiConsentStore()
+            } catch {
+                // Sin almacén la decisión vive sólo en memoria: se vuelve a preguntar al reabrir.
+                persistence.log.saveFailed(.aiConsent)
+            }
+        }
+        self.aiConsent = AIConsentCoordinator(store: consentStore, clock: { fixedDate ?? Date() })
         self.todayPlan = TodayPlanCoordinator(
             catalog: resolvedCatalog,
             planStore: planStore,
@@ -266,6 +279,7 @@ public final class AppEnvironment {
             onboarding: self.onboarding,
             todayPlan: self.todayPlan,
             planStore: planStore,
+            aiConsent: self.aiConsent,
             clock: { fixedDate ?? Date() }
         )
     }

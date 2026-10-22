@@ -57,7 +57,11 @@ struct AppTabBarView: View {
                 aboutYou: environment.completedProfile?.aboutYou,
                 now: environment.now,
                 onEditAboutYou: { editingAboutYou = true },
-                onRedoQuestionnaire: onRedoQuestionnaire
+                onRedoQuestionnaire: onRedoQuestionnaire,
+                aiConsentGranted: environment.aiConsent.consent.allowsSharing,
+                onSetAIConsent: { granted in
+                    if granted { environment.aiConsent.grant() } else { environment.aiConsent.decline() }
+                }
             )
                 .tabItem { tabLabel(.profile) }
                 .tag(AppTab.profile)

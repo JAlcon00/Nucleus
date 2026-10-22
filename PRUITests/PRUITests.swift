@@ -58,7 +58,12 @@ final class PRUITests: XCTestCase {
 
     /// Recorre el cuestionario sin cerrar la presentación final (para observar lo que pasa
     /// mientras el plan se genera). Días: los chips elegidos; por defecto L, Mi y V.
-    private func answerQuestionnaire(_ app: XCUIApplication, days: Set<String> = ["monday", "wednesday", "friday"]) {
+    /// Al terminar responde el consentimiento de la IA (SCRUM-202): por defecto "Ahora no".
+    private func answerQuestionnaire(
+        _ app: XCUIApplication,
+        days: Set<String> = ["monday", "wednesday", "friday"],
+        aiConsent: String = "decline"
+    ) {
         completeAboutYou(app)
         tap(app, "onboarding.option.hypertrophy"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.maintenance"); tap(app, "onboarding.next")
@@ -75,11 +80,16 @@ final class PRUITests: XCTestCase {
         tap(app, "onboarding.skipGym"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.balanced"); tap(app, "onboarding.next")
         tap(app, "onboarding.skipRestrictions"); tap(app, "onboarding.next")
+        tap(app, "aiConsent.\(aiConsent)")
     }
 
     /// Recorre el cuestionario completo hasta llegar a Hoy (cierra "Tu semana").
-    private func completeOnboarding(_ app: XCUIApplication, days: Set<String> = ["monday", "wednesday", "friday"]) {
-        answerQuestionnaire(app, days: days)
+    private func completeOnboarding(
+        _ app: XCUIApplication,
+        days: Set<String> = ["monday", "wednesday", "friday"],
+        aiConsent: String = "decline"
+    ) {
+        answerQuestionnaire(app, days: days, aiConsent: aiConsent)
         // SCRUM-197: tras "Armando tu semana" se presenta "Tu semana".
         tap(app, "weekIntro.done")
     }
@@ -269,6 +279,20 @@ final class PRUITests: XCTestCase {
         confirm.tap()
         XCTAssertTrue(element(app, "onboarding.option.hypertrophy").waitForExistence(timeout: 10),
                       "Rehacer debe abrir el cuestionario")
+    }
+
+    /// SCRUM-202: tras el formulario se pide el consentimiento de la IA una sola vez; en
+    /// Perfil se ve aceptado y se puede retirar.
+    func testAIConsentIsAskedAfterTheFormAndCanBeRevokedInProfile() {
+        let app = launch()
+        completeOnboarding(app, aiConsent: "accept")
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
+        openTab(app, "Perfil")
+        let toggle = app.switches["profile.aiConsent"].firstMatch
+        XCTAssertTrue(toggle.waitForExistence(timeout: 10), "Perfil debe mostrar el consentimiento de la IA")
+        XCTAssertEqual(toggle.value as? String, "1", "Aceptado en el formulario")
+        toggle.switches.firstMatch.tap()
+        XCTAssertEqual(toggle.value as? String, "0", "Retirar aplica al instante")
     }
 
     // MARK: - Hoy
