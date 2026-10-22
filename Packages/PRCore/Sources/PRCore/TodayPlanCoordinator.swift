@@ -106,8 +106,8 @@ public enum TodayPlanError: Error, Equatable, Sendable {
 ///   explícitas; tratar todas igual es una elección determinista y conservadora.
 /// - Equipment: conjunto básico de gimnasio `knownAvailable` (barbell/dumbbell/machine/
 ///   cable/bodyweight) como seed documentado; el perfil de gym real la refina en PR-0901.
-/// - Rotación semanal (`TrainingWeek`, SCRUM-27): los primeros `trainingDaysPerWeek`
-///   días desde el lunes son de entrenamiento y cada uno tiene su slot 0…N-1; el resto
+/// - Rotación semanal (`TrainingWeek`, SCRUM-27/196): los días elegidos son de
+///   entrenamiento y cada uno tiene su slot 0…N-1 en orden de lunes a domingo; el resto
 ///   es descanso. La plantilla del día es `sessions[slot % sessions.count]`.
 /// - Duración estimada: `profile.usualSessionMinutes` (estimación del usuario; el
 ///   cálculo por ejercicio real es PR-0801).
@@ -165,7 +165,7 @@ public struct TodayPlanBuilder: Sendable {
         let estimatedMinutes = profile.usualSessionMinutes
         let todayTemplate = try todaySession(
             from: block.sessions,
-            trainingDaysPerWeek: profile.trainingDaysPerWeek,
+            profile: profile,
             date: date,
             timeZone: timeZone
         )
@@ -270,14 +270,14 @@ public struct TodayPlanBuilder: Sendable {
     /// Elige la plantilla de hoy con la semana del dominio (`TrainingWeek`, SCRUM-27).
     private func todaySession(
         from sessions: [SessionTemplate],
-        trainingDaysPerWeek: Int,
+        profile: OnboardingProfile,
         date: Date,
         timeZone: TimeZone
     ) throws -> SessionTemplate? {
         guard !sessions.isEmpty else { return nil }
         let week: TrainingWeek
         do {
-            week = try TrainingWeek(trainingDaysPerWeek: trainingDaysPerWeek)
+            week = try profile.trainingWeek()
         } catch {
             throw TodayPlanError.invalidInput
         }

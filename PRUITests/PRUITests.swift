@@ -44,12 +44,13 @@ final class PRUITests: XCTestCase {
         target.tap()
     }
 
-    /// Recorre el cuestionario completo hasta llegar a Hoy (días: lo que pida el stepper).
-    private func completeOnboarding(_ app: XCUIApplication, days: Int = 3) {
+    /// Recorre el cuestionario completo hasta llegar a Hoy (días: los chips elegidos;
+    /// por defecto lunes, miércoles y viernes).
+    private func completeOnboarding(_ app: XCUIApplication, days: Set<String> = ["monday", "wednesday", "friday"]) {
         tap(app, "onboarding.option.hypertrophy"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.maintenance"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.intermediate"); tap(app, "onboarding.next")
-        setStepper(app, id: "onboarding.daysStepper", to: days, from: 4)
+        selectDays(app, days)
         tap(app, "onboarding.next")
         // Rodeo del bug "el valor por defecto no se registra": sube y baja un paso. La
         // prueba `testDefaultDaysAndMinutes...` exige que esto no haga falta.
@@ -69,6 +70,17 @@ final class PRUITests: XCTestCase {
         let tab = app.buttons[title].firstMatch
         XCTAssertTrue(tab.waitForExistence(timeout: 10), "No aparece la pestaña '\(title)'", file: file, line: line)
         tab.tap()
+    }
+
+    private static let weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
+    /// Deja elegidos exactamente estos días (SCRUM-196): toca sólo los chips que no coinciden.
+    private func selectDays(_ app: XCUIApplication, _ wanted: Set<String>, file: StaticString = #filePath, line: UInt = #line) {
+        for day in Self.weekdays {
+            let chip = element(app, "onboarding.day.\(day)")
+            XCTAssertTrue(chip.waitForExistence(timeout: 10), "No aparece el día '\(day)'", file: file, line: line)
+            if chip.isSelected != wanted.contains(day) { chip.tap() }
+        }
     }
 
     /// Lleva un Stepper de `from` a `target`. Si ya está en el objetivo no lo toca (la app
@@ -110,8 +122,25 @@ final class PRUITests: XCTestCase {
         tap(app, "onboarding.option.hypertrophy"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.maintenance"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.intermediate"); tap(app, "onboarding.next")
-        XCTAssertTrue(app.steppers["onboarding.daysStepper"].waitForExistence(timeout: 10))
+        XCTAssertTrue(element(app, "onboarding.day.monday").waitForExistence(timeout: 10))
         XCTAssertTrue(element(app, "onboarding.next").isEnabled, "Con los días por defecto se debe poder avanzar")
+    }
+
+    /// SCRUM-196: los días se eligen con chips; con uno solo no se puede avanzar.
+    func testChoosingDaysNeedsAtLeastTwo() {
+        let app = launch()
+        tap(app, "onboarding.option.hypertrophy"); tap(app, "onboarding.next")
+        tap(app, "onboarding.option.maintenance"); tap(app, "onboarding.next")
+        tap(app, "onboarding.option.intermediate"); tap(app, "onboarding.next")
+        // Por defecto: lunes, martes, jueves y viernes (descanso intercalado).
+        for day in Self.weekdays {
+            let expected = ["monday", "tuesday", "thursday", "friday"].contains(day)
+            XCTAssertEqual(element(app, "onboarding.day.\(day)").isSelected, expected, "Día por defecto '\(day)'")
+        }
+        selectDays(app, ["sunday"])
+        XCTAssertFalse(element(app, "onboarding.next").isEnabled, "Con un solo día no se debe poder avanzar")
+        selectDays(app, ["monday", "sunday"])
+        XCTAssertTrue(element(app, "onboarding.next").isEnabled)
     }
 
     func testOnboardingReachesToday() {
@@ -215,7 +244,7 @@ final class PRUITests: XCTestCase {
 
     func testSundayIsRestDayWithoutStartButton() {
         let app = launch(date: Self.sunday)
-        completeOnboarding(app, days: 3)
+        completeOnboarding(app, days: ["monday", "wednesday", "friday"])
         XCTAssertTrue(element(app, "today.restDay").waitForExistence(timeout: 15), "El domingo debe ser día de descanso")
         XCTAssertFalse(element(app, "today.start").exists)
     }

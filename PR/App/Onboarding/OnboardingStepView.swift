@@ -41,15 +41,14 @@ struct OnboardingStepView: View {
 
     /// Valores de los selectores: salen de la respuesta guardada (o del valor por defecto
     /// que el coordinador registra al llegar al paso); nunca de estado local desfasado.
-    private var days: Binding<Int> {
-        Binding(
-            get: {
-                if case .daysPerWeek(let value)? = selected { return value }
-                return OnboardingDefaults.trainingDaysPerWeek
-            },
-            set: { onAnswer(.daysPerWeek($0)) }
-        )
+    private var selectedDays: Set<WeekDay> {
+        if case .trainingDays(let value)? = selected { return value }
+        return OnboardingDefaults.trainingDays
     }
+
+    /// Iniciales y nombres de los días (SCRUM-196).
+    private let vocabulary = TrainingVocabularyPresenter(locale: AppEnvironment.presentationLocale)
+    @ScaledMetric(relativeTo: .headline) private var dayChipSize = DSize.dayChip
 
     private var minutes: Binding<Int> {
         Binding(
@@ -101,7 +100,7 @@ struct OnboardingStepView: View {
         case .goal, .phase, .experience, .variety:
             choicesPicker
         case .daysPerWeek:
-            daysStepper
+            daysPicker
         case .sessionMinutes:
             minutesStepper
         case .gym:
@@ -111,13 +110,65 @@ struct OnboardingStepView: View {
         }
     }
 
-    private var daysStepper: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Stepper(value: days, in: TrainingWeek.allowedTrainingDays) {
-                Text("\(days.wrappedValue) días")
+    /// "¿Qué días puedes entrenar?" (SCRUM-196): 7 chips; el número sale de los elegidos.
+    private var daysPicker: some View {
+        VStack(alignment: .leading, spacing: DSpace.m) {
+            Text("Dejamos descanso entre sesiones para que recuperes. Elige al menos 2 días.")
+                .font(.callout)
+                .foregroundStyle(Color.textSecondary)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: DSpace.xs) {
+                    ForEach(WeekDay.allCases, id: \.self) { dayChip($0) }
+                }
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: dayChipSize), spacing: DSpace.s)], spacing: DSpace.s) {
+                    ForEach(WeekDay.allCases, id: \.self) { dayChip($0) }
+                }
             }
-            .accessibilityLabel("Días de entrenamiento por semana")
-            .accessibilityIdentifier("onboarding.daysStepper")
+            daysSummary
+        }
+    }
+
+    private func dayChip(_ day: WeekDay) -> some View {
+        let isSelected = selectedDays.contains(day)
+        return Button {
+            var days = selectedDays
+            if isSelected { days.remove(day) } else { days.insert(day) }
+            onAnswer(.trainingDays(days))
+        } label: {
+            Text(vocabulary.weekdayInitial(day))
+                .font(.headline)
+                .foregroundStyle(isSelected ? Color.onAccent : Color.textPrimary)
+                .frame(maxWidth: .infinity, minHeight: dayChipSize)
+                .frame(minWidth: dayChipSize)
+                .background {
+                    Circle()
+                        .fill(isSelected ? AnyShapeStyle(LinearGradient.energy) : AnyShapeStyle(Color.surface))
+                }
+                .overlay {
+                    Circle()
+                        .strokeBorder(isSelected ? Color.clear : Color.hairline, lineWidth: 1)
+                }
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(vocabulary.weekdayName(day))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityIdentifier("onboarding.day.\(day.rawValue)")
+    }
+
+    @ViewBuilder
+    private var daysSummary: some View {
+        let count = selectedDays.count
+        if TrainingWeek.allowedTrainingDays.contains(count) {
+            Text("\(count) días por semana")
+                .font(.headline)
+                .numericStyle()
+                .accessibilityIdentifier("onboarding.daysSummary")
+        } else {
+            Label("Elige al menos 2 días", systemImage: "exclamationmark.circle")
+                .font(.headline)
+                .foregroundStyle(Color.warning)
+                .accessibilityIdentifier("onboarding.daysSummary")
         }
     }
 
@@ -228,7 +279,7 @@ struct OnboardingStepView: View {
         case .goal: return "Objetivo"
         case .phase: return "Fase"
         case .experience: return "Experiencia"
-        case .daysPerWeek: return "Días por semana"
+        case .daysPerWeek: return "¿Qué días puedes entrenar?"
         case .sessionMinutes: return "Minutos por sesión"
         case .gym: return "Gimnasio"
         case .variety: return "Variedad"

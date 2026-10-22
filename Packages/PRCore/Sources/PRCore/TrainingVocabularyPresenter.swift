@@ -50,6 +50,33 @@ public struct TrainingVocabularyPresenter: Sendable {
         }
     }
 
+    /// Inicial de un día para los chips de la semana (SCRUM-196). Martes "M" y miércoles
+    /// "Mi" para que no se repitan.
+    public func weekdayInitial(_ day: WeekDay) -> String {
+        switch day {
+        case .monday: return resource("L", "Inicial de lunes en los chips de la semana")
+        case .tuesday: return resource("M", "Inicial de martes en los chips de la semana")
+        case .wednesday: return resource("Mi", "Inicial de miércoles en los chips de la semana")
+        case .thursday: return resource("J", "Inicial de jueves en los chips de la semana")
+        case .friday: return resource("V", "Inicial de viernes en los chips de la semana")
+        case .saturday: return resource("S", "Inicial de sábado en los chips de la semana")
+        case .sunday: return resource("D", "Inicial de domingo en los chips de la semana")
+        }
+    }
+
+    /// Nombre completo de un día (VoiceOver y encabezados de la semana).
+    public func weekdayName(_ day: WeekDay) -> String {
+        switch day {
+        case .monday: return resource("Lunes", "Día de la semana")
+        case .tuesday: return resource("Martes", "Día de la semana")
+        case .wednesday: return resource("Miércoles", "Día de la semana")
+        case .thursday: return resource("Jueves", "Día de la semana")
+        case .friday: return resource("Viernes", "Día de la semana")
+        case .saturday: return resource("Sábado", "Día de la semana")
+        case .sunday: return resource("Domingo", "Día de la semana")
+        }
+    }
+
     // MARK: - Privado
 
     /// Clave estable del planificador → nombre visible; `nil` si no es una clave conocida.

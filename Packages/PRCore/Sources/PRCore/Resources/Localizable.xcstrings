@@ -193,6 +193,90 @@
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Core" } }
       }
+    },
+    "L" : {
+      "comment" : "Inicial de lunes en los chips de la semana",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "M" } }
+      }
+    },
+    "M" : {
+      "comment" : "Inicial de martes en los chips de la semana",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tu" } }
+      }
+    },
+    "Mi" : {
+      "comment" : "Inicial de miércoles en los chips de la semana",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "W" } }
+      }
+    },
+    "J" : {
+      "comment" : "Inicial de jueves en los chips de la semana",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Th" } }
+      }
+    },
+    "V" : {
+      "comment" : "Inicial de viernes en los chips de la semana",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "F" } }
+      }
+    },
+    "S" : {
+      "comment" : "Inicial de sábado en los chips de la semana",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sa" } }
+      }
+    },
+    "D" : {
+      "comment" : "Inicial de domingo en los chips de la semana",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Su" } }
+      }
+    },
+    "Lunes" : {
+      "comment" : "Día de la semana",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Monday" } }
+      }
+    },
+    "Martes" : {
+      "comment" : "Día de la semana",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tuesday" } }
+      }
+    },
+    "Miércoles" : {
+      "comment" : "Día de la semana",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Wednesday" } }
+      }
+    },
+    "Jueves" : {
+      "comment" : "Día de la semana",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Thursday" } }
+      }
+    },
+    "Viernes" : {
+      "comment" : "Día de la semana",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Friday" } }
+      }
+    },
+    "Sábado" : {
+      "comment" : "Día de la semana",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Saturday" } }
+      }
+    },
+    "Domingo" : {
+      "comment" : "Día de la semana",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sunday" } }
+      }
     }
   },
   "version" : "1.0"

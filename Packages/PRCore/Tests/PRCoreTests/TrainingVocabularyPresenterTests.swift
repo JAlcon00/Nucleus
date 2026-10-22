@@ -76,6 +76,13 @@ struct TrainingVocabularyPresenterTests {
         }
     }
 
+    @Test("Días: inicial distinta para martes y miércoles, nombre completo para VoiceOver (SCRUM-196)")
+    func weekdays() {
+        #expect(WeekDay.allCases.map(spanish.weekdayInitial) == ["L", "M", "Mi", "J", "V", "S", "D"])
+        #expect(WeekDay.allCases.map(spanish.weekdayName) == ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"])
+        #expect(Set(WeekDay.allCases.map(spanish.weekdayInitial)).count == 7, "Las iniciales no deben repetirse")
+    }
+
     @Test("En inglés el catálogo trae su traducción")
     func englishTranslation() {
         #expect(english.sessionName("Legs") == "Legs")

@@ -46,6 +46,8 @@ enum DSize {
     static let timerDigits: CGFloat = 64
     /// Botones [−] [+] de peso y reps: más grandes que el mínimo de 44 pt.
     static let stepperButton: CGFloat = 56
+    /// Chip de un día de la semana (L, M, Mi…): el mínimo táctil de 44 pt.
+    static let dayChip: CGFloat = 44
 }
 
 /// Tokens de movimiento. Con Reduce Motion se sustituye el desplazamiento/escala por un

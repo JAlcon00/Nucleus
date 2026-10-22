@@ -130,7 +130,7 @@ public final class OnboardingCoordinator {
                 (.goal, .goal(profile.goal)),
                 (.phase, .phase(profile.phase)),
                 (.experience, .experience(profile.experience)),
-                (.daysPerWeek, .daysPerWeek(profile.trainingDaysPerWeek)),
+                (.daysPerWeek, .trainingDays(profile.trainingWeekdays ?? [])),
                 (.sessionMinutes, .sessionMinutes(profile.usualSessionMinutes)),
                 (.gym, .gym(profile.defaultGymID)),
                 (.variety, .variety(profile.varietyPreference)),
@@ -219,8 +219,8 @@ public final class OnboardingCoordinator {
         switch buildError {
         case .missingAnswer(let step):
             return "Falta responder \(step.rawValue)."
-        case .invalidTrainingDays(let days):
-            return "\(days) días no está en el rango permitido (2...7)."
+        case .invalidTrainingDays:
+            return "Elige al menos 2 días para entrenar."
         case .invalidSessionMinutes(let minutes):
             return "\(minutes) minutos no están en el rango permitido (30...240)."
         }
