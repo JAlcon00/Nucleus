@@ -85,6 +85,28 @@ public struct AboutYou: Codable, Sendable, Hashable {
         self.weightUnit = weightUnit
     }
 
+    // MARK: Estatura en pies y pulgadas (se guarda siempre en cm)
+
+    /// Centímetros por pulgada (definición exacta).
+    public static let centimetersPerInch = 2.54
+
+    /// Centímetros (redondeados) de una estatura en pulgadas.
+    public static func centimeters(fromInches inches: Int) -> Int {
+        Int((Double(inches) * centimetersPerInch).rounded())
+    }
+
+    /// Pulgadas (redondeadas) de una estatura en centímetros.
+    public static func inches(fromCentimeters centimeters: Int) -> Int {
+        Int((Double(centimeters) / centimetersPerInch).rounded())
+    }
+
+    /// Pulgadas que ofrece el selector en ft/in: todas caen dentro del rango en cm.
+    public static var selectableInches: ClosedRange<Int> {
+        let lower = Int((Double(heightCentimetersRange.lowerBound) / centimetersPerInch).rounded(.up))
+        let upper = Int((Double(heightCentimetersRange.upperBound) / centimetersPerInch).rounded(.down))
+        return lower...upper
+    }
+
     /// Edad en `date` (sólo se guarda el año: es la del cumpleaños de ese año).
     public func age(on date: Date, timeZone: TimeZone) -> Int {
         Self.year(of: date, timeZone: timeZone) - birthYear
@@ -130,6 +152,15 @@ public struct AboutYou: Codable, Sendable, Hashable {
     }
 }
 
+/// Un dato de "Sobre ti" que no se acepta. Se explica junto a su campo (SCRUM-198), nunca
+/// con una alerta genérica.
+public enum AboutYouIssue: Equatable, Sendable {
+    case underMinimumAge(minimum: Int)
+    case weightOutOfRange(ClosedRange<Double>, unit: LoadUnit)
+    case heightOutOfRange(ClosedRange<Int>)
+    case nameTooLong(maximum: Int)
+}
+
 /// "Sobre ti" mientras se llena: lo obligatorio puede faltar todavía. Nunca se rellena
 /// con valores inventados (sin edad, sexo o peso no se puede continuar).
 public struct AboutYouAnswer: Equatable, Sendable {
@@ -171,6 +202,28 @@ public struct AboutYouAnswer: Equatable, Sendable {
     /// La edad elegida está por debajo del mínimo: se explica y no se genera el plan.
     public var isUnderMinimumAge: Bool {
         age.map { $0 < AboutYou.minimumAge } ?? false
+    }
+
+    /// Datos escritos que no se aceptan, en el orden de los campos. Lo que falta todavía
+    /// (edad, sexo o peso sin contestar) no es un problema: sólo impide continuar.
+    public var issues: [AboutYouIssue] {
+        var result: [AboutYouIssue] = []
+        if name.trimmingCharacters(in: .whitespacesAndNewlines).count > AboutYou.maxNameLength {
+            result.append(.nameTooLong(maximum: AboutYou.maxNameLength))
+        }
+        if isUnderMinimumAge {
+            result.append(.underMinimumAge(minimum: AboutYou.minimumAge))
+        }
+        if let heightCentimeters, !AboutYou.heightCentimetersRange.contains(heightCentimeters) {
+            result.append(.heightOutOfRange(AboutYou.heightCentimetersRange))
+        }
+        if let weight {
+            let range = AboutYou.weightRange(for: weightUnit)
+            if !range.contains((weight * 10).rounded() / 10) {
+                result.append(.weightOutOfRange(range, unit: weightUnit))
+            }
+        }
+        return result
     }
 
     /// ¿Se puede continuar? Edad (≥ mínimo), sexo y peso válidos; nombre y estatura opcionales.

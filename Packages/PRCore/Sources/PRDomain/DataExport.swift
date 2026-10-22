@@ -32,6 +32,8 @@ public struct ExportBundle: Codable, Equatable, Sendable {
     public let gyms: [GymProfile]
     public let restrictions: [TrainingRestriction]
     public let profile: UserTrainingProfile?
+    /// "Sobre ti" (SCRUM-198): sólo si la persona elige incluirlo; si no, la clave no aparece.
+    public let aboutYou: AboutYou?
 
     public init(
         schemaVersion: Int,
@@ -41,7 +43,8 @@ public struct ExportBundle: Codable, Equatable, Sendable {
         exercises: [Exercise],
         gyms: [GymProfile],
         restrictions: [TrainingRestriction],
-        profile: UserTrainingProfile?
+        profile: UserTrainingProfile?,
+        aboutYou: AboutYou? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.exportedAt = exportedAt
@@ -51,6 +54,7 @@ public struct ExportBundle: Codable, Equatable, Sendable {
         self.gyms = gyms
         self.restrictions = restrictions
         self.profile = profile
+        self.aboutYou = aboutYou
     }
 }
 

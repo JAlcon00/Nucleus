@@ -75,6 +75,32 @@ struct AboutYouTests {
         #expect(pounds.isComplete, "160 lb es un peso válido")
     }
 
+    @Test("Cada dato no aceptado se explica en su campo; lo que falta no es un error")
+    func issuesPerField() {
+        #expect(AboutYouAnswer().issues.isEmpty, "Vacío: falta contestar, pero nada está mal escrito")
+        #expect(complete().issues.isEmpty)
+        var heavy = complete()
+        heavy.weight = 450
+        #expect(heavy.issues == [.weightOutOfRange(AboutYou.weightRange(for: .kilograms), unit: .kilograms)])
+        var young = complete(age: 17)
+        young.name = String(repeating: "a", count: AboutYou.maxNameLength + 1)
+        #expect(young.issues == [.nameTooLong(maximum: AboutYou.maxNameLength), .underMinimumAge(minimum: 18)])
+        var tall = complete()
+        tall.heightCentimeters = 250
+        #expect(tall.issues == [.heightOutOfRange(AboutYou.heightCentimetersRange)])
+    }
+
+    @Test("Estatura en pies y pulgadas: siempre se guarda en cm y cae dentro del rango")
+    func feetAndInches() {
+        #expect(AboutYou.centimeters(fromInches: 69) == 175)
+        #expect(AboutYou.inches(fromCentimeters: 175) == 69)
+        for inches in AboutYou.selectableInches {
+            #expect(AboutYou.heightCentimetersRange.contains(AboutYou.centimeters(fromInches: inches)), "\(inches) in")
+        }
+        #expect(AboutYou.selectableInches.lowerBound == 48)
+        #expect(AboutYou.selectableInches.upperBound == 90)
+    }
+
     // MARK: - Conversión
 
     @Test("La edad se guarda como año de nacimiento; nombre recortado; peso con un decimal")
