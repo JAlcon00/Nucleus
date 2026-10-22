@@ -97,12 +97,17 @@ struct WeekListView: View {
     var isStartingWorkout = false
     /// `nil` = sin CTA (p. ej. en la presentación tras el cuestionario).
     var onStart: (() -> Void)?
+    /// "Por qué tu plan es así" (SCRUM-205); `nil` = no se muestra.
+    var rationale: PlanPersonalizationRecord?
 
     private let vocabulary = TrainingVocabularyPresenter(locale: AppEnvironment.presentationLocale)
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: DSpace.m) {
+                if let rationale, !rationale.rationale.isEmpty {
+                    PlanRationaleCard(record: rationale)
+                }
                 ForEach(week.days) { entry in
                     if let session = entry.session {
                         sessionCard(entry, session: session)

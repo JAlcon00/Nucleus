@@ -218,6 +218,8 @@ final class PRUITests: XCTestCase {
             XCTAssertFalse(element(app, "today.start").exists, "Hoy no se puede tocar mientras carga")
             sleep(1)
         }
+        // SCRUM-205: "Tu semana" explica el plan (aquí con el texto local: en pruebas no hay IA).
+        XCTAssertTrue(element(app, "plan.rationale").waitForExistence(timeout: 15), "Debe verse \"Por qué tu plan es así\"")
         tap(app, "weekIntro.done")
         XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15), "El lunes, ya con plan, toca entrenar")
         XCTAssertFalse(element(app, "today.restDay").exists)

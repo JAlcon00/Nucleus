@@ -4,11 +4,12 @@
 //
 //  Created by PR.
 //
-//  "Armando tu semana" (SCRUM-193): se ve al terminar el cuestionario mientras el motor de
-//  entrenamiento genera y guarda el bloque. Cada paso se marca cuando ocurre de verdad
-//  (`PlanGeneration` del coordinador). Se queda un mínimo de `DMotion.minimumLoaderDuration`
-//  para no parpadear y nunca alarga la espera más allá de eso. El plan lo arma el motor,
-//  no la IA: el texto no dice otra cosa. Vista pura.
+//  "Armando tu semana" (SCRUM-193, SCRUM-205): se ve al terminar el cuestionario mientras el
+//  motor genera el bloque, la IA propone ajustes (sólo con consentimiento y conexión) y se
+//  guarda. Cada paso se marca cuando ocurre de verdad (`PlanGeneration` del coordinador).
+//  Se queda un mínimo de `DMotion.minimumLoaderDuration` para no parpadear y nunca alarga
+//  la espera más allá de eso. El plan lo arma el motor; la IA sólo personaliza: el texto
+//  no dice otra cosa. Vista pura.
 //
 
 import SwiftUI
@@ -18,6 +19,8 @@ import PRDomain
 struct PlanBuildingView: View {
     let generation: PlanGeneration
     let screen: TodayScreen
+    /// ¿Se le va a preguntar a la IA? (consentimiento + conexión). Si no, el paso no aparece.
+    var usesAI = false
     /// El plan terminó (listo o fallido) y pasó el tiempo mínimo: se puede cerrar.
     let onFinished: () -> Void
 
@@ -27,17 +30,22 @@ struct PlanBuildingView: View {
     @ScaledMetric(relativeTo: .largeTitle) private var ringSize = DSize.progressRing
     @ScaledMetric(relativeTo: .body) private var statusIconSize = DSize.statusIcon
 
-    private enum Step: CaseIterable, Identifiable {
-        case volume, order, ready
+    private enum Step: Int, CaseIterable, Identifiable {
+        case profile, engine, ai, ready
         var id: Self { self }
 
         var title: LocalizedStringKey {
             switch self {
-            case .volume: "Repartiendo tu volumen"
-            case .order: "Ordenando ejercicios"
+            case .profile: "Analizando tu perfil"
+            case .engine: "Armando tu bloque"
+            case .ai: "Personalizando con IA"
             case .ready: "Listo"
             }
         }
+    }
+
+    private var steps: [Step] {
+        Step.allCases.filter { $0 != .ai || usesAI }
     }
 
     private enum StepStatus { case pending, inProgress, done }
@@ -57,7 +65,7 @@ struct PlanBuildingView: View {
                 .font(.title2.bold())
                 .accessibilityAddTraits(.isHeader)
             VStack(alignment: .leading, spacing: DSpace.m) {
-                ForEach(Step.allCases) { step in
+                ForEach(steps) { step in
                     stepRow(step)
                 }
             }
@@ -128,18 +136,16 @@ struct PlanBuildingView: View {
     /// Pasos marcados según lo que el coordinador ya terminó (nunca por tiempo).
     private func status(of step: Step) -> StepStatus {
         if case .ready = screen { return .done }
-        switch (step, generation) {
-        case (.volume, .reading), (.volume, .generating), (.volume, .idle):
-            return .inProgress
-        case (.order, .reading), (.order, .generating), (.order, .idle):
-            return .pending
-        case (.volume, .saving), (.order, .saving):
-            return .done
-        case (.ready, .saving):
-            return .inProgress
-        case (.ready, _), (_, .failed):
-            return .pending
+        let current: Step
+        switch generation {
+        case .idle, .reading: current = .profile
+        case .generating: current = .engine
+        case .personalizing: current = .ai
+        case .saving: current = .ready
+        case .failed: return .pending
         }
+        if step.rawValue < current.rawValue { return .done }
+        return step == current ? .inProgress : .pending
     }
 
     private func accessibilityValue(_ status: StepStatus) -> LocalizedStringKey {
@@ -152,8 +158,14 @@ struct PlanBuildingView: View {
 }
 
 #Preview("Generando") {
-    PlanBuildingView(generation: .generating, screen: .loading, onFinished: {})
+    PlanBuildingView(generation: .generating, screen: .loading, usesAI: true, onFinished: {})
         .ironEnergyTheme()
+}
+
+#Preview("Personalizando con IA · oscuro") {
+    PlanBuildingView(generation: .personalizing, screen: .loading, usesAI: true, onFinished: {})
+        .ironEnergyTheme()
+        .preferredColorScheme(.dark)
 }
 
 #Preview("Guardando") {

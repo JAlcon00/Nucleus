@@ -167,6 +167,7 @@ struct ProfileView: View {
         case .live: return String(localized: "Conectada (desarrollo)")
         case .offline(.missingKey): return String(localized: "Modo local (sin llave)")
         case .offline(.releaseBuild): return String(localized: "Modo local")
+        case .offline(.uiTesting): return String(localized: "Modo local (pruebas)")
         }
     }
 

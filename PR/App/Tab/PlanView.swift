@@ -26,6 +26,8 @@ struct PlanView: View {
     /// Empezar la sesión de hoy; `nil` si hoy no hay nada que empezar.
     var onStart: (() -> Void)?
     var onRedoQuestionnaire: () -> Void = {}
+    /// "Por qué tu plan es así" (SCRUM-205).
+    var rationale: PlanPersonalizationRecord?
 
     var body: some View {
         NavigationStack {
@@ -41,7 +43,8 @@ struct PlanView: View {
                             week: week,
                             lastPerformance: lastPerformance,
                             isStartingWorkout: isStartingWorkout,
-                            onStart: onStart
+                            onStart: onStart,
+                            rationale: rationale
                         )
                     } else {
                         emptyState

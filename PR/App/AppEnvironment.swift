@@ -24,16 +24,16 @@ public final class AppEnvironment {
     /// Conexión con la IA (SCRUM-204). Debug: llave leída en runtime sólo de la Mac del
     /// desarrollador (`NVIDIA_API_KEY` o `.env` ignorado). Release: apagada, sin buscar
     /// la llave. NUNCA embebe la llave (§22/§42); antes de TestFlight va a un backend.
-    public let aiConnection: AIConnection = {
-        #if DEBUG
-        AIConnection.resolve(build: .debug)
-        #else
-        AIConnection.resolve(build: .release)
-        #endif
-    }()
+    /// En pruebas de UI queda apagada (deterministas y sin red).
+    public let aiConnection: AIConnection
 
     /// Fachada de la IA: nunca lanza; una falla es "no disponible" y la app sigue local.
     public var aiCoach: AICoach { AICoach(connection: aiConnection) }
+
+    /// ¿Al armar el plan se le pregunta a la IA? Sólo con conexión y consentimiento (SCRUM-205).
+    public var personalizesWithAI: Bool {
+        aiConnection.status.isLive && aiConsent.consent.allowsSharing
+    }
 
     /// Coordinador de onboarding (EPIC-04, PR-0401 + PR-0402 wiring): gate de Sign in
     /// with Apple + flujo de pasos + perfil mínimo. Usa el provider real de producción;
@@ -253,6 +253,17 @@ public final class AppEnvironment {
         let fixedDate = testOptions.fixedDate(timeZone: .current)
         self.fixedDate = fixedDate
         self.uiTestPlanDelay = testOptions.planDelay
+        let aiConnection: AIConnection
+        if testOptions.isolatedPersistence {
+            aiConnection = AIConnection(status: .offline(.uiTesting), provider: OfflineLLMProvider())
+        } else {
+            #if DEBUG
+            aiConnection = AIConnection.resolve(build: .debug)
+            #else
+            aiConnection = AIConnection.resolve(build: .release)
+            #endif
+        }
+        self.aiConnection = aiConnection
         self.onboarding = OnboardingCoordinator(
             authProvider: authProvider ?? mode.provider(appleID: SignInWithAppleProvider()),
             clock: { fixedDate ?? Date() }
@@ -291,7 +302,8 @@ public final class AppEnvironment {
                 persistence.log.saveFailed(.aiConsent)
             }
         }
-        self.aiConsent = AIConsentCoordinator(store: consentStore, clock: { fixedDate ?? Date() })
+        let aiConsent = AIConsentCoordinator(store: consentStore, clock: { fixedDate ?? Date() })
+        self.aiConsent = aiConsent
         var checkInStore: SleepCheckInStore?
         if let persistence = self.basePersistence {
             do {
@@ -300,11 +312,16 @@ public final class AppEnvironment {
                 persistence.log.saveFailed(.checkIns)
             }
         }
-        self.sleepCheckIns = SleepCheckInCoordinator(store: checkInStore, clock: { fixedDate ?? Date() })
+        let sleepCheckIns = SleepCheckInCoordinator(store: checkInStore, clock: { fixedDate ?? Date() })
+        self.sleepCheckIns = sleepCheckIns
         self.todayPlan = TodayPlanCoordinator(
             catalog: resolvedCatalog,
             planStore: planStore,
-            clock: { fixedDate ?? Date() }
+            clock: { fixedDate ?? Date() },
+            // SCRUM-205: la IA personaliza sólo con conexión; sin consentimiento el contexto
+            // es `nil` y no se manda nada.
+            personalizer: aiConnection.status.isLive ? AIPlanPersonalizer(coach: AICoach(connection: aiConnection)) : nil,
+            profileContext: { profile in aiConsent.context(for: profile, sleep: sleepCheckIns.today) }
         )
         self.session = AppSessionCoordinator(
             onboarding: self.onboarding,

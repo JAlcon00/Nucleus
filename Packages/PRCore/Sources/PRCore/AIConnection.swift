@@ -29,6 +29,8 @@ public enum AIOfflineReason: String, Sendable, Hashable, CaseIterable {
     case releaseBuild
     /// Debug sin llave configurada en esta Mac.
     case missingKey
+    /// Pruebas de UI: siempre sin IA (deterministas y sin red).
+    case uiTesting
 }
 
 /// Estado de la conexión, para mostrarlo y decidir si se intenta la IA.

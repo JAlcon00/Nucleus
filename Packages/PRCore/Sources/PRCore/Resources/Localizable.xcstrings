@@ -122,6 +122,30 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Full body" } }
       }
     },
+    "Entrenas %lld días por semana en un bloque de %lld semanas." : {
+      "comment" : "Por qué tu plan: días y semanas",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You train %lld days a week in a %lld-week block." } }
+      }
+    },
+    "Tu semana suma %lld series, repartidas según tu objetivo." : {
+      "comment" : "Por qué tu plan: series por semana",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your week adds up to %lld sets, spread to fit your goal." } }
+      }
+    },
+    "Más volumen para %@." : {
+      "comment" : "Por qué tu plan: músculos con énfasis",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "More volume for %@." } }
+      }
+    },
+    "%@ en lugar de %@." : {
+      "comment" : "Por qué tu plan: ejercicio cambiado",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ instead of %2$@." } }
+      }
+    },
     "Pecho" : {
       "comment" : "Grupo muscular",
       "localizations" : {

@@ -139,6 +139,7 @@ struct AppRootView: View {
                 PlanBuildingView(
                     generation: environment.todayPlan.generation,
                     screen: environment.todayPlan.screen,
+                    usesAI: environment.personalizesWithAI,
                     // Sin fundido de salida: Hoy vuelve a ser tocable y legible para
                     // VoiceOver en el mismo instante en que el loader desaparece.
                     onFinished: {
@@ -149,7 +150,11 @@ struct AppRootView: View {
             }
         }
         .sheet(isPresented: $showingWeekIntro) {
-            WeekIntroView(week: environment.todayPlan.week, onDone: { showingWeekIntro = false })
+            WeekIntroView(
+                week: environment.todayPlan.week,
+                rationale: environment.todayPlan.personalization,
+                onDone: { showingWeekIntro = false }
+            )
         }
         .fullScreenCover(item: $workout) { coordinator in
             NavigationStack {
@@ -218,13 +223,14 @@ private struct PlanActivation: Hashable {
 /// "Tu semana" recién armada (SCRUM-197): se presenta al terminar el cuestionario.
 private struct WeekIntroView: View {
     let week: WeekOverview?
+    let rationale: PlanPersonalizationRecord?
     let onDone: () -> Void
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 if let week {
-                    WeekListView(week: week)
+                    WeekListView(week: week, rationale: rationale)
                 }
                 Button(action: onDone) {
                     Label("Ir a Hoy", systemImage: "arrow.right")

@@ -31,6 +31,9 @@ public struct StoredPlan: Codable, Sendable, Equatable {
     /// Explicación del bloque activo (orden de cada sesión), para "¿Por qué este orden?".
     public var explanation: BlockExplanation
     public var updatedAt: Date
+    /// Lo que la IA personalizó y la explicación "Por qué tu plan es así" (SCRUM-205).
+    /// Opcional: los planes guardados antes no lo traen y siguen leyéndose igual.
+    public var personalization: PlanPersonalizationRecord?
 
     public init(
         userID: String,
@@ -39,7 +42,8 @@ public struct StoredPlan: Codable, Sendable, Equatable {
         blockHistory: [TrainingBlockID],
         generatorVersion: Int = StoredPlan.currentGeneratorVersion,
         explanation: BlockExplanation,
-        updatedAt: Date
+        updatedAt: Date,
+        personalization: PlanPersonalizationRecord? = nil
     ) {
         self.userID = userID
         self.profile = profile
@@ -48,6 +52,7 @@ public struct StoredPlan: Codable, Sendable, Equatable {
         self.generatorVersion = generatorVersion
         self.explanation = explanation
         self.updatedAt = updatedAt
+        self.personalization = personalization
     }
 
     /// ¿Se generó con un generador anterior al actual (hay que regenerarlo)?

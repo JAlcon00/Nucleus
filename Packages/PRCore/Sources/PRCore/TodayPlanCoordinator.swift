@@ -175,9 +175,11 @@ public struct TodayPlanBuilder: Sendable {
         profile: OnboardingProfile,
         catalog: ExerciseCatalog,
         planner: BlockPlanner,
-        blockID: TrainingBlockID? = nil
+        blockID: TrainingBlockID? = nil,
+        emphasis: [MuscleGroup] = []
     ) throws -> BlockPlanningResult {
-        var input = try makeInput(profile: profile, catalog: catalog.exercises)
+        // SCRUM-205: músculos con énfasis aceptados; el motor decide cuántas series implica.
+        var input = try makeInput(profile: profile, catalog: catalog.exercises, emphasis: emphasis)
         input.blockID = blockID
         do {
             return try planner.plan(input: input)
@@ -329,14 +331,15 @@ public struct TodayPlanBuilder: Sendable {
 
     private func makeInput(
         profile: OnboardingProfile,
-        catalog: [Exercise]
+        catalog: [Exercise],
+        emphasis: [MuscleGroup] = []
     ) throws -> BlockPlanningInput {
         BlockPlanningInput(
             goal: profile.goal,
             phase: profile.phase,
             experience: profile.experience,
             trainingDaysPerWeek: profile.trainingDaysPerWeek,
-            priorities: defaultPriorities(),
+            priorities: PlanPersonalizationApplier.priorities(defaultPriorities(), emphasizing: emphasis),
             plannedWeeks: 6,
             varietyPreference: profile.varietyPreference,
             catalog: catalog,
@@ -393,6 +396,8 @@ public enum PlanGeneration: Equatable, Sendable {
     case reading
     /// Repartiendo el volumen y ordenando los ejercicios del bloque.
     case generating
+    /// La IA propone ajustes y el motor los valida (SCRUM-205). Sólo con consentimiento.
+    case personalizing
     /// Guardando el bloque en el dispositivo.
     case saving
     /// El último intento no pudo generar el plan.
@@ -474,7 +479,7 @@ public final class TodayPlanCoordinator {
     /// nunca descanso por defecto.
     public var screen: TodayScreen {
         switch generation {
-        case .reading, .generating, .saving: return .loading
+        case .reading, .generating, .personalizing, .saving: return .loading
         case .failed: return .failed
         case .idle: return plan.map { .ready($0.todayState) } ?? .loading
         }
@@ -495,6 +500,15 @@ public final class TodayPlanCoordinator {
     /// Usuario del plan activo (para buscar plantillas de bloques anteriores).
     private var activeUserID: String?
 
+    /// Personalización del plan activo y "Por qué tu plan es así" (SCRUM-205).
+    public private(set) var personalization: PlanPersonalizationRecord?
+    /// Quién habla con la IA; `nil` = sólo motor local.
+    private let personalizer: (any PlanPersonalizing)?
+    /// Datos del perfil para la IA; `nil` sin consentimiento (entonces no se manda nada).
+    private let profileContext: (OnboardingProfile) -> AgentProfileContext?
+    private let flow: PlanPersonalizationFlow?
+    private let newConversationID: () -> UUID
+
     public init(
         builder: TodayPlanBuilder = TodayPlanBuilder(),
         catalog: ExerciseCatalog,
@@ -502,8 +516,16 @@ public final class TodayPlanCoordinator {
         driver: TodayScreenDriver = TodayScreenDriver(),
         planStore: PlanStore? = nil,
         clock: @escaping () -> Date = { Date() },
-        timeZone: @escaping () -> TimeZone = { .current }
+        timeZone: @escaping () -> TimeZone = { .current },
+        personalizer: (any PlanPersonalizing)? = nil,
+        profileContext: @escaping (OnboardingProfile) -> AgentProfileContext? = { _ in nil },
+        newConversationID: @escaping () -> UUID = { UUID() }
     ) {
+        self.personalizer = personalizer
+        self.profileContext = profileContext
+        self.newConversationID = newConversationID
+        // Sin reglas de política válidas no hay personalización: el plan sigue siendo el del motor.
+        self.flow = (try? PlanPersonalizationValidator.standard()).map { PlanPersonalizationFlow(validator: $0) }
         self.builder = builder
         self.catalog = catalog
         self.planner = planner ?? TodayPlanBuilder.defaultPlanner()
@@ -525,6 +547,7 @@ public final class TodayPlanCoordinator {
                 date: clock(),
                 timeZone: timeZone()
             )
+            personalization = plan?.explanation.map { localPersonalization(facts: $0.facts) }
             activeProfile = profile
             generation = .idle
             return true
@@ -539,6 +562,7 @@ public final class TodayPlanCoordinator {
     public func reset() {
         plan = nil
         notice = nil
+        personalization = nil
         activeProfile = nil
         activeUserID = nil
         generation = .idle
@@ -629,9 +653,10 @@ public final class TodayPlanCoordinator {
         case .loaded(var stored, var block):
             var explanation = stored.explanation
             if stored.needsMigration {
-                guard let regenerated = try? builder.generate(
-                    profile: stored.profile, catalog: catalog, planner: planner, blockID: block.id
-                ) else { return .unreadable }
+                // La personalización aceptada se conserva: mismo énfasis y mismas sustituciones
+                // si siguen siendo válidas sobre el bloque regenerado.
+                guard let regenerated = try? regenerateKeepingPersonalization(stored, blockID: block.id)
+                else { return .unreadable }
                 var migrated = regenerated.block
                 migrated.startDate = block.startDate
                 migrated.status = block.status
@@ -648,6 +673,7 @@ public final class TodayPlanCoordinator {
                 catalog: catalog, driver: driver, date: clock(), timeZone: timeZone(), readiness: readiness
             ) else { return .unreadable }
             plan = today
+            personalization = stored.personalization ?? localPersonalization(facts: explanation.facts)
             activeProfile = stored.profile
             generation = .idle
             return .restored(stored.profile)
@@ -687,6 +713,7 @@ public final class TodayPlanCoordinator {
             switch change {
             case .unchanged:
                 guard let previous else { return failActivation() }
+                personalization = previous.plan.personalization ?? localPersonalization(facts: previous.plan.explanation.facts)
                 plan = try builder.todayPlan(
                     profile: profile, block: previous.block, explanation: previous.plan.explanation,
                     catalog: catalog, driver: driver, date: clock(), timeZone: timeZone(), readiness: readiness
@@ -701,14 +728,17 @@ public final class TodayPlanCoordinator {
                 stored.updatedAt = saveClock()
                 generation = .saving
                 await persist(stored, block: previous.block, closing: nil, store: planStore)
+                personalization = stored.personalization ?? localPersonalization(facts: stored.explanation.facts)
                 try show(profile: profile, block: previous.block, explanation: previous.plan.explanation)
                 return true
             case .regenerateInPlace:
                 guard let previous else { return failActivation() }
                 generation = .generating
-                let result = try builder.generate(
+                let base = try builder.generate(
                     profile: profile, catalog: catalog, planner: planner, blockID: previous.block.id
                 )
+                let personalized = try await personalize(base, profile: profile, blockID: previous.block.id)
+                let result = personalized.result
                 var block = result.block
                 block.startDate = previous.block.startDate
                 block.status = previous.block.status
@@ -716,14 +746,18 @@ public final class TodayPlanCoordinator {
                 stored.profile = profile
                 stored.generatorVersion = StoredPlan.currentGeneratorVersion
                 stored.explanation = result.explanation
+                stored.personalization = personalized.record
                 stored.updatedAt = saveClock()
+                personalization = personalized.record
                 generation = .saving
                 await persist(stored, block: block, closing: nil, store: planStore)
                 try show(profile: profile, block: block, explanation: result.explanation)
                 return true
             case .newBlock:
                 generation = .generating
-                let result = try builder.generate(profile: profile, catalog: catalog, planner: planner)
+                let base = try builder.generate(profile: profile, catalog: catalog, planner: planner)
+                let personalized = try await personalize(base, profile: profile, blockID: base.block.id)
+                let result = personalized.result
                 var block = result.block
                 block.status = .active
                 var closed: TrainingBlock?
@@ -737,8 +771,10 @@ public final class TodayPlanCoordinator {
                     activeBlockID: block.id,
                     blockHistory: (previous?.plan.blockHistory ?? []) + [block.id],
                     explanation: result.explanation,
-                    updatedAt: saveClock()
+                    updatedAt: saveClock(),
+                    personalization: personalized.record
                 )
+                personalization = personalized.record
                 generation = .saving
                 await persist(stored, block: block, closing: closed, store: planStore)
                 try show(profile: profile, block: block, explanation: result.explanation)
@@ -747,6 +783,71 @@ public final class TodayPlanCoordinator {
         } catch {
             return failActivation()
         }
+    }
+
+    /// SCRUM-205: motor → IA → validación → motor. Sin consentimiento o sin IA, el plan del
+    /// motor con la explicación local (no se manda nada). El paso "Personalizando con IA"
+    /// sólo se muestra cuando de verdad se le pregunta a la IA.
+    private func personalize(
+        _ base: BlockPlanningResult,
+        profile: OnboardingProfile,
+        blockID: TrainingBlockID
+    ) async throws -> PersonalizedPlan {
+        guard let flow else {
+            return PersonalizedPlan(result: base, record: localPersonalization(facts: base.explanation.facts))
+        }
+        let context = profileContext(profile)
+        if context != nil, personalizer != nil { generation = .personalizing }
+        let builder = builder, catalog = catalog, planner = planner
+        return try await flow.personalize(
+            base: base,
+            context: context,
+            personalizer: personalizer,
+            catalog: catalog.exercises,
+            restrictions: profile.restrictions,
+            equipment: builder.defaultEquipmentKnownness(),
+            conversationID: newConversationID(),
+            now: saveClock(),
+            regenerate: { emphasis in
+                try builder.generate(profile: profile, catalog: catalog, planner: planner, blockID: blockID, emphasis: emphasis)
+            }
+        )
+    }
+
+    /// Regenera un plan guardado (migración) conservando lo que la IA personalizó y se aceptó.
+    private func regenerateKeepingPersonalization(_ stored: StoredPlan, blockID: TrainingBlockID) throws -> BlockPlanningResult {
+        let decisions = stored.personalization?.decisions.filter(\.isAccepted) ?? []
+        let emphasis = decisions.compactMap { decision -> MuscleGroup? in
+            guard case .emphasize(let muscle) = decision.adjustment else { return nil }
+            return muscle
+        }
+        let substitutions = decisions.compactMap { decision -> ProposedSubstitution? in
+            guard case .substitute(let substitution) = decision.adjustment else { return nil }
+            return substitution
+        }
+        let regenerated = try builder.generate(
+            profile: stored.profile, catalog: catalog, planner: planner, blockID: blockID, emphasis: emphasis
+        )
+        guard !substitutions.isEmpty, let flow else { return regenerated }
+        let review = try flow.validator.reviewSubstitutions(
+            substitutions, block: regenerated.block, catalog: catalog.exercises,
+            activeRestrictions: stored.profile.restrictions, equipment: builder.defaultEquipmentKnownness(),
+            conversationID: newConversationID(), now: saveClock()
+        )
+        return BlockPlanningResult(
+            block: PlanPersonalizationApplier.substituting(review.acceptedSubstitutions, in: regenerated.block),
+            explanation: regenerated.explanation,
+            split: regenerated.split
+        )
+    }
+
+    private func localPersonalization(facts: [DecisionFact]) -> PlanPersonalizationRecord {
+        PlanPersonalizationRecord(
+            decisions: [],
+            rationale: PlanRationalePresenter().lines(facts: facts, emphasis: [], substitutions: []),
+            rationaleSource: .local,
+            audit: []
+        )
     }
 
     private func show(profile: OnboardingProfile, block: TrainingBlock, explanation: BlockExplanation) throws {
