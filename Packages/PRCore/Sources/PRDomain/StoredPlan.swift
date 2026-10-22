@@ -73,11 +73,11 @@ public struct StoredSession: Codable, Sendable, Equatable {
 public enum PlanChange: Equatable, Sendable {
     /// Mismo perfil: se conserva el bloque tal cual.
     case unchanged
-    /// Cambió algo que no define el bloque (minutos, variedad, experiencia, restricciones,
-    /// o qué días de la semana se entrena con el mismo número de días, SCRUM-196):
+    /// Cambió algo que no define el bloque (minutos, variedad, experiencia, restricciones):
     /// se regenera el MISMO bloque (mismo ID e historial).
     case regenerateInPlace
-    /// Cambió objetivo, fase o número de días: bloque nuevo; el anterior se cierra y se conserva.
+    /// Cambió objetivo, fase o los días de entrenamiento (cuántos o cuáles, SCRUM-196):
+    /// bloque nuevo; el anterior se cierra y se conserva.
     case newBlock
     /// Sólo cambió "Sobre ti" (SCRUM-198): se guarda el perfil; el bloque sigue igual.
     case updateProfileOnly
@@ -85,7 +85,9 @@ public enum PlanChange: Equatable, Sendable {
 
 public enum PlanChangeDecider {
     public static func decide(old: OnboardingProfile, new: OnboardingProfile) -> PlanChange {
-        if old.goal != new.goal || old.phase != new.phase || old.trainingDaysPerWeek != new.trainingDaysPerWeek {
+        if old.goal != new.goal || old.phase != new.phase
+            || old.trainingDaysPerWeek != new.trainingDaysPerWeek
+            || old.trainingWeekdays != new.trainingWeekdays {
             return .newBlock
         }
         if old.trainingFields == new.trainingFields {

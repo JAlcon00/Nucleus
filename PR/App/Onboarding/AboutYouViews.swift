@@ -61,6 +61,8 @@ struct AboutYouFields: View {
     let onChange: (AboutYouAnswer) -> Void
 
     @State private var weightText = ""
+    /// Unidad de la estatura en el selector (se guarda siempre en cm). Por defecto, la de la región.
+    @State private var heightInFeet = Locale.current.measurementSystem == .us
     @ScaledMetric(relativeTo: .body) private var wheelHeight = DSize.wheelPicker
 
     var body: some View {
@@ -72,6 +74,7 @@ struct AboutYouFields: View {
                     .autocorrectionDisabled()
                     .inputSurface()
                     .accessibilityIdentifier("aboutYou.name")
+                issueText(for: .name)
             }
 
             field("Edad", purpose: "Para saber si el plan es para ti y cuidar la progresión.") {
@@ -84,12 +87,7 @@ struct AboutYouFields: View {
                 .pickerStyle(.wheel)
                 .frame(height: wheelHeight)
                 .accessibilityIdentifier("aboutYou.age")
-                if answer.isUnderMinimumAge {
-                    Label("Por ahora Nucleus es para mayores de 18 años: el motor de entrenamiento no está validado para menores, así que no armaremos un plan.", systemImage: "info.circle")
-                        .font(.callout)
-                        .foregroundStyle(Color.warning)
-                        .accessibilityIdentifier("aboutYou.underage")
-                }
+                issueText(for: .age)
             }
 
             field("Sexo", purpose: "Para cargas iniciales de referencia. Nunca cambia las reglas de seguridad.") {
@@ -101,17 +99,17 @@ struct AboutYouFields: View {
             }
 
             field("Estatura", optional: true, purpose: "Contexto de tu perfil; hoy ningún cálculo la usa.") {
-                Picker("Estatura", selection: binding(\.heightCentimeters)) {
-                    Text("Sin indicar").tag(Int?.none)
-                    ForEach(AboutYou.heightCentimetersRange, id: \.self) { height in
-                        Text("\(height) cm").tag(Int?.some(height))
+                HStack(spacing: DSpace.s) {
+                    heightPicker
+                    Picker("Unidad de estatura", selection: $heightInFeet) {
+                        Text("cm").tag(false)
+                        Text("ft/in").tag(true)
                     }
+                    .pickerStyle(.segmented)
+                    .fixedSize()
+                    .accessibilityIdentifier("aboutYou.heightUnit")
                 }
-                .pickerStyle(.menu)
-                .tint(Color.textPrimary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .inputSurface()
-                .accessibilityIdentifier("aboutYou.height")
+                issueText(for: .height)
             }
 
             field("Peso", purpose: "Para ejercicios con tu peso corporal y las fases de definición o volumen.") {
@@ -130,6 +128,11 @@ struct AboutYouFields: View {
                     .fixedSize()
                     .accessibilityIdentifier("aboutYou.weightUnit")
                 }
+                if weightTextIsUnreadable {
+                    issueLabel("Escribe tu peso con números, por ejemplo 72.5.", identifier: "aboutYou.issue.weight")
+                } else {
+                    issueText(for: .weight)
+                }
             }
 
             Label("Se guarda solo en tu iPhone. Puedes cambiarlo en Perfil.", systemImage: "lock.fill")
@@ -146,6 +149,101 @@ struct AboutYouFields: View {
             copy.weight = Double(text.replacingOccurrences(of: ",", with: "."))
             onChange(copy)
         }
+    }
+
+    // MARK: Estatura
+
+    /// Selector de estatura en cm o en pies y pulgadas; siempre registra centímetros.
+    @ViewBuilder
+    private var heightPicker: some View {
+        Group {
+            if heightInFeet {
+                Picker("Estatura", selection: inchesBinding) {
+                    Text("Sin indicar").tag(Int?.none)
+                    ForEach(AboutYou.selectableInches, id: \.self) { inches in
+                        Text("\(inches / 12) ft \(inches % 12) in").tag(Int?.some(inches))
+                    }
+                }
+            } else {
+                Picker("Estatura", selection: binding(\.heightCentimeters)) {
+                    Text("Sin indicar").tag(Int?.none)
+                    ForEach(AboutYou.heightCentimetersRange, id: \.self) { height in
+                        Text("\(height) cm").tag(Int?.some(height))
+                    }
+                }
+            }
+        }
+        .pickerStyle(.menu)
+        .tint(Color.textPrimary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .inputSurface()
+        .accessibilityIdentifier("aboutYou.height")
+    }
+
+    /// Pulgadas ↔ centímetros guardados (la conversión es del dominio).
+    private var inchesBinding: Binding<Int?> {
+        Binding(
+            get: { answer.heightCentimeters.map(AboutYou.inches(fromCentimeters:)) },
+            set: { inches in
+                var copy = answer
+                copy.heightCentimeters = inches.map(AboutYou.centimeters(fromInches:))
+                onChange(copy)
+            }
+        )
+    }
+
+    // MARK: Problemas junto a su campo (SCRUM-198)
+
+    private enum Field { case name, age, height, weight }
+
+    /// El texto escrito no es un número (el campo no llega a registrar un peso).
+    private var weightTextIsUnreadable: Bool {
+        let trimmed = weightText.trimmingCharacters(in: .whitespaces)
+        return !trimmed.isEmpty && Double(trimmed.replacingOccurrences(of: ",", with: ".")) == nil
+    }
+
+    @ViewBuilder
+    private func issueText(for field: Field) -> some View {
+        ForEach(Array(answer.issues.enumerated()), id: \.offset) { _, issue in
+            let message = Self.message(for: issue)
+            if message.field == field {
+                issueLabel(message.text, identifier: message.identifier)
+            }
+        }
+    }
+
+    /// Campo y texto de cada problema (exhaustivo: un problema nuevo obliga a explicarlo).
+    private static func message(for issue: AboutYouIssue) -> (field: Field, text: LocalizedStringKey, identifier: String) {
+        switch issue {
+        case .nameTooLong(let maximum):
+            return (.name, "Usa como máximo \(maximum) caracteres.", "aboutYou.issue.name")
+        case .underMinimumAge(let minimum):
+            return (
+                .age,
+                "Por ahora Nucleus es para mayores de \(minimum) años: el motor de entrenamiento no está validado para menores, así que no armaremos un plan.",
+                "aboutYou.underage"
+            )
+        case .heightOutOfRange(let range):
+            return (.height, "Elige una estatura entre \(range.lowerBound) y \(range.upperBound) cm.", "aboutYou.issue.height")
+        case .weightOutOfRange(let range, let unit):
+            let unitText = unit == .pounds ? "lb" : "kg"
+            return (
+                .weight,
+                "Escribe un peso entre \(number(range.lowerBound)) y \(number(range.upperBound)) \(unitText).",
+                "aboutYou.issue.weight"
+            )
+        }
+    }
+
+    private func issueLabel(_ text: LocalizedStringKey, identifier: String) -> some View {
+        Label(text, systemImage: "exclamationmark.circle")
+            .font(.callout)
+            .foregroundStyle(Color.warning)
+            .accessibilityIdentifier(identifier)
+    }
+
+    private static func number(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(0...1)))
     }
 
     private func binding<Value>(_ keyPath: WritableKeyPath<AboutYouAnswer, Value>) -> Binding<Value> {
@@ -293,6 +391,11 @@ struct AboutYouEditSheet: View {
 
 #Preview("Menor de 18") {
     AboutYouView(answer: AboutYouAnswer(age: 17, sex: .male, weight: 65), onChange: { _ in }, onContinue: {})
+        .ironEnergyTheme()
+}
+
+#Preview("Peso fuera de rango") {
+    AboutYouView(answer: AboutYouAnswer(age: 30, sex: .male, weight: 450), onChange: { _ in }, onContinue: {})
         .ironEnergyTheme()
 }
 

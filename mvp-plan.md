@@ -1,7 +1,7 @@
 # mvp-plan.md — Plan activo: MVP / POC de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica POC: SCRUM-180).
-> **Actualizado:** 2026-10-20 por PM/PO.
+> **Actualizado:** 2026-10-22 (tablero sincronizado con Jira y con el código).
 > **Ejecuta:** el agente de IA de Xcode. Hace todo el trabajo asignado en Jira a Gael Durán y Joss Amador, en el orden de este archivo.
 > **Regla:** mientras quede un `[ ]` en las secciones 2 y 3, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
 
@@ -43,8 +43,8 @@ Cada funcionalidad se cierra cuando todas sus casillas están en `[x]`.
 
 ### F-01 · Iniciar sesión y cuestionario — SCRUM-181 (era de Gael)
 - [x] Inicio sesión con Apple y respondo el cuestionario.
-- [ ] El cuestionario se responde **una sola vez**; al cerrar y reabrir entro directo a Hoy con el mismo plan → SCRUM-26.
-- [ ] Funciona sin internet después del primer inicio → SCRUM-26.
+- [x] El cuestionario se responde **una sola vez**; al cerrar y reabrir entro directo a Hoy con el mismo plan → SCRUM-26 (`PlanPersistenceTests`, UI `testReopeningTheAppGoesStraightToToday`).
+- [x] Funciona sin internet después del primer inicio → SCRUM-26 (`PlanPersistenceTests`: credencial `.unavailable` entra a Hoy).
 
 ### F-02 · Plan semanal correcto — SCRUM-182 (era de Joss)
 - [x] La semana tiene exactamente los días elegidos (2 a 7) → SCRUM-27.
@@ -58,18 +58,19 @@ Cada funcionalidad se cierra cuando todas sus casillas están en `[x]`.
 
 ### F-04 · Registrar series sin internet — SCRUM-184 (era de Gael)
 - [x] Una serie cumplida se registra con un toque.
-- [ ] Cada serie queda guardada al instante en disco → SCRUM-24.
-- [ ] Todo funciona en modo avión → SCRUM-24.
+- [x] Cada serie queda guardada al instante en disco → SCRUM-24 (`WorkoutRecoveryTests`: en disco antes de que la UI avance, < 100 ms).
+- [ ] Todo funciona en modo avión → SCRUM-24 (el registro no usa red, sólo disco local; sin prueba automática de modo avión: 👤 Jesús lo marca en dispositivo).
 
 ### F-05 · Retomar el entrenamiento tras cerrar la app — SCRUM-185 (era de Gael)
-- [ ] Al reabrir aparece "Tienes un entrenamiento en curso" → SCRUM-24.
-- [ ] Las series hechas siguen ahí y sigue la siguiente → SCRUM-24.
-- [ ] El descanso muestra el tiempo que realmente queda → SCRUM-24.
+- [x] Al reabrir aparece "Tienes un entrenamiento en curso" → SCRUM-24 (UI `testForceQuitMidWorkoutOffersToContinue`).
+- [x] Las series hechas siguen ahí y sigue la siguiente → SCRUM-24 (`WorkoutRecoveryTests`: 5 series → sigue la 6).
+- [x] El descanso muestra el tiempo que realmente queda → SCRUM-24 (`WorkoutRecoveryTests`: descanso guardado como hora de fin).
 
 ### F-06 · Resumen y exportar historial — SCRUM-186 (era de Gael)
 - [x] Al completar la última serie aparece un resumen.
-- [ ] El resumen muestra duración, series, volumen y récords calculados desde los datos guardados → SCRUM-25.
-- [ ] El entrenamiento queda guardado una sola vez como completado → SCRUM-25.
+- [x] El resumen muestra duración, series, volumen y récords calculados desde los datos guardados → SCRUM-25 (`WorkoutClosingTests`).
+- [x] El entrenamiento queda guardado una sola vez como completado → SCRUM-25 (`WorkoutClosingTests`: Export lo cuenta una vez).
+- [ ] Progreso muestra el registro desde el primer entrenamiento → SCRUM-186 (rama `SCRUM-186-progreso-historial`, commit `05e5a0d`, sin PR todavía).
 - [x] Exportar muestra el número real de entrenamientos y todas sus series → SCRUM-23.
 
 ### F-07 · Ajustar la sesión a mi tiempo (opcional) — SCRUM-187 (era de Joss)
@@ -80,7 +81,7 @@ Entra al demo solo si F-01 a F-06 están completos.
 
 ### Soporte
 - [ ] S-01 · Ambiente demo y deploy — SCRUM-188 (era de Gael). Ver bloque 11.
-- [ ] S-02 · CI en GitHub — SCRUM-189 (era de Joss). Ver bloque 3.
+- [ ] S-02 · CI en GitHub — SCRUM-189 (era de Joss). Ver bloque 3. CI verde en `main` (`bb3c472`); falta 👤 proteger `main`.
 - [ ] S-03 · Pruebas de los flujos — SCRUM-190 (era de Joss). Ver bloque 10.
 - [ ] S-04 · Integración GitHub–Jira — SCRUM-191 (era de Joss). Ver bloque 12.
 - [ ] S-05 · Presentación con demo — SCRUM-192 (era de Gael). Ver bloque 13.
@@ -94,8 +95,8 @@ Diagnóstico verificado en el código el 2026-10-20: todos los bugs descritos ab
 | # | Jira | Qué | Prioridad | Depende de | Estado |
 |---|---|---|---|---|---|
 | 1 | SCRUM-23 | Historial y export correctos (colecciones separadas) | P0 | — | [ ] criterios [x]; falta 👤 manual |
-| 2 | SCRUM-27 | Días correctos de la semana | P0 | — (su test de integración final espera al #6) | [ ] criterios [x]; falta integración con #6 y 👤 manual |
-| 3 | SCRUM-189 | CI en GitHub | P0 soporte | — | [ ] |
+| 2 | SCRUM-27 | Días correctos de la semana | P0 | — (su test de integración final espera al #6) | [ ] criterios [x]; integración con plan persistido [x] (`WeekEndToEndTests`); falta 👤 manual |
+| 3 | SCRUM-189 | CI en GitHub | P0 soporte | — | [ ] criterios del agente [x]; falta 👤 proteger `main` |
 | 4 | SCRUM-24 | No perder el workout si la app se cierra | P0 | 1 | [ ] criterios [x]; falta 👤 manual |
 | 5 | SCRUM-25 | Cerrar bien la sesión al terminar | P0 | 4 | [x] |
 | 6 | SCRUM-26 | Recordar perfil y plan | P0 | 1 | [ ] criterios [x]; falta 👤 manual |
@@ -186,6 +187,8 @@ Evidencia: commit `7b68b38`; `make ci` → `✔ Test run with 427 tests in 68 su
 
 Evidencia: commit `64c95d9`; `make ci` → `✔ Test run with 439 tests in 69 suites passed` + `✔ Test run with 251 tests in 50 suites passed` (2026-10-20). Cálculo único en `PRDomain/TrainingWeek.swift`; tests en `PRDomainTests/TrainingWeekTests.swift` (12) y `PRCoreTests/TodayWeekIntegrationTests.swift` (coordinador real recorriendo 19–25 oct 2026 para N = 2…7). "Zona horaria" se interpreta como día **local** del usuario: el mismo día local da el mismo índice en 5 zonas; cerca de medianoche cuenta el día local, no el de UTC. En día libre el estado es `.restDay` y `TodayView` no tiene botón en ese caso. Regla de días conservada: los primeros N días desde el lunes. **Pendiente:** integración con `AppEnvironment` y plan persistido (espera al bloque 6); 👤 prueba manual de Jesús.
 
+**Actualización (2026-10-22):** integración con plan persistido cubierta por `PRCoreTests/WeekEndToEndTests.swift` (cuestionario real con L/Mi/V, `LocalPersistence` real en directorio temporal, app reabierta cada día con reloj inyectado: entrena L/Mi/V con sesiones distintas y descansa el resto). Queda sólo 👤.
+
 **Tests:**
 - Unitarios:
   - tabla de `weekday` 1…7 contra el índice esperado;
@@ -200,11 +203,13 @@ Evidencia: commit `64c95d9`; `make ci` → `✔ Test run with 439 tests in 69 su
 ### Bloque 3 — SCRUM-189 · CI en GitHub (soporte)
 
 **Criterios:**
-- [ ] `.github/workflows/ci.yml` corre `make ci` en cada pull request y en cada push a `main`, sobre un runner macOS con Xcode 27.x. El workflow fija la versión de Xcode explícitamente.
-- [ ] Los logs de `.ci/` se suben como artifact cuando el job falla.
-- [ ] El resultado se ve en el PR.
+- [x] `.github/workflows/ci.yml` corre `make ci` en cada pull request y en cada push a `main`, sobre un runner macOS. El workflow fija la versión de Xcode con una lista explícita (el runner sólo trae 26.5).
+- [x] Los logs de `.ci/` se suben como artifact cuando el job falla.
+- [x] El resultado se ve en el PR.
 
 **👤 Humano (Jesús):** en GitHub › Settings › Branches, proteger `main` y exigir el check de CI, para que un PR en rojo no se pueda fusionar.
+
+**Estado (2026-10-22):** verde. PR #2 (SCRUM-189) dejó `make ci` en verde con el Xcode 26.5 del runner: el build system `native` de SwiftPM no compilaba el String Catalog (se fija `swiftbuild`), un test dependía del día real y el artifact de `.ci/` salía vacío (carpeta oculta). Corrida verde en `main`: `bb3c472`, run 39731930158. Queda sólo lo 👤: proteger `main`.
 
 **Estado (2026-10-21):** `.github/workflows/ci.yml` corre `make ci` en `macos-26`. **Primera corrida real: falló porque el runner no trae Xcode 27.1** (el riesgo previsto). Se cambió a una lista explícita `XCODE_CANDIDATES: "27.1 27.0 26.5"` (usa la primera instalada, la imprime y falla con la lista de versiones si no hay ninguna). Piso 26.5 = deployment target; el código no usa APIs de iOS 27, así que 26.5 debería compilar. Ningún gate se desactivó. Los criterios siguen en `[ ]` hasta ver una corrida en verde; si vuelve a fallar, pegar el paso "Versiones disponibles" del log. Las pruebas de UI (`make test-ui`) quedan fuera del CI.
 
@@ -446,6 +451,14 @@ Solo se empieza si los bloques 1 a 8 están en `[x]`.
 - Evidencia: `make ci` → "Test run with 482 tests in 73 suites passed" (PRDomain), "Test run with 373 tests in 68 suites passed" (PRCore), XCTest 151 sin fallos, build iOS y watchOS OK, sin warnings nuevos. Tests por bloque: U2 `TodayLoadingStateTests` (8); U6 `TrainingVocabularyPresenterTests` (8); U3 `TrainingDaysTests` (20, con fixture del perfil anterior) y `PlanDaysMigrationTests` (2, plan real reescrito como la versión anterior); U4 `WeekOverviewTests` (12); U5 `AboutYouTests` (11, con fixture del perfil anterior) y `AboutYouFlowTests` (5).
 - Evidencia UI: `make test-ui` (iPad A16, iOS 27.1) → 18 de 18 pruebas de `PRUITests` en verde, con las nuevas de pestañas en español, chips de días, "Tu semana", tira semanal y "Sobre ti" con el mínimo de 18.
 - 👤 Pendiente en dispositivo (Jesús): VoiceOver real, sol directo, Liquid Glass del tab bar sobre carbón con Reduce Transparency e Increase Contrast y la transparencia de iOS 27 en ambos extremos; layout en iPhone pequeño (las pruebas de UI corren en iPad).
+- **Cierre de huecos frente a los criterios de Jira (2026-10-22, rama `scrum-193-198-cierre-huecos`):**
+  - U2: prueba de UI `testPendingPlanNeverShowsRestDay` (plan demorado a propósito con `-PRUITestPlanDelay`, sólo Debug: se ve la carga y nunca "Día de descanso"). El skeleton de Hoy sólo aparece al reintentar tras un error; al arrancar, el plan pendiente se muestra con "Armando tu semana".
+  - U1: guard de colores en `make ci` (`scripts/check_color_tokens.sh`) y previews de Onboarding con `.accessibility3`.
+  - U3: cambiar qué días se entrena crea bloque nuevo (como pide el criterio); chips con palomita además del color; integración de punta a punta L/Mi/V → Hoy correcto los 7 días (`WeekEndToEndTests`).
+  - U4: músculos como chips (`MuscleChips`, bajan de línea con Dynamic Type); integración plan real de 3 días → "Tu semana" = Hoy los 7 días.
+  - U5: cada dato inválido se explica junto a su campo (`AboutYouAnswer.issues`); estatura en cm o ft/in (se guarda en cm); el nombre de Apple prellena "Sobre ti"; el export incluye "Sobre ti" sólo si la persona lo activa; guard de logs en `make ci` (`scripts/check_privacy_logs.sh`).
+  - Evidencia: `make ci` → "Test run with 484 tests in 73 suites passed" (PRDomain), "Test run with 378 tests in 70 suites passed" (PRCore), XCTest 151 sin fallos, build iOS y watchOS OK, guards de documentación, colores y privacidad OK, sin warnings nuevos (sólo el aviso de metadatos de AppIntents de Xcode, que ya existía).
+  - Evidencia UI: `make test-ui` (iPad A16, iOS 27.1) → 19 de 19 pruebas de `PRUITests` en verde, incluida la nueva `testPendingPlanNeverShowsRestDay`.
 
 **Reglas que no se negocian en estos bloques:**
 - **Contraste:** nunca texto blanco sobre `#FF3D2E` (3.22:1) ni sobre `#FF7A1A` (2.39:1). Sobre el acento se usa `onAccent` (negro carbón).

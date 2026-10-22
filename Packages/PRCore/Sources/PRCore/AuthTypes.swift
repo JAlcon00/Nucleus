@@ -18,7 +18,9 @@ import Foundation
 public enum AppleIDAuthResult: Equatable, Sendable {
     /// Autenticación correcta. `userIdentifier` es el identificador opaco del
     /// usuario en Apple (estable y no sensible); se usa como clave del perfil local.
-    case success(userIdentifier: String)
+    /// `givenName`: el nombre que Apple entrega sólo en el primer inicio de sesión (sirve
+    /// para prellenar "Sobre ti"; no se guarda en la sesión ni se loguea).
+    case success(userIdentifier: String, givenName: String? = nil)
     /// El usuario canceló el flujo (no es un error: no se muestra alerta).
     case canceled
     /// Fallo del proveedor de auth.

@@ -148,6 +148,16 @@ struct OnboardingStepView: View {
                     Circle()
                         .strokeBorder(isSelected ? Color.clear : Color.hairline, lineWidth: 1)
                 }
+                // El estado no lo lleva sólo el color: el día elegido lleva una palomita.
+                .overlay(alignment: .topTrailing) {
+                    if isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.caption2.weight(.bold))
+                            .symbolRenderingMode(.palette)
+                            .foregroundStyle(Color.onAccent, Color.textPrimary)
+                            .accessibilityHidden(true)
+                    }
+                }
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -305,5 +315,47 @@ struct OnboardingStepView: View {
             onFinish: {}
         )
     }
+    .ironEnergyTheme()
+}
+
+#Preview("Días · accessibility3") {
+    NavigationStack {
+        OnboardingStepView(
+            step: .daysPerWeek,
+            indexPlusOne: 4,
+            stepCount: 8,
+            canAdvance: true,
+            canGoBack: true,
+            isAtEnd: false,
+            choices: [],
+            selected: .trainingDays([.monday, .wednesday, .friday]),
+            onAnswer: { _ in },
+            onAdvance: {},
+            onGoBack: {},
+            onFinish: {}
+        )
+    }
+    .dynamicTypeSize(.accessibility3)
+    .ironEnergyTheme()
+}
+
+#Preview("Objetivo · accessibility3") {
+    NavigationStack {
+        OnboardingStepView(
+            step: .goal,
+            indexPlusOne: 1,
+            stepCount: 8,
+            canAdvance: true,
+            canGoBack: false,
+            isAtEnd: false,
+            choices: OnboardingChoicePresenter().choices(for: .goal),
+            selected: .goal(.hypertrophy),
+            onAnswer: { _ in },
+            onAdvance: {},
+            onGoBack: {},
+            onFinish: {}
+        )
+    }
+    .dynamicTypeSize(.accessibility3)
     .ironEnergyTheme()
 }

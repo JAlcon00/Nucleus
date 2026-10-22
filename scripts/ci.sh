@@ -8,7 +8,8 @@
 # cualquier fallo de los gates obligatorios.
 #
 # Gates obligatorios (fail-fast, exit != 0 ante fallo):
-#   1. Guard de empaquetado (no hay documentación dentro de PR/ ni PRWatch/).
+#   1. Guards: empaquetado (no hay documentación dentro de PR/ ni PRWatch/), colores sólo
+#      desde DesignTokens.swift y ningún log con datos personales de "Sobre ti".
 #   2. `swift build` del paquete PRCore.
 #   3. `swift test` del paquete PRCore (tests de dominio/app-core).
 #
@@ -84,6 +85,10 @@ run_pbxproj_guard() {
   log ""
   log "[ci] 1/5 guard: sin documentación dentro de PR/ ni PRWatch/"
   "$REPO_ROOT/scripts/check_pbxproj_exception.sh" "$PBX"
+  log "[ci] 1/5 guard: colores sólo desde DesignTokens.swift (SCRUM-194)"
+  "$REPO_ROOT/scripts/check_color_tokens.sh" "$REPO_ROOT"
+  log "[ci] 1/5 guard: ningún log con datos de \"Sobre ti\" (SCRUM-198)"
+  "$REPO_ROOT/scripts/check_privacy_logs.sh" "$REPO_ROOT"
 }
 
 run_package_build() {
