@@ -493,7 +493,7 @@ Solo se empieza si los bloques 1 a 8 están en `[x]`.
 - [ ] 👤 Jesús: probar la IA real con la llave en `.env` (simulador) y Salud en un iPhone físico con datos reales.
 - Antes de TestFlight: mover la llave de la IA a un backend (historia por crear).
 
-## 3.3 Feedback del stakeholder · SCRUM-207 (2026-10-22) — en curso
+## 3.3 Feedback del stakeholder · SCRUM-207 (2026-10-22) — terminada
 
 - **Decisiones de Jesús (2026-10-22):**
   - formulario con 3 flujos según la experiencia;
