@@ -260,16 +260,18 @@ struct WorkoutSessionCoordinatorTests {
     }
 
     @MainActor
-    @Test("cerrar la sesión persiste el registro final vía el hook async")
+    @Test("cerrar la sesión persiste el registro final vía el hook async", .timeLimit(.minutes(1)))
     func finishPersistsSession() async throws {
         let clock = BallClock()
-        var lastFinished: WorkoutSessionRecord?
+        // El hook es async: se espera su señal (antes se sondeaba con un límite fijo de 2 s
+        // que fallaba cuando otros tests ocupaban el hilo principal).
+        let (finished, signal) = AsyncStream<WorkoutSessionRecord>.makeStream()
         let coordinator = WorkoutSessionCoordinator(
             template: try makeTemplate(),
             exerciseNames: [:],
             clock: { clock.now },
             onSessionFinished: { session in
-                await MainActor.run { lastFinished = session }
+                signal.yield(session)
             }
         )
         _ = coordinator.start(now: clock.now)
@@ -278,11 +280,8 @@ struct WorkoutSessionCoordinatorTests {
         _ = try coordinator.completeCurrentSet(now: clock.now) // working 2
         _ = try coordinator.complete(now: clock.now)
 
-        // El hook es async; alcanzamos su efecto tras completar.
-        let deadline = Date().addingTimeInterval(2)
-        while lastFinished == nil && Date() < deadline {
-            try? await Task.sleep(nanoseconds: 10_000_000)
-        }
+        var records = finished.makeAsyncIterator()
+        let lastFinished = await records.next()
         #expect(lastFinished?.sets.count == 3)
     }
 }

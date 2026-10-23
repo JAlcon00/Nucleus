@@ -505,7 +505,7 @@ Solo se empieza si los bloques 1 a 8 están en `[x]`.
 |---|---|---|---|
 | FB-1 | SCRUM-208 | Perfil: modo claro (Sistema/Claro/Oscuro) y cerrar sesión | [x] `13df62f` |
 | FB-2 | SCRUM-209 | Formulario: quitar "Gimnasio" y restricciones con zona + texto | [x] |
-| FB-3 | SCRUM-210 | Formulario adaptado al nivel de experiencia (3 flujos) | [ ] |
+| FB-3 | SCRUM-210 | Formulario adaptado al nivel de experiencia (3 flujos) | [x] |
 | FB-4 | SCRUM-211 | Reordenar los ejercicios del día | [ ] |
 | FB-5 | SCRUM-212 | Saltar o dejar en espera ejercicios durante el entrenamiento | [ ] |
 | FB-6 | SCRUM-213 | Progreso: 4 KPIs y gráfica | [ ] |

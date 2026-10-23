@@ -24,9 +24,12 @@ public struct OnboardingChoice: Equatable, Sendable, Identifiable {
 
 public struct OnboardingChoicePresenter: Sendable {
     private let locale: Locale
+    /// A quién le habla (SCRUM-210): simple para quien empieza, técnico para el avanzado.
+    private let audience: OnboardingAudience
 
-    public init(locale: Locale = .current) {
+    public init(locale: Locale = .current, audience: OnboardingAudience = .standard) {
         self.locale = locale
+        self.audience = audience
     }
 
     /// Opciones del paso, en orden; vacío para pasos que no son de elección.
@@ -48,7 +51,7 @@ public struct OnboardingChoicePresenter: Sendable {
             return VarietyPreference.allCases.map {
                 OnboardingChoice(id: $0.rawValue, label: label($0), answer: .variety($0))
             }
-        case .daysPerWeek, .sessionMinutes, .restrictions:
+        case .daysPerWeek, .sessionMinutes, .priorityMuscles, .restrictions:
             return []
         }
     }
@@ -66,6 +69,16 @@ public struct OnboardingChoicePresenter: Sendable {
     }
 
     private func label(_ goal: TrainingGoal) -> String {
+        if audience == .guided {
+            switch goal {
+            case .generalHealth: return resource("Estar más sano y con energía", "Objetivo (principiante): salud general")
+            case .hypertrophy: return resource("Ganar músculo", "Objetivo (principiante): hipertrofia")
+            case .strength: return resource("Ser más fuerte", "Objetivo (principiante): fuerza")
+            case .powerbuilding: return resource("Fuerza y músculo a la vez", "Objetivo (principiante): powerbuilding")
+            case .recomposition: return resource("Bajar grasa y ganar músculo", "Objetivo (principiante): recomposición")
+            case .bodybuilding: return resource("Culturismo (competir)", "Objetivo (principiante): culturismo")
+            }
+        }
         switch goal {
         case .generalHealth: return resource("Salud general", "Objetivo de entrenamiento")
         case .hypertrophy: return resource("Hipertrofia", "Objetivo de entrenamiento: ganar músculo")
@@ -77,6 +90,24 @@ public struct OnboardingChoicePresenter: Sendable {
     }
 
     private func label(_ phase: BodyCompositionPhase) -> String {
+        switch audience {
+        case .guided:
+            switch phase {
+            case .surplus: return resource("Como de más para subir de peso", "Fase (principiante): superávit")
+            case .deficit: return resource("Como de menos para bajar grasa", "Fase (principiante): déficit")
+            case .maintenance: return resource("Como normal", "Fase (principiante): mantenimiento")
+            case .unspecified: return resource("No sé", "Fase (principiante): sin especificar")
+            }
+        case .expert:
+            switch phase {
+            case .surplus: return resource("Superávit calórico (volumen)", "Fase (avanzado)")
+            case .deficit: return resource("Déficit calórico (definición)", "Fase (avanzado)")
+            case .maintenance: return resource("Normocalórica (mantenimiento)", "Fase (avanzado)")
+            case .unspecified: return resource("Sin especificar", "Fase (avanzado)")
+            }
+        case .standard:
+            break
+        }
         switch phase {
         case .surplus: return resource("Volumen (superávit)", "Fase: comer por encima del mantenimiento")
         case .deficit: return resource("Definición (déficit)", "Fase: comer por debajo del mantenimiento")
@@ -96,6 +127,13 @@ public struct OnboardingChoicePresenter: Sendable {
     }
 
     private func label(_ variety: VarietyPreference) -> String {
+        if audience == .expert {
+            switch variety {
+            case .stable: return resource("Estable (mismos ejercicios ancla)", "Variedad (avanzado)")
+            case .balanced: return resource("Equilibrada (rota accesorios)", "Variedad (avanzado)")
+            case .varied: return resource("Variada (rota más ejercicios)", "Variedad (avanzado)")
+            }
+        }
         switch variety {
         case .stable: return resource("Estable (pocos cambios)", "Preferencia de variedad de ejercicios")
         case .balanced: return resource("Equilibrada", "Preferencia de variedad de ejercicios")

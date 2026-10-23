@@ -59,7 +59,7 @@ private func answerQuestionnaire(_ onboarding: OnboardingCoordinator, days: Set<
     onboarding.updateAboutYou(AboutYouAnswer(age: 30, sex: .female, weight: 62))
     onboarding.confirmAboutYou()
     let answers: [OnboardingAnswer] = [
-        .goal(.hypertrophy), .phase(.maintenance), .experience(.intermediate),
+        .experience(.intermediate), .goal(.hypertrophy), .phase(.maintenance),
         .trainingDays(days), .sessionMinutes(60), .variety(.balanced), .restrictions(.none),
     ]
     for answer in answers {

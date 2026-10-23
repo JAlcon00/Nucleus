@@ -32,6 +32,8 @@ struct OnboardingStepView: View {
     let choices: [OnboardingChoice]
     /// Respuesta guardada del paso actual (marca la opción elegida y fija los selectores).
     let selected: OnboardingAnswer?
+    /// A quién le habla el formulario (SCRUM-210): decide títulos y subtítulos.
+    var audience: OnboardingAudience = .standard
 
     /// Callbacks (intents). `onAnswer` entrega la respuesta tipada del paso.
     let onAnswer: (OnboardingAnswer) -> Void
@@ -114,6 +116,8 @@ struct OnboardingStepView: View {
             daysPicker
         case .sessionMinutes:
             minutesStepper
+        case .priorityMuscles:
+            priorityMusclesRow
         case .restrictions:
             restrictionsRow
         }
@@ -208,6 +212,43 @@ struct OnboardingStepView: View {
         }
     }
 
+    /// Músculos prioritarios elegidos (avanzado, SCRUM-210).
+    private var priorityMuscles: Set<MuscleGroup> {
+        if case .priorityMuscles(let value)? = selected { return value }
+        return []
+    }
+
+    /// SCRUM-210: hasta 2 músculos con más volumen. Al llegar al máximo, los demás se
+    /// desactivan (el límite lo valida el dominio).
+    private var priorityMusclesRow: some View {
+        VStack(alignment: .leading, spacing: DSpace.m) {
+            FlowLayout(spacing: DSpace.s, lineSpacing: DSpace.s) {
+                ForEach(OnboardingFlowPolicy.priorityMuscleOptions, id: \.self) { muscle in
+                    priorityChip(muscle)
+                }
+            }
+            Text("\(priorityMuscles.count) de \(OnboardingFlowPolicy.maxPriorityMuscles) elegidos")
+                .font(.footnote)
+                .numericStyle()
+                .foregroundStyle(Color.textSecondary)
+        }
+    }
+
+    private func priorityChip(_ muscle: MuscleGroup) -> some View {
+        let isSelected = priorityMuscles.contains(muscle)
+        let isFull = priorityMuscles.count >= OnboardingFlowPolicy.maxPriorityMuscles
+        return selectableChip(
+            title: vocabulary.muscleName(muscle),
+            isSelected: isSelected,
+            identifier: "onboarding.priority.\(muscle.rawValue)"
+        ) {
+            var chosen = priorityMuscles
+            if isSelected { chosen.remove(muscle) } else { chosen.insert(muscle) }
+            onAnswer(.priorityMuscles(chosen))
+        }
+        .disabled(isFull && !isSelected)
+    }
+
     /// Respuesta de restricciones actual (zonas, nota y las anteriores al rehacer).
     private var restrictions: RestrictionsAnswer {
         if case .restrictions(let value)? = selected { return value }
@@ -281,12 +322,26 @@ struct OnboardingStepView: View {
     /// Chip de una zona: la elegida lleva palomita además del relleno (no sólo color).
     private func zoneChip(_ region: BodyRegion) -> some View {
         let isSelected = restrictions.zones.contains(region)
-        return Button {
+        return selectableChip(
+            title: vocabulary.bodyRegionName(region),
+            isSelected: isSelected,
+            identifier: "onboarding.zone.\(region.rawValue)"
+        ) {
             var answer = restrictions
             if isSelected { answer.zones.remove(region) } else { answer.zones.insert(region) }
             onAnswer(.restrictions(answer))
-        } label: {
-            Label(vocabulary.bodyRegionName(region), systemImage: isSelected ? "checkmark" : "plus")
+        }
+    }
+
+    /// Chip seleccionable (zonas, músculos): el elegido lleva palomita además del relleno.
+    private func selectableChip(
+        title: String,
+        isSelected: Bool,
+        identifier: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: isSelected ? "checkmark" : "plus")
                 .font(.callout.weight(.semibold))
                 .foregroundStyle(isSelected ? Color.onAccent : Color.textPrimary)
                 .padding(.horizontal, DSpace.m)
@@ -300,7 +355,7 @@ struct OnboardingStepView: View {
         .buttonStyle(.plain)
         .sensoryFeedback(.selection, trigger: isSelected)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .accessibilityIdentifier("onboarding.zone.\(region.rawValue)")
+        .accessibilityIdentifier(identifier)
     }
 
     private func infoCard(icon: String, text: LocalizedStringKey) -> some View {
@@ -346,7 +401,7 @@ struct OnboardingStepView: View {
     private var footer: some View {
         VStack(spacing: DSpace.s) {
             if footerState == .needsAnswer, let hint = hint(for: step) {
-                OnboardingNote(text: hint)
+                OnboardingNote(text: LocalizedStringKey(hint))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .transition(.opacity)
             }
@@ -358,6 +413,7 @@ struct OnboardingStepView: View {
                     .buttonStyle(SurfaceButtonStyle(minHeight: DButton.primaryHeight))
                     .disabled(isFinishing)
                     .accessibilityHint("Vuelve al paso anterior sin perder tus respuestas.")
+                    .accessibilityIdentifier("onboarding.back")
                 }
                 OnboardingPrimaryButton(
                     title: isAtEnd ? "Terminar" : "Siguiente",
@@ -384,38 +440,17 @@ struct OnboardingStepView: View {
 
     // MARK: - Textos e iconos (presentación)
 
-    private func title(for step: OnboardingStep) -> String {
-        switch step {
-        case .goal: return "Objetivo"
-        case .phase: return "Fase"
-        case .experience: return "Experiencia"
-        case .daysPerWeek: return "¿Qué días puedes entrenar?"
-        case .sessionMinutes: return "Minutos por sesión"
-        case .variety: return "Variedad"
-        case .restrictions: return "Restricciones"
-        }
+    /// Textos del paso según la experiencia (SCRUM-210): los decide PRCore.
+    private var copy: OnboardingCopy {
+        OnboardingCopy(locale: AppEnvironment.presentationLocale, audience: audience)
     }
 
-    private func subtitle(for step: OnboardingStep) -> String {
-        switch step {
-        case .goal: return "¿Qué quieres lograr primero? Puedes cambiarlo después."
-        case .phase: return "Cómo estás comiendo ahora. Ajusta el volumen de tu semana."
-        case .experience: return "Cuánto tiempo llevas entrenando con constancia."
-        case .daysPerWeek: return "Dejamos descanso entre sesiones para que recuperes. Elige al menos 2 días."
-        case .sessionMinutes: return "El tiempo que sueles tener para cada entrenamiento."
-        case .variety: return "Cuánto cambian tus ejercicios de una semana a otra."
-        case .restrictions: return "Opcional. Si algo te molesta, lo cuidamos en tu plan."
-        }
-    }
+    private func title(for step: OnboardingStep) -> String { copy.title(for: step) }
+
+    private func subtitle(for step: OnboardingStep) -> String { copy.subtitle(for: step) }
 
     /// Pista del pie cuando aún no se puede avanzar (los días ya explican su mínimo).
-    private func hint(for step: OnboardingStep) -> LocalizedStringKey? {
-        switch step {
-        case .goal, .phase, .experience, .variety: return "Elige una opción para seguir."
-        case .restrictions: return "La nota es demasiado larga."
-        case .daysPerWeek, .sessionMinutes: return nil
-        }
-    }
+    private func hint(for step: OnboardingStep) -> String? { copy.hint(for: step) }
 
     static func icon(for step: OnboardingStep) -> String {
         switch step {
@@ -425,6 +460,7 @@ struct OnboardingStepView: View {
         case .daysPerWeek: return "calendar"
         case .sessionMinutes: return "timer"
         case .variety: return "shuffle"
+        case .priorityMuscles: return "flame"
         case .restrictions: return "cross.case"
         }
     }
@@ -463,7 +499,7 @@ struct OnboardingStepView: View {
             case .balanced: return ("scalemass", nil)
             case .varied: return ("shuffle", nil)
             }
-        case .trainingDays, .sessionMinutes, .restrictions:
+        case .trainingDays, .sessionMinutes, .priorityMuscles, .restrictions:
             return (nil, nil)
         }
     }

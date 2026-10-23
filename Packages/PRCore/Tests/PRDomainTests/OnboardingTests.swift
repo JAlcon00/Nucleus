@@ -36,7 +36,9 @@ struct OnboardingTests {
         #expect(profile.experience == .novice)
         #expect(profile.trainingDaysPerWeek == 3)
         #expect(profile.usualSessionMinutes == 60)
-        #expect(profile.varietyPreference == .balanced)
+        // SCRUM-210: a un novato no se le pregunta la variedad: queda estable.
+        #expect(profile.varietyPreference == OnboardingFlowPolicy.guidedVariety)
+        #expect(profile.priorityMuscles.isEmpty)
         // gym y restrictions opcionales quedan vacíos por defecto.
         #expect(profile.defaultGymID == nil)
         #expect(profile.restrictions.isEmpty)
@@ -139,7 +141,7 @@ struct OnboardingTests {
 
     @Test("SCRUM-209: el formulario ya no tiene paso Gimnasio")
     func noGymStep() {
-        #expect(OnboardingStep.ordered == [.goal, .phase, .experience, .daysPerWeek, .sessionMinutes, .variety, .restrictions])
+        #expect(OnboardingStep.ordered == [.experience, .goal, .phase, .daysPerWeek, .sessionMinutes, .variety, .restrictions])
     }
 
     // MARK: - Draft / back-navigation
@@ -147,10 +149,10 @@ struct OnboardingTests {
     @Test("volver atrás NO pierde las respuestas ya dadas")
     func backNavigationPreservesAnswers() throws {
         var flow = OnboardingFlowController()
-        // Avanza hasta variedad respondiendo cada paso obligatorio.
+        // Avanza hasta variedad respondiendo cada paso obligatorio (experiencia primero).
+        flow = flow.answering(.experience(.advanced)).advance() // → goal
         flow = flow.answering(.goal(.strength)).advance()      // → phase
-        flow = flow.answering(.phase(.surplus)).advance()       // → experience
-        flow = flow.answering(.experience(.advanced)).advance() // → days
+        flow = flow.answering(.phase(.surplus)).advance()       // → days
         flow = flow.answering(.trainingDays(firstDays(4))).advance()        // → session
         flow = flow.answering(.sessionMinutes(90)).advance()    // → variety
         #expect(flow.currentStep == .variety)
@@ -160,7 +162,7 @@ struct OnboardingTests {
         while !flow.isAtStart {
             flow = flow.goBack()
         }
-        #expect(flow.currentStep == .goal)
+        #expect(flow.currentStep == .experience)
 
         // Todas las respuestas sobreviven.
         #expect(flow.draft.answer(for: .goal) == .goal(.strength))
@@ -172,22 +174,22 @@ struct OnboardingTests {
 
     @Test("advance no avanza hasta que el paso obligatorio tiene respuesta")
     func advanceBlockedUntilAnswered() {
-        let flow = OnboardingFlowController() // en .goal, sin respuesta
+        let flow = OnboardingFlowController() // en .experience, sin respuesta
         #expect(flow.canAdvance == false)
         let advanced = flow.advance()
-        #expect(advanced.currentStep == .goal) // no avanza
+        #expect(advanced.currentStep == .experience) // no avanza
     }
 
     @Test("el paso opcional (restricciones) permite avanzar sin respuesta")
     func optionalStepsAdvanceWithoutAnswer() throws {
         var flow = OnboardingFlowController()
         // Llega hasta restricciones (opcional) con respuestas en los obligatorios previos.
+        // Principiante: sin paso de variedad (SCRUM-210).
+        flow = flow.answering(.experience(.beginner)).advance()
         flow = flow.answering(.goal(.generalHealth)).advance()
         flow = flow.answering(.phase(.maintenance)).advance()
-        flow = flow.answering(.experience(.beginner)).advance()
         flow = flow.answering(.trainingDays(firstDays(5))).advance()
         flow = flow.answering(.sessionMinutes(45)).advance()
-        flow = flow.answering(.variety(.balanced)).advance()
         #expect(flow.currentStep == .restrictions)
         #expect(flow.canAdvance == true)
     }
@@ -195,13 +197,12 @@ struct OnboardingTests {
     @Test("el flujo se completa sólo en el último paso con los obligatorios respondidos")
     func flowCompleteOnlyAtEnd() throws {
         var flow = OnboardingFlowController()
-        // Responde todo (gym/restrictions opcionales → se avanza sin responderlos).
+        // Responde todo (restricciones opcional → se termina sin responderlo).
+        flow = flow.answering(.experience(.intermediate)).advance() // → goal
         flow = flow.answering(.goal(.bodybuilding)).advance()   // → phase
-        flow = flow.answering(.phase(.surplus)).advance()        // → experience
-        flow = flow.answering(.experience(.intermediate)).advance() // → days
+        flow = flow.answering(.phase(.surplus)).advance()        // → days
         flow = flow.answering(.trainingDays(firstDays(6))).advance()         // → session
-        flow = flow.answering(.sessionMinutes(120)).advance()    // → gym
-        flow = flow.advance()                                    // gym opcional → variety
+        flow = flow.answering(.sessionMinutes(120)).advance()    // → variety
         flow = flow.answering(.variety(.varied)).advance()       // → restrictions
         #expect(flow.currentStep == .restrictions)
         #expect(flow.isAtEnd == true)
@@ -216,17 +217,17 @@ struct OnboardingTests {
     @Test("goBack en el primer paso no hace nada; advance en el último no hace nada")
     func boundsRespected() throws {
         let first = OnboardingFlowController()
-        #expect(first.goBack().currentStep == .goal) // sin cambio
+        #expect(first.goBack().currentStep == .experience) // sin cambio
 
         var end = OnboardingFlowController()
-        // Llena hasta el último paso con respuestas.
+        // Llena hasta el último paso con respuestas (competitivo: con prioritarios).
+        end = end.answering(.experience(.competitive)).advance()  // → goal
         end = end.answering(.goal(.recomposition)).advance()      // → phase
-        end = end.answering(.phase(.maintenance)).advance()       // → experience
-        end = end.answering(.experience(.competitive)).advance()  // → days
+        end = end.answering(.phase(.maintenance)).advance()       // → days
         end = end.answering(.trainingDays(firstDays(2))).advance()            // → session
-        end = end.answering(.sessionMinutes(30)).advance()        // → gym
-        end = end.advance()                                       // gym opcional → variety
-        end = end.answering(.variety(.stable)).advance()          // → restrictions
+        end = end.answering(.sessionMinutes(30)).advance()        // → variety
+        end = end.answering(.variety(.stable)).advance()          // → priorityMuscles
+        end = end.advance()                                       // opcional → restrictions
         #expect(end.currentStep == .restrictions)
         let same = end.advance()
         #expect(same.currentStep == .restrictions) // no sale del rango

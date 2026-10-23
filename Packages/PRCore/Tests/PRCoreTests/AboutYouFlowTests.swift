@@ -36,7 +36,7 @@ private let validAnswer = AboutYouAnswer(name: "Ana", age: 34, sex: .female, hei
 @MainActor
 private func answerQuestionnaire(_ coordinator: OnboardingCoordinator) {
     let answers: [OnboardingAnswer] = [
-        .goal(.hypertrophy), .phase(.maintenance), .experience(.intermediate),
+        .experience(.intermediate), .goal(.hypertrophy), .phase(.maintenance),
         .trainingDays([.monday, .wednesday, .friday]), .sessionMinutes(60),
         .variety(.balanced), .restrictions(.none),
     ]
@@ -65,7 +65,7 @@ struct AboutYouFlowTests {
         guard case .onboarding(let step, _, _, _, _) = onboarding.phase else {
             Issue.record("Debía estar en el cuestionario"); return
         }
-        #expect(step == .goal, "El cuestionario sigue empezando en el objetivo")
+        #expect(step == .experience, "SCRUM-210: el cuestionario empieza por la experiencia")
     }
 
     @Test("El nombre que Apple entrega en el primer inicio de sesión prellena 'Sobre ti'")

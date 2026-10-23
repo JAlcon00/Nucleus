@@ -178,8 +178,9 @@ public struct TodayPlanBuilder: Sendable {
         blockID: TrainingBlockID? = nil,
         emphasis: [MuscleGroup] = []
     ) throws -> BlockPlanningResult {
-        // SCRUM-205: músculos con énfasis aceptados; el motor decide cuántas series implica.
-        var input = try makeInput(profile: profile, catalog: catalog.exercises, emphasis: emphasis)
+        // SCRUM-205/210: músculos con énfasis (los que eligió la persona avanzada y los que
+        // la IA propuso y se aceptaron); el motor decide cuántas series implica.
+        var input = try makeInput(profile: profile, catalog: catalog.exercises, emphasis: profile.priorityMuscles + emphasis)
         input.blockID = blockID
         do {
             return try planner.plan(input: input)

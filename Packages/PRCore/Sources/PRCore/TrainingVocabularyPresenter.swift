@@ -14,9 +14,13 @@ import PRDomain
 
 public struct TrainingVocabularyPresenter: Sendable {
     private let locale: Locale
+    /// SCRUM-210: quien empieza ve los términos explicados en palabras (RIR → "deja 2
+    /// reps en reserva"); intermedio y avanzado, la terminología de siempre.
+    private let audience: OnboardingAudience
 
-    public init(locale: Locale = .current) {
+    public init(locale: Locale = .current, audience: OnboardingAudience = .standard) {
         self.locale = locale
+        self.audience = audience
     }
 
     /// Nombre visible de una sesión. Conserva la letra de rotación ("Legs B" → "Pierna B").
@@ -149,8 +153,21 @@ public struct TrainingVocabularyPresenter: Sendable {
         ))
     }
 
-    /// RIR objetivo (SCRUM-200): "RIR 2" o "RIR 1–2".
+    /// RIR objetivo (SCRUM-200): "RIR 2" o "RIR 1–2". Para quien empieza, en palabras:
+    /// "Deja 2 reps en reserva" (SCRUM-210).
     public func rir(_ range: ClosedRange<Int>) -> String {
+        if audience == .guided {
+            if range.lowerBound == range.upperBound {
+                return String(localized: LocalizedStringResource(
+                    "Deja \(range.lowerBound) reps en reserva", locale: locale, bundle: Self.bundle,
+                    comment: "RIR explicado para principiantes. Ej.: Deja 2 reps en reserva"
+                ))
+            }
+            return String(localized: LocalizedStringResource(
+                "Deja \(range.lowerBound)–\(range.upperBound) reps en reserva", locale: locale, bundle: Self.bundle,
+                comment: "Rango de RIR explicado para principiantes. Ej.: Deja 1–2 reps en reserva"
+            ))
+        }
         if range.lowerBound == range.upperBound {
             return String(localized: LocalizedStringResource(
                 "RIR \(range.lowerBound)", locale: locale, bundle: Self.bundle,

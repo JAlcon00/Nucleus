@@ -38,12 +38,16 @@ struct AppRootView: View {
                 OnboardingStepView(
                     step: step,
                     indexPlusOne: index + 1,
-                    stepCount: OnboardingStep.ordered.count,
+                    stepCount: environment.onboarding.stepCount,
                     canAdvance: canAdvance,
                     canGoBack: canGoBack,
                     isAtEnd: isAtEnd,
-                    choices: OnboardingChoicePresenter(locale: AppEnvironment.presentationLocale).choices(for: step),
+                    choices: OnboardingChoicePresenter(
+                        locale: AppEnvironment.presentationLocale,
+                        audience: environment.onboarding.audience
+                    ).choices(for: step),
                     selected: environment.onboarding.currentAnswer,
+                    audience: environment.onboarding.audience,
                     onAnswer: { environment.onboarding.select($0) },
                     onAdvance: { environment.onboarding.advance() },
                     onGoBack: { environment.onboarding.goBack() },
@@ -58,6 +62,9 @@ struct AppRootView: View {
                 )
             case .completed(let profile):
                 appContent
+                    // SCRUM-210: el lenguaje de la app sigue la experiencia (RIR en palabras
+                    // para quien empieza).
+                    .environment(\.trainingAudience, OnboardingAudience(profile.experience))
                     .task(id: PlanActivation(profile: profile, attempt: planAttempt)) {
                         // Sólo pruebas de UI (Debug): plan pendiente a propósito (SCRUM-193).
                         if let delay = environment.uiTestPlanDelay {

@@ -218,6 +218,330 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Because of your restriction we are not programming %@ for now." } }
       }
     },
+    "Experiencia" : {
+      "comment" : "Título del paso: experiencia",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Experience" } }
+      }
+    },
+    "¿Qué quieres lograr?" : {
+      "comment" : "Título del paso objetivo (principiante)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "What do you want to achieve?" } }
+      }
+    },
+    "Objetivo" : {
+      "comment" : "Título del paso objetivo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Goal" } }
+      }
+    },
+    "¿Cómo estás comiendo?" : {
+      "comment" : "Título del paso fase (principiante)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "How are you eating?" } }
+      }
+    },
+    "Fase" : {
+      "comment" : "Título del paso fase",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Phase" } }
+      }
+    },
+    "Días de entrenamiento" : {
+      "comment" : "Título del paso días (avanzado)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Training days" } }
+      }
+    },
+    "¿Qué días puedes entrenar?" : {
+      "comment" : "Título del paso días",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Which days can you train?" } }
+      }
+    },
+    "¿Cuánto tiempo tienes?" : {
+      "comment" : "Título del paso minutos (principiante)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "How much time do you have?" } }
+      }
+    },
+    "Minutos por sesión" : {
+      "comment" : "Título del paso minutos",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Minutes per session" } }
+      }
+    },
+    "Duración de la sesión" : {
+      "comment" : "Título del paso minutos (avanzado)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Session length" } }
+      }
+    },
+    "Variedad" : {
+      "comment" : "Título del paso variedad",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Variety" } }
+      }
+    },
+    "Músculos prioritarios" : {
+      "comment" : "Título del paso músculos prioritarios",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Priority muscles" } }
+      }
+    },
+    "¿Algo te molesta?" : {
+      "comment" : "Título del paso restricciones (principiante)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Does anything bother you?" } }
+      }
+    },
+    "Restricciones" : {
+      "comment" : "Título del paso restricciones",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Restrictions" } }
+      }
+    },
+    "Cuánto tiempo llevas entrenando con constancia. Con esto adaptamos las preguntas." : {
+      "comment" : "Subtítulo del paso experiencia",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "How long you have trained consistently. We adapt the questions to it." } }
+      }
+    },
+    "Elige lo que más te importa ahora. Puedes cambiarlo después." : {
+      "comment" : "Subtítulo del paso objetivo (principiante)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pick what matters most to you now. You can change it later." } }
+      }
+    },
+    "¿Qué quieres lograr primero? Puedes cambiarlo después." : {
+      "comment" : "Subtítulo del paso objetivo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "What do you want to achieve first? You can change it later." } }
+      }
+    },
+    "Prioridad del bloque." : {
+      "comment" : "Subtítulo del paso objetivo (avanzado)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Block priority." } }
+      }
+    },
+    "Si no estás seguro, elige \"Como normal\"." : {
+      "comment" : "Subtítulo del paso fase (principiante)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "If you are not sure, choose \"I eat normally\"." } }
+      }
+    },
+    "Cómo estás comiendo ahora. Ajusta el volumen de tu semana." : {
+      "comment" : "Subtítulo del paso fase",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "How you are eating now. It adjusts your weekly volume." } }
+      }
+    },
+    "Balance energético actual: ajusta el volumen semanal." : {
+      "comment" : "Subtítulo del paso fase (avanzado)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Current energy balance: adjusts weekly volume." } }
+      }
+    },
+    "Dejamos días de descanso para que tu cuerpo se recupere. Elige al menos 2." : {
+      "comment" : "Subtítulo del paso días (principiante)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "We leave rest days so your body recovers. Choose at least 2." } }
+      }
+    },
+    "Dejamos descanso entre sesiones para que recuperes. Elige al menos 2 días." : {
+      "comment" : "Subtítulo del paso días",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "We leave rest between sessions so you recover. Choose at least 2 days." } }
+      }
+    },
+    "Frecuencia semanal; el descanso se reparte entre sesiones. Mínimo 2." : {
+      "comment" : "Subtítulo del paso días (avanzado)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Weekly frequency; rest is spread between sessions. Minimum 2." } }
+      }
+    },
+    "Los minutos que puedes dedicar a cada entrenamiento." : {
+      "comment" : "Subtítulo del paso minutos (principiante)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The minutes you can spend on each workout." } }
+      }
+    },
+    "El tiempo que sueles tener para cada entrenamiento." : {
+      "comment" : "Subtítulo del paso minutos",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The time you usually have for each workout." } }
+      }
+    },
+    "Minutos por sesión; si no alcanza se recortan accesorios." : {
+      "comment" : "Subtítulo del paso minutos (avanzado)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Minutes per session; accessories are trimmed if time runs short." } }
+      }
+    },
+    "Rotación de ejercicios entre semanas." : {
+      "comment" : "Subtítulo del paso variedad (avanzado)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Exercise rotation across weeks." } }
+      }
+    },
+    "Cuánto cambian tus ejercicios de una semana a otra." : {
+      "comment" : "Subtítulo del paso variedad",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "How much your exercises change from week to week." } }
+      }
+    },
+    "Opcional. Hasta 2: reciben más volumen semanal (énfasis)." : {
+      "comment" : "Subtítulo del paso músculos prioritarios",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Optional. Up to 2: they get more weekly volume (emphasis)." } }
+      }
+    },
+    "Opcional. Si algo te duele, lo cuidamos en tu plan." : {
+      "comment" : "Subtítulo del paso restricciones (principiante)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Optional. If something hurts, we look after it in your plan." } }
+      }
+    },
+    "Opcional. Si algo te molesta, lo cuidamos en tu plan." : {
+      "comment" : "Subtítulo del paso restricciones",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Optional. If something bothers you, we look after it in your plan." } }
+      }
+    },
+    "Elige una opción para seguir." : {
+      "comment" : "Pista: falta elegir una opción",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose an option to continue." } }
+      }
+    },
+    "Elige como mucho 2." : {
+      "comment" : "Pista: demasiados músculos prioritarios",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose at most 2." } }
+      }
+    },
+    "La nota es demasiado larga." : {
+      "comment" : "Pista: nota de restricciones demasiado larga",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The note is too long." } }
+      }
+    },
+    "Estar más sano y con energía" : {
+      "comment" : "Objetivo (principiante): salud general",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Be healthier and have more energy" } }
+      }
+    },
+    "Ganar músculo" : {
+      "comment" : "Objetivo (principiante): hipertrofia",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Build muscle" } }
+      }
+    },
+    "Ser más fuerte" : {
+      "comment" : "Objetivo (principiante): fuerza",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Get stronger" } }
+      }
+    },
+    "Fuerza y músculo a la vez" : {
+      "comment" : "Objetivo (principiante): powerbuilding",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Strength and muscle together" } }
+      }
+    },
+    "Bajar grasa y ganar músculo" : {
+      "comment" : "Objetivo (principiante): recomposición",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Lose fat and build muscle" } }
+      }
+    },
+    "Culturismo (competir)" : {
+      "comment" : "Objetivo (principiante): culturismo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Bodybuilding (compete)" } }
+      }
+    },
+    "Como de más para subir de peso" : {
+      "comment" : "Fase (principiante): superávit",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I eat more to gain weight" } }
+      }
+    },
+    "Como de menos para bajar grasa" : {
+      "comment" : "Fase (principiante): déficit",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I eat less to lose fat" } }
+      }
+    },
+    "Como normal" : {
+      "comment" : "Fase (principiante): mantenimiento",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I eat normally" } }
+      }
+    },
+    "No sé" : {
+      "comment" : "Fase (principiante): sin especificar",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I don't know" } }
+      }
+    },
+    "Superávit calórico (volumen)" : {
+      "comment" : "Fase (avanzado)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Caloric surplus (bulk)" } }
+      }
+    },
+    "Déficit calórico (definición)" : {
+      "comment" : "Fase (avanzado)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Caloric deficit (cut)" } }
+      }
+    },
+    "Normocalórica (mantenimiento)" : {
+      "comment" : "Fase (avanzado)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Maintenance calories" } }
+      }
+    },
+    "Sin especificar" : {
+      "comment" : "Fase (avanzado)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unspecified" } }
+      }
+    },
+    "Estable (mismos ejercicios ancla)" : {
+      "comment" : "Variedad (avanzado)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Stable (same anchor lifts)" } }
+      }
+    },
+    "Equilibrada (rota accesorios)" : {
+      "comment" : "Variedad (avanzado)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Balanced (rotates accessories)" } }
+      }
+    },
+    "Variada (rota más ejercicios)" : {
+      "comment" : "Variedad (avanzado)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Varied (rotates more exercises)" } }
+      }
+    },
+    "Deja %lld reps en reserva" : {
+      "comment" : "RIR explicado para principiantes. Ej.: Deja 2 reps en reserva",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Leave %lld reps in the tank" } }
+      }
+    },
+    "Deja %lld–%lld reps en reserva" : {
+      "comment" : "Rango de RIR explicado para principiantes. Ej.: Deja 1–2 reps en reserva",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Leave %lld–%lld reps in the tank" } }
+      }
+    },
     "Pecho" : {
       "comment" : "Grupo muscular",
       "localizations" : {

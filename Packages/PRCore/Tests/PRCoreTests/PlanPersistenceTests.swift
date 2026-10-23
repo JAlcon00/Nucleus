@@ -390,7 +390,7 @@ struct AppSessionTests {
         guard case .onboarding(let step, _, _, _, _) = app.onboarding.phase else {
             Issue.record("rehacer debe abrir el cuestionario"); return
         }
-        #expect(step == .goal)
+        #expect(step == .experience)
         #expect(await app.session.planCompleted(profile: profile(days: 4)))
         #expect(try app.persistence.store(for: .blocks).readAllEntries().entries.count == 2)
         #expect(app.todayPlan.plan?.block.id != oldBlock)
@@ -409,8 +409,8 @@ struct AppSessionTests {
         guard case .onboarding(let step, _, _, _, _) = app.onboarding.phase else {
             Issue.record("debía abrir el cuestionario"); return
         }
-        #expect(step == .goal)
-        #expect(app.onboarding.currentAnswer == .goal(.hypertrophy))
+        #expect(step == .experience)
+        #expect(app.onboarding.currentAnswer == .experience(.intermediate), "Parte de las respuestas guardadas")
 
         // Mismo flujo que un cambio de plan: cambiar los días crea un bloque nuevo.
         await app.session.planCompleted(profile: profile(days: 5))

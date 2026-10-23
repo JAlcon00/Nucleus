@@ -18,28 +18,77 @@ import Foundation
 
 /// Orden exhaustivo y tipado de los pasos del onboarding (§4.1).
 public enum OnboardingStep: String, Codable, Sendable, CaseIterable, Hashable {
+    /// SCRUM-210: la experiencia va primero: decide qué se pregunta y con qué lenguaje.
+    case experience
     case goal
     case phase
-    case experience
     case daysPerWeek
     case sessionMinutes
     case variety
+    /// Hasta 2 músculos a enfatizar (sólo avanzado/competitivo, SCRUM-210).
+    case priorityMuscles
     case restrictions
     // SCRUM-209: sin paso "Gimnasio": sólo hay una disciplina y el plan usa el equipo
     // básico de gimnasio. Elegir gimnasio queda para más adelante.
 
-    /// Todos los pasos en el orden del flujo.
+    /// Pasos del flujo estándar (antes de elegir experiencia, o nivel intermedio).
     public static var ordered: [OnboardingStep] {
-        OnboardingStep.allCases
+        OnboardingFlowPolicy.steps(for: nil)
     }
 
-    /// ¿Este paso admite respuesta vacía (no bloqueante)? restrictions es opcional.
+    /// ¿Este paso admite respuesta vacía (no bloqueante)? Prioritarios y restricciones
+    /// son opcionales.
     public var allowsEmptyAnswer: Bool {
         switch self {
         case .goal, .phase, .experience, .daysPerWeek, .sessionMinutes, .variety:
             return false
-        case .restrictions:
+        case .priorityMuscles, .restrictions:
             return true
+        }
+    }
+}
+
+/// A quién le habla el formulario (y la app): lenguaje y pasos según la experiencia.
+public enum OnboardingAudience: String, Sendable, Hashable, CaseIterable {
+    /// Novato o principiante: lenguaje simple, con ejemplos; menos pasos.
+    case guided
+    /// Intermedio: el flujo de siempre.
+    case standard
+    /// Avanzado o competitivo: terminología técnica y más control.
+    case expert
+
+    public init(_ level: ExperienceLevel) {
+        switch level {
+        case .novice, .beginner: self = .guided
+        case .intermediate: self = .standard
+        case .advanced, .competitive: self = .expert
+        }
+    }
+}
+
+/// Qué pasos tiene el formulario según la experiencia y qué se asume en los que se
+/// saltan (SCRUM-210). Lo decide el dominio, nunca la vista.
+public enum OnboardingFlowPolicy {
+    /// Variedad que se asume cuando no se pregunta (guiado): estable, para aprender la
+    /// técnica con los mismos ejercicios.
+    public static let guidedVariety = VarietyPreference.stable
+    /// Músculos prioritarios que puede elegir un avanzado.
+    public static let maxPriorityMuscles = 2
+    /// Músculos que se ofrecen como prioritarios (las prioridades del planificador).
+    public static let priorityMuscleOptions: [MuscleGroup] = [
+        .chest, .back, .shoulders, .biceps, .triceps, .quadriceps, .hamstrings, .glutes,
+    ]
+
+    /// Pasos en orden. Sin experiencia elegida todavía: el flujo estándar.
+    public static func steps(for experience: ExperienceLevel?) -> [OnboardingStep] {
+        let audience = experience.map(OnboardingAudience.init) ?? .standard
+        switch audience {
+        case .guided:
+            return [.experience, .goal, .phase, .daysPerWeek, .sessionMinutes, .restrictions]
+        case .standard:
+            return [.experience, .goal, .phase, .daysPerWeek, .sessionMinutes, .variety, .restrictions]
+        case .expert:
+            return [.experience, .goal, .phase, .daysPerWeek, .sessionMinutes, .variety, .priorityMuscles, .restrictions]
         }
     }
 }
@@ -56,6 +105,8 @@ public enum OnboardingAnswer: Equatable, Sendable {
     case trainingDays(Set<WeekDay>)
     case sessionMinutes(Int)
     case variety(VarietyPreference)
+    /// Músculos a enfatizar (avanzado, SCRUM-210): como mucho `maxPriorityMuscles`.
+    case priorityMuscles(Set<MuscleGroup>)
     /// Zonas con molestia y nota opcional (SCRUM-209).
     case restrictions(RestrictionsAnswer)
 
@@ -66,6 +117,9 @@ public enum OnboardingAnswer: Equatable, Sendable {
         case .trainingDays(let days): return TrainingWeek.allowedTrainingDays.contains(days.count)
         case .sessionMinutes(let minutes): return TrainingWeek.allowedSessionMinutes.contains(minutes)
         case .restrictions(let answer): return answer.isValid
+        case .priorityMuscles(let muscles):
+            return muscles.count <= OnboardingFlowPolicy.maxPriorityMuscles
+                && muscles.isSubset(of: OnboardingFlowPolicy.priorityMuscleOptions)
         case .goal, .phase, .experience, .variety: return true
         }
     }
@@ -87,7 +141,7 @@ public enum OnboardingDefaults {
         switch step {
         case .daysPerWeek: return .trainingDays(trainingDays)
         case .sessionMinutes: return .sessionMinutes(sessionMinutes)
-        case .goal, .phase, .experience, .variety, .restrictions: return nil
+        case .goal, .phase, .experience, .variety, .priorityMuscles, .restrictions: return nil
         }
     }
 }
@@ -118,10 +172,16 @@ public struct OnboardingDraft: Equatable, Sendable {
         answers[step] != nil
     }
 
-    /// ¿Todos los pasos obligatorios están respondidos?
+    /// Experiencia elegida (decide los pasos, SCRUM-210).
+    public var experience: ExperienceLevel? {
+        guard case .experience(let level)? = answers[.experience] else { return nil }
+        return level
+    }
+
+    /// ¿Todos los pasos obligatorios del flujo de esta experiencia están respondidos?
     public var isCompleted: Bool {
-        OnboardingStep.ordered.allSatisfy { step in
-            hasAnswer(for: step)
+        OnboardingFlowPolicy.steps(for: experience).allSatisfy { step in
+            step.allowsEmptyAnswer || hasAnswer(for: step)
         }
     }
 }
@@ -153,6 +213,9 @@ public struct OnboardingProfile: Codable, Sendable, Hashable {
     /// Nota libre del paso "Restricciones" (SCRUM-209). Sólo informa: no cambia el plan,
     /// no es un diagnóstico, nunca va a logs ni a la IA. `nil` en perfiles anteriores.
     public var restrictionNote: String?
+    /// Músculos que la persona (avanzada) pidió enfatizar (SCRUM-210). El motor los usa
+    /// como `.emphasize` y decide cuántas series implica. Vacío en perfiles anteriores.
+    public var priorityMuscles: [MuscleGroup] = []
 
     /// Perfil de "N días": los primeros N desde el lunes (el comportamiento anterior a
     /// SCRUM-196). Lo usan los perfiles guardados antes y los tests.
@@ -221,6 +284,7 @@ public struct OnboardingProfile: Codable, Sendable, Hashable {
     private enum CodingKeys: String, CodingKey {
         case goal, phase, experience, trainingDaysPerWeek, trainingWeekdays
         case usualSessionMinutes, varietyPreference, defaultGymID, restrictions, aboutYou, restrictionNote
+        case priorityMuscles
     }
 
     public init(from decoder: Decoder) throws {
@@ -252,6 +316,8 @@ public struct OnboardingProfile: Codable, Sendable, Hashable {
         aboutYou = try container.decodeIfPresent(AboutYou.self, forKey: .aboutYou)
         // Perfil anterior a SCRUM-209: sin nota.
         restrictionNote = try container.decodeIfPresent(String.self, forKey: .restrictionNote)
+        // Perfil anterior a SCRUM-210: sin músculos prioritarios.
+        priorityMuscles = try container.decodeIfPresent([MuscleGroup].self, forKey: .priorityMuscles) ?? []
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -269,6 +335,10 @@ public struct OnboardingProfile: Codable, Sendable, Hashable {
         try container.encode(restrictions, forKey: .restrictions)
         try container.encodeIfPresent(aboutYou, forKey: .aboutYou)
         try container.encodeIfPresent(restrictionNote, forKey: .restrictionNote)
+        // Vacío no se escribe: un perfil sin prioritarios se guarda igual que antes.
+        if !priorityMuscles.isEmpty {
+            try container.encode(priorityMuscles, forKey: .priorityMuscles)
+        }
     }
 }
 
@@ -298,16 +368,34 @@ public struct OnboardingProfileBuilder: Sendable {
         case invalidTrainingDays(Int)
         case invalidSessionMinutes(Int)
         case restrictionNoteTooLong(Int)
+        case tooManyPriorityMuscles(Int)
     }
 
     /// Construye el perfil sólo si el borrador está completo y las respuestas son válidas.
     public func build(from draft: OnboardingDraft) throws -> OnboardingProfile {
+        guard let experience = draft.answer(for: .experience) else { throw BuildError.missingAnswer(.experience) }
         guard let goal = draft.answer(for: .goal) else { throw BuildError.missingAnswer(.goal) }
         guard let phase = draft.answer(for: .phase) else { throw BuildError.missingAnswer(.phase) }
-        guard let experience = draft.answer(for: .experience) else { throw BuildError.missingAnswer(.experience) }
         guard let days = draft.answer(for: .daysPerWeek) else { throw BuildError.missingAnswer(.daysPerWeek) }
         guard let minutes = draft.answer(for: .sessionMinutes) else { throw BuildError.missingAnswer(.sessionMinutes) }
-        guard let variety = draft.answer(for: .variety) else { throw BuildError.missingAnswer(.variety) }
+        // SCRUM-210: los pasos dependen de la experiencia. Lo que no se pregunta se asume
+        // (guiado: variedad estable) o queda vacío (prioritarios sólo para avanzados),
+        // aunque el borrador conserve una respuesta de antes de cambiar de nivel.
+        let steps = OnboardingFlowPolicy.steps(for: experience.experienceValue)
+        let varietyValue: VarietyPreference
+        if steps.contains(.variety) {
+            guard let variety = draft.answer(for: .variety) else { throw BuildError.missingAnswer(.variety) }
+            varietyValue = variety.varietyValue
+        } else {
+            varietyValue = OnboardingFlowPolicy.guidedVariety
+        }
+        var priorityMuscles: [MuscleGroup] = []
+        if steps.contains(.priorityMuscles), case .priorityMuscles(let chosen)? = draft.answer(for: .priorityMuscles) {
+            guard chosen.count <= OnboardingFlowPolicy.maxPriorityMuscles else {
+                throw BuildError.tooManyPriorityMuscles(OnboardingFlowPolicy.maxPriorityMuscles)
+            }
+            priorityMuscles = OnboardingFlowPolicy.priorityMuscleOptions.filter(chosen.contains)
+        }
 
         let daysValue = days.daysValue
         let minutesValue = minutes.intValue
@@ -326,10 +414,11 @@ public struct OnboardingProfileBuilder: Sendable {
             experience: experience.experienceValue,
             trainingDays: daysValue,
             usualSessionMinutes: minutesValue,
-            varietyPreference: variety.varietyValue,
+            varietyPreference: varietyValue,
             restrictions: restrictions
         )
         profile.restrictionNote = answer.trimmedNote
+        profile.priorityMuscles = priorityMuscles
         return profile
     }
 }
@@ -343,20 +432,33 @@ public struct OnboardingProfileBuilder: Sendable {
 /// - `goBack` retrocede un paso sin borrar nada de lo ya respondido.
 /// - `currentStep` es el paso en el que se está (nunca se sale del rango).
 public struct OnboardingFlowController: Sendable {
-    private let steps: [OnboardingStep]
+    private var steps: [OnboardingStep]
+    /// Pasos fijos (tests); si es `false` los decide la experiencia (SCRUM-210).
+    private let fixedSteps: Bool
     /// Índice del paso actual (0...count-1).
     public private(set) var currentIndex: Int
     /// Borrador con todas las respuestas acumuladas.
     public private(set) var draft: OnboardingDraft
 
+    /// `steps: nil` = los pasos los decide la experiencia del borrador.
     public init(
-        steps: [OnboardingStep] = OnboardingStep.ordered,
+        steps: [OnboardingStep]? = nil,
         startingIndex: Int = 0,
         draft: OnboardingDraft = OnboardingDraft()
     ) {
-        self.steps = steps.isEmpty ? OnboardingStep.ordered : steps
+        let resolved = steps ?? OnboardingFlowPolicy.steps(for: draft.experience)
+        self.steps = resolved.isEmpty ? OnboardingStep.ordered : resolved
+        self.fixedSteps = steps != nil
         self.currentIndex = min(max(0, startingIndex), self.steps.count - 1)
         self.draft = draft
+    }
+
+    /// Número de pasos del flujo actual ("Paso 2 de N").
+    public var stepCount: Int { steps.count }
+
+    /// A quién le habla el formulario (según la experiencia elegida).
+    public var audience: OnboardingAudience {
+        draft.experience.map(OnboardingAudience.init) ?? .standard
     }
 
     public var stepsOrder: [OnboardingStep] { steps }
@@ -374,6 +476,12 @@ public struct OnboardingFlowController: Sendable {
     public func answering(_ answer: OnboardingAnswer) -> OnboardingFlowController {
         var copy = self
         copy.draft = draft.settingAnswer(answer, for: currentStep)
+        // Cambiar la experiencia cambia los pasos que siguen (el actual no se mueve).
+        if !fixedSteps, case .experience(let level) = answer {
+            let current = currentStep
+            copy.steps = OnboardingFlowPolicy.steps(for: level)
+            copy.currentIndex = copy.steps.firstIndex(of: current) ?? min(currentIndex, copy.steps.count - 1)
+        }
         return copy
     }
 

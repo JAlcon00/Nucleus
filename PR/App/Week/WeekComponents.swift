@@ -488,7 +488,11 @@ struct ExerciseKindTag: View {
 struct RIRTag: View {
     let range: ClosedRange<Int>
 
-    private let vocabulary = TrainingVocabularyPresenter(locale: AppEnvironment.presentationLocale)
+    /// SCRUM-210: quien empieza lo ve en palabras ("Deja 2 reps en reserva").
+    @Environment(\.trainingAudience) private var audience
+    private var vocabulary: TrainingVocabularyPresenter {
+        TrainingVocabularyPresenter(locale: AppEnvironment.presentationLocale, audience: audience)
+    }
 
     var body: some View {
         HStack(spacing: DSpace.xs / 2) {
@@ -508,7 +512,8 @@ struct RIRTag: View {
             RoundedRectangle(cornerRadius: DRadius.small / 2).strokeBorder(Color.hairline, lineWidth: 1)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("Repeticiones en reserva: \(vocabulary.rir(range))"))
+        // En palabras ya se explica solo; la sigla necesita su nombre completo.
+        .accessibilityLabel(audience == .guided ? Text(vocabulary.rir(range)) : Text("Repeticiones en reserva: \(vocabulary.rir(range))"))
         .accessibilityIdentifier("exercise.rir")
     }
 }

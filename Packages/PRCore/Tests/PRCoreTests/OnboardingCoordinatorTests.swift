@@ -39,7 +39,7 @@ struct OnboardingCoordinatorTests {
             Issue.record("Debía estar en onboarding, estaba \(coordinator.phase)")
             return
         }
-        #expect(step == .goal)
+        #expect(step == .experience, "SCRUM-210: la experiencia va primero")
         #expect(index == 0)
     }
 
@@ -79,15 +79,15 @@ struct OnboardingCoordinatorTests {
         let coordinator = makeCoordinator()
         await coordinator.signIn()
 
-        coordinator.select(.goal(.hypertrophy))
+        coordinator.select(.experience(.intermediate))
         coordinator.advance()
 
         guard case .onboarding(let step, _, let canGoBack, let canAdvance, _) = coordinator.phase else {
             return
         }
-        #expect(step == .phase)
+        #expect(step == .goal)
         #expect(canGoBack)
-        #expect(!canAdvance) // phase aún sin responder
+        #expect(!canAdvance) // goal aún sin responder
     }
 
     @Test("Volver atrás conserva la respuesta ya dada")
@@ -95,15 +95,15 @@ struct OnboardingCoordinatorTests {
         let coordinator = makeCoordinator()
         await coordinator.signIn()
 
-        coordinator.select(.goal(.hypertrophy))
+        coordinator.select(.experience(.intermediate))
         coordinator.advance()
         coordinator.goBack()
 
         guard case .onboarding(let step, _, _, let canAdvance, _) = coordinator.phase else {
             return
         }
-        #expect(step == .goal)
-        #expect(canAdvance) // el goal sigue respondido
+        #expect(step == .experience)
+        #expect(canAdvance) // la experiencia sigue respondida
     }
 
     @Test("Completar produce el perfil mínimo con las respuestas dadas")
@@ -111,11 +111,11 @@ struct OnboardingCoordinatorTests {
         let coordinator = makeCoordinator()
         await coordinator.signIn()
 
-        // Respondemos cada paso en orden (gym/restrictions opcionales: nil/vacío).
+        // Respondemos cada paso en orden (experiencia primero; restricciones opcional).
         let answers: [OnboardingAnswer] = [
+            .experience(.intermediate),
             .goal(.hypertrophy),
             .phase(.surplus),
-            .experience(.intermediate),
             .trainingDays([.monday, .tuesday, .thursday, .friday]),
             .sessionMinutes(60),
             .variety(.balanced),

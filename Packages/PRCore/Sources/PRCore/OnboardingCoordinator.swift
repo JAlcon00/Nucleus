@@ -168,6 +168,7 @@ public final class OnboardingCoordinator {
                 (.daysPerWeek, .trainingDays(profile.trainingWeekdays ?? [])),
                 (.sessionMinutes, .sessionMinutes(profile.usualSessionMinutes)),
                 (.variety, .variety(profile.varietyPreference)),
+                (.priorityMuscles, .priorityMuscles(Set(profile.priorityMuscles))),
                 (.restrictions, .restrictions(RestrictionsAnswer(
                     zones: Set(profile.restrictions
                         .filter { BodyRegionRestrictionRule.selectableRegions.contains($0.bodyRegion) }
@@ -188,6 +189,12 @@ public final class OnboardingCoordinator {
         flowController = OnboardingFlowController(draft: draft)
         phase = onboardingPhase(for: flowController)
     }
+
+    /// Pasos del flujo actual (cambian con la experiencia, SCRUM-210).
+    public var stepCount: Int { flowController.stepCount }
+
+    /// A quién le habla el formulario según la experiencia elegida (SCRUM-210).
+    public var audience: OnboardingAudience { flowController.audience }
 
     /// Respuesta guardada del paso actual (la UI marca la opción elegida con ella).
     public var currentAnswer: OnboardingAnswer? {
@@ -275,6 +282,8 @@ public final class OnboardingCoordinator {
             return "\(minutes) minutos no están en el rango permitido (30...240)."
         case .restrictionNoteTooLong(let maximum):
             return "La nota de restricciones puede tener hasta \(maximum) caracteres."
+        case .tooManyPriorityMuscles(let maximum):
+            return "Elige como mucho \(maximum) músculos prioritarios."
         }
     }
 }
