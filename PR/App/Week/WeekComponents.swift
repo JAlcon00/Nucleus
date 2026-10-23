@@ -246,6 +246,9 @@ struct DayDetailView: View {
     var onStart: (() -> Void)?
 
     @State private var showingOrder = false
+    @State private var reordering = false
+    /// SCRUM-211: ordenar los ejercicios (nil = no se ofrece).
+    @Environment(\.sessionOrderActions) private var orderActions
     private let vocabulary = TrainingVocabularyPresenter(locale: AppEnvironment.presentationLocale)
 
     var body: some View {
@@ -295,14 +298,26 @@ struct DayDetailView: View {
                     }
                     .padding(.horizontal, DSpace.m)
                     .cardSurface(cornerRadius: DRadius.medium)
-                    if !session.order.isEmpty {
-                        Button {
-                            showingOrder = true
-                        } label: {
-                            Label("¿Por qué este orden?", systemImage: "questionmark.circle")
-                                .frame(minHeight: DSize.dayChip)
+                    HStack {
+                        if !session.order.isEmpty {
+                            Button {
+                                showingOrder = true
+                            } label: {
+                                Label("¿Por qué este orden?", systemImage: "questionmark.circle")
+                                    .frame(minHeight: DSize.dayChip)
+                            }
+                            .accessibilityIdentifier("day.whyOrder")
                         }
-                        .accessibilityIdentifier("day.whyOrder")
+                        Spacer()
+                        if let orderActions, entry.status == .pending, orderActions.canReorder(session.templateID) {
+                            Button {
+                                reordering = true
+                            } label: {
+                                Label("Ordenar", systemImage: "arrow.up.arrow.down")
+                                    .frame(minHeight: DSize.dayChip)
+                            }
+                            .accessibilityIdentifier("day.reorder")
+                        }
                     }
                 }
                 .padding(DSpace.m)
@@ -320,7 +335,16 @@ struct DayDetailView: View {
             }
         }
         .sheet(isPresented: $showingOrder) {
-            OrderExplanationSheet(order: session.order, reorderedByFatigue: session.orderReorderedByFatigue)
+            OrderExplanationSheet(
+                order: session.order,
+                reorderedByFatigue: session.orderReorderedByFatigue,
+                isCustom: orderActions?.isCustom(session.templateID) ?? false
+            )
+        }
+        .sheet(isPresented: $reordering) {
+            if let orderActions {
+                ReorderExercisesSheet(templateID: session.templateID, lines: session.exercises, actions: orderActions)
+            }
         }
     }
 
@@ -547,12 +571,23 @@ struct DropsetNote: View {
 struct OrderExplanationSheet: View {
     let order: [TodayOrderLine]
     let reorderedByFatigue: Bool
+    /// SCRUM-211: el orden actual lo eligió la persona; abajo va el recomendado.
+    var isCustom = false
 
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             List {
+                if isCustom {
+                    Section {
+                        Label("Este orden lo elegiste tú. Abajo está el que recomienda el motor; puedes volver a él en \"Ordenar\".", systemImage: "hand.point.up.left")
+                            .font(.callout)
+                            .foregroundStyle(Color.textPrimary)
+                            .accessibilityIdentifier("order.custom")
+                    }
+                    .listRowBackground(Color.surface)
+                }
                 Section {
                     ForEach(order) { line in
                         VStack(alignment: .leading, spacing: DSpace.xs) {

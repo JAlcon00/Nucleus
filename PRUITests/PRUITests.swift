@@ -355,6 +355,33 @@ final class PRUITests: XCTestCase {
         XCTAssertEqual(toggle.value as? String, "0", "Retirar aplica al instante")
     }
 
+    /// SCRUM-211: reordenar en Hoy cambia el orden, "¿Por qué este orden?" dice que es
+    /// tuyo y "Volver al orden recomendado" lo restablece.
+    func testReorderTodayExercisesAndReset() {
+        let app = launch()
+        completeOnboarding(app)
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
+        let firstName = element(app, "today.exercise.0").label
+        let secondName = element(app, "today.exercise.1").label
+        XCTAssertNotEqual(firstName, secondName)
+
+        tap(app, "today.reorder")
+        tap(app, "reorder.down.0")
+        tap(app, "reorder.save")
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 10))
+        XCTAssertEqual(element(app, "today.exercise.0").label, secondName, "El segundo pasa al primer lugar")
+        XCTAssertEqual(element(app, "today.exercise.1").label, firstName)
+
+        tap(app, "today.whyOrder")
+        XCTAssertTrue(element(app, "order.custom").waitForExistence(timeout: 5), "Dice que el orden es tuyo")
+        app.buttons["Listo"].firstMatch.tap()
+
+        tap(app, "today.reorder")
+        tap(app, "reorder.reset")
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 10))
+        XCTAssertEqual(element(app, "today.exercise.0").label, firstName, "Vuelve al recomendado")
+    }
+
     /// SCRUM-210: un principiante ve 6 pasos (sin "Variedad"), lenguaje simple y, en Hoy,
     /// el RIR explicado en palabras.
     func testBeginnerFlowIsSimplerAndExplainsRIR() {

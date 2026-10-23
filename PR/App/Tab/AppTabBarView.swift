@@ -117,7 +117,9 @@ struct AppTabBarView: View {
                 asksSleepCheckIn: environment.asksSleepCheckIn,
                 onSleepCheckIn: { hours, quality in environment.recordSleep(hours: hours, quality: quality) },
                 onSkipSleepCheckIn: { environment.sleepCheckIns.skip() },
-                readinessNote: environment.todayPlan.plan.flatMap { vocabulary.readinessNote($0.readiness) }
+                readinessNote: environment.todayPlan.plan.flatMap { vocabulary.readinessNote($0.readiness) },
+                todayTemplateID: environment.todayPlan.plan?.todayTemplate?.id,
+                orderIsCustom: environment.todayPlan.plan?.todayOrderIsCustom ?? false
             )
             .navigationTitle(AppTab.today.title)
         }

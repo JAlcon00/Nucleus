@@ -73,6 +73,28 @@ public final class AppEnvironment {
         sleepCheckIns.needsCheckIn && activeWorkout == nil && todayPlan.plan?.todayTemplate != nil
     }
 
+    /// SCRUM-211: ¿se puede reordenar la sesión? No la que está en curso (dentro del
+    /// entrenamiento se usa "dejar en espera").
+    public func canReorderSession(_ templateID: SessionTemplate.ID) -> Bool {
+        activeWorkout?.template.id != templateID
+    }
+
+    /// SCRUM-211: guarda el orden propio de una sesión (el coordinador valida y guarda).
+    public func reorderSession(_ templateID: SessionTemplate.ID, to order: [ExerciseID]) async -> Bool {
+        guard canReorderSession(templateID) else { return false }
+        let saved = await todayPlan.reorderSession(templateID, to: order)
+        if saved { refreshTodayState() }
+        return saved
+    }
+
+    /// SCRUM-211: vuelve al orden recomendado de la sesión.
+    public func resetSessionOrder(_ templateID: SessionTemplate.ID) async -> Bool {
+        guard canReorderSession(templateID) else { return false }
+        let saved = await todayPlan.resetSessionOrder(templateID)
+        if saved { refreshTodayState() }
+        return saved
+    }
+
     /// "Cerrar sesión" (SCRUM-208): suelta de memoria el entrenamiento en curso (sigue
     /// guardado y se retoma al volver a entrar) y vuelve al login sin borrar datos.
     public func signOut() {

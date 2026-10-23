@@ -51,6 +51,11 @@ struct TodayView: View {
     var onSkipSleepCheckIn: () -> Void = {}
     /// Aviso del ajuste del día que decidió el motor (ya traducido); `nil` sin ajuste.
     var readinessNote: String?
+    /// SCRUM-211: sesión de hoy (para ordenarla) y si su orden lo eligió la persona.
+    var todayTemplateID: SessionTemplate.ID?
+    var orderIsCustom = false
+    @Environment(\.sessionOrderActions) private var orderActions
+    @State private var reordering = false
 
     @State private var showingOrder = false
     /// Día de la tira abierto en detalle.
@@ -298,20 +303,38 @@ struct TodayView: View {
                 .accessibilityIdentifier("today.readiness")
             }
             exerciseList
-            if !order.isEmpty {
-                Button {
-                    showingOrder = true
-                } label: {
-                    Label("¿Por qué este orden?", systemImage: "questionmark.circle")
-                        .frame(minHeight: 44)
+            HStack {
+                if !order.isEmpty {
+                    Button {
+                        showingOrder = true
+                    } label: {
+                        Label("¿Por qué este orden?", systemImage: "questionmark.circle")
+                            .frame(minHeight: 44)
+                    }
+                    .accessibilityIdentifier("today.whyOrder")
                 }
-                .accessibilityIdentifier("today.whyOrder")
+                Spacer()
+                // Sólo antes de empezar: dentro del entrenamiento se usa "dejar en espera".
+                if let orderActions, let todayTemplateID, orderActions.canReorder(todayTemplateID) {
+                    Button {
+                        reordering = true
+                    } label: {
+                        Label("Ordenar", systemImage: "arrow.up.arrow.down")
+                            .frame(minHeight: 44)
+                    }
+                    .accessibilityIdentifier("today.reorder")
+                }
             }
             startButton(presentation)
         }
         .padding(24)
         .sheet(isPresented: $showingOrder) {
-            OrderExplanationSheet(order: order, reorderedByFatigue: orderReorderedByFatigue)
+            OrderExplanationSheet(order: order, reorderedByFatigue: orderReorderedByFatigue, isCustom: orderIsCustom)
+        }
+        .sheet(isPresented: $reordering) {
+            if let orderActions, let todayTemplateID {
+                ReorderExercisesSheet(templateID: todayTemplateID, lines: exercises, actions: orderActions)
+            }
         }
     }
 

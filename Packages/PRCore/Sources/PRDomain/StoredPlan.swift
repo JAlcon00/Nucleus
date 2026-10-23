@@ -34,6 +34,17 @@ public struct StoredPlan: Codable, Sendable, Equatable {
     /// Lo que la IA personalizó y la explicación "Por qué tu plan es así" (SCRUM-205).
     /// Opcional: los planes guardados antes no lo traen y siguen leyéndose igual.
     public var personalization: PlanPersonalizationRecord?
+    /// Orden propio de los ejercicios por sesión (SCRUM-211), clave = ID de la sesión. El
+    /// bloque guardado conserva el orden del motor. Opcional: los planes anteriores no lo
+    /// traen.
+    public var customOrders: [String: [ExerciseID]]?
+
+    /// Órdenes propios con su ID de sesión tipado (los inválidos se ignoran).
+    public var sessionOrders: [SessionTemplate.ID: [ExerciseID]] {
+        Dictionary(uniqueKeysWithValues: (customOrders ?? [:]).compactMap { key, order in
+            UUID(uuidString: key).map { ($0, order) }
+        })
+    }
 
     public init(
         userID: String,

@@ -65,6 +65,13 @@ struct AppRootView: View {
                     // SCRUM-210: el lenguaje de la app sigue la experiencia (RIR en palabras
                     // para quien empieza).
                     .environment(\.trainingAudience, OnboardingAudience(profile.experience))
+                    // SCRUM-211: ordenar ejercicios desde Hoy y desde el detalle del día.
+                    .environment(\.sessionOrderActions, SessionOrderActions(
+                        canReorder: { environment.canReorderSession($0) },
+                        isCustom: { environment.todayPlan.hasCustomOrder($0) },
+                        reorder: { await environment.reorderSession($0, to: $1) },
+                        reset: { await environment.resetSessionOrder($0) }
+                    ))
                     .task(id: PlanActivation(profile: profile, attempt: planAttempt)) {
                         // Sólo pruebas de UI (Debug): plan pendiente a propósito (SCRUM-193).
                         if let delay = environment.uiTestPlanDelay {

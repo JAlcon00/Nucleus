@@ -98,6 +98,8 @@ public struct TodayPlan: Equatable, Sendable {
     public let explanation: BlockExplanation?
     /// Ajuste del día por el check-in de sueño (SCRUM-203); ya aplicado a `todayTemplate`.
     public let readiness: ReadinessAdjustment
+    /// El orden de hoy lo eligió la persona (SCRUM-211), no el motor.
+    public let todayOrderIsCustom: Bool
 
     public init(
         block: TrainingBlock,
@@ -109,7 +111,8 @@ public struct TodayPlan: Equatable, Sendable {
         todayOrder: [TodayOrderLine] = [],
         todayOrderReorderedByFatigue: Bool = false,
         explanation: BlockExplanation? = nil,
-        readiness: ReadinessAdjustment = .none
+        readiness: ReadinessAdjustment = .none,
+        todayOrderIsCustom: Bool = false
     ) {
         self.block = block
         self.sessions = sessions
@@ -121,6 +124,7 @@ public struct TodayPlan: Equatable, Sendable {
         self.todayOrderReorderedByFatigue = todayOrderReorderedByFatigue
         self.explanation = explanation
         self.readiness = readiness
+        self.todayOrderIsCustom = todayOrderIsCustom
     }
 }
 
@@ -198,8 +202,11 @@ public struct TodayPlanBuilder: Sendable {
         driver: TodayScreenDriver,
         date: Date,
         timeZone: TimeZone,
-        readiness: ReadinessAdjustment = .none
+        readiness: ReadinessAdjustment = .none,
+        customOrders: [SessionTemplate.ID: [ExerciseID]] = [:]
     ) throws -> TodayPlan {
+        // SCRUM-211: el orden propio de cada sesión se aplica encima del bloque del motor.
+        let block = SessionOrderOverride.apply(customOrders, to: block)
         let estimatedMinutes = profile.usualSessionMinutes
         let jointClasses = Dictionary(catalog.exercises.map { ($0.id, $0.jointClass) }, uniquingKeysWith: { first, _ in first })
         // SCRUM-203: el check-in de sueño sólo aligera la sesión de hoy (mismo ID).
@@ -227,7 +234,8 @@ public struct TodayPlanBuilder: Sendable {
             todayOrder: orderLines(for: orderExplanation, catalog: catalog),
             todayOrderReorderedByFatigue: orderExplanation?.reorderedByFatigue ?? false,
             explanation: explanation,
-            readiness: readiness
+            readiness: readiness,
+            todayOrderIsCustom: todayTemplate.map { customOrders[$0.id] != nil } ?? false
         )
     }
 
@@ -503,6 +511,10 @@ public final class TodayPlanCoordinator {
 
     /// Personalización del plan activo y "Por qué tu plan es así" (SCRUM-205).
     public private(set) var personalization: PlanPersonalizationRecord?
+    /// Orden propio de los ejercicios por sesión (SCRUM-211); se aplica encima del bloque.
+    private var customOrders: [SessionTemplate.ID: [ExerciseID]] = [:]
+    /// Bloque tal como lo armó el motor (sin órdenes propios): base para restablecer.
+    private var engineBlock: TrainingBlock?
     /// Quién habla con la IA; `nil` = sólo motor local.
     private let personalizer: (any PlanPersonalizing)?
     /// Datos del perfil para la IA; `nil` sin consentimiento (entonces no se manda nada).
@@ -549,6 +561,8 @@ public final class TodayPlanCoordinator {
                 timeZone: timeZone()
             )
             personalization = plan?.explanation.map { localPersonalization(facts: $0.facts) }
+            customOrders = [:]
+            engineBlock = plan?.block
             activeProfile = profile
             generation = .idle
             return true
@@ -564,6 +578,8 @@ public final class TodayPlanCoordinator {
         plan = nil
         notice = nil
         personalization = nil
+        customOrders = [:]
+        engineBlock = nil
         activeProfile = nil
         activeUserID = nil
         generation = .idle
@@ -615,7 +631,8 @@ public final class TodayPlanCoordinator {
             todayOrder: current.todayOrder,
             todayOrderReorderedByFatigue: current.todayOrderReorderedByFatigue,
             explanation: current.explanation,
-            readiness: current.readiness
+            readiness: current.readiness,
+            todayOrderIsCustom: current.todayOrderIsCustom
         )
     }
 
@@ -665,13 +682,17 @@ public final class TodayPlanCoordinator {
                 explanation = regenerated.explanation
                 stored.generatorVersion = StoredPlan.currentGeneratorVersion
                 stored.explanation = explanation
+                // Sesiones nuevas: los órdenes propios de las anteriores ya no aplican.
+                stored.customOrders = nil
                 stored.updatedAt = saveClock()
                 await persist(stored, block: block, closing: nil, store: planStore)
                 notice = .planUpdated
             }
+            customOrders = stored.sessionOrders
+            engineBlock = block
             guard let today = try? builder.todayPlan(
                 profile: stored.profile, block: block, explanation: explanation,
-                catalog: catalog, driver: driver, date: clock(), timeZone: timeZone(), readiness: readiness
+                catalog: catalog, driver: driver, date: clock(), timeZone: timeZone(), readiness: readiness, customOrders: customOrders
             ) else { return .unreadable }
             plan = today
             personalization = stored.personalization ?? localPersonalization(facts: explanation.facts)
@@ -715,9 +736,11 @@ public final class TodayPlanCoordinator {
             case .unchanged:
                 guard let previous else { return failActivation() }
                 personalization = previous.plan.personalization ?? localPersonalization(facts: previous.plan.explanation.facts)
+                customOrders = previous.plan.sessionOrders
+                engineBlock = previous.block
                 plan = try builder.todayPlan(
                     profile: profile, block: previous.block, explanation: previous.plan.explanation,
-                    catalog: catalog, driver: driver, date: clock(), timeZone: timeZone(), readiness: readiness
+                    catalog: catalog, driver: driver, date: clock(), timeZone: timeZone(), readiness: readiness, customOrders: customOrders
                 )
                 activeProfile = profile
                 generation = .idle
@@ -730,6 +753,7 @@ public final class TodayPlanCoordinator {
                 generation = .saving
                 await persist(stored, block: previous.block, closing: nil, store: planStore)
                 personalization = stored.personalization ?? localPersonalization(facts: stored.explanation.facts)
+                customOrders = stored.sessionOrders
                 try show(profile: profile, block: previous.block, explanation: previous.plan.explanation)
                 return true
             case .regenerateInPlace:
@@ -748,8 +772,11 @@ public final class TodayPlanCoordinator {
                 stored.generatorVersion = StoredPlan.currentGeneratorVersion
                 stored.explanation = result.explanation
                 stored.personalization = personalized.record
+                // Sesiones regeneradas: los órdenes propios de las anteriores ya no aplican.
+                stored.customOrders = nil
                 stored.updatedAt = saveClock()
                 personalization = personalized.record
+                customOrders = [:]
                 generation = .saving
                 await persist(stored, block: block, closing: nil, store: planStore)
                 try show(profile: profile, block: block, explanation: result.explanation)
@@ -776,6 +803,7 @@ public final class TodayPlanCoordinator {
                     personalization: personalized.record
                 )
                 personalization = personalized.record
+                customOrders = [:]
                 generation = .saving
                 await persist(stored, block: block, closing: closed, store: planStore)
                 try show(profile: profile, block: block, explanation: result.explanation)
@@ -852,9 +880,10 @@ public final class TodayPlanCoordinator {
     }
 
     private func show(profile: OnboardingProfile, block: TrainingBlock, explanation: BlockExplanation) throws {
+        engineBlock = block
         plan = try builder.todayPlan(
             profile: profile, block: block, explanation: explanation,
-            catalog: catalog, driver: driver, date: clock(), timeZone: timeZone(), readiness: readiness
+            catalog: catalog, driver: driver, date: clock(), timeZone: timeZone(), readiness: readiness, customOrders: customOrders
         )
         activeProfile = profile
         generation = .idle
@@ -866,11 +895,67 @@ public final class TodayPlanCoordinator {
         readiness = adjustment
         guard let current = plan, let profile = activeProfile, let explanation = current.explanation else { return }
         if let today = try? builder.todayPlan(
-            profile: profile, block: current.block, explanation: explanation,
-            catalog: catalog, driver: driver, date: clock(), timeZone: timeZone(), readiness: adjustment
+            profile: profile, block: engineBlock ?? current.block, explanation: explanation,
+            catalog: catalog, driver: driver, date: clock(), timeZone: timeZone(), readiness: adjustment, customOrders: customOrders
         ) {
             plan = today
         }
+    }
+
+    // MARK: - SCRUM-211: orden propio de los ejercicios
+
+    /// ¿La sesión tiene un orden elegido por la persona?
+    public func hasCustomOrder(_ templateID: SessionTemplate.ID) -> Bool {
+        customOrders[templateID] != nil
+    }
+
+    /// Guarda el orden propio de una sesión. Sólo acepta una permutación exacta de sus
+    /// ejercicios (no agrega ni quita); la prescripción no cambia. `false` si no se pudo.
+    @discardableResult
+    public func reorderSession(_ templateID: SessionTemplate.ID, to order: [ExerciseID]) async -> Bool {
+        guard let template = (engineBlock ?? plan?.block)?.sessions.first(where: { $0.id == templateID }),
+              SessionOrderOverride.isPermutation(order, of: template) else { return false }
+        var updated = customOrders
+        // Volver exactamente al del motor es lo mismo que restablecer.
+        updated[templateID] = order == SessionOrderOverride.exerciseOrder(of: template) ? nil : order
+        return await commitOrders(updated)
+    }
+
+    /// Vuelve al orden recomendado de la sesión.
+    @discardableResult
+    public func resetSessionOrder(_ templateID: SessionTemplate.ID) async -> Bool {
+        var updated = customOrders
+        updated[templateID] = nil
+        return await commitOrders(updated)
+    }
+
+    /// Guarda primero y sólo entonces cambia "Hoy": si el disco falla, el orden anterior
+    /// sigue vigente y se informa (`saveFailed`).
+    private func commitOrders(_ orders: [SessionTemplate.ID: [ExerciseID]]) async -> Bool {
+        if let planStore, let activeUserID {
+            guard case .loaded(var stored, let block) = await planStore.loadPlan(userID: activeUserID) else {
+                saveFailed = true
+                return false
+            }
+            stored.customOrders = orders.isEmpty ? nil : Dictionary(uniqueKeysWithValues: orders.map { ($0.key.uuidString, $0.value) })
+            stored.updatedAt = saveClock()
+            do {
+                try await planStore.save(plan: stored, block: block, closing: nil)
+                saveFailed = false
+            } catch {
+                saveFailed = true
+                return false
+            }
+        }
+        customOrders = orders
+        guard let current = plan, let profile = activeProfile, let explanation = current.explanation else { return true }
+        if let today = try? builder.todayPlan(
+            profile: profile, block: engineBlock ?? current.block, explanation: explanation,
+            catalog: catalog, driver: driver, date: clock(), timeZone: timeZone(), readiness: readiness, customOrders: orders
+        ) {
+            plan = today
+        }
+        return true
     }
 
     /// Guarda el perfil con su "Sobre ti" nuevo sobre el mismo bloque (SCRUM-198).
