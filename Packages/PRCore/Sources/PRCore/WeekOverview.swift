@@ -141,7 +141,8 @@ public struct WeekOverviewBuilder: Sendable {
             muscles: mainMuscles(of: template, catalog: catalog),
             exercises: lineBuilder.exerciseLines(for: template, catalog: catalog, profile: profile),
             workSetCount: template.plannedSets.filter { !$0.prescription.isWarmup }.count,
-            estimatedMinutes: profile.usualSessionMinutes,
+            // SCRUM-30: la duración de la sesión real, igual que en "Hoy".
+            estimatedMinutes: SessionTimeFitter().minutes(of: template),
             order: lineBuilder.orderLines(for: orderExplanation, catalog: catalog),
             orderReorderedByFatigue: orderExplanation?.reorderedByFatigue ?? false
         )

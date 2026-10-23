@@ -119,7 +119,12 @@ struct AppTabBarView: View {
                 onSkipSleepCheckIn: { environment.sleepCheckIns.skip() },
                 readinessNote: environment.todayPlan.plan.flatMap { vocabulary.readinessNote($0.readiness) },
                 todayTemplateID: environment.todayPlan.plan?.todayTemplate?.id,
-                orderIsCustom: environment.todayPlan.plan?.todayOrderIsCustom ?? false
+                orderIsCustom: environment.todayPlan.plan?.todayOrderIsCustom ?? false,
+                timeBudget: environment.todayPlan.plan?.timeAdjustment?.budgetMinutes,
+                timeNote: environment.timeNote,
+                timeFits: environment.todayPlan.plan?.timeAdjustment?.fitsBudget ?? true,
+                timeRemovedExercises: !(environment.todayPlan.plan?.timeAdjustment?.removed.isEmpty ?? true),
+                onChooseTime: { minutes in Task { await environment.setTimeBudget(minutes) } }
             )
             .navigationTitle(AppTab.today.title)
         }

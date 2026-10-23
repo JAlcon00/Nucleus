@@ -835,6 +835,72 @@
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Last time: %1$@ × %2$lld" } }
       }
+    },
+    "Tu sesión dura unos %lld min y cabe en %lld; no agregamos series." : {
+      "comment" : "Ajuste de tiempo: la sesión ya cabía y no se le suma volumen",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your session takes about %1$lld min and fits in %2$lld; we don't add sets." } }
+      }
+    },
+    "Tu sesión dura unos %lld min; no agregamos series, pero con el tiempo que sobra puedes sumar %@." : {
+      "comment" : "Ajuste de tiempo: sobra tiempo; se sugiere movilidad o cardio, nunca más series",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your session takes about %1$lld min; we don't add sets, but with the spare time you can add %2$@." } }
+      }
+    },
+    "Para caber en %lld min quitamos %@ y dejamos menos series de %@; los ejercicios principales se quedan." : {
+      "comment" : "Ajuste de tiempo: se quitaron accesorios y se redujeron otros",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "To fit in %1$lld min we removed %2$@ and cut sets of %3$@; your main exercises stay." } }
+      }
+    },
+    "Para caber en %lld min quitamos %@; los ejercicios principales se quedan." : {
+      "comment" : "Ajuste de tiempo: se quitaron accesorios",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "To fit in %1$lld min we removed %2$@; your main exercises stay." } }
+      }
+    },
+    "Para caber en %lld min dejamos menos series de %@; los ejercicios principales se quedan." : {
+      "comment" : "Ajuste de tiempo: se redujeron series de accesorios",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "To fit in %1$lld min we cut sets of %2$@; your main exercises stay." } }
+      }
+    },
+    "Ajustamos la sesión para caber en %lld min; los ejercicios principales se quedan." : {
+      "comment" : "Ajuste de tiempo: cambio sin ejercicios quitados ni reducidos",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "We adjusted the session to fit in %lld min; your main exercises stay." } }
+      }
+    },
+    "Aun recortada, esta sesión necesita unos %lld min y no cabe en %lld; conservamos los ejercicios principales." : {
+      "comment" : "Ajuste de tiempo: la sesión no cabe ni quitando accesorios",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Even trimmed, this session needs about %1$lld min and doesn't fit in %2$lld; we kept your main exercises." } }
+      }
+    },
+    "un ejercicio" : {
+      "comment" : "Ajuste de tiempo: ejercicio sin nombre en el catálogo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "an exercise" } }
+      }
+    },
+    "movilidad" : {
+      "comment" : "Ajuste de tiempo: actividad sugerida con el tiempo que sobra",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "mobility" } }
+      }
+    },
+    "cardio" : {
+      "comment" : "Ajuste de tiempo: actividad sugerida con el tiempo que sobra",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "cardio" } }
+      }
+    },
+    "práctica de poses" : {
+      "comment" : "Ajuste de tiempo: actividad sugerida con el tiempo que sobra (culturismo)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "posing practice" } }
+      }
     }
   },
   "version" : "1.0"

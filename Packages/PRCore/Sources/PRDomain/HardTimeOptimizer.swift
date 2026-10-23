@@ -127,18 +127,17 @@ public struct HardTimeOptimizer: Sendable {
         var notes: [String] = []
 
         // 1) Preservar anchors y prioridades (nunca se recortan).
-        let protected = items.filter { $0.role == .anchor || $0.isPriorityMuscle }
-        let unprotected = items.filter { !($0.role == .anchor || $0.isPriorityMuscle) }
+        func isProtected(_ item: SessionItem) -> Bool { item.role == .anchor || item.isPriorityMuscle }
 
         // 2) Eliminar opcionales primero.
-        let optionals = unprotected.filter { $0.role == .optional }
-        let reducible = unprotected.filter { $0.role != .optional }
+        let optionals = items.filter { !isProtected($0) && $0.role == .optional }
         if !optionals.isEmpty {
             notes.append("Eliminados \(optionals.count) ejercicio(s) opcional(es).")
         }
 
-        // 3) Reducir accesorios repetidamente hasta caber, luego descartarlos.
-        var kept = protected + reducible
+        // 3) Reducir accesorios repetidamente hasta caber, luego descartarlos. Lo que queda
+        //    conserva el orden de la sesión (SCRUM-30): la persona no ve ejercicios saltar.
+        var kept = items.filter { isProtected($0) || $0.role != .optional }
         while sessionSeconds(kept) > limitSeconds + toleranceSeconds, hasAccessory(kept) {
             if reduceAccessory(&kept) {
                 notes.append("Reducido el set-count de un ejercicio accesorio.")
@@ -184,9 +183,10 @@ public struct HardTimeOptimizer: Sendable {
         items.contains { $0.role != .anchor && !$0.isPriorityMuscle }
     }
 
-    /// Reduce a la mitad el set-count del primer accesorio con >1 set. Devuelve true.
+    /// Reduce a la mitad el set-count del último accesorio con >1 set. Devuelve true.
+    /// Se empieza por el final porque la sesión va de lo más a lo menos importante.
     private func reduceAccessory(_ items: inout [SessionItem]) -> Bool {
-        guard let idx = items.firstIndex(where: { $0.role != .anchor && !$0.isPriorityMuscle && $0.setCount > 1 }) else {
+        guard let idx = items.lastIndex(where: { $0.role != .anchor && !$0.isPriorityMuscle && $0.setCount > 1 }) else {
             return false
         }
         var item = items[idx]
@@ -195,9 +195,9 @@ public struct HardTimeOptimizer: Sendable {
         return true
     }
 
-    /// Descartar un accesorio. Devuelve el nombre si se descartó uno.
+    /// Descartar el último accesorio. Devuelve el nombre si se descartó uno.
     private func dropAccessory(_ items: inout [SessionItem]) -> String? {
-        guard let idx = items.firstIndex(where: { $0.role != .anchor && !$0.isPriorityMuscle }) else {
+        guard let idx = items.lastIndex(where: { $0.role != .anchor && !$0.isPriorityMuscle }) else {
             return nil
         }
         let dropped = items.remove(at: idx)

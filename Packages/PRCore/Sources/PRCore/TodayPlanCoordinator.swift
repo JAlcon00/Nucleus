@@ -100,6 +100,9 @@ public struct TodayPlan: Equatable, Sendable {
     public let readiness: ReadinessAdjustment
     /// El orden de hoy lo eligió la persona (SCRUM-211), no el motor.
     public let todayOrderIsCustom: Bool
+    /// Ajuste de hoy al tiempo que la persona dijo tener (SCRUM-30); ya aplicado a
+    /// `todayTemplate`. `nil` sin tiempo elegido.
+    public let timeAdjustment: SessionTimeAdjustment?
 
     public init(
         block: TrainingBlock,
@@ -112,7 +115,8 @@ public struct TodayPlan: Equatable, Sendable {
         todayOrderReorderedByFatigue: Bool = false,
         explanation: BlockExplanation? = nil,
         readiness: ReadinessAdjustment = .none,
-        todayOrderIsCustom: Bool = false
+        todayOrderIsCustom: Bool = false,
+        timeAdjustment: SessionTimeAdjustment? = nil
     ) {
         self.block = block
         self.sessions = sessions
@@ -125,6 +129,7 @@ public struct TodayPlan: Equatable, Sendable {
         self.explanation = explanation
         self.readiness = readiness
         self.todayOrderIsCustom = todayOrderIsCustom
+        self.timeAdjustment = timeAdjustment
     }
 }
 
@@ -147,9 +152,10 @@ public enum TodayPlanError: Error, Equatable, Sendable {
 /// - Rotación semanal (`TrainingWeek`, SCRUM-27/196): los días elegidos son de
 ///   entrenamiento y cada uno tiene su slot 0…N-1 en orden de lunes a domingo; el resto
 ///   es descanso. La plantilla del día es `sessions[slot % sessions.count]`.
-/// - Duración estimada: `profile.usualSessionMinutes` (estimación del usuario; el
-///   cálculo por ejercicio real es PR-0801).
+/// - Duración estimada (SCRUM-30): la de la sesión real de hoy, con `SessionTimeFitter`
+///   (series, descansos y transiciones), no los minutos del cuestionario.
 public struct TodayPlanBuilder: Sendable {
+    private let timeFitter = SessionTimeFitter()
 
     public init() {}
 
@@ -203,19 +209,32 @@ public struct TodayPlanBuilder: Sendable {
         date: Date,
         timeZone: TimeZone,
         readiness: ReadinessAdjustment = .none,
-        customOrders: [SessionTemplate.ID: [ExerciseID]] = [:]
+        customOrders: [SessionTemplate.ID: [ExerciseID]] = [:],
+        timeBudget: Int? = nil,
+        planner: BlockPlanner? = nil
     ) throws -> TodayPlan {
         // SCRUM-211: el orden propio de cada sesión se aplica encima del bloque del motor.
         let block = SessionOrderOverride.apply(customOrders, to: block)
-        let estimatedMinutes = profile.usualSessionMinutes
         let jointClasses = Dictionary(catalog.exercises.map { ($0.id, $0.jointClass) }, uniquingKeysWith: { first, _ in first })
         // SCRUM-203: el check-in de sueño sólo aligera la sesión de hoy (mismo ID).
-        let todayTemplate = try todaySession(
+        let lightened = try todaySession(
             from: block.sessions,
             profile: profile,
             date: date,
             timeZone: timeZone
         ).map { ReadinessEngine().apply(readiness, to: $0, jointClass: { jointClasses[$0] }) }
+        // SCRUM-30: y el tiempo que la persona dice tener la ajusta encima (mismo ID).
+        var todayTemplate = lightened
+        var timeAdjustment: SessionTimeAdjustment?
+        if let lightened, let timeBudget {
+            let roles = try timeRoles(
+                for: lightened, profile: profile, block: block, catalog: catalog, planner: planner ?? Self.defaultPlanner()
+            )
+            let fitted = timeFitter.fit(lightened, budgetMinutes: timeBudget, roles: roles, goal: profile.goal, phase: profile.phase)
+            todayTemplate = fitted.template
+            timeAdjustment = fitted.adjustment
+        }
+        let estimatedMinutes = todayTemplate.map(timeFitter.minutes(of:))
         let state = driver.derive(
             todayTemplate: todayTemplate,
             activeSession: nil,
@@ -235,8 +254,35 @@ public struct TodayPlanBuilder: Sendable {
             todayOrderReorderedByFatigue: orderExplanation?.reorderedByFatigue ?? false,
             explanation: explanation,
             readiness: readiness,
-            todayOrderIsCustom: todayTemplate.map { customOrders[$0.id] != nil } ?? false
+            todayOrderIsCustom: todayTemplate.map { customOrders[$0.id] != nil } ?? false,
+            timeAdjustment: timeAdjustment
         )
+    }
+
+    /// Papel de cada ejercicio al recortar por tiempo (SCRUM-30): las anclas son las del
+    /// motor (una por músculo), son prioritarios los de músculos con énfasis y opcionales
+    /// los que sólo calientan o movilizan. Lo demás es accesorio.
+    public func timeRoles(
+        for template: SessionTemplate,
+        profile: OnboardingProfile,
+        block: TrainingBlock,
+        catalog: ExerciseCatalog,
+        planner: BlockPlanner
+    ) throws -> SessionTimeRoles {
+        let anchors = planner.anchorExercises(input: try makeInput(profile: profile, catalog: catalog.exercises))
+        let emphasized = Set(block.priorities.filter { $0.priority.rawValue >= PriorityTier.emphasize.rawValue }.map(\.muscleGroupID))
+        let exercises = Dictionary(catalog.exercises.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        var roles = SessionTimeRoles(anchors: anchors)
+        for id in Set(template.plannedSets.map(\.exerciseID)) {
+            guard let exercise = exercises[id] else { continue }
+            if exercise.primaryMuscles.contains(where: { emphasized.contains($0.muscleGroupID) }) {
+                roles.priority.insert(id)
+            }
+            if !exercise.defaultRoles.isEmpty, exercise.defaultRoles.isSubset(of: [.warmup, .mobility]) {
+                roles.optional.insert(id)
+            }
+        }
+        return roles
     }
 
     /// Filas "¿Por qué este orden?" a partir de la explicación guardada del planificador.
@@ -474,9 +520,15 @@ public final class TodayPlanCoordinator {
     /// "Tu semana" del plan activo (lunes a domingo); `nil` sin plan.
     public var week: WeekOverview? {
         guard let plan, let activeProfile else { return nil }
+        // El día de hoy, como se va a entrenar: con el check-in de sueño y el tiempo
+        // elegido (SCRUM-30). Su "Empezar" abre exactamente esa sesión.
+        var block = plan.block
+        if let today = plan.todayTemplate, let index = block.sessions.firstIndex(where: { $0.id == today.id }) {
+            block.sessions[index] = today
+        }
         return WeekOverviewBuilder().overview(
             profile: activeProfile,
-            block: plan.block,
+            block: block,
             explanation: plan.explanation ?? BlockExplanation(facts: [], ruleReferences: []),
             catalog: catalog,
             history: history,
@@ -516,6 +568,9 @@ public final class TodayPlanCoordinator {
     private var customOrders: [SessionTemplate.ID: [ExerciseID]] = [:]
     /// Bloque tal como lo armó el motor (sin órdenes propios): base para restablecer.
     private var engineBlock: TrainingBlock?
+    /// Tiempo que la persona eligió para hoy (SCRUM-30). Se guarda con el plan; sólo
+    /// aplica el día en que se eligió.
+    public private(set) var timeChoice: SessionTimeChoice?
     /// Quién habla con la IA; `nil` = sólo motor local.
     private let personalizer: (any PlanPersonalizing)?
     /// Datos del perfil para la IA; `nil` sin consentimiento (entonces no se manda nada).
@@ -581,6 +636,7 @@ public final class TodayPlanCoordinator {
         personalization = nil
         customOrders = [:]
         engineBlock = nil
+        timeChoice = nil
         activeProfile = nil
         activeUserID = nil
         generation = .idle
@@ -633,7 +689,8 @@ public final class TodayPlanCoordinator {
             todayOrderReorderedByFatigue: current.todayOrderReorderedByFatigue,
             explanation: current.explanation,
             readiness: current.readiness,
-            todayOrderIsCustom: current.todayOrderIsCustom
+            todayOrderIsCustom: current.todayOrderIsCustom,
+            timeAdjustment: current.timeAdjustment
         )
     }
 
@@ -691,10 +748,9 @@ public final class TodayPlanCoordinator {
             }
             customOrders = stored.sessionOrders
             engineBlock = block
-            guard let today = try? builder.todayPlan(
-                profile: stored.profile, block: block, explanation: explanation,
-                catalog: catalog, driver: driver, date: clock(), timeZone: timeZone(), readiness: readiness, customOrders: customOrders
-            ) else { return .unreadable }
+            timeChoice = stored.timeBudget
+            guard let today = try? todayPlan(profile: stored.profile, block: block, explanation: explanation)
+            else { return .unreadable }
             plan = today
             personalization = stored.personalization ?? localPersonalization(facts: explanation.facts)
             activeProfile = stored.profile
@@ -739,10 +795,8 @@ public final class TodayPlanCoordinator {
                 personalization = previous.plan.personalization ?? localPersonalization(facts: previous.plan.explanation.facts)
                 customOrders = previous.plan.sessionOrders
                 engineBlock = previous.block
-                plan = try builder.todayPlan(
-                    profile: profile, block: previous.block, explanation: previous.plan.explanation,
-                    catalog: catalog, driver: driver, date: clock(), timeZone: timeZone(), readiness: readiness, customOrders: customOrders
-                )
+                timeChoice = previous.plan.timeBudget
+                plan = try todayPlan(profile: profile, block: previous.block, explanation: previous.plan.explanation)
                 activeProfile = profile
                 generation = .idle
                 return true
@@ -805,6 +859,8 @@ public final class TodayPlanCoordinator {
                 )
                 personalization = personalized.record
                 customOrders = [:]
+                // Plan nuevo: el tiempo elegido para hoy no viaja (el disco tampoco lo tiene).
+                timeChoice = nil
                 generation = .saving
                 await persist(stored, block: block, closing: closed, store: planStore)
                 try show(profile: profile, block: block, explanation: result.explanation)
@@ -884,25 +940,75 @@ public final class TodayPlanCoordinator {
 
     private func show(profile: OnboardingProfile, block: TrainingBlock, explanation: BlockExplanation) throws {
         engineBlock = block
-        plan = try builder.todayPlan(
-            profile: profile, block: block, explanation: explanation,
-            catalog: catalog, driver: driver, date: clock(), timeZone: timeZone(), readiness: readiness, customOrders: customOrders
-        )
+        plan = try todayPlan(profile: profile, block: block, explanation: explanation)
         activeProfile = profile
         generation = .idle
+    }
+
+    /// "Hoy" sobre `block` con todo lo del día: check-in de sueño, órdenes propios y el
+    /// tiempo elegido si es de hoy.
+    private func todayPlan(profile: OnboardingProfile, block: TrainingBlock, explanation: BlockExplanation) throws -> TodayPlan {
+        let now = clock()
+        let zone = timeZone()
+        return try builder.todayPlan(
+            profile: profile, block: block, explanation: explanation,
+            catalog: catalog, driver: driver, date: now, timeZone: zone, readiness: readiness, customOrders: customOrders,
+            timeBudget: timeChoice.flatMap { $0.applies(on: now, timeZone: zone) ? $0.minutes : nil },
+            planner: planner
+        )
+    }
+
+    /// Vuelve a armar "Hoy" sobre el mismo bloque (el bloque guardado no cambia).
+    private func rebuildToday() {
+        guard let current = plan, let profile = activeProfile, let explanation = current.explanation else { return }
+        if let today = try? todayPlan(profile: profile, block: engineBlock ?? current.block, explanation: explanation) {
+            plan = today
+        }
     }
 
     /// SCRUM-203: aplica el ajuste del día (check-in de sueño) y vuelve a armar "Hoy" sobre
     /// el mismo bloque. El bloque guardado no cambia. Sin plan, sólo recuerda el ajuste.
     public func applyReadiness(_ adjustment: ReadinessAdjustment) {
         readiness = adjustment
-        guard let current = plan, let profile = activeProfile, let explanation = current.explanation else { return }
-        if let today = try? builder.todayPlan(
-            profile: profile, block: engineBlock ?? current.block, explanation: explanation,
-            catalog: catalog, driver: driver, date: clock(), timeZone: timeZone(), readiness: adjustment, customOrders: customOrders
-        ) {
-            plan = today
+        rebuildToday()
+    }
+
+    // MARK: - SCRUM-30: ajustar la sesión a mi tiempo
+
+    /// Ajusta la sesión de hoy a `minutes` (`nil` quita el ajuste). Guarda primero y sólo
+    /// entonces cambia "Hoy": si el disco falla, el ajuste anterior sigue y se informa
+    /// (`saveFailed`). Con un entrenamiento en curso no se cambia: esa sesión ya empezó con
+    /// su plantilla y retomarla debe dar la misma. `false` si no se aplicó.
+    @discardableResult
+    public func setTimeBudget(_ minutes: Int?) async -> Bool {
+        if case .activeWorkout = plan?.todayState { return false }
+        let choice: SessionTimeChoice?
+        if let minutes {
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = timeZone()
+            guard let made = SessionTimeChoice(minutes: minutes, day: calendar.startOfDay(for: clock())) else { return false }
+            choice = made
+        } else {
+            choice = nil
         }
+        if let planStore, let activeUserID {
+            guard case .loaded(var stored, let block) = await planStore.loadPlan(userID: activeUserID) else {
+                saveFailed = true
+                return false
+            }
+            stored.timeBudget = choice
+            stored.updatedAt = saveClock()
+            do {
+                try await planStore.save(plan: stored, block: block, closing: nil)
+                saveFailed = false
+            } catch {
+                saveFailed = true
+                return false
+            }
+        }
+        timeChoice = choice
+        rebuildToday()
+        return true
     }
 
     // MARK: - SCRUM-211: orden propio de los ejercicios
@@ -951,13 +1057,7 @@ public final class TodayPlanCoordinator {
             }
         }
         customOrders = orders
-        guard let current = plan, let profile = activeProfile, let explanation = current.explanation else { return true }
-        if let today = try? builder.todayPlan(
-            profile: profile, block: engineBlock ?? current.block, explanation: explanation,
-            catalog: catalog, driver: driver, date: clock(), timeZone: timeZone(), readiness: readiness, customOrders: orders
-        ) {
-            plan = today
-        }
+        rebuildToday()
         return true
     }
 

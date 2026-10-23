@@ -104,7 +104,10 @@ struct WeekOverviewTests {
             #expect(session.muscles.count <= WeekOverviewBuilder.maxMuscles)
             #expect(!session.exercises.isEmpty)
             #expect(session.workSetCount == session.exercises.map(\.workSetCount).reduce(0, +))
-            #expect(session.estimatedMinutes == 60)
+            // SCRUM-30: minutos de la sesión real (series, descansos y transiciones), no
+            // los del cuestionario.
+            let template = try #require(fixture.result.block.sessions.first { $0.id == session.templateID })
+            #expect(session.estimatedMinutes == SessionTimeFitter().minutes(of: template))
         }
         // Con 5 días el split es Push/Pull/Legs: el Pull tiene espalda primero.
         let pull = try #require(sessions.first { $0.title.hasPrefix("Pull") })

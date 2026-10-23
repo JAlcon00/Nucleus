@@ -74,9 +74,12 @@ struct TodayPlanCoordinatorTests {
         // El bloque generado es persistible y tiene sesiones.
         #expect(!plan.block.sessions.isEmpty)
         #expect((4...8).contains(plan.block.plannedWeeks))
-        // Duración estimada usada del perfil (estimación del usuario).
-        #expect(plan.estimatedMinutes == 60)
-        #expect(presentation.estimatedMinutes == 60)
+        // SCRUM-30: la duración es la de la sesión real (series, descansos y transiciones),
+        // no los minutos del cuestionario.
+        let template = try #require(plan.todayTemplate)
+        #expect(plan.estimatedMinutes == SessionTimeFitter().minutes(of: template))
+        #expect((plan.estimatedMinutes ?? 0) > 0)
+        #expect(presentation.estimatedMinutes == plan.estimatedMinutes)
     }
 
     @Test("En un día libre (>= trainingDaysPerWeek) es resto")

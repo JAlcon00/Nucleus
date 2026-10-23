@@ -114,6 +114,35 @@ struct HardTimeOptimizerTests {
         #expect(result.notes.contains { $0.contains("Límite no alcanzado") })
     }
 
+    @Test("SCRUM-30: lo que queda conserva el orden de la sesión y se reduce el último accesorio")
+    func keepsSessionOrderAndReducesTheLastAccessory() {
+        let optimizer = HardTimeOptimizer()
+        let items = [
+            makeItem(name: "Primer accesorio", role: .rotatable, muscles: [.biceps]),
+            makeItem(name: "Ancla", role: .anchor, muscles: [.chest]),
+            makeItem(name: "Último accesorio", role: .rotatable, muscles: [.triceps]),
+        ]
+        // 3 × 510 + 60 = 1 590; con 1 400 basta reducir el último 4→2 (1 290).
+        let result = optimizer.optimize(items: items, limitSeconds: 1_400)
+        #expect(result.kept.map(\.name) == ["Primer accesorio", "Ancla", "Último accesorio"])
+        #expect(result.kept.map(\.setCount) == [4, 4, 2])
+        #expect(result.withinLimit)
+    }
+
+    @Test("SCRUM-30: si hay que quitar un accesorio se quita el último")
+    func dropsTheLastAccessory() {
+        let optimizer = HardTimeOptimizer()
+        let items = [
+            makeItem(name: "Ancla", role: .anchor, muscles: [.chest]),
+            makeItem(name: "Accesorio 1", role: .rotatable, muscles: [.biceps], sets: 1),
+            makeItem(name: "Accesorio 2", role: .rotatable, muscles: [.triceps], sets: 1),
+        ]
+        // 510 + 60 + 60 + 2 × 30 = 690; con 620 se quita "Accesorio 2" (600).
+        let result = optimizer.optimize(items: items, limitSeconds: 620)
+        #expect(result.kept.map(\.name) == ["Ancla", "Accesorio 1"])
+        #expect(result.withinLimit)
+    }
+
     @Test("tolerance is documented in result")
     func documentsTolerance() {
         let optimizer = HardTimeOptimizer()

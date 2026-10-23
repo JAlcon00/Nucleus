@@ -103,6 +103,20 @@ public final class AppEnvironment {
         session.signOut()
     }
 
+    /// SCRUM-30: ajusta la sesión de hoy al tiempo elegido (`nil` = sesión completa). No
+    /// con un entrenamiento vivo: esa sesión ya empezó con su plantilla.
+    public func setTimeBudget(_ minutes: Int?) async {
+        guard activeWorkout == nil else { return }
+        if await todayPlan.setTimeBudget(minutes) { refreshTodayState() }
+    }
+
+    /// SCRUM-30: la frase del ajuste de hoy, ya traducida; `nil` sin tiempo elegido.
+    public var timeNote: String? {
+        todayPlan.plan?.timeAdjustment.map { adjustment in
+            SessionTimePresenter(locale: Self.presentationLocale).sentence(for: adjustment) { exerciseNames[$0] }
+        }
+    }
+
     /// Registra el check-in y aplica el ajuste del día que decide el motor.
     public func recordSleep(hours: Double, quality: SleepQuality) {
         guard let adjustment = sleepCheckIns.record(hours: hours, quality: quality) else { return }

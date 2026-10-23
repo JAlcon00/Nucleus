@@ -487,6 +487,23 @@ public struct BlockPlanner: Sendable {
         return counts
     }
 
+    /// El ancla de cada músculo del bloque: la misma que usa `plan` para repartir series
+    /// (SCRUM-30 la protege al recortar una sesión por tiempo). Un músculo que se quedó sin
+    /// ejercicios permitidos no tiene ancla; no es un error aquí porque `plan` ya lo manejó.
+    public func anchorExercises(input: BlockPlanningInput) -> Set<ExerciseID> {
+        Set(input.priorities.compactMap { priority -> ExerciseID? in
+            let assignmentInput = ExerciseAssignmentInput(
+                muscleGroupID: priority.muscleGroupID,
+                catalog: input.catalog,
+                varietyPreference: input.varietyPreference,
+                restrictions: input.restrictions,
+                equipmentKnownness: input.equipmentKnownness
+            )
+            guard let assignment = try? assigner.assign(input: assignmentInput) else { return nil }
+            return (assignment.assignments.first { $0.role == .anchor } ?? assignment.assignments.first)?.exercise
+        })
+    }
+
     /// ¿El músculo se quedó sin ejercicios SÓLO por las restricciones? Si sin ellas tampoco
     /// hay ejercicio (catálogo o equipo), el error sigue siendo error.
     private func isEmptiedByRestrictions(_ input: ExerciseAssignmentInput) -> Bool {

@@ -38,6 +38,10 @@ public struct StoredPlan: Codable, Sendable, Equatable {
     /// bloque guardado conserva el orden del motor. Opcional: los planes anteriores no lo
     /// traen.
     public var customOrders: [String: [ExerciseID]]?
+    /// Tiempo elegido para la sesión del día (SCRUM-30). Se guarda para que un
+    /// entrenamiento empezado con la sesión recortada se retome igual tras un cierre; sólo
+    /// aplica el día en que se eligió. Opcional: los planes anteriores no lo traen.
+    public var timeBudget: SessionTimeChoice?
 
     /// Órdenes propios con su ID de sesión tipado (los inválidos se ignoran).
     public var sessionOrders: [SessionTemplate.ID: [ExerciseID]] {

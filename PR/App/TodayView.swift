@@ -54,6 +54,14 @@ struct TodayView: View {
     /// SCRUM-211: sesión de hoy (para ordenarla) y si su orden lo eligió la persona.
     var todayTemplateID: SessionTemplate.ID?
     var orderIsCustom = false
+    /// SCRUM-30: minutos elegidos para hoy (`nil` = sesión completa), la frase del ajuste
+    /// (ya traducida), si la sesión resultante cabe y si el ajuste quitó ejercicios.
+    var timeBudget: Int?
+    var timeNote: String?
+    var timeFits = true
+    var timeRemovedExercises = false
+    /// Intento: ajustar la sesión a esos minutos (`nil` = quitar el ajuste).
+    var onChooseTime: (Int?) -> Void = { _ in }
     @Environment(\.sessionOrderActions) private var orderActions
     @State private var reordering = false
 
@@ -287,7 +295,17 @@ struct TodayView: View {
                         .font(.title2.bold())
                 }
             }
-            sessionSummary(presentation)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: DSpace.s) {
+                    sessionSummary(presentation)
+                    Spacer(minLength: DSpace.s)
+                    timeMenu
+                }
+                VStack(alignment: .leading, spacing: DSpace.s) {
+                    sessionSummary(presentation)
+                    timeMenu
+                }
+            }
             if asksSleepCheckIn {
                 SleepCheckInCard(onRecord: onSleepCheckIn, onSkip: onSkipSleepCheckIn)
             } else if let readinessNote {
@@ -302,6 +320,9 @@ struct TodayView: View {
                 .cardSurface(cornerRadius: DRadius.medium)
                 .accessibilityIdentifier("today.readiness")
             }
+            if let timeNote {
+                timeNoteCard(timeNote)
+            }
             exerciseList
             HStack {
                 if !order.isEmpty {
@@ -315,7 +336,9 @@ struct TodayView: View {
                 }
                 Spacer()
                 // Sólo antes de empezar: dentro del entrenamiento se usa "dejar en espera".
-                if let orderActions, let todayTemplateID, orderActions.canReorder(todayTemplateID) {
+                // Con ejercicios quitados por tiempo la lista no está completa: primero se
+                // vuelve a la sesión completa (SCRUM-30).
+                if let orderActions, let todayTemplateID, orderActions.canReorder(todayTemplateID), !timeRemovedExercises {
                     Button {
                         reordering = true
                     } label: {
@@ -372,6 +395,66 @@ struct TodayView: View {
             resumeButton
         }
         .padding(24)
+    }
+
+    // MARK: - SCRUM-30: ajustar a mi tiempo
+
+    /// "Ajustar a mi tiempo": 30, 45, 60 o 90 min, o volver a la sesión completa. Control
+    /// secundario (la acción principal sigue siendo Empezar).
+    private var timeMenu: some View {
+        Menu {
+            ForEach(SessionTimeChoice.quickMinutes, id: \.self) { minutes in
+                Button {
+                    onChooseTime(minutes)
+                } label: {
+                    if timeBudget == minutes {
+                        Label("Tengo \(minutes) min", systemImage: "checkmark")
+                    } else {
+                        Text("Tengo \(minutes) min")
+                    }
+                }
+            }
+            if timeBudget != nil {
+                Divider()
+                Button {
+                    onChooseTime(nil)
+                } label: {
+                    Label("Sesión completa", systemImage: "arrow.uturn.backward")
+                }
+            }
+        } label: {
+            Label {
+                Text(timeBudget.map { String(localized: "Tengo \($0) min") } ?? String(localized: "Ajustar a mi tiempo"))
+                    .numericStyle()
+            } icon: {
+                Image(systemName: "timer")
+            }
+            .font(.callout.weight(.semibold))
+            .padding(.horizontal, DSpace.m)
+            .frame(minHeight: 44)
+            .background(Color.surface, in: Capsule())
+            .overlay { Capsule().strokeBorder(Color.hairline, lineWidth: 1) }
+        }
+        .sensoryFeedback(.selection, trigger: timeBudget)
+        .accessibilityHint("Ajusta la sesión de hoy a los minutos que tienes.")
+        .accessibilityIdentifier("today.timeBudget")
+    }
+
+    /// Qué cambió por el tiempo elegido. Si no cabe ni recortada, el ícono y el color de
+    /// advertencia acompañan al texto (el color nunca va solo).
+    private func timeNoteCard(_ note: String) -> some View {
+        Label {
+            Text(note).fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: timeFits ? "timer" : "exclamationmark.triangle.fill")
+                .foregroundStyle(timeFits ? Color.primaryAction : Color.warning)
+        }
+        .font(.callout)
+        .padding(DSpace.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardSurface(cornerRadius: DRadius.medium)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("today.timeNote")
     }
 
     private func sessionSummary(_ presentation: SessionPresentation) -> some View {
@@ -567,6 +650,44 @@ private struct TodayWeekPreview: View {
         onStart: {},
         onResume: {}
     )
+    .ironEnergyTheme()
+}
+
+#Preview("Ajustada a 30 min") {
+    TodayView(
+        screen: .ready(.readyToStart(previewPresentation)),
+        onStart: {},
+        onResume: {},
+        timeBudget: 30,
+        timeNote: "Para caber en 30 min quitamos Curl martillo y dejamos menos series de Elevaciones laterales; los ejercicios principales se quedan.",
+        timeRemovedExercises: true
+    )
+    .ironEnergyTheme()
+}
+
+#Preview("No cabe en 30 min · oscuro") {
+    TodayView(
+        screen: .ready(.readyToStart(previewPresentation)),
+        onStart: {},
+        onResume: {},
+        timeBudget: 30,
+        timeNote: "Aun recortada, esta sesión necesita unos 36 min y no cabe en 30; conservamos los ejercicios principales.",
+        timeFits: false,
+        timeRemovedExercises: true
+    )
+    .ironEnergyTheme()
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Con tiempo de sobra · accessibility3") {
+    TodayView(
+        screen: .ready(.readyToStart(previewPresentation)),
+        onStart: {},
+        onResume: {},
+        timeBudget: 90,
+        timeNote: "Tu sesión dura unos 55 min; no agregamos series, pero con el tiempo que sobra puedes sumar movilidad."
+    )
+    .dynamicTypeSize(.accessibility3)
     .ironEnergyTheme()
 }
 
