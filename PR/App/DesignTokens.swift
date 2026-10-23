@@ -83,6 +83,8 @@ enum DSize {
     static let brandLogo: CGFloat = 220
     /// Isotipo de la marca en pantallas de espera (mínimo de marca: 20 pt).
     static let brandIsotype: CGFloat = 72
+    /// Alto mínimo de una gráfica de Progreso (SCRUM-213).
+    static let chartHeight: CGFloat = 180
 }
 
 /// Tokens de movimiento. Con Reduce Motion se sustituye el desplazamiento/escala por un

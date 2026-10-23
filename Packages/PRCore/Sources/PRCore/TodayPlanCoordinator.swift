@@ -461,6 +461,7 @@ public final class TodayPlanCoordinator {
                 templateTitles: titles,
                 exerciseNames: names,
                 plannedPerWeek: activeProfile?.trainingDaysPerWeek,
+                blockStart: plan?.block.startDate,
                 date: clock(),
                 timeZone: timeZone()
             )

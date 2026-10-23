@@ -508,7 +508,7 @@ Solo se empieza si los bloques 1 a 8 están en `[x]`.
 | FB-3 | SCRUM-210 | Formulario adaptado al nivel de experiencia (3 flujos) | [x] |
 | FB-4 | SCRUM-211 | Reordenar los ejercicios del día | [x] |
 | FB-5 | SCRUM-212 | Saltar o dejar en espera ejercicios durante el entrenamiento | [x] |
-| FB-6 | SCRUM-213 | Progreso: 4 KPIs y gráfica | [ ] |
+| FB-6 | SCRUM-213 | Progreso: 4 KPIs y gráfica | [x] |
 
 ## 4. Después del POC (no empezar todavía)
 

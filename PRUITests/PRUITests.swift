@@ -594,6 +594,11 @@ final class PRUITests: XCTestCase {
         openTab(app, "Progreso")
         XCTAssertTrue(element(app, "progress.entry.0").waitForExistence(timeout: 10), "El primer entrenamiento debe quedar registrado")
         XCTAssertTrue(element(app, "progress.summary").exists)
+        // SCRUM-213: 4 KPIs y la gráfica de progreso.
+        for kpi in 0..<4 {
+            XCTAssertTrue(element(app, "progress.kpi.\(kpi)").exists, "Falta el KPI \(kpi)")
+        }
+        XCTAssertTrue(element(app, "progress.chart").exists, "Debe verse la gráfica de progreso")
         tap(app, "progress.entry.0")
         XCTAssertTrue(element(app, "progress.detail").waitForExistence(timeout: 10))
     }

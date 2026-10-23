@@ -58,6 +58,8 @@ public struct ProgressOverview: Equatable, Sendable {
     public let plannedPerWeek: Int?
     /// Récords logrados en todo el historial.
     public let totalRecords: Int
+    /// KPIs y gráficas (SCRUM-213).
+    public let insights: ProgressInsights
 
     public var totalWorkouts: Int { entries.count }
 }
@@ -71,6 +73,7 @@ public struct ProgressOverviewBuilder: Sendable {
         templateTitles: [SessionTemplate.ID: String],
         exerciseNames: [ExerciseID: String],
         plannedPerWeek: Int?,
+        blockStart: Date? = nil,
         date: Date,
         timeZone: TimeZone
     ) -> ProgressOverview {
@@ -105,7 +108,10 @@ public struct ProgressOverviewBuilder: Sendable {
             entries: entries.reversed(),
             completedThisWeek: completedInWeek(of: date, timeZone: timeZone, sessions: completed),
             plannedPerWeek: plannedPerWeek,
-            totalRecords: entries.reduce(0) { $0 + $1.recordCount }
+            totalRecords: entries.reduce(0) { $0 + $1.recordCount },
+            insights: ProgressInsightsBuilder().insights(
+                entries: entries, plannedPerWeek: plannedPerWeek, blockStart: blockStart, date: date, timeZone: timeZone
+            )
         )
     }
 

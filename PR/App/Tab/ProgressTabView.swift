@@ -121,12 +121,14 @@ private struct ProgressLogView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: DSpace.m) {
-                summary
+                // SCRUM-213: 4 KPIs y la gráfica de progreso.
+                ProgressKPIGrid(insights: overview.insights)
+                ProgressChartCard(insights: overview.insights)
                 if unreadable > 0 {
                     UnreadableRecordsNotice(count: unreadable)
                         .padding(.horizontal, DSpace.xs)
                 }
-                Label("Registro", systemImage: "list.bullet.rectangle")
+                Label("Registro · \(overview.totalWorkouts)", systemImage: "list.bullet.rectangle")
                     .eyebrowStyle()
                     .foregroundStyle(Color.textSecondary)
                     .padding(.top, DSpace.s)
@@ -145,46 +147,6 @@ private struct ProgressLogView: View {
                 WorkoutLogDetailView(entry: entry)
             }
         }
-    }
-
-    private var summary: some View {
-        HStack(alignment: .top, spacing: DSpace.s) {
-            stat(value: "\(overview.totalWorkouts)", label: "Entrenamientos", symbol: "figure.strengthtraining.traditional", tint: Color.primaryAction)
-            stat(value: weekText, label: "Esta semana", symbol: "calendar", tint: Color.primaryAction)
-            stat(value: "\(overview.totalRecords)", label: "Récords", symbol: "trophy.fill", tint: Color.accentSecondary)
-        }
-        .padding(DSpace.m)
-        .cardSurface()
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("progress.summary")
-    }
-
-    /// "2 de 3" frente a lo planeado; sólo el número si no hay plan.
-    private var weekText: String {
-        guard let planned = overview.plannedPerWeek else { return "\(overview.completedThisWeek)" }
-        return String(localized: "\(overview.completedThisWeek) de \(planned)")
-    }
-
-    private func stat(value: String, label: LocalizedStringKey, symbol: String, tint: Color) -> some View {
-        VStack(spacing: DSpace.xs) {
-            Image(systemName: symbol)
-                .font(.headline)
-                .foregroundStyle(tint)
-                .frame(width: DSize.iconBadge, height: DSize.iconBadge)
-                .background(Color.surfaceElevated, in: Circle())
-                .accessibilityHidden(true)
-            Text(value)
-                .font(.title2.bold())
-                .numericStyle()
-                .minimumScaleFactor(0.7)
-                .lineLimit(1)
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(Color.textSecondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .combine)
     }
 
     private func row(_ entry: WorkoutLogEntry) -> some View {
