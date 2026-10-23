@@ -23,21 +23,22 @@ public enum OnboardingStep: String, Codable, Sendable, CaseIterable, Hashable {
     case experience
     case daysPerWeek
     case sessionMinutes
-    case gym
     case variety
     case restrictions
+    // SCRUM-209: sin paso "Gimnasio": sólo hay una disciplina y el plan usa el equipo
+    // básico de gimnasio. Elegir gimnasio queda para más adelante.
 
     /// Todos los pasos en el orden del flujo.
     public static var ordered: [OnboardingStep] {
         OnboardingStep.allCases
     }
 
-    /// ¿Este paso admite respuesta vacía (no bloqueante)? gym y restrictions son opcionales.
+    /// ¿Este paso admite respuesta vacía (no bloqueante)? restrictions es opcional.
     public var allowsEmptyAnswer: Bool {
         switch self {
         case .goal, .phase, .experience, .daysPerWeek, .sessionMinutes, .variety:
             return false
-        case .gym, .restrictions:
+        case .restrictions:
             return true
         }
     }
@@ -54,9 +55,9 @@ public enum OnboardingAnswer: Equatable, Sendable {
     /// Días de la semana en que se puede entrenar (SCRUM-196).
     case trainingDays(Set<WeekDay>)
     case sessionMinutes(Int)
-    case gym(GymID?)
     case variety(VarietyPreference)
-    case restrictions([TrainingRestriction])
+    /// Zonas con molestia y nota opcional (SCRUM-209).
+    case restrictions(RestrictionsAnswer)
 
     /// ¿La respuesta permite avanzar? Días: al menos 2 y como mucho 7 (SCRUM-196);
     /// minutos: 30...240. El resto de respuestas tipadas siempre es válido.
@@ -64,7 +65,8 @@ public enum OnboardingAnswer: Equatable, Sendable {
         switch self {
         case .trainingDays(let days): return TrainingWeek.allowedTrainingDays.contains(days.count)
         case .sessionMinutes(let minutes): return TrainingWeek.allowedSessionMinutes.contains(minutes)
-        case .goal, .phase, .experience, .gym, .variety, .restrictions: return true
+        case .restrictions(let answer): return answer.isValid
+        case .goal, .phase, .experience, .variety: return true
         }
     }
 }
@@ -85,7 +87,7 @@ public enum OnboardingDefaults {
         switch step {
         case .daysPerWeek: return .trainingDays(trainingDays)
         case .sessionMinutes: return .sessionMinutes(sessionMinutes)
-        case .goal, .phase, .experience, .gym, .variety, .restrictions: return nil
+        case .goal, .phase, .experience, .variety, .restrictions: return nil
         }
     }
 }
@@ -148,6 +150,9 @@ public struct OnboardingProfile: Codable, Sendable, Hashable {
     /// "Sobre ti" (SCRUM-198). `nil` en perfiles anteriores: se pide completarlo una vez,
     /// sin bloquear Hoy. No define el bloque: cambiarlo no regenera el plan.
     public var aboutYou: AboutYou?
+    /// Nota libre del paso "Restricciones" (SCRUM-209). Sólo informa: no cambia el plan,
+    /// no es un diagnóstico, nunca va a logs ni a la IA. `nil` en perfiles anteriores.
+    public var restrictionNote: String?
 
     /// Perfil de "N días": los primeros N desde el lunes (el comportamiento anterior a
     /// SCRUM-196). Lo usan los perfiles guardados antes y los tests.
@@ -199,6 +204,7 @@ public struct OnboardingProfile: Codable, Sendable, Hashable {
     public var trainingFields: OnboardingProfile {
         var copy = self
         copy.aboutYou = nil
+        copy.restrictionNote = nil
         return copy
     }
 
@@ -214,7 +220,7 @@ public struct OnboardingProfile: Codable, Sendable, Hashable {
 
     private enum CodingKeys: String, CodingKey {
         case goal, phase, experience, trainingDaysPerWeek, trainingWeekdays
-        case usualSessionMinutes, varietyPreference, defaultGymID, restrictions, aboutYou
+        case usualSessionMinutes, varietyPreference, defaultGymID, restrictions, aboutYou, restrictionNote
     }
 
     public init(from decoder: Decoder) throws {
@@ -244,6 +250,8 @@ public struct OnboardingProfile: Codable, Sendable, Hashable {
         restrictions = try container.decode([TrainingRestriction].self, forKey: .restrictions)
         // Perfil anterior a SCRUM-198: sin "Sobre ti".
         aboutYou = try container.decodeIfPresent(AboutYou.self, forKey: .aboutYou)
+        // Perfil anterior a SCRUM-209: sin nota.
+        restrictionNote = try container.decodeIfPresent(String.self, forKey: .restrictionNote)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -260,6 +268,7 @@ public struct OnboardingProfile: Codable, Sendable, Hashable {
         try container.encodeIfPresent(defaultGymID, forKey: .defaultGymID)
         try container.encode(restrictions, forKey: .restrictions)
         try container.encodeIfPresent(aboutYou, forKey: .aboutYou)
+        try container.encodeIfPresent(restrictionNote, forKey: .restrictionNote)
     }
 }
 
@@ -268,17 +277,27 @@ public struct OnboardingProfile: Codable, Sendable, Hashable {
 /// Convierte un borrador completo en un `OnboardingProfile` válido (PR-0402).
 ///
 /// Validaciones (§4.2): días elegidos 2...7 (SCRUM-196), `usualSessionMinutes` 30...240.
-/// gym y restrictions son opcionales (nil / vacío). No inventa respuestas: si un paso
-/// obligatorio falta, no finaliza.
+/// Restricciones opcionales: cada zona elegida se vuelve una restricción con la regla
+/// versionada (SCRUM-209). No inventa respuestas: si un paso obligatorio falta, no
+/// finaliza.
 public struct OnboardingProfileBuilder: Sendable {
+    private let clock: @Sendable () -> Date
+    private let newRestrictionID: @Sendable () -> RestrictionID
 
-    public init() {}
+    public init(
+        clock: @escaping @Sendable () -> Date = { Date() },
+        newRestrictionID: @escaping @Sendable () -> RestrictionID = { RestrictionID() }
+    ) {
+        self.clock = clock
+        self.newRestrictionID = newRestrictionID
+    }
 
     /// Error de finalización (nunca inventa valores; falla ante input incompleto/inválido).
     public enum BuildError: Error, Equatable, Sendable {
         case missingAnswer(OnboardingStep)
         case invalidTrainingDays(Int)
         case invalidSessionMinutes(Int)
+        case restrictionNoteTooLong(Int)
     }
 
     /// Construye el perfil sólo si el borrador está completo y las respuestas son válidas.
@@ -296,20 +315,22 @@ public struct OnboardingProfileBuilder: Sendable {
         guard (TrainingWeek.allowedTrainingDays).contains(daysValue.count) else { throw BuildError.invalidTrainingDays(daysValue.count) }
         guard (TrainingWeek.allowedSessionMinutes).contains(minutesValue) else { throw BuildError.invalidSessionMinutes(minutesValue) }
 
-        let gymID: GymID? = if case .gym(let value) = draft.answer(for: .gym) { value } else { nil }
-        let restrictions: [TrainingRestriction] =
-            if case .restrictions(let value) = draft.answer(for: .restrictions) { value } else { [] }
+        let answer: RestrictionsAnswer =
+            if case .restrictions(let value) = draft.answer(for: .restrictions) { value } else { .none }
+        guard answer.isValid else { throw BuildError.restrictionNoteTooLong(RestrictionsAnswer.maxNoteLength) }
+        let restrictions = BodyRegionRestrictionRule.restrictions(for: answer, now: clock(), newID: newRestrictionID)
 
-        return try OnboardingProfile(
+        var profile = try OnboardingProfile(
             goal: goal.goalValue,
             phase: phase.phaseValue,
             experience: experience.experienceValue,
             trainingDays: daysValue,
             usualSessionMinutes: minutesValue,
             varietyPreference: variety.varietyValue,
-            defaultGymID: gymID,
             restrictions: restrictions
         )
+        profile.restrictionNote = answer.trimmedNote
+        return profile
     }
 }
 

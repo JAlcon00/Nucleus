@@ -239,7 +239,23 @@ public struct PlanRationalePresenter: Sendable {
         for substitution in substitutions {
             lines.append(resource("\(substitution.to) en lugar de \(substitution.from).", "Por qué tu plan: ejercicio cambiado"))
         }
+        // SCRUM-209: zonas cuidadas y músculos omitidos por una restricción.
+        let regions = Self.list(value["restrictedRegions"], BodyRegion.init(rawValue:)).map(vocabulary.bodyRegionName)
+        if !regions.isEmpty {
+            let names = regions.formatted(.list(type: .and).locale(locale))
+            lines.append(resource("Cuidamos tu \(names): evitamos los movimientos de más riesgo para esa zona.", "Por qué tu plan: zonas con restricción"))
+        }
+        let skipped = Self.list(value["restrictedMuscles"], MuscleGroup.init(rawValue:)).map(vocabulary.muscleName)
+        if !skipped.isEmpty {
+            let names = skipped.formatted(.list(type: .and).locale(locale))
+            lines.append(resource("Por tu restricción no programamos \(names) por ahora.", "Por qué tu plan: músculos omitidos por una restricción"))
+        }
         return lines
+    }
+
+    /// Valores separados por coma de un hecho ("shoulder, knee").
+    private static func list<Value>(_ raw: String?, _ make: (String) -> Value?) -> [Value] {
+        (raw ?? "").split(separator: ",").compactMap { make($0.trimmingCharacters(in: .whitespaces)) }
     }
 
     private static let bundle = LocalizedStringResource.BundleDescription.atURL(Bundle.module.bundleURL)

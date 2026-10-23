@@ -146,6 +146,78 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ instead of %2$@." } }
       }
     },
+    "Cuello" : {
+      "comment" : "Zona del cuerpo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Neck" } }
+      }
+    },
+    "Codo" : {
+      "comment" : "Zona del cuerpo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Elbow" } }
+      }
+    },
+    "Muñeca" : {
+      "comment" : "Zona del cuerpo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Wrist" } }
+      }
+    },
+    "Mano" : {
+      "comment" : "Zona del cuerpo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Hand" } }
+      }
+    },
+    "Espalda alta" : {
+      "comment" : "Zona del cuerpo: columna dorsal",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Upper back" } }
+      }
+    },
+    "Cadera" : {
+      "comment" : "Zona del cuerpo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Hip" } }
+      }
+    },
+    "Ingle" : {
+      "comment" : "Zona del cuerpo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Groin" } }
+      }
+    },
+    "Rodilla" : {
+      "comment" : "Zona del cuerpo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Knee" } }
+      }
+    },
+    "Tobillo" : {
+      "comment" : "Zona del cuerpo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ankle" } }
+      }
+    },
+    "Pie" : {
+      "comment" : "Zona del cuerpo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Foot" } }
+      }
+    },
+    "Cuidamos tu %@: evitamos los movimientos de más riesgo para esa zona." : {
+      "comment" : "Por qué tu plan: zonas con restricción",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "We look after your %@: we avoid the riskiest movements for that area." } }
+      }
+    },
+    "Por tu restricción no programamos %@ por ahora." : {
+      "comment" : "Por qué tu plan: músculos omitidos por una restricción",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Because of your restriction we are not programming %@ for now." } }
+      }
+    },
     "Pecho" : {
       "comment" : "Grupo muscular",
       "localizations" : {

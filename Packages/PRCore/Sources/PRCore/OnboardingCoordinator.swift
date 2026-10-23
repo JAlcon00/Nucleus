@@ -167,9 +167,14 @@ public final class OnboardingCoordinator {
                 (.experience, .experience(profile.experience)),
                 (.daysPerWeek, .trainingDays(profile.trainingWeekdays ?? [])),
                 (.sessionMinutes, .sessionMinutes(profile.usualSessionMinutes)),
-                (.gym, .gym(profile.defaultGymID)),
                 (.variety, .variety(profile.varietyPreference)),
-                (.restrictions, .restrictions(profile.restrictions)),
+                (.restrictions, .restrictions(RestrictionsAnswer(
+                    zones: Set(profile.restrictions
+                        .filter { BodyRegionRestrictionRule.selectableRegions.contains($0.bodyRegion) }
+                        .map(\.bodyRegion)),
+                    note: profile.restrictionNote ?? "",
+                    previous: profile.restrictions
+                ))),
             ]
             for (step, answer) in answers { draft = draft.settingAnswer(answer, for: step) }
         }
@@ -268,6 +273,8 @@ public final class OnboardingCoordinator {
             return "Elige al menos 2 días para entrenar."
         case .invalidSessionMinutes(let minutes):
             return "\(minutes) minutos no están en el rango permitido (30...240)."
+        case .restrictionNoteTooLong(let maximum):
+            return "La nota de restricciones puede tener hasta \(maximum) caracteres."
         }
     }
 }

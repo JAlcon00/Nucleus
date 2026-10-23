@@ -60,7 +60,7 @@ private func answerQuestionnaire(_ onboarding: OnboardingCoordinator, days: Set<
     onboarding.confirmAboutYou()
     let answers: [OnboardingAnswer] = [
         .goal(.hypertrophy), .phase(.maintenance), .experience(.intermediate),
-        .trainingDays(days), .sessionMinutes(60), .gym(nil), .variety(.balanced), .restrictions([]),
+        .trainingDays(days), .sessionMinutes(60), .variety(.balanced), .restrictions(.none),
     ]
     for answer in answers {
         onboarding.select(answer)

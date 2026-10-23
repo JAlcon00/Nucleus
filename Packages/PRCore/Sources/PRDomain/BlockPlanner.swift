@@ -185,6 +185,9 @@ public struct BlockPlanner: Sendable {
 
         // Asignación de ejercicios por músculo (anchor + rotatables).
         var assignmentsByMuscle: [MuscleGroup.ID: MuscleExerciseAssignment] = [:]
+        // SCRUM-209: músculos que una restricción activa dejó sin ejercicios permitidos.
+        var restrictedMuscles: [MuscleGroup.ID] = []
+        var firstRestrictionError: ExerciseAssignmentError?
         for assignment in allocation.targets {
             let assignmentInput = ExerciseAssignmentInput(
                 muscleGroupID: assignment.muscleGroupID,
@@ -193,7 +196,19 @@ public struct BlockPlanner: Sendable {
                 restrictions: input.restrictions,
                 equipmentKnownness: input.equipmentKnownness
             )
-            assignmentsByMuscle[assignment.muscleGroupID] = try assigner.assign(input: assignmentInput)
+            do {
+                assignmentsByMuscle[assignment.muscleGroupID] = try assigner.assign(input: assignmentInput)
+            } catch let error as ExerciseAssignmentError where isEmptiedByRestrictions(assignmentInput) {
+                // Seguridad antes que completitud: nunca se evade la restricción; el
+                // músculo se omite esta vez y la explicación lo dice.
+                restrictedMuscles.append(assignment.muscleGroupID)
+                firstRestrictionError = firstRestrictionError ?? error
+            }
+        }
+        // Si las restricciones dejaron sin ejercicios a TODOS los músculos no hay plan que
+        // armar: error explícito (como antes), nunca un bloque vacío.
+        if assignmentsByMuscle.isEmpty, let firstRestrictionError {
+            throw firstRestrictionError
         }
 
         // Construimos una plantilla de sesión por día de entrenamiento.
@@ -205,7 +220,7 @@ public struct BlockPlanner: Sendable {
         )
         let sessions = built.sessions
 
-        let muscleTargets = try allocation.targets.map { assignment in
+        let muscleTargets = try allocation.targets.filter { !restrictedMuscles.contains($0.muscleGroupID) }.map { assignment in
             try MuscleVolumeTarget(
                 muscleGroupID: assignment.muscleGroupID,
                 targetSetsPerWeek: assignment.weeklySets
@@ -227,7 +242,8 @@ public struct BlockPlanner: Sendable {
         )
 
         let explanation = try buildExplanation(
-            input: input, split: split, allocation: allocation, sessionOrder: built.order
+            input: input, split: split, allocation: allocation, sessionOrder: built.order,
+            restrictedMuscles: restrictedMuscles
         )
 
         return BlockPlanningResult(block: block, explanation: explanation, split: split)
@@ -471,17 +487,34 @@ public struct BlockPlanner: Sendable {
         return counts
     }
 
+    /// ¿El músculo se quedó sin ejercicios SÓLO por las restricciones? Si sin ellas tampoco
+    /// hay ejercicio (catálogo o equipo), el error sigue siendo error.
+    private func isEmptiedByRestrictions(_ input: ExerciseAssignmentInput) -> Bool {
+        guard !input.restrictions.isEmpty else { return false }
+        let unrestricted = ExerciseAssignmentInput(
+            muscleGroupID: input.muscleGroupID,
+            catalog: input.catalog,
+            varietyPreference: input.varietyPreference,
+            restrictions: [],
+            equipmentKnownness: input.equipmentKnownness
+        )
+        return (try? assigner.assign(input: unrestricted)) != nil
+    }
+
     // MARK: - Explainability
 
     private func buildExplanation(
         input: BlockPlanningInput,
         split: TrainingSplit,
         allocation: VolumeAllocation,
-        sessionOrder: [SessionOrderExplanation]
+        sessionOrder: [SessionOrderExplanation],
+        restrictedMuscles: [MuscleGroup.ID] = []
     ) throws -> BlockExplanation {
-        let totalVolume = allocation.totalWeeklySets
+        let totalVolume = allocation.targets
+            .filter { !restrictedMuscles.contains($0.muscleGroupID) }
+            .reduce(0) { $0 + $1.weeklySets }
         let anchorCount = input.priorities.count
-        let facts: [DecisionFact] = [
+        var facts: [DecisionFact] = [
             DecisionFact(key: "goal", value: input.goal.rawValue),
             DecisionFact(key: "phase", value: input.phase.rawValue),
             DecisionFact(key: "plannedWeeks", value: String(input.plannedWeeks)),
@@ -491,6 +524,16 @@ public struct BlockPlanner: Sendable {
             DecisionFact(key: "totalWeeklySets", value: String(totalVolume)),
             DecisionFact(key: "orderPrecedence", value: SessionOrderExplanation.precedence),
         ]
+        // SCRUM-209: zonas cuidadas y músculos omitidos por una restricción.
+        let regions = BodyRegion.allCases.filter { region in
+            input.restrictions.contains { $0.bodyRegion == region && $0.status != .resolved }
+        }
+        if !regions.isEmpty {
+            facts.append(DecisionFact(key: "restrictedRegions", value: regions.map(\.rawValue).joined(separator: ", ")))
+        }
+        if !restrictedMuscles.isEmpty {
+            facts.append(DecisionFact(key: "restrictedMuscles", value: restrictedMuscles.map(\.rawValue).joined(separator: ", ")))
+        }
         let fatigue = try FatigueInterferenceConfig(rule: FatigueInterferenceDefaults.makeRule()).reference()
         let references = [try volumeConfigReference(), try assignmentRuleReference(), fatigue]
         return BlockExplanation(facts: facts, ruleReferences: references, sessionOrder: sessionOrder)

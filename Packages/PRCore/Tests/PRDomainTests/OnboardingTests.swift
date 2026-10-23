@@ -105,17 +105,41 @@ struct OnboardingTests {
         }
     }
 
-    @Test("gym y restricciones opcionales se propagan al perfil cuando se definen")
-    func optionalGymAndRestrictionsPropagate() throws {
-        let gymID = GymID()
-        let restriction = TrainingRestriction(bodyRegion: .shoulder, side: .left)
+    @Test("SCRUM-209: cada zona elegida se vuelve una restricción activa y la nota va al perfil")
+    func restrictionZonesAndNotePropagate() throws {
+        let now = Date(timeIntervalSince1970: 1_792_670_400)
+        let id = RestrictionID()
         var draft = completeDraft()
-        draft = draft.settingAnswer(.gym(gymID), for: .gym)
-        draft = draft.settingAnswer(.restrictions([restriction]), for: .restrictions)
+        draft = draft.settingAnswer(.restrictions(RestrictionsAnswer(zones: [.shoulder], note: "  Me molesta al subir el brazo  ")), for: .restrictions)
 
-        let profile = try OnboardingProfileBuilder().build(from: draft)
-        #expect(profile.defaultGymID == gymID)
-        #expect(profile.restrictions == [restriction])
+        let profile = try OnboardingProfileBuilder(clock: { now }, newRestrictionID: { id }).build(from: draft)
+        let restriction = try #require(profile.restrictions.first)
+        #expect(profile.restrictions.count == 1)
+        #expect(restriction.id == id)
+        #expect(restriction.bodyRegion == .shoulder)
+        #expect(restriction.status == .active)
+        #expect(restriction.source == .userReported)
+        #expect(restriction.startDate == now)
+        #expect(restriction.forbiddenPatterns == BodyRegionRestrictionRule.forbiddenPatterns(for: .shoulder))
+        #expect(restriction.notes == nil, "La nota no va en la restricción")
+        #expect(profile.restrictionNote == "Me molesta al subir el brazo")
+        #expect(profile.defaultGymID == nil, "Sin paso Gimnasio: equipo básico")
+    }
+
+    @Test("SCRUM-209: una nota demasiado larga no deja continuar ni construir")
+    func tooLongNoteIsRejected() {
+        let long = String(repeating: "a", count: RestrictionsAnswer.maxNoteLength + 1)
+        let answer = OnboardingAnswer.restrictions(RestrictionsAnswer(note: long))
+        #expect(answer.isValid == false)
+        let draft = completeDraft().settingAnswer(answer, for: .restrictions)
+        #expect(throws: OnboardingProfileBuilder.BuildError.restrictionNoteTooLong(RestrictionsAnswer.maxNoteLength)) {
+            _ = try OnboardingProfileBuilder().build(from: draft)
+        }
+    }
+
+    @Test("SCRUM-209: el formulario ya no tiene paso Gimnasio")
+    func noGymStep() {
+        #expect(OnboardingStep.ordered == [.goal, .phase, .experience, .daysPerWeek, .sessionMinutes, .variety, .restrictions])
     }
 
     // MARK: - Draft / back-navigation
@@ -123,13 +147,13 @@ struct OnboardingTests {
     @Test("volver atrás NO pierde las respuestas ya dadas")
     func backNavigationPreservesAnswers() throws {
         var flow = OnboardingFlowController()
-        // Avanza hasta gym respondiendo cada paso obligatorio.
+        // Avanza hasta variedad respondiendo cada paso obligatorio.
         flow = flow.answering(.goal(.strength)).advance()      // → phase
         flow = flow.answering(.phase(.surplus)).advance()       // → experience
         flow = flow.answering(.experience(.advanced)).advance() // → days
         flow = flow.answering(.trainingDays(firstDays(4))).advance()        // → session
-        flow = flow.answering(.sessionMinutes(90)).advance()    // → gym
-        #expect(flow.currentStep == .gym)
+        flow = flow.answering(.sessionMinutes(90)).advance()    // → variety
+        #expect(flow.currentStep == .variety)
         #expect(flow.draft.isCompleted == false)
 
         // Navega atrás hasta el inicio.
@@ -154,20 +178,18 @@ struct OnboardingTests {
         #expect(advanced.currentStep == .goal) // no avanza
     }
 
-    @Test("pasos opcionales (gym/restrictions) permiten avanzar sin respuesta")
+    @Test("el paso opcional (restricciones) permite avanzar sin respuesta")
     func optionalStepsAdvanceWithoutAnswer() throws {
         var flow = OnboardingFlowController()
-        // Llega hasta gym (paso opcional) con respuestas en los obligatorios previos.
+        // Llega hasta restricciones (opcional) con respuestas en los obligatorios previos.
         flow = flow.answering(.goal(.generalHealth)).advance()
         flow = flow.answering(.phase(.maintenance)).advance()
         flow = flow.answering(.experience(.beginner)).advance()
         flow = flow.answering(.trainingDays(firstDays(5))).advance()
         flow = flow.answering(.sessionMinutes(45)).advance()
-        // gym permite avanzar sin responder (opcional).
-        #expect(flow.currentStep == .gym)
+        flow = flow.answering(.variety(.balanced)).advance()
+        #expect(flow.currentStep == .restrictions)
         #expect(flow.canAdvance == true)
-        let advanced = flow.advance()
-        #expect(advanced.currentStep == .variety)
     }
 
     @Test("el flujo se completa sólo en el último paso con los obligatorios respondidos")

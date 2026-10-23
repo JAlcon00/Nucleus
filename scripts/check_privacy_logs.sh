@@ -12,7 +12,7 @@ set -euo pipefail
 REPO_ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
 LOG_CALL='(\blog\.[a-zA-Z]+\(|\bprint\(|\bdebugPrint\(|\bdump\(|NSLog\(|os_log\(|Logger\(|PRLogger|\blogger\.|\.log\.|\bsink\()'
-PERSONAL='(aboutYou|AboutYou|birthYear|heightCentimeters|DeclaredSex|givenName|displayName|\.weight\b|\.sex\b)'
+PERSONAL='(aboutYou|AboutYou|birthYear|heightCentimeters|DeclaredSex|givenName|displayName|restrictionNote|\.weight\b|\.sex\b)'
 
 found=0
 for dir in "$REPO_ROOT/Packages/PRCore/Sources" "$REPO_ROOT/PR/App" "$REPO_ROOT/PRWatch/App"; do

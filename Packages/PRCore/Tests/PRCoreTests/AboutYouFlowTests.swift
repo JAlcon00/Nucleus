@@ -38,7 +38,7 @@ private func answerQuestionnaire(_ coordinator: OnboardingCoordinator) {
     let answers: [OnboardingAnswer] = [
         .goal(.hypertrophy), .phase(.maintenance), .experience(.intermediate),
         .trainingDays([.monday, .wednesday, .friday]), .sessionMinutes(60),
-        .gym(nil), .variety(.balanced), .restrictions([]),
+        .variety(.balanced), .restrictions(.none),
     ]
     for answer in answers {
         coordinator.select(answer)

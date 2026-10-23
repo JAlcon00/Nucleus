@@ -50,6 +50,25 @@ public struct TrainingVocabularyPresenter: Sendable {
         }
     }
 
+    /// Nombre visible de una zona del cuerpo (paso "Restricciones", SCRUM-209).
+    public func bodyRegionName(_ region: BodyRegion) -> String {
+        switch region {
+        case .neck: return resource("Cuello", "Zona del cuerpo")
+        case .shoulder: return resource("Hombro", "Zona del cuerpo")
+        case .elbow: return resource("Codo", "Zona del cuerpo")
+        case .wrist: return resource("Muñeca", "Zona del cuerpo")
+        case .hand: return resource("Mano", "Zona del cuerpo")
+        case .thoracic: return resource("Espalda alta", "Zona del cuerpo: columna dorsal")
+        case .lumbar: return resource("Espalda baja", "Zona del cuerpo: zona lumbar")
+        case .hip: return resource("Cadera", "Zona del cuerpo")
+        case .groin: return resource("Ingle", "Zona del cuerpo")
+        case .knee: return resource("Rodilla", "Zona del cuerpo")
+        case .ankle: return resource("Tobillo", "Zona del cuerpo")
+        case .foot: return resource("Pie", "Zona del cuerpo")
+        case .core: return resource("Abdomen", "Zona del cuerpo: core")
+        }
+    }
+
     /// Inicial de un día para los chips de la semana (SCRUM-196). Martes "M" y miércoles
     /// "Mi" para que no se repitan.
     public func weekdayInitial(_ day: WeekDay) -> String {

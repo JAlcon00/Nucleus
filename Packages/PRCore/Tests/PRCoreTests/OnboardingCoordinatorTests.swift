@@ -118,9 +118,8 @@ struct OnboardingCoordinatorTests {
             .experience(.intermediate),
             .trainingDays([.monday, .tuesday, .thursday, .friday]),
             .sessionMinutes(60),
-            .gym(nil),
             .variety(.balanced),
-            .restrictions([]),
+            .restrictions(.none),
         ]
         for answer in answers {
             coordinator.select(answer)

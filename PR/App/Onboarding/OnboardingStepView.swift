@@ -62,6 +62,8 @@ struct OnboardingStepView: View {
 
     /// Al tocar "Terminar" el pie muestra el loader hasta que el cuestionario se cierra.
     @State private var isFinishing = false
+    /// Nota de restricciones en edición: "Listo" cierra el teclado para ver "Terminar".
+    @FocusState private var editingNote: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var footerState: OnboardingFooterState {
@@ -112,8 +114,6 @@ struct OnboardingStepView: View {
             daysPicker
         case .sessionMinutes:
             minutesStepper
-        case .gym:
-            gymRow
         case .restrictions:
             restrictionsRow
         }
@@ -208,32 +208,99 @@ struct OnboardingStepView: View {
         }
     }
 
-    private var gymRow: some View {
-        VStack(alignment: .leading, spacing: DSpace.m) {
-            infoCard(
-                icon: "dumbbell",
-                text: "Por ahora armamos tu plan con equipo básico de gimnasio: barra, mancuernas, máquinas y poleas. Podrás elegir tu gimnasio más adelante."
-            )
-            Button("Omitir este paso") {
-                onAnswer(.gym(nil))
+    /// Respuesta de restricciones actual (zonas, nota y las anteriores al rehacer).
+    private var restrictions: RestrictionsAnswer {
+        if case .restrictions(let value)? = selected { return value }
+        return .none
+    }
+
+    /// SCRUM-209: zonas con molestia o lesión (opcional) y una nota libre (opcional).
+    /// Qué movimientos se evitan lo decide la regla versionada del dominio, no esta vista.
+    private var restrictionsRow: some View {
+        VStack(alignment: .leading, spacing: DSpace.l) {
+            VStack(alignment: .leading, spacing: DSpace.s) {
+                Text("¿Tienes alguna molestia o lesión?")
+                    .font(.headline)
+                    .foregroundStyle(Color.textPrimary)
+                FlowLayout(spacing: DSpace.s, lineSpacing: DSpace.s) {
+                    ForEach(BodyRegionRestrictionRule.selectableRegions, id: \.self) { region in
+                        zoneChip(region)
+                    }
+                }
             }
-            .buttonStyle(.surface)
-            .accessibilityIdentifier("onboarding.skipGym")
+            VStack(alignment: .leading, spacing: DSpace.xs) {
+                Text("Cuéntanos más (opcional)")
+                    .font(.headline)
+                    .foregroundStyle(Color.textPrimary)
+                TextField(
+                    "Ej. me molesta el hombro al subir el brazo",
+                    text: Binding(
+                        get: { restrictions.note },
+                        set: { note in
+                            var answer = restrictions
+                            answer.note = note
+                            onAnswer(.restrictions(answer))
+                        }
+                    ),
+                    axis: .vertical
+                )
+                .lineLimit(2...5)
+                .focused($editingNote)
+                .padding(.vertical, DSpace.s)
+                .onboardingInput(isFocused: editingNote)
+                .accessibilityIdentifier("onboarding.restrictionNote")
+                if editingNote {
+                    // El teclado tapa el pie ("Terminar"): se cierra aquí, a la vista.
+                    Button {
+                        editingNote = false
+                    } label: {
+                        Label("Listo", systemImage: "keyboard.chevron.compact.down")
+                    }
+                    .buttonStyle(.surface)
+                    .accessibilityIdentifier("onboarding.restrictionNote.done")
+                }
+                HStack {
+                    if !restrictions.isValid {
+                        Label("Máximo \(RestrictionsAnswer.maxNoteLength) caracteres.", systemImage: "exclamationmark.circle.fill")
+                            .foregroundStyle(Color.warning)
+                    }
+                    Spacer()
+                    Text("\(restrictions.trimmedNote?.count ?? 0)/\(RestrictionsAnswer.maxNoteLength)")
+                        .numericStyle()
+                        .foregroundStyle(Color.textSecondary)
+                }
+                .font(.footnote)
+            }
+            infoCard(
+                icon: "cross.case",
+                text: "Evitamos los movimientos de más riesgo para esa zona. No es un diagnóstico: si tienes dolor fuerte, consulta a un profesional. Puedes cambiarlo en Perfil."
+            )
         }
     }
 
-    private var restrictionsRow: some View {
-        VStack(alignment: .leading, spacing: DSpace.m) {
-            infoCard(
-                icon: "cross.case",
-                text: "Si tienes una molestia o algo que prefieras evitar, podrás registrarlo cuando quieras en Perfil › Restricciones."
-            )
-            Button("Continuar sin añadir") {
-                onAnswer(.restrictions([]))
-            }
-            .buttonStyle(.surface)
-            .accessibilityIdentifier("onboarding.skipRestrictions")
+    /// Chip de una zona: la elegida lleva palomita además del relleno (no sólo color).
+    private func zoneChip(_ region: BodyRegion) -> some View {
+        let isSelected = restrictions.zones.contains(region)
+        return Button {
+            var answer = restrictions
+            if isSelected { answer.zones.remove(region) } else { answer.zones.insert(region) }
+            onAnswer(.restrictions(answer))
+        } label: {
+            Label(vocabulary.bodyRegionName(region), systemImage: isSelected ? "checkmark" : "plus")
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(isSelected ? Color.onAccent : Color.textPrimary)
+                .padding(.horizontal, DSpace.m)
+                .frame(minHeight: DSize.dayChip)
+                .background(
+                    isSelected ? AnyShapeStyle(Color.accentFill) : AnyShapeStyle(Color.surface),
+                    in: Capsule()
+                )
+                .overlay { Capsule().strokeBorder(isSelected ? Color.clear : Color.hairline, lineWidth: 1) }
         }
+        .buttonStyle(.plain)
+        .sensoryFeedback(.selection, trigger: isSelected)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityIdentifier("onboarding.zone.\(region.rawValue)")
     }
 
     private func infoCard(icon: String, text: LocalizedStringKey) -> some View {
@@ -324,7 +391,6 @@ struct OnboardingStepView: View {
         case .experience: return "Experiencia"
         case .daysPerWeek: return "¿Qué días puedes entrenar?"
         case .sessionMinutes: return "Minutos por sesión"
-        case .gym: return "Gimnasio"
         case .variety: return "Variedad"
         case .restrictions: return "Restricciones"
         }
@@ -337,9 +403,8 @@ struct OnboardingStepView: View {
         case .experience: return "Cuánto tiempo llevas entrenando con constancia."
         case .daysPerWeek: return "Dejamos descanso entre sesiones para que recuperes. Elige al menos 2 días."
         case .sessionMinutes: return "El tiempo que sueles tener para cada entrenamiento."
-        case .gym: return "Dónde vas a entrenar."
         case .variety: return "Cuánto cambian tus ejercicios de una semana a otra."
-        case .restrictions: return "Algo que debamos evitar en tu plan."
+        case .restrictions: return "Opcional. Si algo te molesta, lo cuidamos en tu plan."
         }
     }
 
@@ -347,8 +412,7 @@ struct OnboardingStepView: View {
     private func hint(for step: OnboardingStep) -> LocalizedStringKey? {
         switch step {
         case .goal, .phase, .experience, .variety: return "Elige una opción para seguir."
-        case .gym: return "Toca \"Omitir este paso\" para seguir."
-        case .restrictions: return "Toca \"Continuar sin añadir\" para seguir."
+        case .restrictions: return "La nota es demasiado larga."
         case .daysPerWeek, .sessionMinutes: return nil
         }
     }
@@ -360,7 +424,6 @@ struct OnboardingStepView: View {
         case .experience: return "medal"
         case .daysPerWeek: return "calendar"
         case .sessionMinutes: return "timer"
-        case .gym: return "dumbbell"
         case .variety: return "shuffle"
         case .restrictions: return "cross.case"
         }
@@ -400,7 +463,7 @@ struct OnboardingStepView: View {
             case .balanced: return ("scalemass", nil)
             case .varied: return ("shuffle", nil)
             }
-        case .trainingDays, .sessionMinutes, .gym, .restrictions:
+        case .trainingDays, .sessionMinutes, .restrictions:
             return (nil, nil)
         }
     }
@@ -411,7 +474,7 @@ struct OnboardingStepView: View {
         OnboardingStepView(
             step: .goal,
             indexPlusOne: 1,
-            stepCount: 8,
+            stepCount: 7,
             canAdvance: false,
             canGoBack: false,
             isAtEnd: false,
@@ -426,12 +489,33 @@ struct OnboardingStepView: View {
     .ironEnergyTheme()
 }
 
+#Preview("Restricciones · claro") {
+    NavigationStack {
+        OnboardingStepView(
+            step: .restrictions,
+            indexPlusOne: 7,
+            stepCount: 7,
+            canAdvance: true,
+            canGoBack: true,
+            isAtEnd: true,
+            choices: [],
+            selected: .restrictions(RestrictionsAnswer(zones: [.shoulder, .knee], note: "Me molesta al subir el brazo")),
+            onAnswer: { _ in },
+            onAdvance: {},
+            onGoBack: {},
+            onFinish: {}
+        )
+    }
+    .ironEnergyTheme()
+    .preferredColorScheme(.light)
+}
+
 #Preview("Días · accessibility3") {
     NavigationStack {
         OnboardingStepView(
             step: .daysPerWeek,
             indexPlusOne: 4,
-            stepCount: 8,
+            stepCount: 7,
             canAdvance: true,
             canGoBack: true,
             isAtEnd: false,
@@ -452,7 +536,7 @@ struct OnboardingStepView: View {
         OnboardingStepView(
             step: .goal,
             indexPlusOne: 1,
-            stepCount: 8,
+            stepCount: 7,
             canAdvance: true,
             canGoBack: false,
             isAtEnd: false,

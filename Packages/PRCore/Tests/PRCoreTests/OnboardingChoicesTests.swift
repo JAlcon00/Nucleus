@@ -51,7 +51,7 @@ struct OnboardingChoicesTests {
 
     @Test("Pasos que no son de elección no tienen opciones")
     func nonChoiceStepsAreEmpty() {
-        for step in [OnboardingStep.daysPerWeek, .sessionMinutes, .gym, .restrictions] {
+        for step in [OnboardingStep.daysPerWeek, .sessionMinutes, .restrictions] {
             #expect(spanish.choices(for: step).isEmpty)
         }
     }
@@ -111,7 +111,7 @@ struct OnboardingChoicesTests {
     func onlyNumericStepsHaveDefaults() {
         #expect(OnboardingDefaults.answer(for: .daysPerWeek) == .trainingDays([.monday, .tuesday, .thursday, .friday]))
         #expect(OnboardingDefaults.answer(for: .sessionMinutes) == .sessionMinutes(60))
-        for step in [OnboardingStep.goal, .phase, .experience, .variety, .gym, .restrictions] {
+        for step in [OnboardingStep.goal, .phase, .experience, .variety, .restrictions] {
             #expect(OnboardingDefaults.answer(for: step) == nil)
         }
     }

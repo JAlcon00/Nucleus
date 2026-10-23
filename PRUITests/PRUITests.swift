@@ -74,7 +74,9 @@ final class PRUITests: XCTestCase {
     private func answerQuestionnaire(
         _ app: XCUIApplication,
         days: Set<String> = ["monday", "wednesday", "friday"],
-        aiConsent: String = "decline"
+        aiConsent: String = "decline",
+        zones: [String] = [],
+        note: String? = nil
     ) {
         completeAboutYou(app)
         tap(app, "onboarding.option.hypertrophy"); tap(app, "onboarding.next")
@@ -89,9 +91,17 @@ final class PRUITests: XCTestCase {
         minutes.buttons.element(boundBy: 1).tap()
         minutes.buttons.element(boundBy: 0).tap()
         tap(app, "onboarding.next")
-        tap(app, "onboarding.skipGym"); tap(app, "onboarding.next")
         tap(app, "onboarding.option.balanced"); tap(app, "onboarding.next")
-        tap(app, "onboarding.skipRestrictions"); tap(app, "onboarding.next")
+        // SCRUM-209: sin paso "Gimnasio"; restricciones opcionales (zonas + nota).
+        XCTAssertTrue(element(app, "onboarding.zone.shoulder").waitForExistence(timeout: 10), "Paso de restricciones con zonas")
+        for zone in zones { tap(app, "onboarding.zone.\(zone)") }
+        if let note {
+            let field = element(app, "onboarding.restrictionNote")
+            field.tap()
+            field.typeText(note)
+            tap(app, "onboarding.restrictionNote.done")
+        }
+        tap(app, "onboarding.next")
         tap(app, "aiConsent.\(aiConsent)")
     }
 
@@ -99,9 +109,11 @@ final class PRUITests: XCTestCase {
     private func completeOnboarding(
         _ app: XCUIApplication,
         days: Set<String> = ["monday", "wednesday", "friday"],
-        aiConsent: String = "decline"
+        aiConsent: String = "decline",
+        zones: [String] = [],
+        note: String? = nil
     ) {
-        answerQuestionnaire(app, days: days, aiConsent: aiConsent)
+        answerQuestionnaire(app, days: days, aiConsent: aiConsent, zones: zones, note: note)
         // SCRUM-197: tras "Armando tu semana" se presenta "Tu semana".
         tap(app, "weekIntro.done")
     }
@@ -180,7 +192,7 @@ final class PRUITests: XCTestCase {
         let app = launch()
         completeAboutYou(app)
         tap(app, "onboarding.option.hypertrophy")
-        XCTAssertTrue(app.staticTexts["Paso 1 de 8"].exists, "Un toque no debe cambiar de paso")
+        XCTAssertTrue(app.staticTexts["Paso 1 de 7"].exists, "Un toque no debe cambiar de paso (7 pasos desde SCRUM-209)")
     }
 
     func testDefaultDaysAndMinutesCanAdvanceWithoutTouchingTheSteppers() {
@@ -307,6 +319,18 @@ final class PRUITests: XCTestCase {
         XCTAssertEqual(toggle.value as? String, "1", "Aceptado en el formulario")
         toggle.switches.firstMatch.tap()
         XCTAssertEqual(toggle.value as? String, "0", "Retirar aplica al instante")
+    }
+
+    /// SCRUM-209: elegir "Hombro" en restricciones (con nota) arma el plan igual y "Tu
+    /// semana" explica que se cuida esa zona.
+    func testRestrictionZoneIsExplainedInYourWeek() {
+        let app = launch()
+        answerQuestionnaire(app, zones: ["shoulder"], note: "Molestia al subir el brazo")
+        let rationale = element(app, "plan.rationale")
+        XCTAssertTrue(rationale.waitForExistence(timeout: 15), "Debe verse \"Por qué tu plan es así\"")
+        XCTAssertTrue(rationale.label.localizedCaseInsensitiveContains("hombro"), "Explica que cuida el hombro: \(rationale.label)")
+        tap(app, "weekIntro.done")
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15), "El plan se armó igual")
     }
 
     /// SCRUM-208: "Cerrar sesión" pide confirmación, vuelve al login y, al entrar con la

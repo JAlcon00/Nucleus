@@ -48,7 +48,7 @@ public struct OnboardingChoicePresenter: Sendable {
             return VarietyPreference.allCases.map {
                 OnboardingChoice(id: $0.rawValue, label: label($0), answer: .variety($0))
             }
-        case .daysPerWeek, .sessionMinutes, .gym, .restrictions:
+        case .daysPerWeek, .sessionMinutes, .restrictions:
             return []
         }
     }
