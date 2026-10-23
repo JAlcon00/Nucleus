@@ -73,6 +73,14 @@ public final class AppEnvironment {
         sleepCheckIns.needsCheckIn && activeWorkout == nil && todayPlan.plan?.todayTemplate != nil
     }
 
+    /// "Cerrar sesión" (SCRUM-208): suelta de memoria el entrenamiento en curso (sigue
+    /// guardado y se retoma al volver a entrar) y vuelve al login sin borrar datos.
+    public func signOut() {
+        activeWorkout = nil
+        healthPrefill.reset()
+        session.signOut()
+    }
+
     /// Registra el check-in y aplica el ajuste del día que decide el motor.
     public func recordSleep(hours: Double, quality: SleepQuality) {
         guard let adjustment = sleepCheckIns.record(hours: hours, quality: quality) else { return }

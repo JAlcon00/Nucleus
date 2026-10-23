@@ -123,11 +123,14 @@ public final class AppSessionCoordinator {
         guard let userID = onboarding.auth.profile?.userIdentifier else { return }
         let state = await onboarding.auth.provider.credentialState(forUserIdentifier: userID)
         guard state.requiresSignIn else { return }
-        forgetSession()
-        aiConsent?.load(userID: nil)
-        sleepCheckIns?.load(userID: nil)
-        todayPlan.reset()
-        onboarding.returnToSignIn()
+        leaveSession()
+    }
+
+    /// "Cerrar sesión" desde Perfil (SCRUM-208): vuelve al login y olvida la sesión
+    /// recordada. Planes, bloques, entrenamientos (también uno en curso), consentimiento y
+    /// check-ins NO se borran: regresan al volver a entrar con la misma cuenta.
+    public func signOut() {
+        leaveSession()
     }
 
     // MARK: - Privado
@@ -144,6 +147,15 @@ public final class AppSessionCoordinator {
         case .restored(let profile): onboarding.showCompleted(profile)
         case .unreadable: onboarding.showPlanUnreadable()
         }
+    }
+
+    /// Sale de la sesión sólo en memoria y en la sesión recordada; los datos se quedan.
+    private func leaveSession() {
+        forgetSession()
+        aiConsent?.load(userID: nil)
+        sleepCheckIns?.load(userID: nil)
+        todayPlan.reset()
+        onboarding.returnToSignIn()
     }
 
     private func forgetSession() {

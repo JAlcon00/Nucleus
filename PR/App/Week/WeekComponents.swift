@@ -391,7 +391,7 @@ struct ExerciseLineRow: View {
                 Image(systemName: "\(number).circle.fill")
                     .font(.title3)
                     .symbolRenderingMode(.palette)
-                    .foregroundStyle(Color.onAccent, Color.primaryAction)
+                    .foregroundStyle(Color.onAccent, Color.accentFill)
                     .accessibilityHidden(true)
             }
             layout {
@@ -471,7 +471,7 @@ struct ExerciseKindTag: View {
         .padding(.horizontal, DSpace.xs + DSpace.xs / 2)
         .padding(.vertical, DSpace.xs / 2)
         .background(
-            isCompound ? AnyShapeStyle(Color.primaryAction) : AnyShapeStyle(Color.surfaceElevated),
+            isCompound ? AnyShapeStyle(Color.accentFill) : AnyShapeStyle(Color.surfaceElevated),
             in: RoundedRectangle(cornerRadius: DRadius.small / 2)
         )
         .overlay {

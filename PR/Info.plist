@@ -6,8 +6,6 @@
 	<string>Nucleus</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Nucleus lee tu fecha de nacimiento, sexo, estatura y peso de Salud sólo para llenar "Sobre ti" si tú lo pides. No escribe nada en Salud.</string>
-	<key>UIUserInterfaceStyle</key>
-	<string>Dark</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

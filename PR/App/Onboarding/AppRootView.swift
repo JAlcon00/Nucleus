@@ -83,6 +83,11 @@ struct AppRootView: View {
             }
         }
         .screenBackground()
+        // SCRUM-208: al cerrar sesión, la próxima entrada empieza en Hoy (no en la pestaña
+        // donde se quedó la sesión anterior).
+        .onChange(of: phase == .signedOut) { _, signedOut in
+            if signedOut { selectedTab = .today }
+        }
         .task { await environment.startIfNeeded() }
         .onChange(of: scenePhase) { _, newPhase in
             // Si Apple revocó la credencial mientras la app estaba en segundo plano.

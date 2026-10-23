@@ -351,6 +351,25 @@ struct AppSessionTests {
         #expect(try app.persistence.store(for: .blocks).readAllEntries().entries.count == 1)
     }
 
+    @Test("Cerrar sesión (SCRUM-208): vuelve al login sin borrar nada y la misma cuenta recupera su plan")
+    func signOutKeepsData() async throws {
+        let app = try AppInstance(root: try makeRoot())
+        await app.session.signIn()
+        await app.session.planCompleted(profile: profile())
+        let block = try #require(app.todayPlan.plan?.block.id)
+
+        app.session.signOut()
+        #expect(app.onboarding.phase == .signedOut)
+        #expect(app.planStore.loadSession() == nil, "Al reabrir no entra sola")
+        #expect(app.todayPlan.plan == nil, "Nada del usuario queda en memoria")
+        #expect(try app.persistence.store(for: .plans).readAllEntries().entries.count == 1)
+        #expect(try app.persistence.store(for: .blocks).readAllEntries().entries.count == 1)
+
+        await app.session.signIn()
+        #expect(app.onboarding.phase == .completed(profile()))
+        #expect(app.todayPlan.plan?.block.id == block, "Mismo bloque: nada se regeneró")
+    }
+
     @Test("Perfil ilegible: la fase ofrece rehacer, y rehacer deja un plan nuevo sin perder bloques")
     func unreadableProfileThenRedo() async throws {
         let root = try makeRoot()

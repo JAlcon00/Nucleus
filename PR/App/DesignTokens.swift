@@ -7,16 +7,27 @@
 //  Tokens de diseño semánticos (SKILL apple-product-designer §74). Centraliza
 //  spacing, radios, movimiento y color para no hardcodear estilos por pantalla.
 //
-//  Color (SCRUM-194, U1): paleta Iron Energy, tema oscuro fijo en la v1. Es la ÚNICA
-//  fuente de color de la app: ningún hex ni color del sistema fuera de este archivo.
+//  Color (SCRUM-194, U1; modo claro SCRUM-208): paleta Iron Energy. Es la ÚNICA fuente
+//  de color de la app: ningún hex ni color del sistema fuera de este archivo. Cada rol
+//  tiene variante oscura (la de marca, por defecto) y clara; la apariencia la elige la
+//  persona en Perfil (`AppearancePreference`).
 //  Contrastes medidos con `contrast_check.py` (docs/ux/auditoria-ui-2026-10-22.md §4.1):
-//  - textPrimary 17.75:1 (fondo) · 15.52:1 (tarjeta); textSecondary 5.98 · 5.22.
+//  - Oscuro: textPrimary 17.75:1 (fondo) · 15.52:1 (tarjeta); textSecondary 5.98 · 5.22.
+//  - Claro (fondo hueso / tarjeta blanca / elevada): textPrimary 17.75 · 19.42 · 16.08;
+//    textSecondary 5.77 · 6.31 · 5.23; primaryAction 5.09 · 5.56 · 4.61;
+//    accentSecondary 5.27 · 5.76 · 4.77; success 5.12 (elevada); warning ≥ 5.30;
+//    destructive ≥ 4.93. Los colores de marca rojo, naranja y acero NO alcanzan 4.5:1
+//    sobre fondo claro: en claro se usan sus versiones oscurecidas.
 //  - Sobre el acento SIEMPRE `onAccent`: 5.51:1 sobre el rojo, 6.29:1 a mitad del
-//    degradado, 7.44:1 sobre el naranja. Blanco sobre el rojo da 3.22:1: prohibido.
-//  - `surface` contra el fondo da 1.14:1: las tarjetas llevan borde `hairline`.
+//    degradado, 7.44:1 sobre el naranja. Blanco sobre el rojo da 3.22:1: prohibido. Un
+//    relleno con texto encima usa `accentFill` (rojo de marca en los dos modos), nunca
+//    `primaryAction` (en claro es más oscuro y con carbón da 3.49:1).
+//  - `surface` contra el fondo da 1.14:1 (oscuro) y 1.09:1 (claro): las tarjetas llevan
+//    borde `hairline`.
 //
 
 import SwiftUI
+import PRCore
 
 /// Tokens de espaciado semántico (SKILL §74).
 nonisolated enum DSpace {
@@ -120,38 +131,59 @@ nonisolated private enum IronEnergy {
     static let green = Color(red: 48 / 255, green: 209 / 255, blue: 88 / 255)       // #30D158
     static let amber = Color(red: 255 / 255, green: 197 / 255, blue: 61 / 255)      // #FFC53D
     static let coral = Color(red: 255 / 255, green: 107 / 255, blue: 107 / 255)     // #FF6B6B
+
+    // Modo claro (SCRUM-208): superficies claras y versiones oscurecidas de los acentos
+    // para que el texto y los iconos pasen AA sobre fondo claro.
+    static let white = Color(red: 1, green: 1, blue: 1)                              // #FFFFFF
+    static let boneHigh = Color(red: 234 / 255, green: 234 / 255, blue: 228 / 255)  // #EAEAE4
+    static let steelDeep = Color(red: 91 / 255, green: 96 / 255, blue: 106 / 255)    // #5B606A
+    static let emberDeep = Color(red: 200 / 255, green: 40 / 255, blue: 27 / 255)    // #C8281B
+    static let fireDeep = Color(red: 168 / 255, green: 74 / 255, blue: 0 / 255)      // #A84A00
+    static let greenDeep = Color(red: 23 / 255, green: 112 / 255, blue: 47 / 255)    // #17702F
+    static let amberDeep = Color(red: 134 / 255, green: 84 / 255, blue: 0 / 255)     // #865400
+    static let coralDeep = Color(red: 185 / 255, green: 48 / 255, blue: 45 / 255)    // #B9302D
+
+    /// Un color por apariencia. Sin apariencia definida se usa la oscura (la de marca).
+    static func adaptive(light: Color, dark: Color) -> Color {
+        Color(UIColor { traits in
+            traits.userInterfaceStyle == .light ? UIColor(light) : UIColor(dark)
+        })
+    }
 }
 
 /// Roles de color (SKILL §74). Deciden el significado; nunca un color por pantalla.
 extension Color {
-    /// Fondo de todas las pantallas (negro carbón).
-    static let appBackground = IronEnergy.carbon
-    /// Tarjetas, filas y hojas (gris grafito). Necesita borde `hairline` sobre el fondo.
-    static let surface = IronEnergy.graphite
+    /// Fondo de todas las pantallas (negro carbón · blanco hueso).
+    static let appBackground = IronEnergy.adaptive(light: IronEnergy.bone, dark: IronEnergy.carbon)
+    /// Tarjetas, filas y hojas (grafito · blanco). Necesita borde `hairline` sobre el fondo.
+    static let surface = IronEnergy.adaptive(light: IronEnergy.white, dark: IronEnergy.graphite)
     /// Campos de entrada, botones secundarios y estado presionado.
-    /// `textSecondary` encima queda justo (4.6:1): usar `textPrimary`.
-    static let surfaceElevated = IronEnergy.graphiteHigh
+    /// En oscuro `textSecondary` encima queda justo (4.6:1): usar `textPrimary`.
+    static let surfaceElevated = IronEnergy.adaptive(light: IronEnergy.boneHigh, dark: IronEnergy.graphiteHigh)
     /// Borde de tarjetas (decorativo).
-    static let hairline = IronEnergy.bone.opacity(0.08)
-    /// Títulos y texto (blanco hueso).
-    static let textPrimary = IronEnergy.bone
+    static let hairline = IronEnergy.adaptive(light: IronEnergy.carbon.opacity(0.12), dark: IronEnergy.bone.opacity(0.08))
+    /// Títulos y texto (blanco hueso · negro carbón).
+    static let textPrimary = IronEnergy.adaptive(light: IronEnergy.carbon, dark: IronEnergy.bone)
     /// Texto secundario e iconos inactivos (gris acero).
-    static let textSecondary = IronEnergy.steel
-    /// Acción primaria: fondo de CTA, progreso, selección, iconos activos.
-    static let primaryAction = IronEnergy.ember
+    static let textSecondary = IronEnergy.adaptive(light: IronEnergy.steelDeep, dark: IronEnergy.steel)
+    /// Acción primaria como texto o icono: progreso, selección, iconos activos. Para un
+    /// relleno con texto encima usa `accentFill`.
+    static let primaryAction = IronEnergy.adaptive(light: IronEnergy.emberDeep, dark: IronEnergy.ember)
+    /// Relleno de acento con texto `onAccent` encima (rojo de marca en los dos modos, 5.51:1).
+    static let accentFill = IronEnergy.ember
     /// Acción secundaria / neutra (bordes e iconos de controles secundarios).
-    static let secondaryAction = IronEnergy.steel
+    static let secondaryAction = IronEnergy.adaptive(light: IronEnergy.steelDeep, dark: IronEnergy.steel)
     /// Logros, rachas y récords (naranja fuego). Reservado: así se reconocen al instante.
-    static let accentSecondary = IronEnergy.fire
+    static let accentSecondary = IronEnergy.adaptive(light: IronEnergy.fireDeep, dark: IronEnergy.fire)
     /// Texto e iconos SOBRE el rojo, el naranja o el degradado (nunca blanco).
     static let onAccent = IronEnergy.carbon
     /// Serie completada, guardado.
-    static let success = IronEnergy.green
+    static let success = IronEnergy.adaptive(light: IronEnergy.greenDeep, dark: IronEnergy.green)
     /// Avisos (máquina ocupada, calentamiento, pausa). Distinto del naranja de logros.
-    static let warning = IronEnergy.amber
+    static let warning = IronEnergy.adaptive(light: IronEnergy.amberDeep, dark: IronEnergy.amber)
     /// Abandonar, borrar. Se parece al acento: nunca va relleno y siempre lleva texto o
     /// icono (`xmark`/`trash`) y confirmación.
-    static let destructive = IronEnergy.coral
+    static let destructive = IronEnergy.adaptive(light: IronEnergy.coralDeep, dark: IronEnergy.coral)
 }
 
 extension LinearGradient {
@@ -166,12 +198,33 @@ extension LinearGradient {
 
 // MARK: - Superficies
 
-extension View {
-    /// Tema Iron Energy en la raíz: oscuro fijo (v1) y acento de marca para los controles
-    /// del sistema. El texto sin color explícito queda en el primario del sistema oscuro.
-    func ironEnergyTheme() -> some View {
-        preferredColorScheme(.dark)
+/// Aplica la apariencia elegida en Perfil (SCRUM-208) y el acento de marca.
+private struct IronEnergyTheme: ViewModifier {
+    @AppStorage(AppearancePreference.storageKey) private var appearance = AppearancePreference.fallback.rawValue
+
+    func body(content: Content) -> some View {
+        content
+            .preferredColorScheme(AppearancePreference.resolve(appearance).colorScheme)
             .tint(Color.primaryAction)
+    }
+}
+
+extension AppearancePreference {
+    /// `nil` = sigue al sistema.
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+}
+
+extension View {
+    /// Tema Iron Energy: la apariencia elegida en Perfil (oscuro por defecto) y el acento
+    /// de marca para los controles del sistema. Va en la raíz y en cada hoja presentada.
+    func ironEnergyTheme() -> some View {
+        modifier(IronEnergyTheme())
     }
 
     /// Fondo carbón de pantalla completa.

@@ -20,12 +20,23 @@ struct SigningInView: View {
     @State private var attempt = 0
     /// Isotipo de la marca (SCRUM-199); escala con el texto.
     @ScaledMetric(relativeTo: .largeTitle) private var isotypeSize = DSize.brandIsotype
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: DSpace.l) {
             Spacer()
-            Image(.logoIsotipo)
-                .resizable()
+            // En claro, la versión mono carbón (SCRUM-208): la de color lleva el núcleo en
+            // hueso y se pierde sobre el fondo claro.
+            Group {
+                if colorScheme == .light {
+                    Image(.logoIsotipoTemplate)
+                        .resizable()
+                        .foregroundStyle(Color.textPrimary)
+                } else {
+                    Image(.logoIsotipo)
+                        .resizable()
+                }
+            }
                 .scaledToFit()
                 .frame(width: isotypeSize, height: isotypeSize)
                 .accessibilityLabel("Nucleus")

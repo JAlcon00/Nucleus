@@ -5,8 +5,9 @@
 //  Created by PR.
 //
 //  Botón OFICIAL de Sign in with Apple (SCRUM-195): `ASAuthorizationAppleIDButton` tipo
-//  "Continuar con Apple", estilo blanco sobre el fondo carbón, como piden las guías de
-//  Apple. Sólo dibuja el botón y reenvía el toque: la petición la hace
+//  "Continuar con Apple", blanco sobre el fondo carbón y negro sobre el fondo claro
+//  (SCRUM-208), como piden las guías de Apple. El estilo sólo se fija al crearlo: quien lo
+//  usa lo reconstruye al cambiar la apariencia (`.id(colorScheme)`). Sólo dibuja el botón y reenvía el toque: la petición la hace
 //  `SignInWithAppleProvider` a través del coordinador (así el modo simulado y los tests
 //  siguen igual). Se usa la versión UIKit porque `SignInWithAppleButton` de SwiftUI lanza
 //  su propia petición y saltaría el coordinador.
@@ -23,7 +24,8 @@ struct AppleSignInButton: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> ASAuthorizationAppleIDButton {
-        let button = ASAuthorizationAppleIDButton(authorizationButtonType: .continue, authorizationButtonStyle: .white) // color-guard: allow (estilo oficial de Apple)
+        let style: ASAuthorizationAppleIDButton.Style = context.environment.colorScheme == .light ? .black : .white // color-guard: allow (estilo oficial de Apple)
+        let button = ASAuthorizationAppleIDButton(authorizationButtonType: .continue, authorizationButtonStyle: style)
         button.cornerRadius = DRadius.medium
         button.addTarget(context.coordinator, action: #selector(Coordinator.tapped), for: .touchUpInside)
         return button

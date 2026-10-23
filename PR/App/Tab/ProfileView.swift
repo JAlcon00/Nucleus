@@ -29,8 +29,15 @@ struct ProfileView: View {
     var onSetAIConsent: (Bool) -> Void = { _ in }
     /// Estado de la conexión con la IA (SCRUM-204): sólo se informa, no se decide aquí.
     var aiStatus: AIConnectionStatus = .offline(.releaseBuild)
+    /// ¿Hay un entrenamiento en curso? Cambia el aviso al cerrar sesión (SCRUM-208).
+    var hasActiveWorkout = false
+    /// Intento: cerrar sesión (no borra datos).
+    var onSignOut: () -> Void = {}
 
     @State private var confirmingRedo = false
+    @State private var confirmingSignOut = false
+    /// Apariencia de la app (SCRUM-208): preferencia del dispositivo, no del entrenamiento.
+    @AppStorage(AppearancePreference.storageKey) private var appearance = AppearancePreference.fallback.rawValue
 
     var body: some View {
         NavigationStack {
@@ -79,6 +86,9 @@ struct ProfileView: View {
                         .foregroundStyle(Color.textSecondary)
                 }
                 .listRowBackground(Color.surface)
+
+                appearanceSection
+                accountSection
             }
             .scrollContentBackground(.hidden)
             .screenBackground()
@@ -93,7 +103,61 @@ struct ProfileView: View {
             } message: {
                 Text("Si cambias objetivo, fase o días se crea un bloque nuevo. El anterior y su historial se conservan.")
             }
+            .confirmationDialog(
+                "¿Cerrar sesión?",
+                isPresented: $confirmingSignOut,
+                titleVisibility: .visible
+            ) {
+                Button("Cerrar sesión", role: .destructive) { onSignOut() }
+                    .accessibilityIdentifier("profile.signOut.confirm")
+                Button("Cancelar", role: .cancel) {}
+            } message: {
+                Text(hasActiveWorkout
+                     ? "Tienes un entrenamiento en curso. Se guarda tal cual y lo retomas al volver a entrar con tu cuenta."
+                     : "Tu plan y tu historial se quedan en este iPhone y vuelven al entrar con tu cuenta.")
+            }
         }
+    }
+
+    /// SCRUM-208: claro, oscuro o como el sistema.
+    private var appearanceSection: some View {
+        Section {
+            Picker(selection: $appearance) {
+                Text("Sistema").tag(AppearancePreference.system.rawValue)
+                Text("Claro").tag(AppearancePreference.light.rawValue)
+                Text("Oscuro").tag(AppearancePreference.dark.rawValue)
+            } label: {
+                Label {
+                    Text("Apariencia")
+                } icon: {
+                    Image(systemName: "circle.lefthalf.filled").foregroundStyle(Color.primaryAction)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("profile.appearance")
+        } header: {
+            Text("Apariencia")
+        }
+        .listRowBackground(Color.surface)
+    }
+
+    /// SCRUM-208: cerrar sesión (con confirmación; no borra datos).
+    private var accountSection: some View {
+        Section {
+            Button {
+                confirmingSignOut = true
+            } label: {
+                Label {
+                    Text("Cerrar sesión").foregroundStyle(Color.destructive)
+                } icon: {
+                    Image(systemName: "rectangle.portrait.and.arrow.right").foregroundStyle(Color.destructive)
+                }
+            }
+            .accessibilityIdentifier("profile.signOut")
+        } header: {
+            Text("Cuenta")
+        }
+        .listRowBackground(Color.surface)
     }
 
     /// Cabecera con avatar: inicial del nombre o un icono si no hay nombre.
@@ -246,4 +310,12 @@ struct ProfileView: View {
     ProfileView()
         .dynamicTypeSize(.accessibility3)
         .ironEnergyTheme()
+}
+
+#Preview("Claro") {
+    ProfileView(aboutYou: try? AboutYou(
+        name: "Ana", birthYear: 1992, sex: .female, heightCentimeters: 165, weight: 61.5, weightUnit: .kilograms
+    ))
+    .ironEnergyTheme()
+    .preferredColorScheme(.light)
 }

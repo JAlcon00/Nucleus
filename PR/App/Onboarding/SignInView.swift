@@ -20,16 +20,26 @@ struct SignInView: View {
 
     /// Ancho del logo horizontal (mínimo de marca: 96 pt); escala con el texto.
     @ScaledMetric(relativeTo: .largeTitle) private var logoWidth = DSize.brandLogo
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: DSpace.l) {
             Spacer()
 
-            // Logo de marca (SCRUM-199): isotipo + "NUCLEUS" en vector, versión para
-            // fondo oscuro. VoiceOver lo lee como el encabezado "Nucleus".
+            // Logo de marca (SCRUM-199): isotipo + "NUCLEUS" en vector. En oscuro la versión
+            // a color; en claro la mono carbón (variante aprobada para fondos claros,
+            // SCRUM-208). VoiceOver lo lee como el encabezado "Nucleus".
             VStack(spacing: DSpace.m) {
-                Image(.logoHorizontal)
-                    .resizable()
+                Group {
+                    if colorScheme == .light {
+                        Image(.logoHorizontalTemplate)
+                            .resizable()
+                            .foregroundStyle(Color.textPrimary)
+                    } else {
+                        Image(.logoHorizontal)
+                            .resizable()
+                    }
+                }
                     .scaledToFit()
                     .frame(width: logoWidth)
                     .accessibilityLabel("Nucleus")
@@ -44,6 +54,7 @@ struct SignInView: View {
             AppleSignInButton {
                 Task { await onSignIn() }
             }
+            .id(colorScheme)
             .frame(maxWidth: .infinity, minHeight: DButton.primaryHeight, maxHeight: DButton.primaryHeight)
             .accessibilityHint("Inicia sesión con Sign in with Apple para empezar el entrenamiento.")
             .accessibilityIdentifier("signIn.apple")

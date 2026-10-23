@@ -65,7 +65,9 @@ struct AppTabBarView: View {
                 onSetAIConsent: { granted in
                     if granted { environment.aiConsent.grant() } else { environment.aiConsent.decline() }
                 },
-                aiStatus: environment.aiConnection.status
+                aiStatus: environment.aiConnection.status,
+                hasActiveWorkout: environment.activeWorkout != nil,
+                onSignOut: { environment.signOut() }
             )
                 .tabItem { tabLabel(.profile) }
                 .tag(AppTab.profile)

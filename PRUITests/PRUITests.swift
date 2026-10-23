@@ -38,6 +38,18 @@ final class PRUITests: XCTestCase {
         app.descendants(matching: .any).matching(identifier: id).firstMatch
     }
 
+    /// Desplaza hacia abajo hasta que aparezca `id` (las filas de una lista fuera de pantalla
+    /// no existen para la accesibilidad hasta que se ven).
+    private func scrollTo(_ app: XCUIApplication, _ id: String, maxSwipes: Int = 6) -> XCUIElement {
+        let target = element(app, id)
+        var swipes = 0
+        while !target.exists && swipes < maxSwipes {
+            app.swipeUp()
+            swipes += 1
+        }
+        return target
+    }
+
     private func tap(_ app: XCUIApplication, _ id: String, file: StaticString = #filePath, line: UInt = #line) {
         let target = element(app, id)
         XCTAssertTrue(target.waitForExistence(timeout: 10), "No aparece '\(id)'", file: file, line: line)
@@ -295,6 +307,24 @@ final class PRUITests: XCTestCase {
         XCTAssertEqual(toggle.value as? String, "1", "Aceptado en el formulario")
         toggle.switches.firstMatch.tap()
         XCTAssertEqual(toggle.value as? String, "0", "Retirar aplica al instante")
+    }
+
+    /// SCRUM-208: "Cerrar sesión" pide confirmación, vuelve al login y, al entrar con la
+    /// misma cuenta, el plan sigue ahí (no se borró nada).
+    func testSignOutAsksAndKeepsThePlan() {
+        let app = launch()
+        completeOnboarding(app)
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
+        openTab(app, "Perfil")
+        XCTAssertTrue(scrollTo(app, "profile.appearance").waitForExistence(timeout: 5), "Perfil ofrece la apariencia")
+        XCTAssertTrue(scrollTo(app, "profile.signOut").waitForExistence(timeout: 5), "Perfil ofrece cerrar sesión")
+        tap(app, "profile.signOut")
+        let confirm = app.buttons["profile.signOut.confirm"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5), "Debe pedir confirmación")
+        confirm.tap()
+        XCTAssertTrue(element(app, "signIn.apple").waitForExistence(timeout: 10), "Vuelve al inicio de sesión")
+        tap(app, "signIn.apple")
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15), "La misma cuenta recupera su plan")
     }
 
     /// SCRUM-203: en un día de entrenamiento Hoy pregunta cómo dormiste; "Dormí mal"

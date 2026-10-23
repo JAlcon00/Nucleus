@@ -160,7 +160,9 @@ struct OnboardingStepView: View {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.caption2.weight(.bold))
                             .symbolRenderingMode(.palette)
-                            .foregroundStyle(Color.onAccent, Color.textPrimary)
+                            // Palomita en el color del fondo sobre el círculo del texto:
+                            // contraste invertido en claro y en oscuro (17.75:1).
+                            .foregroundStyle(Color.appBackground, Color.textPrimary)
                             .accessibilityHidden(true)
                     }
                 }
