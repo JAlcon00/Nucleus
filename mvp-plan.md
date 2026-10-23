@@ -479,6 +479,37 @@ Solo se empieza si los bloques 1 a 8 están en `[x]`.
 - [x] Logo horizontal en el inicio de sesión e isotipo en "Conectando con Apple…".
 - [ ] 👤 Jesús: ícono oscuro y tintado (estilo de íconos de la pantalla de inicio), arranque en frío en iPhone SE y Pro Max, ícono del Watch.
 
+## 3.2 IA personalizada · SCRUM-201 (2026-10-22) — terminada
+
+| # | Jira | Qué | Estado |
+|---|---|---|---|
+| IA-1 | SCRUM-202 | Consentimiento y contexto del perfil para la IA | [x] |
+| IA-2 | SCRUM-203 | Check-in diario de sueño que aligera el día | [x] |
+| IA-3 | SCRUM-204 | Conexión con la IA sólo en Debug con llave local + guard de secretos | [x] |
+| IA-4 | SCRUM-205 | Plan personalizado por IA tras el formulario y "Por qué tu plan es así" | [x] |
+| IA-5 | SCRUM-206 | Apple Salud opcional para prellenar "Sobre ti" | [x] |
+
+- Evidencia: commits `cc16bcc`, `0b0a1f6`, `335d7d3`, `32cbc57` y `413a326` en main; `make ci` en verde en cada uno. La evidencia detallada está en el comentario de cada historia en Jira.
+- [ ] 👤 Jesús: probar la IA real con la llave en `.env` (simulador) y Salud en un iPhone físico con datos reales.
+- Antes de TestFlight: mover la llave de la IA a un backend (historia por crear).
+
+## 3.3 Feedback del stakeholder · SCRUM-207 (2026-10-22) — en curso
+
+- **Decisiones de Jesús (2026-10-22):**
+  - formulario con 3 flujos según la experiencia;
+  - restricciones con zona del cuerpo + texto opcional;
+  - se quita el paso "Gimnasio".
+- **Orden:** FB-1 → FB-2 → FB-3 → FB-4 → FB-5 → FB-6. Cada una se sube a main con `make ci` y `make test-ui` en verde.
+
+| # | Jira | Qué | Estado |
+|---|---|---|---|
+| FB-1 | SCRUM-208 | Perfil: modo claro (Sistema/Claro/Oscuro) y cerrar sesión | [ ] en curso |
+| FB-2 | SCRUM-209 | Formulario: quitar "Gimnasio" y restricciones con zona + texto | [ ] |
+| FB-3 | SCRUM-210 | Formulario adaptado al nivel de experiencia (3 flujos) | [ ] |
+| FB-4 | SCRUM-211 | Reordenar los ejercicios del día | [ ] |
+| FB-5 | SCRUM-212 | Saltar o dejar en espera ejercicios durante el entrenamiento | [ ] |
+| FB-6 | SCRUM-213 | Progreso: 4 KPIs y gráfica | [ ] |
+
 ## 4. Después del POC (no empezar todavía)
 
 En orden: Fase C (restricciones SCRUM-31, 32, 36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–40) → HealthKit, Watch, pestañas.
