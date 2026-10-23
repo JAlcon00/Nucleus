@@ -534,7 +534,7 @@ final class PRUITests: XCTestCase {
         XCTAssertTrue(element(app, "workout.completeSet").waitForExistence(timeout: 5), "Sigue con el siguiente ejercicio")
 
         tap(app, "workout.skip")
-        let confirm = app.buttons["Saltar ejercicio"].firstMatch
+        let confirm = app.buttons["Sí, saltar"].firstMatch
         XCTAssertTrue(confirm.waitForExistence(timeout: 5), "Saltar pide confirmación")
         confirm.tap()
         XCTAssertTrue(element(app, "workout.resume.0").waitForExistence(timeout: 5), "El saltado se puede retomar")
@@ -543,8 +543,8 @@ final class PRUITests: XCTestCase {
         XCTAssertFalse(element(app, "workout.resume.0").waitForExistence(timeout: 2), "Retomado: ya no está saltado")
 
         tap(app, "workout.skip")
-        XCTAssertTrue(app.buttons["Saltar ejercicio"].firstMatch.waitForExistence(timeout: 5))
-        app.buttons["Saltar ejercicio"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["Sí, saltar"].firstMatch.waitForExistence(timeout: 5))
+        app.buttons["Sí, saltar"].firstMatch.tap()
 
         app.buttons["Terminar"].firstMatch.tap()
         let complete = app.buttons["Completar sesión"].firstMatch

@@ -137,7 +137,7 @@ struct WorkoutModeView: View {
             isPresented: Binding(get: { confirmingSkip != nil }, set: { if !$0 { confirmingSkip = nil } }),
             titleVisibility: .visible
         ) {
-            Button("Saltar ejercicio") {
+            Button("Sí, saltar") {
                 _ = try? coordinator.skipCurrentExercise()
                 confirmingSkip = nil
             }
@@ -170,7 +170,8 @@ struct WorkoutModeView: View {
                 Button {
                     confirmingSkip = set.exerciseName
                 } label: {
-                    Label("Saltar", systemImage: "forward.end")
+                    // "Saltar" a secas es del descanso: éste dice qué salta.
+                    Label("Saltar ejercicio", systemImage: "forward.end")
                 }
                 .buttonStyle(.surface)
                 .accessibilityIdentifier("workout.skip")
