@@ -75,9 +75,9 @@ Cada funcionalidad se cierra cuando todas sus casillas están en `[x]`.
 
 ### F-07 · Ajustar la sesión a mi tiempo (opcional) — SCRUM-187 (era de Joss)
 Entra al demo solo si F-01 a F-06 están completos.
-- [ ] Hoy muestra la duración real de la sesión → SCRUM-30.
-- [ ] Con 30 minutos se conservan los ejercicios principales y la app dice qué quitó → SCRUM-30.
-- [ ] Con más tiempo no se agregan series → SCRUM-30.
+- [x] Hoy muestra la duración real de la sesión → SCRUM-30.
+- [x] Con 30 minutos se conservan los ejercicios principales y la app dice qué quitó → SCRUM-30.
+- [x] Con más tiempo no se agregan series → SCRUM-30.
 
 ### Soporte
 - [ ] S-01 · Ambiente demo y deploy — SCRUM-188 (era de Gael). Ver bloque 11.
@@ -360,18 +360,20 @@ Evidencia: `make ci` (mismas líneas que el bloque 7, 2026-10-21); `PRDomainTest
 Solo se empieza si los bloques 1 a 8 están en `[x]`.
 
 **Criterios:**
-- [ ] Hoy muestra la duración calculada de la sesión real (series, descansos y transiciones), no la del cuestionario.
-- [ ] Al elegir 30, 45, 60 o 90 minutos, la sesión se ajusta:
+- [x] Hoy muestra la duración calculada de la sesión real (series, descansos y transiciones), no la del cuestionario.
+- [x] Al elegir 30, 45, 60 o 90 minutos, la sesión se ajusta:
   - primero se quita lo opcional;
   - después se reducen los accesorios;
   - se conservan los ejercicios ancla y los prioritarios.
-- [ ] La app dice en una frase qué quitó y por qué.
-- [ ] Con 90 o 180 minutos no se agregan series; como mucho se sugiere movilidad o cardio.
-- [ ] Si la sesión no cabe ni recortada, la app lo dice claramente en lugar de quitar anclas en silencio.
+- [x] La app dice en una frase qué quitó y por qué.
+- [x] Con 90 o 180 minutos no se agregan series; como mucho se sugiere movilidad o cardio.
+- [x] Si la sesión no cabe ni recortada, la app lo dice claramente en lugar de quitar anclas en silencio.
 
 **Tests:**
 - Unitarios: 30, 45, 60, 90 y 180 minutos sobre la misma sesión, y el mensaje de "no cabe".
 - Integración: ajuste de tiempo desde el coordinador de Hoy hasta iniciar el workout recortado.
+
+Evidencia: commit `1c50415`; `make ci` → `✔ Test run with 513 tests in 77 suites passed` + `✔ Test run with 478 tests in 86 suites passed` (2026-10-23). Tests en `Packages/PRCore/Tests/PRDomainTests/SessionTimeFitTests.swift` (30/45/60/90/180 sobre la misma sesión, no cabe, opcional primero, prioritario, calentamiento, día) y `Packages/PRCore/Tests/PRCoreTests/SessionTimeBudgetTests.swift` (plan real del motor; integración con `LocalPersistence` en directorio temporal: ajuste guardado → workout recortado → cierre forzado → se retoma igual; sin cambio con workout en curso; al día siguiente no aplica). Validado en simulador iPad: Hoy muestra ~17 min reales (antes ~60), "Tengo 30 min" con la frase de tiempo de sobra, sobrevive a reabrir y "Sesión completa" lo quita. **Pendiente:** 👤 Jesús, probar cada opción con una sesión larga (que sí recorte) en dispositivo.
 
 ---
 
