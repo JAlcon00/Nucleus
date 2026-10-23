@@ -37,18 +37,19 @@ struct WorkoutModeView: View {
                 emptyView
             case .active(let set):
                 liveContent(active: set, resting: nil)
-            case .resting(_, rest: let rest):
+            case .resting(let next, rest: let rest):
                 liveContent(active: nil, resting: RestTimerView(
                     remainingSeconds: rest.remaining(at: now),
                     onSkip: { coordinator.skipRest() },
                     onExtend: { coordinator.extendRest() }
-                ))
+                ), next: next)
             case .paused(let set):
                 pausedView(set)
             case .finished(let summary):
                 WorkoutSummaryView(
                     summary: summary,
                     celebration: coordinator.celebration(for: summary, level: coachingLevel),
+                    skipped: coordinator.skippedExercises.map(\.name),
                     onDone: onDone
                 )
             }
@@ -93,6 +94,8 @@ struct WorkoutModeView: View {
     }
 
     @State private var finishTapped = false
+    /// SCRUM-212: "Saltar" pide confirmación (no se puede deshacer sin "Retomar").
+    @State private var confirmingSkip: String?
 
     private var isLive: Bool {
         switch coordinator.phase {
@@ -105,7 +108,11 @@ struct WorkoutModeView: View {
     /// contextual descartable (PR-1501): educación ligada al contexto, descartable,
     /// y reducida en nivel advanced por el driver.
     @ViewBuilder
-    private func liveContent(active set: ActiveWorkoutSetUI?, resting restView: RestTimerView?) -> some View {
+    private func liveContent(
+        active set: ActiveWorkoutSetUI?,
+        resting restView: RestTimerView?,
+        next: ActiveWorkoutSetUI? = nil
+    ) -> some View {
         VStack(spacing: 0) {
             if let card = coachingCard, !dismissedCards.contains(card.id) {
                 CoachingCardBanner(card: card) {
@@ -118,6 +125,68 @@ struct WorkoutModeView: View {
             } else if let restView {
                 restView
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if let next {
+                    // En pleno descanso: qué sigue y, si la máquina está ocupada, cambiarlo.
+                    queueActions(for: next, label: "Sigue: \(next.exerciseName)")
+                        .padding([.horizontal, .bottom], DSpace.l)
+                }
+            }
+        }
+        .confirmationDialog(
+            "¿Saltar \(confirmingSkip ?? "")?",
+            isPresented: Binding(get: { confirmingSkip != nil }, set: { if !$0 { confirmingSkip = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Saltar ejercicio") {
+                _ = try? coordinator.skipCurrentExercise()
+                confirmingSkip = nil
+            }
+            .accessibilityIdentifier("workout.skip.confirm")
+            Button("Cancelar", role: .cancel) { confirmingSkip = nil }
+        } message: {
+            Text("Las series que ya hiciste se guardan. Puedes retomarlo antes de terminar.")
+        }
+    }
+
+    /// SCRUM-212: acciones secundarias sobre el ejercicio actual (o el que sigue en el
+    /// descanso) y los saltados para retomarlos. La acción principal sigue siendo
+    /// "Completar serie".
+    private func queueActions(for set: ActiveWorkoutSetUI, label: String? = nil) -> some View {
+        VStack(spacing: DSpace.s) {
+            if let label {
+                Text(label)
+                    .font(.subheadline)
+                    .foregroundStyle(Color.textSecondary)
+            }
+            HStack(spacing: DSpace.s) {
+                Button {
+                    _ = try? coordinator.deferCurrentExercise()
+                } label: {
+                    Label("Para después", systemImage: "clock.arrow.circlepath")
+                }
+                .buttonStyle(.surface)
+                .accessibilityHint("Pasa este ejercicio al final, por ejemplo si la máquina está ocupada.")
+                .accessibilityIdentifier("workout.defer")
+                Button {
+                    confirmingSkip = set.exerciseName
+                } label: {
+                    Label("Saltar", systemImage: "forward.end")
+                }
+                .buttonStyle(.surface)
+                .accessibilityIdentifier("workout.skip")
+            }
+            ForEach(Array(coordinator.skippedExercises.enumerated()), id: \.element.id) { index, skipped in
+                HStack {
+                    Label("Saltado: \(skipped.name)", systemImage: "forward.end")
+                        .font(.footnote)
+                        .foregroundStyle(Color.textSecondary)
+                    Spacer()
+                    Button("Retomar") {
+                        _ = try? coordinator.resumeSkipped(skipped.id)
+                    }
+                    .frame(minHeight: DSize.dayChip)
+                    .accessibilityIdentifier("workout.resume.\(index)")
+                }
             }
         }
     }
@@ -151,6 +220,9 @@ struct WorkoutModeView: View {
             Spacer()
             inputControls(for: set)
             Spacer()
+            queueActions(for: set)
+                .padding(.horizontal, DSpace.l)
+                .padding(.bottom, DSpace.m)
             PrimaryActionButton(
                 "Completar serie",
                 systemImage: "checkmark",
@@ -171,7 +243,7 @@ struct WorkoutModeView: View {
             Text(set.exerciseName)
                 .font(.title2.bold())
                 .multilineTextAlignment(.center)
-            Text("Serie \(set.index + 1) de \(set.total)")
+            Text("Serie \(set.position) de \(set.total)")
                 .font(.subheadline)
                 .foregroundStyle(Color.textSecondary)
             // SCRUM-200: a qué RIR llegar (lo planeó el motor) y, en la última serie de

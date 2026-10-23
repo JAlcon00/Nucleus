@@ -314,6 +314,9 @@ public struct WorkoutSessionRecord: Identifiable, Codable, Sendable, Hashable {
     public var healthWorkoutReferenceID: UUID?
     /// Descanso en curso, guardado como hora de fin (SCRUM-24). `nil` = sin descanso.
     public var rest: RestSnapshot?
+    /// Ejercicios dejados para después o saltados (SCRUM-212). `nil` en sesiones
+    /// anteriores o sin cambios: se sigue el orden de la plantilla.
+    public var queue: ExerciseQueueState?
 
     public init(
         id: WorkoutID = WorkoutID(),

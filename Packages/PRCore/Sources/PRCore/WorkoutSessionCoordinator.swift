@@ -32,6 +32,9 @@ public struct ActiveWorkoutSetUI: Equatable, Sendable {
     public let targetRIR: ClosedRange<Int>?
     /// Sólo en la última serie de trabajo del ejercicio: si conviene dropset.
     public let dropset: DropsetAdvice?
+    /// Número de esta serie entre las de la sesión ("Serie X de Y"): hechas + 1. Con
+    /// ejercicios en espera no coincide con `index` (SCRUM-212).
+    public let position: Int
 
     public init(
         index: Int,
@@ -40,7 +43,8 @@ public struct ActiveWorkoutSetUI: Equatable, Sendable {
         isWarmup: Bool,
         draft: SetCompletionDraft,
         targetRIR: ClosedRange<Int>? = nil,
-        dropset: DropsetAdvice? = nil
+        dropset: DropsetAdvice? = nil,
+        position: Int? = nil
     ) {
         self.index = index
         self.total = total
@@ -49,6 +53,7 @@ public struct ActiveWorkoutSetUI: Equatable, Sendable {
         self.draft = draft
         self.targetRIR = targetRIR
         self.dropset = dropset
+        self.position = position ?? index + 1
     }
 }
 
@@ -279,11 +284,13 @@ extension WorkoutSessionCoordinator {
 
 extension WorkoutSessionCoordinator {
 
-    /// Set siguiente a realizar (= `session.sets.count` dentro de `plannedSets`).
+    /// Set siguiente a realizar: por ejercicio, siguiendo la cola (esperas y saltos,
+    /// SCRUM-212). Sin cambios en la cola es `plannedSets[sets.count]`, como antes.
     public func currentSet() -> ActiveWorkoutSetUI? {
-        guard let session = controller.current?.session else { return nil }
-        let index = session.sets.count
-        guard index < template.plannedSets.count else { return nil }
+        guard let session = controller.current?.session,
+              let index = WorkoutQueue.nextPlannedIndex(
+                template: template, sets: session.sets, state: session.queue ?? .empty
+              ) else { return nil }
         let planned = template.plannedSets[index]
         let draft = completer.preload(
             for: planned,
@@ -294,14 +301,21 @@ extension WorkoutSessionCoordinator {
         let isLastWorkSet = !isWarmup && !template.plannedSets[(index + 1)...].contains {
             $0.exerciseID == planned.exerciseID && !$0.prescription.isWarmup
         }
+        // Lo pendiente de un saltado ya no cuenta para "de Y".
+        let skippedPending = (session.queue?.skipped ?? []).reduce(0) { total, exercise in
+            let planned = template.plannedSets.filter { $0.exerciseID == exercise }.count
+            let done = session.sets.filter { $0.exerciseID == exercise }.count
+            return total + max(0, planned - done)
+        }
         return ActiveWorkoutSetUI(
             index: index,
-            total: template.plannedSets.count,
+            total: template.plannedSets.count - skippedPending,
             exerciseName: exerciseNames[planned.exerciseID] ?? exerciseFallbackName(planned.exerciseID),
             isWarmup: isWarmup,
             draft: draft,
             targetRIR: isWarmup ? nil : planned.prescription.targetRIR,
-            dropset: isLastWorkSet ? dropsetAdvice[planned.exerciseID] : nil
+            dropset: isLastWorkSet ? dropsetAdvice[planned.exerciseID] : nil,
+            position: session.sets.count + 1
         )
     }
 
@@ -429,7 +443,9 @@ extension WorkoutSessionCoordinator {
         // El descanso nace junto con la serie: se guarda como hora de fin en el MISMO
         // registro, en una sola escritura atómica.
         var session = updated
-        let hasNext = updated.sets.count < template.plannedSets.count
+        let hasNext = WorkoutQueue.nextPlannedIndex(
+            template: template, sets: updated.sets, state: updated.queue ?? .empty
+        ) != nil
         let nextRest = hasNext
             ? restTimer.autoStart(
                 afterCompletedWarmup: planned.prescription.isWarmup,
@@ -467,6 +483,77 @@ extension WorkoutSessionCoordinator {
         let next: WorkoutSessionPhase = rest.isActive ? .resting(current, rest: rest) : .active(current)
         phase = next
         return next
+    }
+
+    // MARK: - SCRUM-212: dejar para después, saltar y retomar
+
+    /// Ejercicios saltados de la sesión (para mostrarlos y retomarlos), con su nombre.
+    public var skippedExercises: [(id: ExerciseID, name: String)] {
+        (controller.current?.session.queue?.skipped ?? []).map {
+            ($0, exerciseNames[$0] ?? exerciseFallbackName($0))
+        }
+    }
+
+    /// Manda el ejercicio actual al final de la cola ("la máquina está ocupada"). Las
+    /// series hechas no cambian; el descanso en curso sigue. Si es lo único que queda, no
+    /// cambia nada.
+    @discardableResult
+    public func deferCurrentExercise() throws -> WorkoutSessionPhase {
+        try changeQueue { exercise, state, session in
+            WorkoutQueue.deferring(exercise, in: state, template: template, sets: session.sets)
+        }
+    }
+
+    /// Salta el ejercicio actual: queda marcado como saltado, sin crear series. Si no
+    /// queda nada más por hacer, la sesión termina y el resumen lo muestra.
+    @discardableResult
+    public func skipCurrentExercise() throws -> WorkoutSessionPhase {
+        try changeQueue { exercise, state, session in
+            WorkoutQueue.skipping(exercise, in: state, template: template, sets: session.sets)
+        }
+    }
+
+    /// Retoma un ejercicio saltado: vuelve a la cola, al final.
+    @discardableResult
+    public func resumeSkipped(_ exercise: ExerciseID) throws -> WorkoutSessionPhase {
+        try changeQueue { _, state, _ in WorkoutQueue.resuming(exercise, in: state) }
+    }
+
+    /// Aplica un cambio a la cola sobre el ejercicio actual. Guarda ANTES de cambiar la
+    /// pantalla (como una serie). Sólo con la sesión activa o en descanso (no en pausa).
+    private func changeQueue(
+        _ change: (ExerciseID, ExerciseQueueState, WorkoutSessionRecord) -> ExerciseQueueState
+    ) throws -> WorkoutSessionPhase {
+        let session = try activeSessionForSet()
+        let wasResting: Bool
+        switch phase {
+        case .active: wasResting = false
+        case .resting: wasResting = true
+        case .idle, .paused, .finished: throw WorkoutSessionError.invalidTransition
+        }
+        let state = session.queue ?? .empty
+        guard let current = currentSet() else { throw WorkoutSessionError.allSetsCompleted }
+        let exercise = template.plannedSets[current.index].exerciseID
+        let next = change(exercise, state, session)
+        guard next != state else { return phase }
+        var updated = session
+        updated.queue = next.isEmpty ? nil : next
+        controller.replaceSession(updated, at: clock())
+        persistLive()
+
+        guard let upcoming = currentSet() else {
+            // Lo que queda está saltado: se cierra la sesión (el resumen muestra lo saltado).
+            do {
+                try completeSession(at: clock())
+            } catch {
+                persistenceFailed = true
+            }
+            rest = RestTimerState(recommendedSeconds: 0)
+            return finalizeSession()
+        }
+        let result: WorkoutSessionPhase = wasResting && rest.isActive ? .resting(upcoming, rest: rest) : .active(upcoming)
+        phase = result
+        return result
     }
 
     // MARK: - Persistencia (SCRUM-24)

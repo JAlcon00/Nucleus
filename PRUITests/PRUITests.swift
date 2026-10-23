@@ -522,6 +522,37 @@ final class PRUITests: XCTestCase {
 
     // MARK: - Entrenar
 
+    /// SCRUM-212: en el entrenamiento se deja un ejercicio para después, se salta (con
+    /// confirmación), se retoma, y al terminar el resumen dice qué se saltó.
+    func testDeferSkipAndResumeInWorkout() {
+        let app = launch()
+        completeOnboarding(app)
+        tap(app, "today.start")
+        XCTAssertTrue(element(app, "workout.completeSet").waitForExistence(timeout: 10))
+
+        tap(app, "workout.defer")
+        XCTAssertTrue(element(app, "workout.completeSet").waitForExistence(timeout: 5), "Sigue con el siguiente ejercicio")
+
+        tap(app, "workout.skip")
+        let confirm = app.buttons["Saltar ejercicio"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5), "Saltar pide confirmación")
+        confirm.tap()
+        XCTAssertTrue(element(app, "workout.resume.0").waitForExistence(timeout: 5), "El saltado se puede retomar")
+
+        tap(app, "workout.resume.0")
+        XCTAssertFalse(element(app, "workout.resume.0").waitForExistence(timeout: 2), "Retomado: ya no está saltado")
+
+        tap(app, "workout.skip")
+        XCTAssertTrue(app.buttons["Saltar ejercicio"].firstMatch.waitForExistence(timeout: 5))
+        app.buttons["Saltar ejercicio"].firstMatch.tap()
+
+        app.buttons["Terminar"].firstMatch.tap()
+        let complete = app.buttons["Completar sesión"].firstMatch
+        XCTAssertTrue(complete.waitForExistence(timeout: 5))
+        complete.tap()
+        XCTAssertTrue(element(app, "summary.skipped").waitForExistence(timeout: 10), "El resumen muestra lo saltado")
+    }
+
     func testStartShowsTheFirstSetNotABlackScreen() {
         let app = launch()
         completeOnboarding(app)

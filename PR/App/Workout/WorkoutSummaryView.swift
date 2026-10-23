@@ -20,6 +20,8 @@ struct WorkoutSummaryView: View {
     let summary: WorkoutSummary
     /// Celebración ya decidida y localizada (PR-1004); `nil` si no hay récords.
     var celebration: PRCelebrationPresentation? = nil
+    /// Ejercicios saltados en la sesión (SCRUM-212), ya con su nombre.
+    var skipped: [String] = []
     let onDone: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -58,6 +60,21 @@ struct WorkoutSummaryView: View {
                 header
 
                 statsGrid
+
+                if !skipped.isEmpty {
+                    Label {
+                        Text("Saltaste: \(skipped.formatted(.list(type: .and).locale(AppEnvironment.presentationLocale)))")
+                    } icon: {
+                        Image(systemName: "forward.end")
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(Color.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(DSpace.m)
+                    .cardSurface(cornerRadius: DRadius.medium)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("summary.skipped")
+                }
 
                 if summary.nextAction == .completed {
                     Text("Sesión completada. Sigue en el plan.")
