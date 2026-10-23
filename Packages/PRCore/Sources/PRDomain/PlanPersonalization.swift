@@ -413,8 +413,42 @@ public enum PlanPersonalizationApplier {
 
 // MARK: - Explicación
 
-/// Filtro de la explicación de la IA: sólo pasa si es corta y cada número que menciona
-/// aparece en los hechos del motor (la IA no inventa series, semanas ni cargas).
+/// Hechos del motor que sí le sirven al usuario para entender su plan. Es una lista
+/// cerrada: un hecho nuevo del motor no viaja a la IA hasta que se agregue aquí. Los
+/// internos (`priorityMuscles`, `orderPrecedence`) se quedan fuera porque la IA los
+/// convertía en tecnicismos ("orden de precedencia", "8 músculos prioritarios").
+public enum PlanRationaleFacts {
+    public static let userFacingKeys: Set<String> = [
+        "goal", "phase", "plannedWeeks", "split", "trainingDaysPerWeek", "totalWeeklySets",
+        "restrictedRegions", "restrictedMuscles", "emphasizedMuscles", "substitution",
+    ]
+
+    /// Los hechos de la lista, en su orden original.
+    public static func userFacing(_ facts: [DecisionFact]) -> [DecisionFact] {
+        facts.filter { userFacingKeys.contains($0.key) }
+    }
+}
+
+/// Por qué el filtro rechazó la explicación de la IA.
+public enum PlanRationaleRejection: String, Sendable, Hashable, CaseIterable {
+    case empty
+    case tooManyLines
+    case lineTooLong
+    case unknownNumber
+    /// Un identificador interno de un hecho ("pushPullLegs") llegó tal cual al texto.
+    case technicalTerm
+}
+
+/// Veredicto del filtro sobre la explicación de la IA.
+public enum PlanRationaleReview: Sendable, Hashable {
+    case accepted([String])
+    case rejected(PlanRationaleRejection)
+}
+
+/// Filtro de la explicación de la IA: sólo pasa si es corta, cada número que menciona
+/// (con dígitos o con letras) aparece en los hechos del motor (la IA no inventa series,
+/// semanas ni cargas) y no copia identificadores internos. Ante la duda, falla cerrado:
+/// se usa el texto local.
 public struct PlanRationaleGuard: Sendable {
     public let config: PlanPersonalizationPolicyConfig
 
@@ -424,15 +458,143 @@ public struct PlanRationaleGuard: Sendable {
 
     /// Las líneas limpias si se aceptan; `nil` si hay que usar el texto local.
     public func accept(_ lines: [String], facts: [DecisionFact]) -> [String]? {
+        switch review(lines, facts: facts) {
+        case .accepted(let cleaned): return cleaned
+        case .rejected: return nil
+        }
+    }
+
+    /// Como `accept`, pero dice el motivo del rechazo.
+    public func review(_ lines: [String], facts: [DecisionFact]) -> PlanRationaleReview {
         let cleaned = lines
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
-        guard !cleaned.isEmpty, cleaned.count <= config.maxRationaleLines else { return nil }
-        guard cleaned.allSatisfy({ $0.count <= config.maxRationaleLineLength }) else { return nil }
+        guard !cleaned.isEmpty else { return .rejected(.empty) }
+        guard cleaned.count <= config.maxRationaleLines else { return .rejected(.tooManyLines) }
+        guard cleaned.allSatisfy({ $0.count <= config.maxRationaleLineLength }) else { return .rejected(.lineTooLong) }
         let allowed = Set(facts.flatMap { Self.numbers(in: $0.value) })
-        let mentioned = cleaned.flatMap { Self.numbers(in: $0) }
-        guard mentioned.allSatisfy(allowed.contains) else { return nil }
-        return cleaned
+        let words = cleaned.map(Self.words(in:))
+        // Los escritos con letras ("seis", "sesenta y cuatro") se revisan igual que los dígitos.
+        let mentioned = cleaned.flatMap { Self.numbers(in: $0) } + words.flatMap { Self.spelledNumbers(in: $0).map(String.init) }
+        guard mentioned.allSatisfy(allowed.contains) else { return .rejected(.unknownNumber) }
+        let identifiers = Set(facts.flatMap { Self.identifiers(in: $0.value) })
+        guard words.allSatisfy({ identifiers.isDisjoint(with: $0) }) else { return .rejected(.technicalTerm) }
+        return .accepted(cleaned)
+    }
+
+    /// Palabras en orden, en minúsculas y sin acentos.
+    private static func words(in text: String) -> [String] {
+        text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil).split { !$0.isLetter }.map(String.init)
+    }
+
+    /// Cardinales de 2 a 29 en una palabra. "Un", "uno" y "una" sueltos no cuentan: casi
+    /// siempre son artículos.
+    private static let simpleNumbers: [String: Int] = [
+        "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5, "seis": 6, "siete": 7, "ocho": 8, "nueve": 9,
+        "diez": 10, "once": 11, "doce": 12, "trece": 13, "catorce": 14, "quince": 15, "dieciseis": 16,
+        "diecisiete": 17, "dieciocho": 18, "diecinueve": 19, "veinte": 20, "veintiun": 21, "veintiuno": 21,
+        "veintiuna": 21, "veintidos": 22, "veintitres": 23, "veinticuatro": 24, "veinticinco": 25,
+        "veintiseis": 26, "veintisiete": 27, "veintiocho": 28, "veintinueve": 29,
+    ]
+    private static let tens: [String: Int] = [
+        "treinta": 30, "cuarenta": 40, "cincuenta": 50, "sesenta": 60, "setenta": 70, "ochenta": 80, "noventa": 90,
+    ]
+    /// Unidades tras "y" ("treinta y una").
+    private static let units: [String: Int] = [
+        "un": 1, "uno": 1, "una": 1, "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5, "seis": 6, "siete": 7,
+        "ocho": 8, "nueve": 9,
+    ]
+    private static let hundreds: [String: Int] = [
+        "cien": 100, "ciento": 100, "doscientos": 200, "doscientas": 200, "trescientos": 300, "trescientas": 300,
+        "cuatrocientos": 400, "cuatrocientas": 400, "quinientos": 500, "quinientas": 500, "seiscientos": 600,
+        "seiscientas": 600, "setecientos": 700, "setecientas": 700, "ochocientos": 800, "ochocientas": 800,
+        "novecientos": 900, "novecientas": 900, "mil": 1_000,
+    ]
+
+    /// Valores de los números escritos con letras, en orden ("sesenta y cuatro" → 64).
+    static func spelledNumbers(in words: [String]) -> [Int] {
+        var values: [Int] = []
+        var index = words.startIndex
+        while index < words.endIndex {
+            var value = 0
+            var next = index
+            if let hundred = hundreds[words[next]] {
+                value = hundred
+                next += 1
+            }
+            if next < words.endIndex, let ten = tens[words[next]] {
+                value += ten
+                next += 1
+                if next + 1 < words.endIndex, words[next] == "y", let unit = units[words[next + 1]] {
+                    value += unit
+                    next += 2
+                }
+            } else if next < words.endIndex, let simple = simpleNumbers[words[next]] {
+                value += simple
+                next += 1
+            }
+            if next > index {
+                values.append(value)
+                index = next
+            } else {
+                index += 1
+            }
+        }
+        return values
+    }
+
+    /// Identificadores camelCase de un hecho ("pushPullLegs"), en minúsculas. Los valores
+    /// de una sola palabra ("biceps") no cuentan: pueden coincidir con el nombre en español.
+    private static func identifiers(in value: String) -> [String] {
+        value.split(separator: ",").compactMap { piece in
+            let token = piece.trimmingCharacters(in: .whitespaces)
+            let isCamelCase = token.allSatisfy { $0.isASCII && $0.isLetter }
+                && token.first?.isLowercase == true
+                && token.contains { $0.isUppercase }
+            return isCamelCase ? token.lowercased() : nil
+        }
+    }
+
+    /// Renglones de la respuesta de la IA: uno por oración, sin viñetas ni numeración de
+    /// lista. La IA suele contestar con un solo párrafo aunque se le pidan renglones; sin
+    /// partirlo, el filtro lo rechazaba siempre por largo. Un punto pegado a un dígito
+    /// ("74.2") no separa; uno seguido de espacio sí (abreviaturas incluidas).
+    public static func lines(fromReply reply: String) -> [String] {
+        reply
+            .split(whereSeparator: \.isNewline)
+            .flatMap { sentences(in: withoutListMarker(String($0))) }
+    }
+
+    private static func withoutListMarker(_ raw: String) -> String {
+        var line = raw.trimmingCharacters(in: .whitespaces)
+        while let first = line.first, "-*•".contains(first) {
+            line.removeFirst()
+            line = line.trimmingCharacters(in: .whitespaces)
+        }
+        // "1. " o "2) " al inicio: la numeración no es un número del plan.
+        let digits = line.prefix { $0.isASCII && $0.isNumber }
+        let rest = line.dropFirst(digits.count)
+        if !digits.isEmpty, let marker = rest.first, ".)".contains(marker), rest.dropFirst().first?.isWhitespace == true {
+            line = rest.dropFirst().trimmingCharacters(in: .whitespaces)
+        }
+        return line
+    }
+
+    private static func sentences(in line: String) -> [String] {
+        var result: [String] = []
+        var current = ""
+        for character in line {
+            if character.isWhitespace, let last = current.last, ".!?".contains(last) {
+                result.append(current)
+                current = ""
+            } else {
+                current.append(character)
+            }
+        }
+        result.append(current)
+        return result
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
     }
 
     /// Secuencias de dígitos (con decimales) de un texto.

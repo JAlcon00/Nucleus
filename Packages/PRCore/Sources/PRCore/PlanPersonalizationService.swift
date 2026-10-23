@@ -12,7 +12,10 @@
 //    ejercicios viajan con claves cortas (`e1`, `e2`…), nunca con IDs ni nombres del
 //    usuario, y la respuesta se revisa de nuevo con `PlanPersonalizationValidator`.
 //  - Toda falla (red, JSON inválido, explicación con números inventados) cae al plan y
-//    al texto locales; nunca bloquea.
+//    al texto locales; nunca bloquea. El motivo queda en el log de diagnóstico (categoría
+//    `agent`) y en `PersonalizedPlan.rationaleFallback`.
+//  - La explicación sólo recibe hechos útiles para el usuario (`PlanRationaleFacts`) y su
+//    respuesta se parte en oraciones antes del filtro (`PlanRationaleGuard.lines`).
 //
 
 import Foundation
@@ -142,16 +145,22 @@ public protocol PlanPersonalizing: Sendable {
     func explain(facts: [DecisionFact]) async -> [String]?
 }
 
-/// Personalizador con la IA real (vía `AICoach`, que nunca lanza).
+/// Personalizador con la IA real (vía `AICoach`, que nunca lanza). Si la IA no responde
+/// o su JSON no se entiende lo deja en el log de diagnóstico, sin contenido.
 public struct AIPlanPersonalizer: PlanPersonalizing {
     public let coach: AICoach
+    public let config: PlanPersonalizationPolicyConfig
+    private let logger: PRLogger
 
-    public init(coach: AICoach) {
+    public init(coach: AICoach, config: PlanPersonalizationPolicyConfig = .standard, logger: PRLogger = PRLogger(category: .agent)) {
         self.coach = coach
+        self.config = config
+        self.logger = logger
     }
 
     public func propose(_ prompt: PlanPersonalizationPrompt) async -> PlanPersonalizationProposal? {
         guard let payload = try? JSONEncoder().encode(prompt), let json = String(data: payload, encoding: .utf8) else {
+            logger.diagnostic("plan.proposal no se pudo codificar", level: .error)
             return nil
         }
         let request = AgentRequest(
@@ -161,30 +170,34 @@ public struct AIPlanPersonalizer: PlanPersonalizing {
             ],
             output: .json
         )
-        guard case .answer(let response) = await coach.ask(request), let text = response.text else { return nil }
-        return prompt.proposal(fromReply: text)
+        switch await coach.ask(request) {
+        case .unavailable(let error):
+            logger.diagnostic("plan.proposal IA no disponible", error.diagnosticCode)
+            return nil
+        case .answer(let response):
+            guard let proposal = response.text.flatMap(prompt.proposal(fromReply:)) else {
+                logger.diagnostic("plan.proposal respuesta sin JSON válido")
+                return nil
+            }
+            return proposal
+        }
     }
 
     public func explain(facts: [DecisionFact]) async -> [String]? {
         let lines = facts.map { "- \($0.key): \($0.value)" }.joined(separator: "\n")
         let request = AgentRequest(
             messages: [
-                AgentMessage(role: "system", content: Self.explanationSystemPrompt),
+                AgentMessage(role: "system", content: Self.explanationSystemPrompt(config: config)),
                 AgentMessage(role: "user", content: lines),
             ]
         )
-        guard case .answer(let response) = await coach.ask(request), let text = response.text else { return nil }
-        return text
-            .split(whereSeparator: \.isNewline)
-            .map { line in
-                var line = line.trimmingCharacters(in: .whitespaces)
-                while let first = line.first, "-*•".contains(first) {
-                    line.removeFirst()
-                    line = line.trimmingCharacters(in: .whitespaces)
-                }
-                return line
-            }
-            .filter { !$0.isEmpty }
+        switch await coach.ask(request) {
+        case .unavailable(let error):
+            logger.diagnostic("plan.rationale IA no disponible", error.diagnosticCode)
+            return nil
+        case .answer(let response):
+            return PlanRationaleGuard.lines(fromReply: response.text ?? "")
+        }
     }
 
     static let proposalSystemPrompt = """
@@ -199,12 +212,45 @@ public struct AIPlanPersonalizer: PlanPersonalizing {
     Responde SOLO con JSON: {"emphasis":["chest"],"substitutions":[{"replace":"e1","with":"e7"}]}
     """
 
-    static let explanationSystemPrompt = """
-    Explica en español, en 2 a 4 líneas cortas (una por renglón, sin viñetas), por qué el \
-    plan del usuario es así. Usa SOLO los hechos que recibes; no menciones ningún número \
-    que no aparezca en ellos, ni cargas, ni RIR, ni promesas. Háblale de tú. Recuerda: el \
-    plan lo arma el motor de Nucleus, no la IA; nunca digas que la IA creó la rutina.
-    """
+    /// Los límites de formato salen de la misma política que aplica `PlanRationaleGuard`.
+    public static func explanationSystemPrompt(config: PlanPersonalizationPolicyConfig) -> String {
+        """
+        Explica en español por qué el plan del usuario es así. \
+        Formato obligatorio: de 2 a \(config.maxRationaleLines) renglones EN TOTAL, separados por \
+        salto de línea; cada renglón es UNA sola oración de menos de \(config.maxRationaleLineLength) \
+        caracteres. Agrupa varios hechos en una oración en lugar de dedicar una a cada uno. \
+        Nada de párrafos, viñetas, listas numeradas, títulos ni markdown. \
+        Usa SOLO los hechos que recibes; no menciones ningún número que no aparezca en ellos, \
+        ni cargas, ni RIR, ni promesas. Escribe los números siempre con dígitos (6, nunca \
+        "seis"). Traduce los valores técnicos a palabras sencillas en \
+        español (por ejemplo, hypertrophy es ganar músculo y pushPullLegs es empuje, jalón y \
+        pierna) y nunca escribas los nombres de los hechos. Háblale de tú. Recuerda: el plan \
+        lo arma el motor de Nucleus, no la IA; nunca digas que la IA creó la rutina.
+        """
+    }
+}
+
+/// Por qué "Por qué tu plan es así" quedó con el texto local en lugar del de la IA.
+public enum PlanRationaleFallback: Sendable, Hashable {
+    /// Sin consentimiento o sin IA conectada: no se le preguntó.
+    case notRequested
+    /// Se le preguntó y no respondió (red, llave, tiempo de espera…).
+    case unavailable
+    /// Respondió, pero el filtro la rechazó.
+    case rejected(PlanRationaleRejection)
+
+    /// Código fijo para el log de diagnóstico.
+    public var diagnosticCode: StaticString {
+        switch self {
+        case .notRequested: return "sin consentimiento o sin IA"
+        case .unavailable: return "la IA no respondió"
+        case .rejected(.empty): return "rechazada: vacía"
+        case .rejected(.tooManyLines): return "rechazada: demasiados renglones"
+        case .rejected(.lineTooLong): return "rechazada: renglón demasiado largo"
+        case .rejected(.unknownNumber): return "rechazada: número que no viene del motor"
+        case .rejected(.technicalTerm): return "rechazada: término interno del motor"
+        }
+    }
 }
 
 // MARK: - Explicación local
@@ -271,6 +317,14 @@ public struct PlanRationalePresenter: Sendable {
 public struct PersonalizedPlan: Sendable {
     public let result: BlockPlanningResult
     public let record: PlanPersonalizationRecord
+    /// Por qué la explicación es la local; `nil` cuando es la de la IA.
+    public let rationaleFallback: PlanRationaleFallback?
+
+    public init(result: BlockPlanningResult, record: PlanPersonalizationRecord, rationaleFallback: PlanRationaleFallback?) {
+        self.result = result
+        self.record = record
+        self.rationaleFallback = rationaleFallback
+    }
 }
 
 /// Motor → IA → validación → motor. Sin estado; el reloj y los IDs se inyectan.
@@ -278,15 +332,18 @@ public struct PlanPersonalizationFlow: Sendable {
     public let validator: PlanPersonalizationValidator
     public let guardrail: PlanRationaleGuard
     public let presenter: PlanRationalePresenter
+    private let logger: PRLogger
 
     public init(
         validator: PlanPersonalizationValidator,
         guardrail: PlanRationaleGuard = PlanRationaleGuard(),
-        presenter: PlanRationalePresenter = PlanRationalePresenter()
+        presenter: PlanRationalePresenter = PlanRationalePresenter(),
+        logger: PRLogger = PRLogger(category: .agent)
     ) {
         self.validator = validator
         self.guardrail = guardrail
         self.presenter = presenter
+        self.logger = logger
     }
 
     /// Sin IA: el plan del motor tal cual con la explicación local.
@@ -298,7 +355,8 @@ public struct PlanPersonalizationFlow: Sendable {
                 rationale: presenter.lines(facts: base.explanation.facts, emphasis: [], substitutions: []),
                 rationaleSource: .local,
                 audit: []
-            )
+            ),
+            rationaleFallback: .notRequested
         )
     }
 
@@ -314,7 +372,10 @@ public struct PlanPersonalizationFlow: Sendable {
         now: Date,
         regenerate: @Sendable ([MuscleGroup]) throws -> BlockPlanningResult
     ) async throws -> PersonalizedPlan {
-        guard let context, let personalizer else { return local(base) }
+        guard let context, let personalizer else {
+            logger.diagnostic("plan.rationale texto local", PlanRationaleFallback.notRequested.diagnosticCode, level: .info)
+            return local(base)
+        }
         let alternatives = try validator.alternatives(
             block: base.block, catalog: catalog, activeRestrictions: restrictions, equipment: equipment, now: now
         )
@@ -352,8 +413,26 @@ public struct PlanPersonalizationFlow: Sendable {
         let explanation = BlockExplanation(
             facts: facts, ruleReferences: result.explanation.ruleReferences, sessionOrder: result.explanation.sessionOrder
         )
-        let aiLines = await personalizer.explain(facts: facts)
-        let rationale = aiLines.flatMap { guardrail.accept($0, facts: facts) }
+        // La IA sólo ve los hechos útiles para el usuario y el filtro revisa los números
+        // contra esos mismos hechos: lo que no viaja tampoco se puede citar.
+        let shared = PlanRationaleFacts.userFacing(facts)
+        let rationale: [String]?
+        let fallback: PlanRationaleFallback?
+        switch await personalizer.explain(facts: shared).map({ guardrail.review($0, facts: shared) }) {
+        case .accepted(let lines)?:
+            rationale = lines
+            fallback = nil
+            logger.diagnostic("plan.rationale explicación de la IA aceptada", level: .info)
+        case .rejected(let reason)?:
+            rationale = nil
+            fallback = .rejected(reason)
+        case nil:
+            rationale = nil
+            fallback = .unavailable
+        }
+        if let fallback {
+            logger.diagnostic("plan.rationale texto local", fallback.diagnosticCode)
+        }
         return PersonalizedPlan(
             result: BlockPlanningResult(block: block, explanation: explanation, split: result.split),
             record: PlanPersonalizationRecord(
@@ -361,7 +440,8 @@ public struct PlanPersonalizationFlow: Sendable {
                 rationale: rationale ?? presenter.lines(facts: facts, emphasis: emphasis, substitutions: swaps),
                 rationaleSource: rationale == nil ? .local : .ai,
                 audit: emphasisReview.audit + substitutionReview.audit
-            )
+            ),
+            rationaleFallback: fallback
         )
     }
 }

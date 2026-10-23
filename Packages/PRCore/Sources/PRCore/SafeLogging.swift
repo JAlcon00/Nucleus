@@ -160,6 +160,20 @@ public struct PRLogger: Sendable {
         }
     }
 
+    /// Diagnóstico legible en Console sin depurador. Sólo acepta literales del código
+    /// (`StaticString`), así que nunca puede llevar datos del usuario ni de la IA; por
+    /// eso es lo único que se emite como público.
+    public func diagnostic(_ event: StaticString, _ detail: StaticString = "", level: LogLevel = .notice) {
+        let text = detail.utf8CodeUnitCount == 0 ? "\(event)" : "\(event): \(detail)"
+        switch level {
+        case .debug: logger.debug("\(text, privacy: .public)")
+        case .info: logger.info("\(text, privacy: .public)")
+        case .notice: logger.notice("\(text, privacy: .public)")
+        case .error: logger.error("\(text, privacy: .public)")
+        case .fault: logger.fault("\(text, privacy: .public)")
+        }
+    }
+
     /// Variante segura para payloads potencialmente sensibles: redacta con
     /// `LogRedactor` antes de emitir y mantiene privacidad por defecto.
     public func redacted(_ message: String, sensitiveValues: [String], level: LogLevel = .info) {

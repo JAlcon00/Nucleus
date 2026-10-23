@@ -824,7 +824,9 @@ public final class TodayPlanCoordinator {
         blockID: TrainingBlockID
     ) async throws -> PersonalizedPlan {
         guard let flow else {
-            return PersonalizedPlan(result: base, record: localPersonalization(facts: base.explanation.facts))
+            return PersonalizedPlan(
+                result: base, record: localPersonalization(facts: base.explanation.facts), rationaleFallback: .notRequested
+            )
         }
         let context = profileContext(profile)
         if context != nil, personalizer != nil { generation = .personalizing }

@@ -85,6 +85,28 @@ public struct AIConnection: Sendable {
     }
 }
 
+extension NVIDIAProviderError {
+    /// Código fijo para el log de diagnóstico (sin estados HTTP ni datos de la respuesta).
+    public var diagnosticCode: StaticString {
+        switch self {
+        case .missingAPIKey: return "missingAPIKey"
+        case .authentication: return "authentication"
+        case .forbidden: return "forbidden"
+        case .notFound: return "notFound"
+        case .validation: return "validation"
+        case .rateLimited: return "rateLimited"
+        case .providerError: return "providerError"
+        case .timeout: return "timeout"
+        case .network: return "network"
+        case .invalidResponse: return "invalidResponse"
+        case .malformedResponse: return "malformedResponse"
+        case .emptyChoices: return "emptyChoices"
+        case .cancelled: return "cancelled"
+        case .healthUnavailable: return "healthUnavailable"
+        }
+    }
+}
+
 /// Resultado de pedirle algo a la IA: una respuesta o "no disponible" con el motivo.
 public enum AICoachOutcome: Sendable {
     case answer(AgentResponse)

@@ -23,6 +23,7 @@ private final class StubPersonalizer: PlanPersonalizing, @unchecked Sendable {
     private var proposals = 0
     private var explanations = 0
     private var lastPrompt: PlanPersonalizationPrompt?
+    private var lastFacts: [DecisionFact]?
 
     init(
         explanation: [String]? = nil,
@@ -34,6 +35,7 @@ private final class StubPersonalizer: PlanPersonalizing, @unchecked Sendable {
 
     var calls: Int { lock.withLock { proposals + explanations } }
     var prompt: PlanPersonalizationPrompt? { lock.withLock { lastPrompt } }
+    var explainedFacts: [DecisionFact]? { lock.withLock { lastFacts } }
 
     func propose(_ prompt: PlanPersonalizationPrompt) async -> PlanPersonalizationProposal? {
         lock.withLock {
@@ -44,7 +46,10 @@ private final class StubPersonalizer: PlanPersonalizing, @unchecked Sendable {
     }
 
     func explain(facts: [DecisionFact]) async -> [String]? {
-        lock.withLock { explanations += 1 }
+        lock.withLock {
+            explanations += 1
+            lastFacts = facts
+        }
         return explanation
     }
 }
@@ -283,6 +288,131 @@ struct PlanPersonalizationTests {
         #expect(proposal.emphasis == [.chest], "Músculo desconocido descartado")
         #expect(proposal.substitutions.count == 1, "Clave desconocida descartada")
         #expect(prompt.proposal(fromReply: "no sé") == nil)
+    }
+
+    @Test("Una respuesta en un solo párrafo se parte en oraciones antes del filtro")
+    func paragraphIsSplitIntoSentences() throws {
+        let fixture = try PersonalizationFixture()
+        let facts = PlanRationaleFacts.userFacing(try fixture.base().explanation.facts)
+        let days = try #require(facts.first { $0.key == "trainingDaysPerWeek" }?.value)
+        let weeks = try #require(facts.first { $0.key == "plannedWeeks" }?.value)
+        let sets = try #require(facts.first { $0.key == "totalWeeklySets" }?.value)
+        // Así contestaba la IA real: todo en un renglón, más largo de lo que acepta el filtro.
+        let paragraph = "Entrenas \(days) días por semana durante \(weeks) semanas para ganar músculo con calma. "
+            + "Tu semana suma \(sets) series repartidas entre empuje, jalón y pierna para que cada grupo descanse antes de volver. "
+            + "El motor de Nucleus ordenó cada sesión para que empieces por lo más exigente."
+        let guardrail = PlanRationaleGuard()
+        #expect(guardrail.review([paragraph], facts: facts) == .rejected(.lineTooLong), "Sin partir, el filtro lo rechaza")
+
+        let lines = PlanRationaleGuard.lines(fromReply: paragraph)
+        #expect(lines.count == 3)
+        #expect(lines.first == "Entrenas \(days) días por semana durante \(weeks) semanas para ganar músculo con calma.")
+        #expect(guardrail.review(lines, facts: facts) == .accepted(lines))
+    }
+
+    @Test("Renglones: viñetas, numeración de lista, decimales y signos de pregunta")
+    func replyLineEdgeCases() {
+        let reply = """
+        1. Entrenas 4 días.
+        - Pesas 74.2 kg hoy. ¿Por qué así? ¡Porque encaja!
+        2) Último renglón
+
+        """
+        #expect(PlanRationaleGuard.lines(fromReply: reply) == [
+            "Entrenas 4 días.", "Pesas 74.2 kg hoy.", "¿Por qué así?", "¡Porque encaja!", "Último renglón",
+        ])
+        #expect(PlanRationaleGuard.lines(fromReply: "   \n\n").isEmpty)
+        #expect(PlanRationaleGuard.lines(fromReply: "6 días por semana.") == ["6 días por semana."], "Un número al inicio no es numeración")
+    }
+
+    @Test("El filtro dice por qué rechaza")
+    func guardRejectionReasons() throws {
+        let fixture = try PersonalizationFixture()
+        let facts = PlanRationaleFacts.userFacing(try fixture.base().explanation.facts)
+        let days = try #require(facts.first { $0.key == "trainingDaysPerWeek" }?.value)
+        let guardrail = PlanRationaleGuard()
+        let limit = guardrail.config.maxRationaleLineLength
+        let atLimit = String(repeating: "a", count: limit)
+
+        #expect(guardrail.review([" ", ""], facts: facts) == .rejected(.empty))
+        #expect(guardrail.review(Array(repeating: "Línea.", count: guardrail.config.maxRationaleLines + 1), facts: facts) == .rejected(.tooManyLines))
+        #expect(guardrail.review([atLimit + "a"], facts: facts) == .rejected(.lineTooLong))
+        #expect(guardrail.review([atLimit], facts: facts) == .accepted([atLimit]), "El límite exacto pasa")
+        #expect(guardrail.review(["Haz 999 series."], facts: facts) == .rejected(.unknownNumber))
+        #expect(guardrail.review(["Entrenas \(days) días."], facts: facts) == .accepted(["Entrenas \(days) días."]))
+
+        // Los números con letras se revisan igual que los dígitos.
+        let written = [DecisionFact(key: "trainingDaysPerWeek", value: "6"), DecisionFact(key: "totalWeeklySets", value: "64")]
+        let honest = "Entrenas seis días con sesenta y cuatro series."
+        #expect(guardrail.review([honest], facts: written) == .accepted([honest]))
+        #expect(guardrail.review(["Entrenas siete días."], facts: written) == .rejected(.unknownNumber))
+        #expect(guardrail.review(["Harás sesenta y cinco series."], facts: written) == .rejected(.unknownNumber), "Decena y unidad juntas")
+        #expect(guardrail.review(["Harás sesenta series."], facts: written) == .rejected(.unknownNumber), "La decena sola no es 64")
+        #expect(guardrail.review(["Entrenas dieciséis semanas."], facts: written) == .rejected(.unknownNumber), "Compuestos con acento")
+        #expect(guardrail.review(["Son ciento veinte series."], facts: written) == .rejected(.unknownNumber), "Centenas")
+        #expect(guardrail.review(["Una rutina para ti."], facts: written) == .accepted(["Una rutina para ti."]), "Los artículos no son números")
+
+        // Identificadores internos tal cual: no pasan; un nombre igual en español sí.
+        let split = DecisionFact(key: "split", value: "pushPullLegs")
+        #expect(guardrail.review(["Tu rutina es PushPullLegs."], facts: [split]) == .rejected(.technicalTerm))
+        let muscles = DecisionFact(key: "emphasizedMuscles", value: "biceps, chest")
+        #expect(guardrail.review(["Más trabajo para tus bíceps."], facts: [muscles]) == .accepted(["Más trabajo para tus bíceps."]))
+    }
+
+    @Test("A la IA sólo viajan los hechos útiles para el usuario, y sólo esos se pueden citar")
+    func explanationOnlySeesUserFacingFacts() async throws {
+        let fixture = try PersonalizationFixture()
+        let all = try fixture.base().explanation.facts
+        let shared = PlanRationaleFacts.userFacing(all)
+        #expect(shared.allSatisfy { PlanRationaleFacts.userFacingKeys.contains($0.key) })
+        #expect(!shared.contains { $0.key == "orderPrecedence" || $0.key == "priorityMuscles" })
+        #expect(Set(shared.map(\.key)).isSuperset(of: ["goal", "phase", "plannedWeeks", "trainingDaysPerWeek", "totalWeeklySets"]))
+        #expect(PlanRationaleFacts.userFacing([DecisionFact(key: "nuevoHechoInterno", value: "1")]).isEmpty, "Lista cerrada")
+
+        let spy = StubPersonalizer(explanation: ["Tu plan encaja contigo."]) { _ in .none }
+        _ = try await fixture.run(spy, context: context(fixture.profile))
+        let sent = try #require(spy.explainedFacts)
+        #expect(!sent.contains { $0.key == "orderPrecedence" || $0.key == "priorityMuscles" })
+
+        // Un número que sólo está en un hecho interno ya no se puede citar.
+        let anchors = try #require(all.first { $0.key == "priorityMuscles" }?.value)
+        let sharedNumbers = shared.map(\.value).joined(separator: " ").split { !$0.isNumber }.map(String.init)
+        try #require(!sharedNumbers.contains(anchors), "El conteo interno no coincide con un hecho visible")
+        let leaker = StubPersonalizer(explanation: ["Trabajas \(anchors) músculos prioritarios."]) { _ in .none }
+        let (_, leaked) = try await fixture.run(leaker, context: context(fixture.profile))
+        #expect(leaked.record.rationaleSource == .local)
+        #expect(leaked.rationaleFallback == .rejected(.unknownNumber))
+    }
+
+    @Test("Motivo del texto local: sin consentimiento, IA caída o filtro")
+    func fallbackReasons() async throws {
+        let fixture = try PersonalizationFixture()
+        let noConsent = try await fixture.run(StubPersonalizer(explanation: ["Hola."]) { _ in .none }, context: nil).personalized
+        #expect(noConsent.rationaleFallback == .notRequested)
+
+        let down = try await fixture.run(StubPersonalizer(explanation: nil) { _ in nil }, context: context(fixture.profile)).personalized
+        #expect(down.rationaleFallback == .unavailable)
+
+        let long = String(repeating: "a", count: PlanRationaleGuard().config.maxRationaleLineLength + 1)
+        let tooLong = try await fixture.run(StubPersonalizer(explanation: [long]) { _ in .none }, context: context(fixture.profile)).personalized
+        #expect(tooLong.rationaleFallback == .rejected(.lineTooLong))
+        #expect(tooLong.record.rationaleSource == .local)
+
+        let fine = try await fixture.run(StubPersonalizer(explanation: ["Tu plan encaja contigo."]) { _ in .none }, context: context(fixture.profile)).personalized
+        #expect(fine.rationaleFallback == nil)
+        #expect(fine.record.rationaleSource == .ai)
+
+        let reasons = [PlanRationaleFallback.notRequested, .unavailable] + PlanRationaleRejection.allCases.map(PlanRationaleFallback.rejected)
+        #expect(Set(reasons.map { "\($0.diagnosticCode)" }).count == reasons.count, "Cada motivo deja un código distinto en el log")
+    }
+
+    @Test("El prompt de la explicación pide renglones cortos con los límites del filtro")
+    func explanationPromptUsesPolicyLimits() {
+        let config = PlanPersonalizationPolicyConfig.standard
+        let prompt = AIPlanPersonalizer.explanationSystemPrompt(config: config)
+        #expect(prompt.contains("\(config.maxRationaleLines) renglones"))
+        #expect(prompt.contains("\(config.maxRationaleLineLength) caracteres"))
+        #expect(prompt.contains("con dígitos"))
     }
 
     @MainActor
