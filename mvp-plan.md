@@ -548,6 +548,31 @@ Evidencia: commit `285a4ff`; `make ci` → `✔ Test run with 520 tests in 78 su
 - **Por qué no hay prueba en simulador:** hoy ninguna pantalla crea permisos ni resuelve restricciones. La regresión de las zonas del formulario la cubre `RestrictionZonesTests`.
 - **La integración no usa `AppEnvironment`:** vive en el target de la app. Se usan `TodayPlanCoordinator` y `LocalPersistence` reales.
 
+### SCRUM-216 · Perfil › Restricciones muestra las que declaré (solo lectura, demo)
+
+**Criterios:**
+- [x] Cada restricción del perfil se ve con su zona, su lado, su nota y su origen ("La declaraste tú" o "Indicación de un profesional"), en palabras simples. También se ve si el plan la sigue cuidando; con la fecha de revisión vencida sigue cuidándose (RN-004).
+- [x] Sin restricciones hay un estado vacío que explica cómo agregarlas (rehacer el cuestionario). La nota del paso "Restricciones" se muestra aparte y dice que no cambia el plan.
+- [x] No hay botones que no hagan nada: "Nueva", "Marcar como revisado" y "Resolver" se quitaron hasta SCRUM-36.
+- [x] Una sola fuente: la lista sale de `completedProfile`, que es el perfil que restaura `TodayPlanCoordinator.restore` y con el que se arma el plan. La traducción vive en `RestrictionListPresenter` (PRCore); la vista no decide nada.
+- [x] Accesible:
+  - VoiceOver lee cada restricción en una frase (zona, lado, origen, estado y nota).
+  - El texto escala, y con letra muy grande el lado baja a su propia línea.
+  - El estado lleva texto además de icono y color.
+  - Contraste medido (5.22:1 a 10.75:1 en claro y oscuro).
+
+Evidencia: commit `f55256f`; `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `✔ Test run with 488 tests in 88 suites passed` (2026-10-25; línea base 520 + 482).
+- **Tests:** `Packages/PRCore/Tests/PRCoreTests/RestrictionListPresenterTests.swift` (6). Cubren:
+  - codo del cuestionario con nota;
+  - indicación profesional con lado, nota y revisión vencida;
+  - orden;
+  - estados vacíos;
+  - inglés;
+  - integración con `LocalPersistence` en directorio temporal (perfil guardado y reabierto llega a la pantalla, y el plan restaurado respeta esa misma restricción).
+- **Previews:** con restricciones en claro, oscuro y `.accessibility3`; vacío; vacío con nota en oscuro.
+- **Simulador (iPad A16):** con un perfil real hecho en el cuestionario (codo + nota), Perfil › Restricciones muestra "Codo · La declaraste tú · Tu plan la cuida." y "Tu nota", sin botones.
+- **Pendiente en simulador:** no se vio la fila profesional con revisión vencida ni el estado vacío. Los toques del simulador fallan (mismo problema de entorno que SCRUM-217); los cubren los tests y las previews.
+
 ## 4. Después del POC (no empezar todavía)
 
 En orden: Fase C (restricciones ~~SCRUM-31~~ hecha el 2026-10-25, 32, 36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–40) → HealthKit, Watch, pestañas.
