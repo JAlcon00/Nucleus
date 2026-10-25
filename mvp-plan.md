@@ -512,6 +512,42 @@ Evidencia: commit `1c50415`; `make ci` → `✔ Test run with 513 tests in 77 su
 | FB-5 | SCRUM-212 | Saltar o dejar en espera ejercicios durante el entrenamiento | [x] |
 | FB-6 | SCRUM-213 | Progreso: 4 KPIs y gráfica | [x] |
 
+## 3.4 Repriorización 2026-10-25 (RICE + MoSCoW)
+
+- **Decisión de Jesús (2026-10-25):** SCRUM-31 va antes del soporte del demo, por la regla P0 de AGENTS §5 (un bug que salta una restricción bloquea lo demás).
+- **Orden del agente para el demo:** SCRUM-31 → SCRUM-216 (Perfil › Restricciones, solo lectura) → SCRUM-188 → SCRUM-192 → cierre de SCRUM-190 → SCRUM-214.
+- El detalle y los puntajes RICE están en Jira, en el comentario "Priorización 2026-10-25" de cada issue.
+
+### SCRUM-31 · Mis restricciones nunca se saltan (P0, Fase C)
+
+**Criterios:**
+- [x] Con restricciones en vigor, ni el plan, ni las sustituciones, ni lo que se le ofrece a la IA traen un ejercicio prohibido.
+- [x] El permiso (allow-list) de una restricción solo refina esa restricción; nunca anula la prohibición de otra.
+- [x] Con varias restricciones, un ejercicio vale solo si ninguna lo prohíbe, en cualquier orden. Prohibir por ID gana incluso al permiso de la misma restricción.
+- [x] Una restricción resuelta ya no limita.
+- [x] Con la fecha de revisión vencida, la restricción sigue aplicando hasta que se confirme que se resolvió (RN-004).
+- [ ] La app pregunta "¿cómo sigues?" al vencer la fecha de revisión: es de UI, va con SCRUM-216 y SCRUM-36 (hoy Perfil › Restricciones no recibe datos).
+- [x] Si no queda ningún ejercicio seguro para un músculo, se omite y la explicación lo dice; nunca se fuerza uno.
+- [x] Una sola implementación: `RestrictionPolicyEngine.verdict(for:under:scope:)`. La usan el plan (`ExerciseAssigner`), las sustituciones, la IA (`PlanPersonalizationValidator`) y el dropset (`IntensityAdvisor`).
+
+Evidencia: commit `285a4ff`; `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `✔ Test run with 482 tests in 87 suites passed` (2026-10-25; línea base 513 + 478).
+- **Tests de dominio:** `Packages/PRCore/Tests/PRDomainTests/RestrictionPermissionTests.swift`. Cubren plan, sustitución y dropset con:
+  - permisos cruzados hombro + rodilla;
+  - prohibir por ID contra el permiso de la misma restricción;
+  - todas las permutaciones de 3 restricciones;
+  - restricción resuelta;
+  - fecha de revisión vencida;
+  - regla por defecto igual a la versionada.
+- **Tests con el catálogo real:** `Packages/PRCore/Tests/PRCoreTests/RestrictionsNeverBypassedTests.swift`. Cubren:
+  - plan guardado con `LocalPersistence` en directorio temporal y reabierto;
+  - sustituciones con todo el catálogo;
+  - alternativas para la IA y rechazo de una propuesta prohibida;
+  - dropset;
+  - músculo sin ejercicio seguro;
+  - 100 planes con semilla fija. Antes del arreglo 28 de 100 traían algo prohibido; ahora 0.
+- **Por qué no hay prueba en simulador:** hoy ninguna pantalla crea permisos ni resuelve restricciones. La regresión de las zonas del formulario la cubre `RestrictionZonesTests`.
+- **La integración no usa `AppEnvironment`:** vive en el target de la app. Se usan `TodayPlanCoordinator` y `LocalPersistence` reales.
+
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase C (restricciones SCRUM-31, 32, 36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–40) → HealthKit, Watch, pestañas.
+En orden: Fase C (restricciones ~~SCRUM-31~~ hecha el 2026-10-25, 32, 36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–40) → HealthKit, Watch, pestañas.
