@@ -23,6 +23,8 @@ struct ProfileView: View {
     var onEditAboutYou: () -> Void = {}
     /// Intento: rehacer el cuestionario (mismo flujo que un cambio de plan).
     var onRedoQuestionnaire: () -> Void = {}
+    /// Restricciones del perfil vigente, ya traducidas (SCRUM-216, solo lectura).
+    var restrictions: RestrictionListState = .empty(note: nil)
     /// ¿La IA puede usar los datos del perfil? (SCRUM-202)
     var aiConsentGranted = false
     /// Intento: dar o retirar el consentimiento (retirarlo aplica al instante).
@@ -48,12 +50,7 @@ struct ProfileView: View {
 
                 Section("Mi entrenamiento") {
                     NavigationLink {
-                        RestrictionManagementView(
-                            restrictions: [],
-                            onCreate: {},
-                            onReview: { _ in },
-                            onResolve: { _ in }
-                        )
+                        RestrictionManagementView(state: restrictions)
                     } label: {
                         Label("Restricciones", systemImage: "list.bullet.clipboard")
                     }

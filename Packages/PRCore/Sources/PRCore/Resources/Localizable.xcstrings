@@ -901,6 +901,60 @@
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "posing practice" } }
       }
+    },
+    "Lado izquierdo" : {
+      "comment" : "Restricciones: lado del cuerpo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Left side" } }
+      }
+    },
+    "Lado derecho" : {
+      "comment" : "Restricciones: lado del cuerpo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Right side" } }
+      }
+    },
+    "Ambos lados" : {
+      "comment" : "Restricciones: lado del cuerpo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Both sides" } }
+      }
+    },
+    "La declaraste tú" : {
+      "comment" : "Restricciones: origen, la persona la declaró",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You reported it" } }
+      }
+    },
+    "Indicación de un profesional" : {
+      "comment" : "Restricciones: origen, la indicó un profesional de la salud",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "From a health professional" } }
+      }
+    },
+    "Tu plan la cuida." : {
+      "comment" : "Restricciones: activa, el plan evita lo que la carga",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your plan works around it." } }
+      }
+    },
+    "Llegó su fecha de revisión; tu plan la sigue cuidando." : {
+      "comment" : "Restricciones: venció la fecha de revisión; sigue aplicando hasta que se confirme que se resolvió",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Its review date has come; your plan still works around it." } }
+      }
+    },
+    "Resuelta: ya no limita tu plan." : {
+      "comment" : "Restricciones: resuelta, ya no aplica",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Resolved: it no longer limits your plan." } }
+      }
+    },
+    "Nota: %@" : {
+      "comment" : "Restricciones: VoiceOver lee la nota de la persona",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Note: %@" } }
+      }
     }
   },
   "version" : "1.0"

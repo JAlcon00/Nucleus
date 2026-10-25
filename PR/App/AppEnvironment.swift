@@ -117,6 +117,11 @@ public final class AppEnvironment {
         }
     }
 
+    /// SCRUM-216: Perfil › Restricciones, del mismo perfil con el que se arma el plan.
+    public var restrictionList: RestrictionListState {
+        RestrictionListPresenter(locale: Self.presentationLocale).state(for: completedProfile, now: now)
+    }
+
     /// Registra el check-in y aplica el ajuste del día que decide el motor.
     public func recordSleep(hours: Double, quality: SleepQuality) {
         guard let adjustment = sleepCheckIns.record(hours: hours, quality: quality) else { return }

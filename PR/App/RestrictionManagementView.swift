@@ -4,158 +4,203 @@
 //
 //  Created by PR.
 //
-//  Pantalla de gestión de restricciones (plan §15 Fase 12, RF-023, PR-1401).
-//  Renderiza las restricciones y sus estados sin reglas de negocio (éstas viven en
-//  `RestrictionManager`/`RestrictionStatus`, PRDomain). No diagnostica ni resuelve
-//  nada por tiempo: sólo presenta el estado y permite intents de creación/edición/
-//  revisión/resolución que delegan en la capa de dominio.
+//  Perfil › Restricciones (RF-023). SCRUM-216: solo lectura. Muestra las restricciones del
+//  mismo perfil con el que se arma el plan, ya traducidas por `RestrictionListPresenter`
+//  (PRCore): zona, lado, quién la declaró, si el plan la sigue cuidando y la nota. Crear,
+//  revisar y resolver llegan con SCRUM-36; mientras, no hay botones que no hagan nada.
+//  Nunca diagnostica. Estados: vacío y con restricciones ("cargando" y "error" no aplican:
+//  el perfil ya está en memoria y no hay red).
 //
 
 import SwiftUI
+import PRCore
 import PRDomain
 
 struct RestrictionManagementView: View {
-    /// Restricciones activas/reviewNeeded/resolved (inyectadas por la capa de app).
-    let restrictions: [TrainingRestriction]
-    /// Intentos hacia la capa de dominio (crear/editar/revisar/resolver).
-    let onCreate: () -> Void
-    let onReview: (TrainingRestriction.ID) -> Void
-    let onResolve: (TrainingRestriction.ID) -> Void
+    /// Estado ya traducido (la capa de app lo arma con el perfil vigente).
+    let state: RestrictionListState
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         List {
-            Section {
-                if restrictions.isEmpty {
+            switch state {
+            case .empty(let note):
+                Section {
                     emptyState
-                } else {
-                    ForEach(restrictions) { restriction in
-                        row(restriction)
-                    }
+                } footer: {
+                    Text("Nucleus no diagnostica: solo evita lo que tú declaras.")
+                        .foregroundStyle(Color.textSecondary)
                 }
-            } header: {
-                Text("Restricciones (\(restrictions.count))")
+                .listRowBackground(Color.surface)
+                if let note { noteSection(note) }
+            case .loaded(let items, let note):
+                Section {
+                    ForEach(items) { row($0) }
+                } header: {
+                    Text("Tus restricciones")
+                } footer: {
+                    Text("Para agregar o quitar una zona, rehaz el cuestionario desde Perfil. Nucleus no diagnostica: solo evita lo que tú declaras.")
+                        .foregroundStyle(Color.textSecondary)
+                }
+                .listRowBackground(Color.surface)
+                if let note { noteSection(note) }
             }
-            .listRowBackground(Color.surface)
         }
         .scrollContentBackground(.hidden)
         .screenBackground()
         .navigationTitle("Restricciones")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button(action: onCreate) {
-                    Label("Nueva", systemImage: "plus")
-                }
-                .accessibilityHint("Añade una restricción de entrenamiento.")
-            }
-        }
     }
 
     private var emptyState: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Sin restricciones", systemImage: "checkmark.shield")
-                .font(.headline)
-            Text("Documenta aquí qué regiones/ejercicios evitar. Nunca diagnosticamos: tú decides qué registras.")
+        VStack(alignment: .leading, spacing: DSpace.s) {
+            Label {
+                Text("Sin restricciones").foregroundStyle(Color.textPrimary)
+            } icon: {
+                Image(systemName: "checkmark.shield").foregroundStyle(Color.success)
+            }
+            .font(.headline)
+            Text("Si algo te molesta, rehaz el cuestionario desde Perfil y marca la zona en el paso Restricciones. Tu plan evitará lo que la carga.")
                 .font(.callout)
                 .foregroundStyle(Color.textSecondary)
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, DSpace.s)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("restrictions.empty")
     }
 
-    private func row(_ restriction: TrainingRestriction) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(restriction.bodyRegion.rawValue.capitalized)
+    private func row(_ item: RestrictionListItem) -> some View {
+        VStack(alignment: .leading, spacing: DSpace.xs) {
+            // Con letra muy grande, el lado baja a su propia línea en vez de cortarse.
+            let titleLayout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: DSpace.xs))
+                : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: DSpace.s))
+            titleLayout {
+                Text(item.region)
                     .font(.headline)
-                if let side = restriction.side {
-                    Text(side.rawValue.capitalized)
+                    .foregroundStyle(Color.textPrimary)
+                if let side = item.side {
+                    Text(side)
                         .font(.subheadline)
                         .foregroundStyle(Color.textSecondary)
                 }
-                Spacer()
-                statusBadge(restriction.status)
             }
-            HStack(spacing: 8) {
-                sourceBadge(restriction.source)
-                if !restriction.forbiddenPatterns.isEmpty {
-                    Label("\(restriction.forbiddenPatterns.count) patrones", systemImage: "xmark.shield")
-                        .font(.footnote)
-                        .foregroundStyle(Color.textSecondary)
+            Label {
+                Text(item.source).foregroundStyle(Color.textSecondary)
+            } icon: {
+                Image(systemName: sourceSymbol(item.sourceKind)).foregroundStyle(Color.textSecondary)
+            }
+            .font(.subheadline)
+            Label {
+                Text(item.status).foregroundStyle(Color.textPrimary)
+            } icon: {
+                Image(systemName: statusSymbol(item.statusKind)).foregroundStyle(statusColor(item.statusKind))
+            }
+            .font(.subheadline)
+            if let note = item.note {
+                Label {
+                    Text(note).foregroundStyle(Color.textSecondary)
+                } icon: {
+                    Image(systemName: "text.quote").foregroundStyle(Color.textSecondary)
                 }
-            }
-            if let review = restriction.reviewDate {
-                Text("Revisión: \(review.formatted(date: .abbreviated, time: .shortened))")
-                    .font(.footnote)
-                    .foregroundStyle(Color.textSecondary)
-            }
-
-            switch restriction.status {
-            case .reviewNeeded:
-                Button("Marcar como revisado", action: { onReview(restriction.id) })
-                    .font(.footnote)
-            case .resolved:
-                Text("Resuelta. Se requiere acción explícita para re-activar.")
-                    .font(.footnote)
-                    .foregroundStyle(Color.textSecondary)
-            case .active:
-                EmptyView()
+                .font(.callout)
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, DSpace.xs)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(item.accessibilityLabel)
+        .accessibilityIdentifier("restrictions.row")
     }
 
-    private func statusBadge(_ status: RestrictionStatus) -> some View {
-        Text(status.rawValue.capitalized)
-            .font(.caption.bold())
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(statusColor(status).opacity(0.15), in: Capsule())
-            .foregroundStyle(statusColor(status))
+    private func noteSection(_ note: String) -> some View {
+        Section {
+            Text(note)
+                .font(.body)
+                .foregroundStyle(Color.textPrimary)
+                .accessibilityIdentifier("restrictions.note")
+        } header: {
+            Text("Tu nota")
+        } footer: {
+            Text("Solo informa: no cambia tu plan ni se comparte con la IA.")
+                .foregroundStyle(Color.textSecondary)
+        }
+        .listRowBackground(Color.surface)
     }
 
-    private func sourceBadge(_ source: RestrictionSource) -> some View {
-        Label(
-            source == .userReported ? "Usuario" : "Profesional",
-            systemImage: source == .userReported ? "person" : "stethoscope"
-        )
-        .font(.footnote)
-        .foregroundStyle(source == .professionalGuidance ? Color.textPrimary : Color.textSecondary)
+    private func sourceSymbol(_ source: RestrictionSource) -> String {
+        switch source {
+        case .userReported: return "person.fill"
+        case .professionalGuidance: return "stethoscope"
+        }
+    }
+
+    /// El icono acompaña al texto del estado; nunca es el único que lo dice.
+    private func statusSymbol(_ status: RestrictionStatus) -> String {
+        switch status {
+        case .active: return "checkmark.shield.fill"
+        case .reviewNeeded: return "exclamationmark.shield.fill"
+        case .resolved: return "checkmark.circle"
+        }
     }
 
     private func statusColor(_ status: RestrictionStatus) -> Color {
         switch status {
-        case .active: return .destructive
+        case .active: return .success
         case .reviewNeeded: return .warning
-        case .resolved: return .success
+        case .resolved: return .textSecondary
         }
     }
 }
 
-#Preview("Con restricciones") {
-    NavigationStack {
-        RestrictionManagementView(
+// MARK: - Previews
+
+private enum RestrictionPreviewData {
+    static let now = Date()
+
+    static var loaded: RestrictionListState {
+        var profile = OnboardingProfile(
+            goal: .hypertrophy, phase: .maintenance, experience: .intermediate,
+            trainingDaysPerWeek: 4, usualSessionMinutes: 60, varietyPreference: .balanced,
             restrictions: [
+                TrainingRestriction(bodyRegion: .elbow, startDate: now, forbiddenPatterns: [.elbowFlexion, .elbowExtension]),
                 TrainingRestriction(
-                    bodyRegion: .shoulder,
-                    side: .right,
-                    reviewDate: Date().addingTimeInterval(86400),
-                    status: .reviewNeeded,
-                    source: .professionalGuidance,
-                    forbiddenPatterns: [.verticalPress],
-                    restrictionTags: [.shoulder]
+                    bodyRegion: .shoulder, side: .right, startDate: now.addingTimeInterval(-60 * 86_400),
+                    reviewDate: now.addingTimeInterval(-86_400), source: .professionalGuidance,
+                    forbiddenPatterns: [.verticalPress], notes: "Sin press por encima de la cabeza"
                 ),
-                TrainingRestriction(bodyRegion: .knee, source: .userReported, forbiddenPatterns: [.squat]),
-            ],
-            onCreate: {},
-            onReview: { _ in },
-            onResolve: { _ in }
+                TrainingRestriction(bodyRegion: .wrist, startDate: now, status: .resolved, forbiddenPatterns: [.carry]),
+            ]
         )
+        profile.restrictionNote = "Me molesta el codo al cargar la barra"
+        return RestrictionListPresenter(locale: Locale(identifier: "es_MX")).state(for: profile, now: now)
     }
-    .ironEnergyTheme()
+}
+
+#Preview("Con restricciones · claro") {
+    NavigationStack { RestrictionManagementView(state: RestrictionPreviewData.loaded) }
+        .ironEnergyTheme()
+        .preferredColorScheme(.light)
+}
+
+#Preview("Con restricciones · oscuro") {
+    NavigationStack { RestrictionManagementView(state: RestrictionPreviewData.loaded) }
+        .ironEnergyTheme()
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Con restricciones · accessibility3") {
+    NavigationStack { RestrictionManagementView(state: RestrictionPreviewData.loaded) }
+        .ironEnergyTheme()
+        .dynamicTypeSize(.accessibility3)
 }
 
 #Preview("Vacío") {
-    NavigationStack {
-        RestrictionManagementView(restrictions: [], onCreate: {}, onReview: { _ in }, onResolve: { _ in })
-    }
-    .ironEnergyTheme()
+    NavigationStack { RestrictionManagementView(state: .empty(note: nil)) }
+        .ironEnergyTheme()
+}
+
+#Preview("Vacío con nota · oscuro") {
+    NavigationStack { RestrictionManagementView(state: .empty(note: "A veces me truena la rodilla")) }
+        .ironEnergyTheme()
+        .preferredColorScheme(.dark)
 }
