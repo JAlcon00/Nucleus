@@ -124,16 +124,10 @@ public struct IntensityAdvisor: Sendable {
         )
     }
 
-    /// ¿Alguna restricción activa afecta al ejercicio? (por ID, patrón o etiqueta; un
-    /// ejercicio permitido explícitamente no cuenta).
+    /// ¿Alguna restricción en vigor prohíbe el ejercicio (por ID, patrón o etiqueta)? La
+    /// misma evaluación que el plan y las sustituciones (SCRUM-31).
     public static func isRestricted(_ exercise: Exercise, by restrictions: [TrainingRestriction]) -> Bool {
-        restrictions.contains { restriction in
-            guard restriction.status != .resolved else { return false }
-            if restriction.allowedExerciseIDs.contains(exercise.id) { return false }
-            return restriction.forbiddenExerciseIDs.contains(exercise.id)
-                || restriction.forbiddenPatterns.contains(exercise.movementPattern)
-                || !restriction.restrictionTags.isDisjoint(with: exercise.contraindicationTags)
-        }
+        RestrictionPolicyEngine.verdict(for: exercise, under: restrictions) != .allowed
     }
 
     /// Consejo de dropset de cada ejercicio para esta persona (experiencia y restricciones

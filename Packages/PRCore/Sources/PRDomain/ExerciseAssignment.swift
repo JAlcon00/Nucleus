@@ -122,8 +122,9 @@ public struct ExerciseAssignmentInput: Sendable {
 /// - Sólo ejercicios del catálogo que trabajen el grupo objetivo.
 /// - Equipment: si la disponibilidad es conocida, se excluyen los que usan
 ///   equipment no disponible; si es unknown, no se descarta nada (la UI pregunta).
-/// - Restricciones: se excluyen ejercicios con patrón prohibido o ID prohibido;
-///   si un ejercicio está en la lista explícitamente permitida, se respeta.
+/// - Restricciones: `RestrictionPolicyEngine.verdict`, la misma evaluación que sustituciones,
+///   IA y dropset (SCRUM-31): se excluye lo que cualquier restricción en vigor prohíbe; el
+///   permiso de una restricción sólo refina esa restricción.
 /// - Con ejercicios de referencia disponibles (lista curada, `Exercise.staple`), el primero
 ///   por orden de preferencia es el `anchor` y los siguientes los `rotatable` (tantos como
 ///   indique la variedad). Sin ellos, el mejor candidato por familia es el `anchor` y el resto
@@ -217,13 +218,7 @@ public struct ExerciseAssigner: Sendable {
            !available.contains(exercise.equipment) {
             return false
         }
-        // Restricciones: exciven patrón/ID prohibido; lista permitida prevalecida.
-        for restriction in input.restrictions {
-            if restriction.allowedExerciseIDs.contains(exercise.id) { return true }
-            if restriction.forbids(exercise: exercise.id) { return false }
-            if restriction.forbids(exercise.movementPattern) { return false }
-        }
-        return true
+        return RestrictionPolicyEngine.verdict(for: exercise, under: input.restrictions) == .allowed
     }
 
     /// Familias ordenadas deterministamente (por nombre) presentes en los candidatos.

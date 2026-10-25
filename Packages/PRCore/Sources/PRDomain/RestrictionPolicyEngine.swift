@@ -6,10 +6,11 @@
 //
 //  Motor determinista de política de restricciones (plan §15 Fase 12, promptMaster
 //  §16.2, PR-1402). Decide si un ejercicio (o un sustituto) queda excluido por las
-//  restricciones activas. Reglas:
+//  restricciones activas. Es la única evaluación de restricciones (SCRUM-31): la usan el
+//  plan, las sustituciones, la IA y el dropset. Reglas:
 //   - patrón de movimiento prohibido ⇒ el ejercicio no se programa;
 //   - la lista explícita `allowedExerciseIDs` refina (permite) pese a un patrón
-//     prohibido;
+//     prohibido de ESA MISMA restricción; nunca anula otra restricción;
 //   - un sustituto prohibido por la política NUNCA se adopta (no evade restricciones);
 //   - nunca diagnostica: la política sólo aplica restricciones declaradas.
 // Determinista y auditable vía `DecisionRecord`.
@@ -45,8 +46,10 @@ public struct RestrictionPolicyInput: Sendable {
     }
 }
 
-/// Configuración de la engine con un booleano para toggles aplicables.
-public struct RestrictionPolicyScope: Sendable {
+/// Configuración de la engine con un booleano para toggles aplicables. Sus valores por
+/// defecto son los de `RestrictionPolicyDefaults.makeRule()` (un test lo comprueba): los usan
+/// el plan y el dropset, que no cargan la regla versionada.
+public struct RestrictionPolicyScope: Equatable, Sendable {
     public var enforceForbiddenPatterns: Bool
     public var enforceExplicitForbid: Bool
     public var explicitAllowRefines: Bool
@@ -175,12 +178,17 @@ public struct RestrictionPolicyResult: Equatable, Sendable {
 
 /// Motor determinista de política de restricciones (PR-1402).
 ///
-/// Precedencia:
-/// 1. prohibición explícita por ID (`forbiddenExerciseIDs`) — la más fuerte;
-/// 2. permiso explícito (`allowedExerciseIDs`) que refina un patrón prohibido;
+/// Un ejercicio vale sólo si NINGUNA restricción en vigor lo prohíbe; el orden de las
+/// restricciones no importa (SCRUM-31). Cada restricción, por separado:
+/// 1. prohibición explícita por ID (`forbiddenExerciseIDs`) — la más fuerte: ni el permiso
+///    de la misma restricción la anula;
+/// 2. permiso explícito (`allowedExerciseIDs`): refina los patrones y tags de ESA
+///    restricción, nunca los de otra;
 /// 3. patrón de movimiento prohibido (`forbiddenPatterns`);
-/// 4. solape de tags de contraindicación con `restrictionTags` (gate sustitución);
+/// 4. solape de tags de contraindicación con `restrictionTags`;
 /// 5. permitido.
+/// Las resueltas no cuentan; una fecha de revisión vencida no es curación (RN-004). El
+/// veredicto combinado dice la causa más fuerte: ID, después patrón, después tags.
 public struct RestrictionPolicyEngine: Sendable {
     public let config: RestrictionPolicyConfig
 
@@ -190,47 +198,61 @@ public struct RestrictionPolicyEngine: Sendable {
 
     /// Restricciones que siguen en vigor (active o reviewNeeded, nunca resolved).
     public func relevantRestrictions(_ restrictions: [TrainingRestriction], asOf: Date) -> [TrainingRestriction] {
-        restrictions.map { $0.refreshed(asOf: asOf) }
-            .filter { $0.status == .active || $0.status == .reviewNeeded }
+        restrictions.map { $0.refreshed(asOf: asOf) }.filter(\.isInForce)
     }
 
     public func evaluate(_ input: RestrictionPolicyInput) throws -> RestrictionPolicyResult {
         let reference = try config.reference()
-        let scope = config.scope
         let reason = "exercise '\(input.exercise.canonicalName)' (pattern \(input.exercise.movementPattern.rawValue))"
-
         let applicable = relevantRestrictions(input.activeRestrictions, asOf: input.asOf)
+        let verdict = Self.verdict(for: input.exercise, under: applicable, scope: config.scope)
+        return makeResult(verdict, reasons: [reason + " → " + outcome(of: verdict, for: input.exercise, under: applicable)], reference: reference)
+    }
 
-        // 1. Prohibición explícita por ID.
-        if scope.enforceExplicitForbid,
-           applicable.contains(where: { $0.forbiddenExerciseIDs.contains(input.exercise.id) }) {
-            return makeResult(.forbiddenExplicit, reasons: [reason + " → prohibido explícitamente"], reference: reference)
-        }
-
-        // 2. Permiso explícito refina.
-        if scope.explicitAllowRefines,
-           applicable.contains(where: { $0.allowedExerciseIDs.contains(input.exercise.id) }) {
-            return makeResult(.allowed, reasons: [reason + " → permitido explícitamente (refina)"], reference: reference)
-        }
-
-        // 3. Patrón de movimiento prohibido.
-        if scope.enforceForbiddenPatterns {
-            let patterns = applicable.flatMap(\.forbiddenPatterns)
-            if patterns.contains(input.exercise.movementPattern) {
-                return makeResult(.forbiddenPattern(patterns), reasons: [reason + " → patrón \(input.exercise.movementPattern.rawValue) prohibido"], reference: reference)
+    /// Veredicto de todas las restricciones juntas: la única evaluación de restricciones de la
+    /// app (SCRUM-31). Plan (`ExerciseAssigner`), sustituciones, IA y dropset
+    /// (`IntensityAdvisor`) la usan. No depende de la fecha: `active` y `reviewNeeded`
+    /// aplican igual.
+    public static func verdict(
+        for exercise: Exercise,
+        under restrictions: [TrainingRestriction],
+        scope: RestrictionPolicyScope = RestrictionPolicyScope()
+    ) -> RestrictionVerdict {
+        var patternForbidden = false
+        var tags: Set<RestrictionTag> = []
+        for restriction in restrictions where restriction.isInForce {
+            switch verdict(of: restriction, for: exercise, scope: scope) {
+            case .forbiddenExplicit: return .forbiddenExplicit
+            case .forbiddenPattern: patternForbidden = true
+            case .forbiddenByTag(let overlap): tags.formUnion(overlap)
+            case .allowed: break
             }
         }
+        if patternForbidden { return .forbiddenPattern([exercise.movementPattern]) }
+        if !tags.isEmpty { return .forbiddenByTag(tags.sorted { $0.rawValue < $1.rawValue }) }
+        return .allowed
+    }
 
-        // 4. Solape de tags de contraindicación (gate de sustitución).
+    /// Veredicto de UNA restricción: su permiso sólo refina sus propios patrones y tags.
+    private static func verdict(
+        of restriction: TrainingRestriction,
+        for exercise: Exercise,
+        scope: RestrictionPolicyScope
+    ) -> RestrictionVerdict {
+        if scope.enforceExplicitForbid, restriction.forbids(exercise: exercise.id) {
+            return .forbiddenExplicit
+        }
+        if scope.explicitAllowRefines, restriction.allowedExerciseIDs.contains(exercise.id) {
+            return .allowed
+        }
+        if scope.enforceForbiddenPatterns, restriction.forbids(exercise.movementPattern) {
+            return .forbiddenPattern([exercise.movementPattern])
+        }
         if scope.enforceRestrictionTags {
-            let overlap = applicable.flatMap(\.restrictionTags).filter { input.exercise.contraindicationTags.contains($0) }
-            if !overlap.isEmpty {
-                return makeResult(.forbiddenByTag(overlap), reasons: [reason + " → tags contraindicados: \(overlap.map(\.rawValue).joined(separator: ","))"], reference: reference)
-            }
+            let overlap = restriction.restrictionTags.intersection(exercise.contraindicationTags)
+            if !overlap.isEmpty { return .forbiddenByTag(overlap.sorted { $0.rawValue < $1.rawValue }) }
         }
-
-        // 5. Permitido.
-        return makeResult(.allowed, reasons: [reason + " → permitido"], reference: reference)
+        return .allowed
     }
 
     /// Filtra candidatos de sustitución: un sustituto prohibido por la política NUNCA
@@ -253,6 +275,21 @@ public struct RestrictionPolicyEngine: Sendable {
     }
 
     // MARK: - Helpers
+
+    /// La razón auditable del veredicto.
+    private func outcome(of verdict: RestrictionVerdict, for exercise: Exercise, under applicable: [TrainingRestriction]) -> String {
+        switch verdict {
+        case .forbiddenExplicit:
+            return "prohibido explícitamente"
+        case .forbiddenPattern:
+            return "patrón \(exercise.movementPattern.rawValue) prohibido"
+        case .forbiddenByTag(let tags):
+            return "tags contraindicados: \(tags.map(\.rawValue).joined(separator: ","))"
+        case .allowed:
+            let refined = config.scope.explicitAllowRefines && applicable.contains { $0.allowedExerciseIDs.contains(exercise.id) }
+            return refined ? "permitido explícitamente (refina)" : "permitido"
+        }
+    }
 
     private func makeResult(_ verdict: RestrictionVerdict, reasons: [String], reference: EvidenceRuleReference) -> RestrictionPolicyResult {
         let record = DecisionRecord(
