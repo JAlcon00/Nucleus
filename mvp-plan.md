@@ -394,12 +394,31 @@ Evidencia: commit `1c50415`; `make ci` → `✔ Test run with 513 tests in 77 su
 ### Bloque 11 — SCRUM-188 · Ambiente demo (soporte)
 
 **Agente:**
-- [ ] Datos demo: un perfil de ejemplo y 2 semanas de historial.
+- [x] Datos demo: un perfil de ejemplo y 2 semanas de historial.
   - Se cargan **solo** con un launch argument, por ejemplo `-PRDemoData`.
   - Usan un directorio de persistencia **separado**.
   - **Nunca** se mezclan con datos reales ni se activan en Release.
   - Tienen un test que lo verifica.
-- [ ] Scheme o instrucciones para correr el demo en el simulador.
+- [x] Scheme o instrucciones para correr el demo en el simulador.
+
+Evidencia: commit `7ecb106`; `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `✔ Test run with 494 tests in 89 suites passed` (2026-10-25; línea base 520 + 488).
+- **Tests:** `Packages/PRCore/Tests/PRCoreTests/DemoDataTests.swift` (6). Cubren:
+  - el argumento solo en Debug, nunca en Release;
+  - el inicio de sesión simulado solo en Debug;
+  - directorio aparte, sin estar uno dentro del otro;
+  - siembra con `LocalPersistence` en directorio temporal:
+    - 8 entrenamientos en los días elegidos;
+    - cada serie planeada registrada;
+    - nada que la rodilla prohíba;
+    - avance de la semana 1 a la 2;
+    - récords del bloque;
+  - determinista e idempotente;
+  - un plan ilegible no se sobrescribe.
+- **Instrucciones:** `docs/poc/ambiente-demo.md`.
+- **Simulador (iPad A16):** con `-PRDemoData` entra solo hasta "Personaliza tu plan con IA". Después:
+  - Hoy muestra L, M, J y V completados;
+  - Progreso muestra "4 de 4", 64 series, racha de 2 semanas, 48 récords del bloque, la gráfica de 2 semanas y "Registro · 8".
+- **Corrección incluida:** un bloque nuevo empieza con el reloj de la app. Antes `TrainingBlock` tomaba `Date()` y "Récords del bloque" quedaba en 0 con el demo o con `-PRFixedDate`.
 
 **👤 Humano (Jesús):**
 - Firma de desarrollo o TestFlight (requiere cuenta de Apple Developer).
