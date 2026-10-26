@@ -613,4 +613,26 @@ final class PRUITests: XCTestCase {
         tap(app, "profile.export")
         XCTAssertTrue(app.staticTexts["Aún no tienes entrenamientos"].waitForExistence(timeout: 10))
     }
+
+    /// SCRUM-190 (flujo 4): tras el primer entrenamiento, Exportar cuenta exactamente esa
+    /// sesión y ofrece los dos archivos (JSON y CSV).
+    func testExportCountsTheFirstWorkout() {
+        let app = launch()
+        completeOnboarding(app)
+        tap(app, "today.start")
+        tap(app, "workout.completeSet")
+        let finish = app.buttons["Terminar"].firstMatch
+        XCTAssertTrue(finish.waitForExistence(timeout: 10))
+        finish.tap()
+        let complete = app.buttons["Completar sesión"].firstMatch
+        XCTAssertTrue(complete.waitForExistence(timeout: 5))
+        complete.tap()
+        tap(app, "summary.done")
+
+        openTab(app, "Perfil")
+        tap(app, "profile.export")
+        XCTAssertTrue(app.staticTexts["1 sesión"].waitForExistence(timeout: 10), "Exportar debe contar el entrenamiento una sola vez")
+        XCTAssertTrue(app.buttons["JSON completo"].waitForExistence(timeout: 10), "Debe ofrecer el JSON")
+        XCTAssertTrue(app.buttons["Series (CSV)"].exists, "Debe ofrecer el CSV")
+    }
 }
