@@ -597,6 +597,35 @@ Evidencia: commit `f55256f`; `make ci` → `✔ Test run with 520 tests in 78 su
 - **Simulador (iPad A16):** con un perfil real hecho en el cuestionario (codo + nota), Perfil › Restricciones muestra "Codo · La declaraste tú · Tu plan la cuida." y "Tu nota", sin botones.
 - **Pendiente en simulador:** no se vio la fila profesional con revisión vencida ni el estado vacío. Los toques del simulador fallan (mismo problema de entorno que SCRUM-217); los cubren los tests y las previews.
 
+### SCRUM-214 · PR-B001 Test de caracterización del motor de rutinas (Should, demo)
+
+**Criterios:**
+- [x] Con el catálogo real, una muestra determinista de 200 perfiles de la matriz reporta las rutinas distintas en total y por número de días. La matriz es {días 2–7} × {variedad} × {objetivo} × {experiencia} × {fase} × {30, 45, 60, 90, 120 min}.
+- [x] El gate de la Fase B queda escrito en el test. Cada comprobación que hoy falla va en su propio `withKnownIssue`, que apunta a la historia que la arregla:
+  - el objetivo cambia los ejercicios → SCRUM-219;
+  - la experiencia cambia los ejercicios → SCRUM-215 y SCRUM-219;
+  - ningún ejercicio con 1 serie → SCRUM-218;
+  - pantorrilla y core en el plan → SCRUM-215.
+- [x] Mismo perfil y mismo bloque ⇒ la misma rutina.
+- [x] No exige más series con más minutos (PR-B003 espera la decisión D1, SCRUM-220).
+- [x] No rompe `make ci` y tarda menos de 10 s (~1.2 s).
+
+**Línea base del 2026-10-26** (`main` @ `237c831`; el log de `make ci` la imprime con el prefijo `[PR-B001]`):
+
+| Medida | Hoy | Meta de la Fase B |
+|---|---|---|
+| Conjuntos de ejercicios distintos en 200 perfiles | **2** (56 variantes de orden y series) | Que cambien con objetivo y experiencia |
+| Conjuntos por número de días (2 a 7) | 2 en cada uno | — |
+| Conjuntos por variedad | 1 por variedad; dos variedades comparten el mismo | — |
+| Pares fuerza/hipertrofia con ejercicios distintos | **0/40** (0 %) | ≥ 80 % |
+| Pares novato/avanzado con ejercicios distintos | **0/40** (0 %) | ≥ 80 % |
+| Ejercicios con menos de 2 series de trabajo | **1,394 de 5,943** (23 %) | 0 |
+| Planes con pantorrilla / con core | **0/200** / **0/200** | 200/200 |
+
+**Conclusión:** hoy el conjunto de ejercicios solo depende de la variedad. Objetivo, fase, experiencia, minutos y días cambian el reparto de series y el orden, pero no qué ejercicios salen. Es más drástico que la simulación de la auditoría (16 conjuntos en 8,100 perfiles, sobre `0b0a1f6`).
+
+Evidencia: commit `a4aacd4`; `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 496 tests in 90 suites passed … with 5 known issues` (2026-10-26; línea base 520 + 494). Test en `Packages/PRCore/Tests/PRCoreTests/RoutineCharacterizationTests.swift`.
+
 ## 4. Después del POC (no empezar todavía)
 
 En orden: Fase C (restricciones ~~SCRUM-31~~ hecha el 2026-10-25, 32, 36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–40) → HealthKit, Watch, pestañas.
