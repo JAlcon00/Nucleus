@@ -367,14 +367,10 @@ final class PRUITests: XCTestCase {
         let app = launch()
         completeOnboarding(app)
         XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
-        // En iPhone, con "¿Cómo dormiste?" a la vista, la lista de ejercicios de Hoy queda de
-        // 24 pt de alto (bug de layout encontrado en SCRUM-217, se arregla aparte): se responde
-        // "Ahora no" para ver los ejercicios y se desliza sobre la lista misma.
-        if element(app, "today.sleep.skip").waitForExistence(timeout: 3) {
-            tap(app, "today.sleep.skip")
-        }
+        // En iPhone la segunda fila puede quedar abajo: se desliza Hoy (SCRUM-222: todo se
+        // desplaza junto, también con "¿Cómo dormiste?" a la vista).
         let firstName = element(app, "today.exercise.0").label
-        let secondName = scrollTo(app, "today.exercise.1", within: "today.exerciseList").label
+        let secondName = scrollTo(app, "today.exercise.1", within: "today.content").label
         XCTAssertNotEqual(firstName, secondName)
 
         tap(app, "today.reorder")
@@ -382,10 +378,10 @@ final class PRUITests: XCTestCase {
         tap(app, "reorder.save")
         XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 10))
         XCTAssertEqual(
-            scrollTo(app, "today.exercise.0", within: "today.exerciseList", upwards: true).label, secondName,
+            scrollTo(app, "today.exercise.0", within: "today.content", upwards: true).label, secondName,
             "El segundo pasa al primer lugar"
         )
-        XCTAssertEqual(scrollTo(app, "today.exercise.1", within: "today.exerciseList").label, firstName)
+        XCTAssertEqual(scrollTo(app, "today.exercise.1", within: "today.content").label, firstName)
 
         tap(app, "today.whyOrder")
         XCTAssertTrue(element(app, "order.custom").waitForExistence(timeout: 5), "Dice que el orden es tuyo")
@@ -395,9 +391,45 @@ final class PRUITests: XCTestCase {
         tap(app, "reorder.reset")
         XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 10))
         XCTAssertEqual(
-            scrollTo(app, "today.exercise.0", within: "today.exerciseList", upwards: true).label, firstName,
+            scrollTo(app, "today.exercise.0", within: "today.content", upwards: true).label, firstName,
             "Vuelve al recomendado"
         )
+    }
+
+    /// SCRUM-222: en iPhone, con "¿Cómo dormiste?" a la vista, los ejercicios de Hoy quedan a
+    /// un deslizamiento (antes la lista quedaba de 24 pt de alto) y Empezar sigue a la vista.
+    func testTodayExercisesStayReachableWithSleepCheckIn() {
+        let app = launch()
+        completeOnboarding(app)
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
+        XCTAssertTrue(element(app, "today.sleep").waitForExistence(timeout: 5), "Debe preguntar cómo dormiste")
+        XCTAssertTrue(element(app, "today.exercise.0").waitForExistence(timeout: 5))
+
+        // "A la vista" = su centro queda entre el borde de arriba del contenido y las acciones
+        // fijas de abajo (isHittable no es confiable con las filas de SwiftUI, que son contenedores).
+        let content = element(app, "today.content")
+        let second = element(app, "today.exercise.1")
+        let footerTop = ["today.whyOrder", "today.reorder", "today.start"]
+            .map { element(app, $0) }
+            .filter(\.exists)
+            .map(\.frame.minY)
+            .min() ?? content.frame.maxY
+        func secondIsVisible() -> Bool {
+            second.exists && second.frame.midY > content.frame.minY && second.frame.midY < footerTop
+        }
+        if !secondIsVisible() {
+            // Un deslizamiento lento (sin inercia) que empieza justo arriba de las acciones fijas
+            // (el marco del contenido llega por debajo de ellas), como quien baja un poco.
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            let from = origin.withOffset(CGVector(dx: content.frame.midX, dy: footerTop - 24))
+            let to = origin.withOffset(CGVector(dx: content.frame.midX, dy: content.frame.minY + 120))
+            from.press(forDuration: 0.1, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 0.3)
+        }
+        XCTAssertTrue(
+            secondIsVisible(),
+            "El segundo ejercicio queda a un deslizamiento: fila \(second.frame), contenido \(content.frame), acciones desde y=\(footerTop)"
+        )
+        XCTAssertTrue(element(app, "today.start").isHittable, "Empezar sigue a la vista")
     }
 
     /// SCRUM-210: un principiante ve 6 pasos (sin "Variedad"), lenguaje simple y, en Hoy,

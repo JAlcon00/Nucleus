@@ -63,6 +63,7 @@ struct TodayView: View {
     /// Intento: ajustar la sesión a esos minutos (`nil` = quitar el ajuste).
     var onChooseTime: (Int?) -> Void = { _ in }
     @Environment(\.sessionOrderActions) private var orderActions
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var reordering = false
 
     @State private var showingOrder = false
@@ -83,9 +84,13 @@ struct TodayView: View {
             case .ready(let state):
                 VStack(spacing: 0) {
                     if let week {
+                        // Con fondo y encima: lo que se desplaza en Hoy pasa por debajo (SCRUM-222).
                         WeekStripView(week: week, onSelect: { selectedDay = $0 })
                             .padding(.horizontal, DSpace.m)
                             .padding(.top, DSpace.s)
+                            .padding(.bottom, DSpace.s)
+                            .background(Color.appBackground)
+                            .zIndex(1)
                     }
                     readyContent(state)
                         .frame(maxHeight: .infinity)
@@ -281,7 +286,33 @@ struct TodayView: View {
 
     // MARK: - Ready to start
 
+    /// SCRUM-222: todo se desplaza junto (saludo, resumen, "¿Cómo dormiste?", nota de tiempo y
+    /// ejercicios) y las acciones quedan fijas abajo. Antes la lista tenía su propio scroll con
+    /// el alto que sobraba: en iPhone, con la tarjeta de sueño, apenas 24 pt.
     private func readyView(_ presentation: SessionPresentation) -> some View {
+        ScrollView {
+            readyDetails(presentation)
+                .padding(.horizontal, 24)
+                .padding(.top, 24)
+                .padding(.bottom, DSpace.m)
+                .animation(DMotion.slide(reduceMotion: reduceMotion), value: asksSleepCheckIn)
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .accessibilityIdentifier("today.content")
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            readyActions(presentation)
+        }
+        .sheet(isPresented: $showingOrder) {
+            OrderExplanationSheet(order: order, reorderedByFatigue: orderReorderedByFatigue, isCustom: orderIsCustom)
+        }
+        .sheet(isPresented: $reordering) {
+            if let orderActions, let todayTemplateID {
+                ReorderExercisesSheet(templateID: todayTemplateID, lines: exercises, actions: orderActions)
+            }
+        }
+    }
+
+    private func readyDetails(_ presentation: SessionPresentation) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .center, spacing: DSpace.m) {
                 IconBadge(systemName: "figure.strengthtraining.traditional", scale: 1.6, isHighlighted: true)
@@ -324,6 +355,12 @@ struct TodayView: View {
                 timeNoteCard(timeNote)
             }
             exerciseList
+        }
+    }
+
+    /// Acciones fijas abajo (SCRUM-222): siempre a la vista, aunque la sesión sea larga.
+    private func readyActions(_ presentation: SessionPresentation) -> some View {
+        VStack(alignment: .leading, spacing: DSpace.s) {
             HStack {
                 if !order.isEmpty {
                     Button {
@@ -350,29 +387,21 @@ struct TodayView: View {
             }
             startButton(presentation)
         }
-        .padding(24)
-        .sheet(isPresented: $showingOrder) {
-            OrderExplanationSheet(order: order, reorderedByFatigue: orderReorderedByFatigue, isCustom: orderIsCustom)
-        }
-        .sheet(isPresented: $reordering) {
-            if let orderActions, let todayTemplateID {
-                ReorderExercisesSheet(templateID: todayTemplateID, lines: exercises, actions: orderActions)
-            }
-        }
+        .padding(.horizontal, 24)
+        .padding(.top, DSpace.s)
+        .padding(.bottom, DSpace.m)
+        .background(Color.appBackground)
     }
 
-    /// Lista de ejercicios de la sesión (con scroll: el botón Empezar siempre queda a la vista).
+    /// Ejercicios de la sesión, dentro del scroll de la pantalla (SCRUM-222).
     private var exerciseList: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: DSpace.s) {
-                ForEach(Array(exercises.enumerated()), id: \.element.id) { index, line in
-                    ExerciseLineRow(line: line, last: lastPerformance[line.exerciseID], number: index + 1)
-                        .padding(.vertical, DSpace.xs)
-                        .accessibilityIdentifier("today.exercise.\(index)")
-                }
+        LazyVStack(alignment: .leading, spacing: DSpace.s) {
+            ForEach(Array(exercises.enumerated()), id: \.element.id) { index, line in
+                ExerciseLineRow(line: line, last: lastPerformance[line.exerciseID], number: index + 1)
+                    .padding(.vertical, DSpace.xs)
+                    .accessibilityIdentifier("today.exercise.\(index)")
             }
         }
-        .accessibilityIdentifier("today.exerciseList")
     }
 
     // MARK: - Active
@@ -601,8 +630,26 @@ private let previewPresentation = SessionPresentation(
         .dynamicTypeSize(.accessibility3)
 }
 
+// SCRUM-222: con "¿Cómo dormiste?" los ejercicios siguen a la vista (todo se desplaza junto y
+// Empezar queda fijo abajo), del iPhone más chico al más grande.
+#Preview("¿Cómo dormiste? · iPhone chico", traits: .fixedLayout(width: 375, height: 667)) {
+    TodayWeekPreview(asksSleepCheckIn: true)
+}
+
+#Preview("¿Cómo dormiste? · iPhone grande · oscuro", traits: .fixedLayout(width: 402, height: 874)) {
+    TodayWeekPreview(asksSleepCheckIn: true)
+        .preferredColorScheme(.dark)
+}
+
+#Preview("¿Cómo dormiste? · accessibility3", traits: .fixedLayout(width: 402, height: 874)) {
+    TodayWeekPreview(asksSleepCheckIn: true)
+        .dynamicTypeSize(.accessibility3)
+}
+
 /// Hoy con una semana real generada por el dominio (lunes, miércoles y viernes).
 private struct TodayWeekPreview: View {
+    var asksSleepCheckIn = false
+
     var body: some View {
         NavigationStack {
             if let coordinator = Self.coordinator, let plan = coordinator.plan {
@@ -612,7 +659,8 @@ private struct TodayWeekPreview: View {
                     exercises: plan.todayExercises,
                     onStart: {},
                     onResume: {},
-                    week: coordinator.week
+                    week: coordinator.week,
+                    asksSleepCheckIn: asksSleepCheckIn
                 )
                 .navigationTitle("Hoy")
             }
