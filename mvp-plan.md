@@ -441,12 +441,17 @@ Evidencia: commit `7ecb106`; `make ci` → `✔ Test run with 520 tests in 78 su
 ### Bloque 13 — SCRUM-192 · Presentación con demo (soporte)
 
 **Agente:**
-- [ ] Borrador del guion en `docs/poc/guion-demo.md`, sin tecnicismos y de 10 minutos o menos, en este orden:
+- [x] Borrador del guion en `docs/poc/guion-demo.md`, sin tecnicismos y de 10 minutos o menos, en este orden:
   1. El problema.
   2. Qué es Nucleus.
   3. Demo en vivo: primer uso, entrenar, cerrar y retomar.
   4. Cómo sabemos que funciona.
   5. Qué sigue.
+
+Evidencia: commit `da984cf` (solo documento; `make guards` en verde).
+- El guion recorre F-01 a F-07 en 10:00. Usa una Pantalla A sin datos para el primer uso y una Pantalla B con `-PRDemoData` para el historial.
+- **Textos de la app:** salen del código. Hoy con datos demo se revisó en el simulador el 2026-10-26: "Hola, Alex · Torso A · 20 series · ~40 min", "Ajustar a mi tiempo" con 30/45/60/90 min, etiquetas RIR y dropset, "Última vez", "¿Por qué este orden?", "Ordenar" y "Empezar Torso A".
+- **Sin recorrer en simulador:** entrenar, retomar y el resumen, por la entrada lenta del simulador (SCRUM-217). Esos flujos los cubren las pruebas de UI de F-05 y F-06.
 
 **👤 Humano (Jesús):** ensayar al menos una vez con el demo real.
 
