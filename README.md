@@ -444,6 +444,30 @@ También se puede invocar el script directamente (misma función, logs en `.ci/`
 Cualquier gate que falle hace fallar el pipeline (exit != 0). Los logs reproducibles de
 cada fase quedan en `.ci/` (ignorados por git).
 
+## Pruebas de UI (SCRUM-217)
+
+```bash
+make test-ui     # las pruebas de PRUITests en el simulador (~20 min; fuera de make ci)
+```
+
+- **Simulador propio.** Corren en un simulador llamado `PR UI Tests`, un iPhone que el
+  script crea la primera vez y que **borra y arranca limpio en cada corrida**. No lo uses
+  para otra cosa: sus datos se pierden en cada corrida.
+- **Teclado físico.** Un simulador que alguna vez "vio" un teclado físico minimiza el
+  teclado en pantalla, y el texto que escriben las pruebas no llega. Así fallaban todas
+  en "Sobre ti": el peso no llegaba y "Continuar" seguía deshabilitado. El simulador
+  propio y limpio lo evita. Si usas otro con `PR_UI_SIMULATOR=<udid> make test-ui`, en
+  Simulator.app desactiva *I/O › Keyboard › Connect Hardware Keyboard*.
+- **Resultado.** Al terminar se imprime cada prueba con OK/FAIL y su duración. El detalle
+  queda en `.ci/test-ui.log` y en `.ci/test-ui.xcresult`, que se abre con Xcode.
+- **Si se cuelga.** `make test-ui` pasa `-collect-test-diagnostics never`: antes, cuando
+  una prueba fallaba, `xcodebuild` se quedaba esperando a `simctl diagnose` y no
+  terminaba. Si aun así se queda colgado, detén `xcodebuild` (Ctrl+C), apaga el simulador
+  con `xcrun simctl shutdown "PR UI Tests"` y vuelve a correr `make test-ui`, que lo
+  arranca limpio.
+- **Desde Xcode.** *Product › Test* sobre `PRUITests` sigue funcionando con cualquier
+  simulador. Si las pruebas fallan en "Sobre ti", revisa el teclado físico como arriba.
+
 ## IA en desarrollo (SCRUM-204)
 
 La IA (NVIDIA) sólo se conecta en compilaciones **Debug** y con una llave que vive en tu

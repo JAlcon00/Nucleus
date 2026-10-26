@@ -843,6 +843,9 @@ public final class TodayPlanCoordinator {
                 let result = personalized.result
                 var block = result.block
                 block.status = .active
+                // El bloque empieza "hoy" según el reloj de la app (no el de pared): así la
+                // semana del bloque y sus récords cuadran con -PRFixedDate y el demo (SCRUM-188).
+                block.startDate = clock()
                 var closed: TrainingBlock?
                 if var old = previous?.block {
                     old.status = .completed

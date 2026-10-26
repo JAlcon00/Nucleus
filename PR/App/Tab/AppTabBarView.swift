@@ -61,6 +61,7 @@ struct AppTabBarView: View {
                 now: environment.now,
                 onEditAboutYou: { editingAboutYou = true },
                 onRedoQuestionnaire: onRedoQuestionnaire,
+                restrictions: environment.restrictionList,
                 aiConsentGranted: environment.aiConsent.consent.allowsSharing,
                 onSetAIConsent: { granted in
                     if granted { environment.aiConsent.grant() } else { environment.aiConsent.decline() }

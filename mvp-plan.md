@@ -394,12 +394,31 @@ Evidencia: commit `1c50415`; `make ci` → `✔ Test run with 513 tests in 77 su
 ### Bloque 11 — SCRUM-188 · Ambiente demo (soporte)
 
 **Agente:**
-- [ ] Datos demo: un perfil de ejemplo y 2 semanas de historial.
+- [x] Datos demo: un perfil de ejemplo y 2 semanas de historial.
   - Se cargan **solo** con un launch argument, por ejemplo `-PRDemoData`.
   - Usan un directorio de persistencia **separado**.
   - **Nunca** se mezclan con datos reales ni se activan en Release.
   - Tienen un test que lo verifica.
-- [ ] Scheme o instrucciones para correr el demo en el simulador.
+- [x] Scheme o instrucciones para correr el demo en el simulador.
+
+Evidencia: commit `7ecb106`; `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `✔ Test run with 494 tests in 89 suites passed` (2026-10-25; línea base 520 + 488).
+- **Tests:** `Packages/PRCore/Tests/PRCoreTests/DemoDataTests.swift` (6). Cubren:
+  - el argumento solo en Debug, nunca en Release;
+  - el inicio de sesión simulado solo en Debug;
+  - directorio aparte, sin estar uno dentro del otro;
+  - siembra con `LocalPersistence` en directorio temporal:
+    - 8 entrenamientos en los días elegidos;
+    - cada serie planeada registrada;
+    - nada que la rodilla prohíba;
+    - avance de la semana 1 a la 2;
+    - récords del bloque;
+  - determinista e idempotente;
+  - un plan ilegible no se sobrescribe.
+- **Instrucciones:** `docs/poc/ambiente-demo.md`.
+- **Simulador (iPad A16):** con `-PRDemoData` entra solo hasta "Personaliza tu plan con IA". Después:
+  - Hoy muestra L, M, J y V completados;
+  - Progreso muestra "4 de 4", 64 series, racha de 2 semanas, 48 récords del bloque, la gráfica de 2 semanas y "Registro · 8".
+- **Corrección incluida:** un bloque nuevo empieza con el reloj de la app. Antes `TrainingBlock` tomaba `Date()` y "Récords del bloque" quedaba en 0 con el demo o con `-PRFixedDate`.
 
 **👤 Humano (Jesús):**
 - Firma de desarrollo o TestFlight (requiere cuenta de Apple Developer).
@@ -422,12 +441,17 @@ Evidencia: commit `1c50415`; `make ci` → `✔ Test run with 513 tests in 77 su
 ### Bloque 13 — SCRUM-192 · Presentación con demo (soporte)
 
 **Agente:**
-- [ ] Borrador del guion en `docs/poc/guion-demo.md`, sin tecnicismos y de 10 minutos o menos, en este orden:
+- [x] Borrador del guion en `docs/poc/guion-demo.md`, sin tecnicismos y de 10 minutos o menos, en este orden:
   1. El problema.
   2. Qué es Nucleus.
   3. Demo en vivo: primer uso, entrenar, cerrar y retomar.
   4. Cómo sabemos que funciona.
   5. Qué sigue.
+
+Evidencia: commit `da984cf` (solo documento; `make guards` en verde).
+- El guion recorre F-01 a F-07 en 10:00. Usa una Pantalla A sin datos para el primer uso y una Pantalla B con `-PRDemoData` para el historial.
+- **Textos de la app:** salen del código. Hoy con datos demo se revisó en el simulador el 2026-10-26: "Hola, Alex · Torso A · 20 series · ~40 min", "Ajustar a mi tiempo" con 30/45/60/90 min, etiquetas RIR y dropset, "Última vez", "¿Por qué este orden?", "Ordenar" y "Empezar Torso A".
+- **Sin recorrer en simulador:** entrenar, retomar y el resumen, por la entrada lenta del simulador (SCRUM-217). Esos flujos los cubren las pruebas de UI de F-05 y F-06.
 
 **👤 Humano (Jesús):** ensayar al menos una vez con el demo real.
 
@@ -512,6 +536,127 @@ Evidencia: commit `1c50415`; `make ci` → `✔ Test run with 513 tests in 77 su
 | FB-5 | SCRUM-212 | Saltar o dejar en espera ejercicios durante el entrenamiento | [x] |
 | FB-6 | SCRUM-213 | Progreso: 4 KPIs y gráfica | [x] |
 
+## 3.4 Repriorización 2026-10-25 (RICE + MoSCoW)
+
+- **Decisión de Jesús (2026-10-25):** SCRUM-31 va antes del soporte del demo, por la regla P0 de AGENTS §5 (un bug que salta una restricción bloquea lo demás).
+- **Orden del agente para el demo:** SCRUM-31 → SCRUM-216 (Perfil › Restricciones, solo lectura) → SCRUM-188 → SCRUM-192 → cierre de SCRUM-190 → SCRUM-214.
+- El detalle y los puntajes RICE están en Jira, en el comentario "Priorización 2026-10-25" de cada issue.
+
+### SCRUM-31 · Mis restricciones nunca se saltan (P0, Fase C)
+
+**Criterios:**
+- [x] Con restricciones en vigor, ni el plan, ni las sustituciones, ni lo que se le ofrece a la IA traen un ejercicio prohibido.
+- [x] El permiso (allow-list) de una restricción solo refina esa restricción; nunca anula la prohibición de otra.
+- [x] Con varias restricciones, un ejercicio vale solo si ninguna lo prohíbe, en cualquier orden. Prohibir por ID gana incluso al permiso de la misma restricción.
+- [x] Una restricción resuelta ya no limita.
+- [x] Con la fecha de revisión vencida, la restricción sigue aplicando hasta que se confirme que se resolvió (RN-004).
+- [ ] La app pregunta "¿cómo sigues?" al vencer la fecha de revisión: es de UI, va con SCRUM-216 y SCRUM-36 (hoy Perfil › Restricciones no recibe datos).
+- [x] Si no queda ningún ejercicio seguro para un músculo, se omite y la explicación lo dice; nunca se fuerza uno.
+- [x] Una sola implementación: `RestrictionPolicyEngine.verdict(for:under:scope:)`. La usan el plan (`ExerciseAssigner`), las sustituciones, la IA (`PlanPersonalizationValidator`) y el dropset (`IntensityAdvisor`).
+
+Evidencia: commit `285a4ff`; `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `✔ Test run with 482 tests in 87 suites passed` (2026-10-25; línea base 513 + 478).
+- **Tests de dominio:** `Packages/PRCore/Tests/PRDomainTests/RestrictionPermissionTests.swift`. Cubren plan, sustitución y dropset con:
+  - permisos cruzados hombro + rodilla;
+  - prohibir por ID contra el permiso de la misma restricción;
+  - todas las permutaciones de 3 restricciones;
+  - restricción resuelta;
+  - fecha de revisión vencida;
+  - regla por defecto igual a la versionada.
+- **Tests con el catálogo real:** `Packages/PRCore/Tests/PRCoreTests/RestrictionsNeverBypassedTests.swift`. Cubren:
+  - plan guardado con `LocalPersistence` en directorio temporal y reabierto;
+  - sustituciones con todo el catálogo;
+  - alternativas para la IA y rechazo de una propuesta prohibida;
+  - dropset;
+  - músculo sin ejercicio seguro;
+  - 100 planes con semilla fija. Antes del arreglo 28 de 100 traían algo prohibido; ahora 0.
+- **Por qué no hay prueba en simulador:** hoy ninguna pantalla crea permisos ni resuelve restricciones. La regresión de las zonas del formulario la cubre `RestrictionZonesTests`.
+- **La integración no usa `AppEnvironment`:** vive en el target de la app. Se usan `TodayPlanCoordinator` y `LocalPersistence` reales.
+
+### SCRUM-216 · Perfil › Restricciones muestra las que declaré (solo lectura, demo)
+
+**Criterios:**
+- [x] Cada restricción del perfil se ve con su zona, su lado, su nota y su origen ("La declaraste tú" o "Indicación de un profesional"), en palabras simples. También se ve si el plan la sigue cuidando; con la fecha de revisión vencida sigue cuidándose (RN-004).
+- [x] Sin restricciones hay un estado vacío que explica cómo agregarlas (rehacer el cuestionario). La nota del paso "Restricciones" se muestra aparte y dice que no cambia el plan.
+- [x] No hay botones que no hagan nada: "Nueva", "Marcar como revisado" y "Resolver" se quitaron hasta SCRUM-36.
+- [x] Una sola fuente: la lista sale de `completedProfile`, que es el perfil que restaura `TodayPlanCoordinator.restore` y con el que se arma el plan. La traducción vive en `RestrictionListPresenter` (PRCore); la vista no decide nada.
+- [x] Accesible:
+  - VoiceOver lee cada restricción en una frase (zona, lado, origen, estado y nota).
+  - El texto escala, y con letra muy grande el lado baja a su propia línea.
+  - El estado lleva texto además de icono y color.
+  - Contraste medido (5.22:1 a 10.75:1 en claro y oscuro).
+
+Evidencia: commit `f55256f`; `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `✔ Test run with 488 tests in 88 suites passed` (2026-10-25; línea base 520 + 482).
+- **Tests:** `Packages/PRCore/Tests/PRCoreTests/RestrictionListPresenterTests.swift` (6). Cubren:
+  - codo del cuestionario con nota;
+  - indicación profesional con lado, nota y revisión vencida;
+  - orden;
+  - estados vacíos;
+  - inglés;
+  - integración con `LocalPersistence` en directorio temporal (perfil guardado y reabierto llega a la pantalla, y el plan restaurado respeta esa misma restricción).
+- **Previews:** con restricciones en claro, oscuro y `.accessibility3`; vacío; vacío con nota en oscuro.
+- **Simulador (iPad A16):** con un perfil real hecho en el cuestionario (codo + nota), Perfil › Restricciones muestra "Codo · La declaraste tú · Tu plan la cuida." y "Tu nota", sin botones.
+- **Pendiente en simulador:** no se vio la fila profesional con revisión vencida ni el estado vacío. Los toques del simulador fallan (mismo problema de entorno que SCRUM-217); los cubren los tests y las previews.
+
+### SCRUM-214 · PR-B001 Test de caracterización del motor de rutinas (Should, demo)
+
+**Criterios:**
+- [x] Con el catálogo real, una muestra determinista de 200 perfiles de la matriz reporta las rutinas distintas en total y por número de días. La matriz es {días 2–7} × {variedad} × {objetivo} × {experiencia} × {fase} × {30, 45, 60, 90, 120 min}.
+- [x] El gate de la Fase B queda escrito en el test. Cada comprobación que hoy falla va en su propio `withKnownIssue`, que apunta a la historia que la arregla:
+  - el objetivo cambia los ejercicios → SCRUM-219;
+  - la experiencia cambia los ejercicios → SCRUM-215 y SCRUM-219;
+  - ningún ejercicio con 1 serie → SCRUM-218;
+  - pantorrilla y core en el plan → SCRUM-215.
+- [x] Mismo perfil y mismo bloque ⇒ la misma rutina.
+- [x] No exige más series con más minutos (PR-B003 espera la decisión D1, SCRUM-220).
+- [x] No rompe `make ci` y tarda menos de 10 s (~1.2 s).
+
+**Línea base del 2026-10-26** (`main` @ `237c831`; el log de `make ci` la imprime con el prefijo `[PR-B001]`):
+
+| Medida | Hoy | Meta de la Fase B |
+|---|---|---|
+| Conjuntos de ejercicios distintos en 200 perfiles | **2** (56 variantes de orden y series) | Que cambien con objetivo y experiencia |
+| Conjuntos por número de días (2 a 7) | 2 en cada uno | — |
+| Conjuntos por variedad | 1 por variedad; dos variedades comparten el mismo | — |
+| Pares fuerza/hipertrofia con ejercicios distintos | **0/40** (0 %) | ≥ 80 % |
+| Pares novato/avanzado con ejercicios distintos | **0/40** (0 %) | ≥ 80 % |
+| Ejercicios con menos de 2 series de trabajo | **1,394 de 5,943** (23 %) | 0 |
+| Planes con pantorrilla / con core | **0/200** / **0/200** | 200/200 |
+
+**Conclusión:** hoy el conjunto de ejercicios solo depende de la variedad. Objetivo, fase, experiencia, minutos y días cambian el reparto de series y el orden, pero no qué ejercicios salen. Es más drástico que la simulación de la auditoría (16 conjuntos en 8,100 perfiles, sobre `0b0a1f6`).
+
+Evidencia: commit `a4aacd4`; `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 496 tests in 90 suites passed … with 5 known issues` (2026-10-26; línea base 520 + 494). Test en `Packages/PRCore/Tests/PRCoreTests/RoutineCharacterizationTests.swift`.
+
+### SCRUM-217 · Entorno de pruebas de UI estable (Should, demo)
+
+**Criterios:**
+- [x] Con el simulador recién arrancado, `make test-ui` corre todas las pruebas de UI de principio a fin dos veces seguidas, sin colgarse, y deja el resultado por prueba. Hoy son 28 en `main`; la 29.ª, `testExportCountsTheFirstWorkout`, llega con SCRUM-190.
+- [x] El README documenta cómo preparar el simulador (teclado físico, destino, cómo recuperarlo si se cuelga).
+- [x] Los cambios a las pruebas dicen por qué, y el bug real encontrado se reporta (ver abajo).
+
+**Causas:**
+1. **El cuelgue:** cuando fallaba una prueba, `xcodebuild` se quedaba esperando a `simctl diagnose`. Ahora corre con `-collect-test-diagnostics never`.
+2. **"Sobre ti":** el iPad de pruebas quedó con "teclado físico visto" (`HardwareKeyboardLastSeen`). El teclado en pantalla se minimiza y el peso que escribe la prueba no llega. Ahora las pruebas corren en un simulador propio, "PR UI Tests" (iPhone), que se borra y arranca limpio en cada corrida.
+
+**Bug real encontrado (se arregla aparte):** en iPhone, con "¿Cómo dormiste?" en Hoy, la lista de ejercicios queda de **24 pt** de alto y apenas se ve media fila.
+
+Evidencia: commit `024cc33`.
+- `make test-ui` ×2 seguidas el 2026-10-26: `Executed 28 tests, with 0 failures` (1,199 s) y `Executed 28 tests, with 0 failures` (1,211 s), `make exit=0` las dos.
+- `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 496 tests in 90 suites passed … with 5 known issues` (las de SCRUM-214).
+
+### SCRUM-222 · Hoy en iPhone: los ejercicios se ven con "¿Cómo dormiste?" (Must, demo)
+
+**Criterios:**
+- [x] En iPhone, con "¿Cómo dormiste?", toda la pantalla se desplaza y los ejercicios quedan a un deslizamiento. Antes la lista medía 24 pt.
+- [x] "Empezar", "Ordenar" y "¿Por qué este orden?" quedan fijos abajo, siempre a la vista.
+- [x] Lo que se desplaza pasa por debajo de la tira de la semana sin mezclarse. La tarjeta de sueño entra y sale con animación que respeta Reducir movimiento.
+- [x] Previews en iPhone chico y grande, en claro y oscuro, y `.accessibility3`. Sin lógica nueva en la vista.
+- [ ] 👤 Revisarlo en un iPhone real, chico y grande.
+
+Evidencia: commit `42ffa7b`.
+- `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 496 tests in 90 suites passed … with 5 known issues`.
+- `make test-ui` (simulador "PR UI Tests", iPhone 18 Pro) → `Executed 29 tests, with 0 failures`. Incluye la nueva `testTodayExercisesStayReachableWithSleepCheckIn`, y `testReorderTodayExercisesAndReset` ya no esquiva el bug (2026-10-26).
+- Capturas en simulador: Hoy con la tarjeta y tras deslizar, con la tira de la semana limpia.
+
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase C (restricciones SCRUM-31, 32, 36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–40) → HealthKit, Watch, pestañas.
+En orden: Fase C (restricciones ~~SCRUM-31~~ hecha el 2026-10-25, 32, 36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–40) → HealthKit, Watch, pestañas.

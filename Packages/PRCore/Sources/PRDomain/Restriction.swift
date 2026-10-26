@@ -139,6 +139,15 @@ public struct TrainingRestriction: Identifiable, Codable, Sendable, Hashable {
         }
     }
 
+    /// Sigue en vigor: activa o pendiente de revisión. Una fecha de revisión vencida no es
+    /// curación (RN-004); sólo una resuelta deja de limitar.
+    public var isInForce: Bool {
+        switch status {
+        case .active, .reviewNeeded: return true
+        case .resolved: return false
+        }
+    }
+
     /// Indica si un patrón de movimiento está prohibido por esta restricción.
     public func forbids(_ pattern: MovementPattern) -> Bool {
         forbiddenPatterns.contains(pattern)

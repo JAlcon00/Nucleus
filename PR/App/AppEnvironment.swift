@@ -46,9 +46,27 @@ public final class AppEnvironment {
 
     /// Intent de arranque: recupera la sesión y el plan guardados; en modo simulado inicia
     /// sesión sola (salta la pantalla de login). En modo Apple, sin sesión guardada, el
-    /// usuario toca el botón.
+    /// usuario toca el botón. Con `-PRDemoData` primero siembra el demo (SCRUM-188).
     public func startIfNeeded() async {
+        if demoData { await seedDemoDataIfNeeded() }
         await session.start(autoSignIn: authMode.signsInAutomatically)
+    }
+
+    /// SCRUM-188: ¿arrancó en modo demo? Sólo Debug con `-PRDemoData`; usa su propio
+    /// directorio (`PR/demo`), nunca los datos reales.
+    public let demoData: Bool
+
+    /// Siembra el perfil de ejemplo y las 2 semanas de historial en el directorio demo antes
+    /// de recuperar la sesión. Si ya estaban, no toca nada. Una falla no detiene la app (abre
+    /// sin datos demo) y queda registrada.
+    private func seedDemoDataIfNeeded() async {
+        guard let basePersistence else { return }
+        do {
+            _ = try await DemoDataSeeder(catalog: catalog, timeZone: .current)
+                .seedIfNeeded(persistence: basePersistence, userID: AuthLaunchMode.simulatedUserIdentifier, now: now)
+        } catch {
+            basePersistence.log.saveFailed(.plans)
+        }
     }
 
     /// Coordinador del plan de hoy (PR-0601 wiring): a partir del perfil de onboarding
@@ -115,6 +133,11 @@ public final class AppEnvironment {
         todayPlan.plan?.timeAdjustment.map { adjustment in
             SessionTimePresenter(locale: Self.presentationLocale).sentence(for: adjustment) { exerciseNames[$0] }
         }
+    }
+
+    /// SCRUM-216: Perfil › Restricciones, del mismo perfil con el que se arma el plan.
+    public var restrictionList: RestrictionListState {
+        RestrictionListPresenter(locale: Self.presentationLocale).state(for: completedProfile, now: now)
     }
 
     /// Registra el check-in y aplica el ajuste del día que decide el motor.
@@ -297,6 +320,8 @@ public final class AppEnvironment {
         let testOptions = UITestLaunchOptions.resolve(
             arguments: ProcessInfo.processInfo.arguments, isDebugBuild: isDebugBuild
         )
+        let demoData = DemoDataLaunch.isRequested(arguments: ProcessInfo.processInfo.arguments, isDebugBuild: isDebugBuild)
+        self.demoData = demoData
         // Con `-PRFixedDate` (sólo Debug) "hoy" es ese día; si no, el reloj real.
         let fixedDate = testOptions.fixedDate(timeZone: .current)
         self.fixedDate = fixedDate
@@ -320,7 +345,10 @@ public final class AppEnvironment {
             authProvider: authProvider ?? mode.provider(appleID: SignInWithAppleProvider()),
             clock: { fixedDate ?? Date() }
         )
-        self.basePersistence = persistence ?? Self.makeDefaultPersistence(isolated: testOptions.isolatedPersistence ? testOptions.isolatedDirectoryName : nil)
+        self.basePersistence = persistence ?? Self.makeDefaultPersistence(
+            isolated: testOptions.isolatedPersistence ? testOptions.isolatedDirectoryName : nil,
+            demo: demoData
+        )
         let resolvedCatalog: ExerciseCatalog
         if let catalog {
             resolvedCatalog = catalog
@@ -399,7 +427,8 @@ public final class AppEnvironment {
     /// una sola vez el layout antiguo (todo en la raíz). Devuelve `nil` si el directorio
     /// no puede resolverse (fallback en memoria del app).
     /// `isolated` (sólo pruebas de UI en Debug): nombre de un directorio temporal, nunca los datos reales.
-    private static func makeDefaultPersistence(isolated isolatedName: String?) -> LocalPersistence? {
+    /// `demo` (sólo Debug, SCRUM-188): Application Support/PR/demo, aparte de los datos reales.
+    private static func makeDefaultPersistence(isolated isolatedName: String?, demo: Bool) -> LocalPersistence? {
         let persistence: LocalPersistence
         do {
             let root: URL
@@ -413,7 +442,7 @@ public final class AppEnvironment {
                     appropriateFor: nil,
                     create: true
                 )
-                root = base.appendingPathComponent("PR/persistence", isDirectory: true)
+                root = demo ? PersistenceLocation.demo(in: base) : PersistenceLocation.real(in: base)
             }
             persistence = try LocalPersistence(rootURL: root)
         } catch {

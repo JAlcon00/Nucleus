@@ -7,7 +7,8 @@
 //  Modo de inicio de sesión al arrancar (SCRUM-181, apoyo a pruebas manuales).
 //  Sign in with Apple no siempre funciona en el simulador; para poder probar el resto
 //  de la app existe un inicio de sesión SIMULADO que:
-//  - sólo se activa en builds Debug Y con el launch argument `-PRFakeSignIn`;
+//  - sólo se activa en builds Debug Y con el launch argument `-PRFakeSignIn` (o con el
+//    del demo, `-PRDemoData`, SCRUM-188, que entra solo con este mismo usuario);
 //  - nunca en Release, aunque venga el argumento;
 //  - entra solo (sin tocar el botón) con un identificador local fijo, sin tokens.
 //  La decisión es pura y testeable; la app sólo le pasa sus argumentos y si es Debug.
@@ -29,7 +30,9 @@ public enum AuthLaunchMode: Equatable, Sendable {
 
     /// Resuelve el modo. En Release siempre es `.appleID`.
     public static func resolve(arguments: [String], isDebugBuild: Bool) -> AuthLaunchMode {
-        guard isDebugBuild, arguments.contains(simulatedSignInArgument) else { return .appleID }
+        guard isDebugBuild,
+              arguments.contains(simulatedSignInArgument) || DemoDataLaunch.isRequested(arguments: arguments, isDebugBuild: isDebugBuild)
+        else { return .appleID }
         return .simulated
     }
 
