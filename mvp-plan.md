@@ -626,6 +626,23 @@ Evidencia: commit `f55256f`; `make ci` → `✔ Test run with 520 tests in 78 su
 
 Evidencia: commit `a4aacd4`; `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 496 tests in 90 suites passed … with 5 known issues` (2026-10-26; línea base 520 + 494). Test en `Packages/PRCore/Tests/PRCoreTests/RoutineCharacterizationTests.swift`.
 
+### SCRUM-217 · Entorno de pruebas de UI estable (Should, demo)
+
+**Criterios:**
+- [x] Con el simulador recién arrancado, `make test-ui` corre todas las pruebas de UI de principio a fin dos veces seguidas, sin colgarse, y deja el resultado por prueba. Hoy son 28 en `main`; la 29.ª, `testExportCountsTheFirstWorkout`, llega con SCRUM-190.
+- [x] El README documenta cómo preparar el simulador (teclado físico, destino, cómo recuperarlo si se cuelga).
+- [x] Los cambios a las pruebas dicen por qué, y el bug real encontrado se reporta (ver abajo).
+
+**Causas:**
+1. **El cuelgue:** cuando fallaba una prueba, `xcodebuild` se quedaba esperando a `simctl diagnose`. Ahora corre con `-collect-test-diagnostics never`.
+2. **"Sobre ti":** el iPad de pruebas quedó con "teclado físico visto" (`HardwareKeyboardLastSeen`). El teclado en pantalla se minimiza y el peso que escribe la prueba no llega. Ahora las pruebas corren en un simulador propio, "PR UI Tests" (iPhone), que se borra y arranca limpio en cada corrida.
+
+**Bug real encontrado (se arregla aparte):** en iPhone, con "¿Cómo dormiste?" en Hoy, la lista de ejercicios queda de **24 pt** de alto y apenas se ve media fila.
+
+Evidencia: commit `024cc33`.
+- `make test-ui` ×2 seguidas el 2026-10-26: `Executed 28 tests, with 0 failures` (1,199 s) y `Executed 28 tests, with 0 failures` (1,211 s), `make exit=0` las dos.
+- `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 496 tests in 90 suites passed … with 5 known issues` (las de SCRUM-214).
+
 ## 4. Después del POC (no empezar todavía)
 
 En orden: Fase C (restricciones ~~SCRUM-31~~ hecha el 2026-10-25, 32, 36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–40) → HealthKit, Watch, pestañas.
