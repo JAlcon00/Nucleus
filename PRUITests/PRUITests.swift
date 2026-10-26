@@ -38,13 +38,19 @@ final class PRUITests: XCTestCase {
         app.descendants(matching: .any).matching(identifier: id).firstMatch
     }
 
-    /// Desplaza hacia abajo hasta que aparezca `id` (las filas de una lista fuera de pantalla
-    /// no existen para la accesibilidad hasta que se ven).
-    private func scrollTo(_ app: XCUIApplication, _ id: String, maxSwipes: Int = 6) -> XCUIElement {
+    /// Desplaza hasta que aparezca `id` (las filas de una lista fuera de pantalla no existen
+    /// para la accesibilidad hasta que se ven). Hacia abajo por defecto; `upwards` vuelve al
+    /// principio de la lista. `within` desliza sobre esa lista y no en el centro de la
+    /// pantalla (p. ej. los ejercicios de Hoy, que se desplazan aparte). En iPhone hace falta
+    /// más seguido que en iPad (SCRUM-217).
+    private func scrollTo(
+        _ app: XCUIApplication, _ id: String, within containerID: String? = nil, upwards: Bool = false, maxSwipes: Int = 6
+    ) -> XCUIElement {
         let target = element(app, id)
+        let surface: XCUIElement = containerID.map { element(app, $0) } ?? app
         var swipes = 0
         while !target.exists && swipes < maxSwipes {
-            app.swipeUp()
+            if upwards { surface.swipeDown() } else { surface.swipeUp() }
             swipes += 1
         }
         return target
@@ -361,16 +367,25 @@ final class PRUITests: XCTestCase {
         let app = launch()
         completeOnboarding(app)
         XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
+        // En iPhone, con "¿Cómo dormiste?" a la vista, la lista de ejercicios de Hoy queda de
+        // 24 pt de alto (bug de layout encontrado en SCRUM-217, se arregla aparte): se responde
+        // "Ahora no" para ver los ejercicios y se desliza sobre la lista misma.
+        if element(app, "today.sleep.skip").waitForExistence(timeout: 3) {
+            tap(app, "today.sleep.skip")
+        }
         let firstName = element(app, "today.exercise.0").label
-        let secondName = element(app, "today.exercise.1").label
+        let secondName = scrollTo(app, "today.exercise.1", within: "today.exerciseList").label
         XCTAssertNotEqual(firstName, secondName)
 
         tap(app, "today.reorder")
         tap(app, "reorder.down.0")
         tap(app, "reorder.save")
         XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 10))
-        XCTAssertEqual(element(app, "today.exercise.0").label, secondName, "El segundo pasa al primer lugar")
-        XCTAssertEqual(element(app, "today.exercise.1").label, firstName)
+        XCTAssertEqual(
+            scrollTo(app, "today.exercise.0", within: "today.exerciseList", upwards: true).label, secondName,
+            "El segundo pasa al primer lugar"
+        )
+        XCTAssertEqual(scrollTo(app, "today.exercise.1", within: "today.exerciseList").label, firstName)
 
         tap(app, "today.whyOrder")
         XCTAssertTrue(element(app, "order.custom").waitForExistence(timeout: 5), "Dice que el orden es tuyo")
@@ -379,7 +394,10 @@ final class PRUITests: XCTestCase {
         tap(app, "today.reorder")
         tap(app, "reorder.reset")
         XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 10))
-        XCTAssertEqual(element(app, "today.exercise.0").label, firstName, "Vuelve al recomendado")
+        XCTAssertEqual(
+            scrollTo(app, "today.exercise.0", within: "today.exerciseList", upwards: true).label, firstName,
+            "Vuelve al recomendado"
+        )
     }
 
     /// SCRUM-210: un principiante ve 6 pasos (sin "Variedad"), lenguaje simple y, en Hoy,
@@ -610,6 +628,8 @@ final class PRUITests: XCTestCase {
         completeOnboarding(app)
         XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
         openTab(app, "Perfil")
+        // En iPhone "Exportar" queda abajo de "Sobre ti" y la IA: hay que bajar, como la persona.
+        XCTAssertTrue(scrollTo(app, "profile.export").waitForExistence(timeout: 5), "Perfil ofrece exportar")
         tap(app, "profile.export")
         XCTAssertTrue(app.staticTexts["Aún no tienes entrenamientos"].waitForExistence(timeout: 10))
     }

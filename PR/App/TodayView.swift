@@ -372,6 +372,7 @@ struct TodayView: View {
                 }
             }
         }
+        .accessibilityIdentifier("today.exerciseList")
     }
 
     // MARK: - Active

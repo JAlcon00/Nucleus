@@ -128,21 +128,85 @@ run_scheme_build() {
       build )
 }
 
-# Pruebas de UI (XCUIAutomation) sobre el simulador. Aparte de `all`: tardan ~4 min y
-# necesitan sesión gráfica con simulador (el CI de GitHub no las corre).
-run_ui_tests() {
-  local destination_id
-  destination_id="$(
-    cd "$REPO_ROOT" && xcodebuild -scheme PR -showdestinations 2>/dev/null \
-      | sed -n 's/.*{ platform:iOS Simulator,[^}]*id:\([0-9A-F-]\{36\}\)[^}]*}.*/\1/p' \
-      | head -n 1
-  )"
-  if [[ -z "$destination_id" ]]; then
-    log "ERROR: no hay simulador de iOS para las pruebas de UI." >&2
-    exit 1
+# Pruebas de UI (XCUIAutomation). Aparte de `all`: tardan ~20 min y necesitan simulador
+# (el CI de GitHub no las corre). SCRUM-217, para que sean confiables desde la terminal:
+# - Corren en un simulador PROPIO, `PR UI Tests` (iPhone; se crea la primera vez), que se
+#   borra y arranca limpio en cada corrida. Ningún otro uso lo toca: un simulador que
+#   "vio" un teclado físico minimiza el teclado en pantalla y el texto que escriben las
+#   pruebas no llega (así fallaba todo en "Sobre ti"). `PR_UI_SIMULATOR=<udid>` usa otro
+#   simulador tal cual, sin borrarlo.
+# - `-collect-test-diagnostics never`: con una prueba fallida, xcodebuild ya no se queda
+#   esperando a `simctl diagnose` (se colgaba al terminar).
+# - El resultado queda en `.ci/test-ui.xcresult` y se imprime prueba por prueba.
+UI_SIMULATOR_NAME="PR UI Tests"
+UI_SIMULATOR_PREFERRED_TYPE="com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro"
+UI_RESULT_BUNDLE="$CI_LOG_DIR/test-ui.xcresult"
+
+# UDID del simulador de pruebas de UI; lo crea si no existe.
+ui_simulator() {
+  local udid device_type
+  udid="$(xcrun simctl list devices available \
+    | sed -n "s/^ *$UI_SIMULATOR_NAME (\([0-9A-F-]\{36\}\)).*/\1/p" | head -n 1)"
+  if [[ -z "$udid" ]]; then
+    device_type="$(xcrun simctl list devicetypes \
+      | sed -n "s/.*(\($UI_SIMULATOR_PREFERRED_TYPE\))\$/\1/p" | head -n 1)"
+    if [[ -z "$device_type" ]]; then
+      # Sin el modelo preferido: el primer iPhone que traiga este Xcode.
+      device_type="$(xcrun simctl list devicetypes \
+        | sed -n 's/^iPhone .*(\(com\.apple\.CoreSimulator\.SimDeviceType\.iPhone-[^)]*\))$/\1/p' | head -n 1)"
+    fi
+    udid="$(xcrun simctl create "$UI_SIMULATOR_NAME" "$device_type")"
+    log "[ci] test-ui: simulador $UI_SIMULATOR_NAME creado ($device_type)"
   fi
+  printf '%s\n' "$udid"
+}
+
+# Imprime cada prueba del result bundle con su resultado y duración.
+print_ui_results() {
+  [[ -d "$UI_RESULT_BUNDLE" ]] || return 0
+  xcrun xcresulttool get test-results tests --path "$UI_RESULT_BUNDLE" 2>/dev/null \
+    | python3 -I -c '
+import json, sys
+marks = {"Passed": "OK  ", "Failed": "FAIL", "Skipped": "SKIP", "Expected Failure": "XF  "}
+def walk(node):
+    if node.get("nodeType") == "Test Case":
+        mark = marks.get(node.get("result"), "?   ")
+        print("  " + mark + " " + str(node.get("name")) + " (" + str(node.get("duration", "?")) + ")")
+        return
+    for child in node.get("children", []):
+        walk(child)
+for node in json.load(sys.stdin).get("testNodes", []):
+    walk(node)
+' >&2 || log "  (no se pudo leer $UI_RESULT_BUNDLE)"
+}
+
+run_ui_tests() {
+  local udid code=0
+  if [[ -n "${PR_UI_SIMULATOR:-}" ]]; then
+    udid="$PR_UI_SIMULATOR"
+    log "[ci] test-ui: simulador indicado $udid (sin borrarlo)"
+  else
+    udid="$(ui_simulator)"
+    log "[ci] test-ui: simulador $UI_SIMULATOR_NAME ($udid), borrado y arrancado limpio"
+    # Apagado previo: si ya estaba apagado no es un error.
+    xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
+    xcrun simctl erase "$udid"
+  fi
+  # Arranque: si ya estaba arrancado no es un error; `bootstatus` espera a que esté listo.
+  xcrun simctl boot "$udid" >/dev/null 2>&1 || true
+  xcrun simctl bootstatus "$udid" -b >/dev/null
+  # xcodebuild no sobrescribe un result bundle existente.
+  rm -rf "$UI_RESULT_BUNDLE"
   ( cd "$REPO_ROOT" && run_step "test-ui" xcodebuild \
-      -scheme PR -destination "id=$destination_id" -only-testing:PRUITests test )
+      -scheme PR -destination "id=$udid" \
+      -collect-test-diagnostics never \
+      -resultBundlePath "$UI_RESULT_BUNDLE" \
+      -only-testing:PRUITests test ) || code=$?
+  log "[ci] test-ui: resultado por prueba"
+  print_ui_results
+  if [[ $code -ne 0 ]]; then
+    exit "$code"
+  fi
 }
 
 run_ios_build() {
