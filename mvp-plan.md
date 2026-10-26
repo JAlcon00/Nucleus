@@ -643,6 +643,20 @@ Evidencia: commit `024cc33`.
 - `make test-ui` ×2 seguidas el 2026-10-26: `Executed 28 tests, with 0 failures` (1,199 s) y `Executed 28 tests, with 0 failures` (1,211 s), `make exit=0` las dos.
 - `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 496 tests in 90 suites passed … with 5 known issues` (las de SCRUM-214).
 
+### SCRUM-222 · Hoy en iPhone: los ejercicios se ven con "¿Cómo dormiste?" (Must, demo)
+
+**Criterios:**
+- [x] En iPhone, con "¿Cómo dormiste?", toda la pantalla se desplaza y los ejercicios quedan a un deslizamiento. Antes la lista medía 24 pt.
+- [x] "Empezar", "Ordenar" y "¿Por qué este orden?" quedan fijos abajo, siempre a la vista.
+- [x] Lo que se desplaza pasa por debajo de la tira de la semana sin mezclarse. La tarjeta de sueño entra y sale con animación que respeta Reducir movimiento.
+- [x] Previews en iPhone chico y grande, en claro y oscuro, y `.accessibility3`. Sin lógica nueva en la vista.
+- [ ] 👤 Revisarlo en un iPhone real, chico y grande.
+
+Evidencia: commit `42ffa7b`.
+- `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 496 tests in 90 suites passed … with 5 known issues`.
+- `make test-ui` (simulador "PR UI Tests", iPhone 18 Pro) → `Executed 29 tests, with 0 failures`. Incluye la nueva `testTodayExercisesStayReachableWithSleepCheckIn`, y `testReorderTodayExercisesAndReset` ya no esquiva el bug (2026-10-26).
+- Capturas en simulador: Hoy con la tarjeta y tras deslizar, con la tira de la semana limpia.
+
 ## 4. Después del POC (no empezar todavía)
 
 En orden: Fase C (restricciones ~~SCRUM-31~~ hecha el 2026-10-25, 32, 36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–40) → HealthKit, Watch, pestañas.
