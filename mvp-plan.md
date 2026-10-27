@@ -717,3 +717,39 @@ Evidencia: commit `cf58811`, en `main` por el PR #6 (`cdc4ed7`).
 Evidencia: commit `c29e473`, en `main` por el PR #7 (`3f7c717`).
 - `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 528 tests in 93 suites passed … with 5 known issues` (2026-10-26; línea base 520 + 521 sobre SCRUM-40). El build de iOS y el de watchOS pasaron.
 - **Tests:** `Packages/PRCore/Tests/PRCoreTests/UnreadablePlanTests.swift` (7), todos con `LocalPersistence` real. Los dos primeros se escribieron antes del arreglo y fallaban: sin copia en cuarentena y con el historial de bloques perdido.
+
+### SCRUM-218 · PR-B004 Composición de sesión (Must 1.0, en rama hasta después del demo)
+
+- Va en la rama `SCRUM-218-composicion-sesion`. **No se sube a `main` hasta después del demo**, porque cambia la rutina de todos y el guion cita una rutina concreta.
+- **Decisiones de Jesús (2026-10-26):**
+  1. El tope del rango se cumple siempre; el mínimo, solo si el volumen alcanza con 2 series por ejercicio. El piso completo llega con D1 (PR-B003).
+  2. Al recortar se protegen las anclas compuestas y los músculos prioritarios. Un ancla de aislamiento de un músculo no prioritario sale primero.
+  3. Si lo protegido pasa del tope, se queda y la explicación lo dice.
+
+**Criterios:**
+- [x] Rango de ejercicios por duración en una regla versionada (`SessionCompositionRule`, `pr-b004-v1`: 30 → 3–4, 45 → 4–5, 60 → 5–7, 90+ → 7–9). Cada ejercicio tiene al menos 2 series de trabajo.
+- [x] Al recortar, en orden:
+  1. quitar aislamientos no protegidos;
+  2. bajar series hasta el mínimo;
+  3. solo entonces quitar otro ejercicio no protegido.
+  Nunca 1 serie, y lo protegido no se toca.
+- [ ] Juntar pares compatibles como superset (`CompatibleSuperset`): **pendiente.** La sesión guardada no tiene cómo representar un superset; necesita cambiar el modelo (con su migración, ADR-0003) y el modo entrenamiento. Va aparte.
+- [x] Fuerza con 60 min: las anclas compuestas conservan al menos 3 series y se recortan accesorios.
+- [x] Un músculo entrenado 2 o más veces por semana: su ancla sale en al menos 2 sesiones y sus series por sesión difieren en 1 como máximo.
+- [x] "Más tiempo no es más volumen": con 90 o 180 min no se agregan series (D1 sigue pendiente).
+- [x] En SCRUM-214, "nunca 1 serie" salió de `withKnownIssue` y pasa; "tope de ejercicios" se agregó y pasa.
+- [x] Los planes guardados se regeneran: `StoredPlan.currentGeneratorVersion` sube de 3 a 4, con el mismo bloque y el aviso "plan actualizado".
+
+Evidencia: commit `ca73290` (rama `SCRUM-218-composicion-sesion`).
+- `make ci` → `✔ Test run with 524 tests in 79 suites passed` + `Test run with 532 tests in 93 suites passed … with 4 known issues` (2026-10-26; línea base 520 + 528). Los 4 *known issues* que quedan son de SCRUM-215 y SCRUM-219. El build de iOS y el de watchOS pasaron.
+- `make test-ui` → `Executed 30 tests, with 0 failures` (simulador "PR UI Tests").
+- **Matriz de 200 perfiles** (`[PR-B001]` y `[PR-B004]`):
+  - ejercicios con menos de 2 series: **0 de 4,578** (antes 1,394 de 5,943);
+  - conjuntos de ejercicios distintos: 50 (antes 2);
+  - de 906 sesiones, 24 pasan del tope con aviso y 353 quedan bajo el mínimo porque el volumen no alcanza (D1).
+- **Composición por duración** (prueba `sessionCompositionBaseline`): 2 días a 60 min pasan de 16 ejercicios a 7, y ninguna sesión tiene ejercicios de 1 serie.
+- **Caso extremo:** fuerza, 2 días, 30 min. Los 6 compuestos protegidos con 3 series dan unos 71′, y la explicación avisa que no cabe.
+- **Pendiente:**
+  - el superset, que va aparte;
+  - D1, para el mínimo del rango;
+  - 👤 Jesús, revisar en el iPhone que el plan regenerado y el aviso "plan actualizado" se vean bien.
