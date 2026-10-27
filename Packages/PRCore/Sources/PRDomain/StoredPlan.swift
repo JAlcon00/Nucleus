@@ -19,8 +19,10 @@ public struct StoredPlan: Codable, Sendable, Equatable {
     /// 1 = volumen inflado (antes de SCRUM-28, nunca se llegó a guardar así);
     /// 2 = volumen real repartido por día y orden por rol/fatiga (SCRUM-28/29);
     /// 3 = ejercicios de referencia por músculo (sentadilla, press, remo… en vez del primer
-    ///     candidato por coincidencia de datos).
-    public static let currentGeneratorVersion = 3
+    ///     candidato por coincidencia de datos);
+    /// 4 = composición de sesión (SCRUM-218): rango de ejercicios por duración, nunca 1 serie,
+    ///     el ancla al menos 2 veces por semana.
+    public static let currentGeneratorVersion = 4
 
     public let userID: String
     public var profile: OnboardingProfile

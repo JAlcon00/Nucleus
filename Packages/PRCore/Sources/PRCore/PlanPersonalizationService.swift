@@ -296,6 +296,13 @@ public struct PlanRationalePresenter: Sendable {
             let names = skipped.formatted(.list(type: .and).locale(locale))
             lines.append(resource("Por tu restricción no programamos \(names) por ahora.", "Por qué tu plan: músculos omitidos por una restricción"))
         }
+        // SCRUM-218: lo protegido (los ejercicios básicos) no se recorta para cumplir el tope o el tiempo.
+        if value["sessionsOverRange"] != nil {
+            lines.append(resource("En algunas sesiones dejamos más ejercicios de lo habitual para tu tiempo: los básicos no se quitan.", "Por qué tu plan: sesiones con más ejercicios que el rango"))
+        }
+        if value["sessionsOverTime"] != nil {
+            lines.append(resource("Algunas sesiones pasan de tu tiempo: no quitamos los ejercicios básicos ni les dejamos menos series de su mínimo.", "Por qué tu plan: sesiones que no caben en el tiempo"))
+        }
         return lines
     }
 

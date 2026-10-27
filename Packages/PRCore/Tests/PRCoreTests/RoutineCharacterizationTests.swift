@@ -95,6 +95,10 @@ private struct GeneratedRoutine {
     /// Series de trabajo de cada ejercicio en cada sesión.
     let workSetsPerExercise: [Int]
     let primaryMuscles: Set<MuscleGroup.ID>
+    /// Título de cada sesión y cuántos ejercicios trae (SCRUM-218).
+    let exercisesPerSession: [(title: String, count: Int)]
+    /// Sesiones que la explicación marca sobre el tope de ejercicios.
+    let sessionsOverRange: Set<String>
 }
 
 private let blockID = TrainingBlockID(rawValue: UUID(uuidString: "00000000-0000-0000-0000-000000000214") ?? UUID())
@@ -111,10 +115,14 @@ private struct Engine {
     }
 
     func routine(_ profileCase: ProfileCase) throws -> GeneratedRoutine {
-        let block = try builder.generate(profile: profileCase.profile, catalog: catalog, planner: planner, blockID: blockID).block
+        let result = try builder.generate(profile: profileCase.profile, catalog: catalog, planner: planner, blockID: blockID)
+        let block = result.block
+        let overRange = result.explanation.facts.first { $0.key == "sessionsOverRange" }?.value ?? ""
         var shape: [String] = []
         var workSets: [Int] = []
+        var perSession: [(title: String, count: Int)] = []
         for session in block.sessions {
+            perSession.append((session.title, Set(session.plannedSets.map(\.exerciseID)).count))
             var order: [ExerciseID] = []
             var counts: [ExerciseID: Int] = [:]
             for set in session.plannedSets {
@@ -126,7 +134,11 @@ private struct Engine {
         }
         let exercises = Set(block.sessions.flatMap { $0.plannedSets.map(\.exerciseID) })
         let primary = Set(exercises.compactMap { byID[$0] }.flatMap { $0.primaryMuscles.map(\.muscleGroupID) })
-        return GeneratedRoutine(exercises: exercises, shape: shape, workSetsPerExercise: workSets, primaryMuscles: primary)
+        return GeneratedRoutine(
+            exercises: exercises, shape: shape, workSetsPerExercise: workSets, primaryMuscles: primary,
+            exercisesPerSession: perSession,
+            sessionsOverRange: Set(overRange.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) })
+        )
     }
 }
 
@@ -142,6 +154,29 @@ private func percent(_ part: Int, _ whole: Int) -> Int {
 
 @Suite("Caracterización del motor de rutinas (SCRUM-214 · PR-B001)")
 struct RoutineCharacterizationTests {
+
+    @Test("Composición de sesión por duración y días (línea base de PR-B004)")
+    func sessionCompositionBaseline() throws {
+        let engine = try Engine()
+        let estimator = DurationEstimator()
+        for goal in [TrainingGoal.hypertrophy, .strength] {
+            for minutes in ProfileCase.minuteOptions {
+                for days in ProfileCase.dayOptions {
+                    let profileCase = ProfileCase(days: days, variety: .balanced, goal: goal, experience: .intermediate, phase: .maintenance, minutes: minutes)
+                    let block = try engine.builder.generate(profile: profileCase.profile, catalog: engine.catalog, planner: engine.planner, blockID: blockID).block
+                    var rows: [String] = []
+                    for session in block.sessions {
+                        var counts: [ExerciseID: Int] = [:]
+                        for set in session.plannedSets where !set.prescription.isWarmup { counts[set.exerciseID, default: 0] += 1 }
+                        let minSets = counts.values.min() ?? 0
+                        let estimated = estimator.estimate(plannedSets: session.plannedSets) / 60
+                        rows.append("\(counts.count)ej·min\(minSets)s·\(estimated)′")
+                    }
+                    print("[PR-B004] \(goal.rawValue) \(minutes)min \(days)d: \(rows.joined(separator: " | "))")
+                }
+            }
+        }
+    }
 
     @Test("Mismo perfil y mismo bloque ⇒ la misma rutina (variación intencional, nunca aleatoria)")
     func deterministic() throws {
@@ -197,13 +232,30 @@ struct RoutineCharacterizationTests {
             #expect(percent(experienceDiffers, bases.count) >= 80, "Novato vs avanzado")
         }
 
-        // Gate 2: ningún ejercicio con menos de 2 series de trabajo.
+        // Gate 2: ningún ejercicio con menos de 2 series de trabajo (SCRUM-218).
         let occurrences = all.flatMap(\.workSetsPerExercise)
         let single = occurrences.filter { $0 < 2 }.count
         print("[PR-B001] ejercicios con menos de 2 series de trabajo: \(single) de \(occurrences.count) (\(percent(single, occurrences.count)) %)")
-        withKnownIssue("SCRUM-218 (PR-B004): la composición de sesión nunca deja un ejercicio con 1 serie") {
-            #expect(single == 0)
+        #expect(single == 0)
+
+        // Gate 4: rango de ejercicios por duración (SCRUM-218). El tope se cumple salvo en
+        // las sesiones que la explicación marca (lo protegido no se quita, decisión 3); el
+        // mínimo sólo si el volumen alcanza, así que aquí sólo se informa.
+        let rule = SessionCompositionRule.standard
+        var sessions = 0, overCap = 0, flagged = 0, underFloor = 0
+        for profileCase in cases {
+            guard let routine = routines[profileCase] else { continue }
+            let range = rule.exerciseRange(forMinutes: profileCase.minutes)
+            for (title, count) in routine.exercisesPerSession {
+                sessions += 1
+                if count > range.upperBound {
+                    if routine.sessionsOverRange.contains(title) { flagged += 1 } else { overCap += 1 }
+                }
+                if count < range.lowerBound { underFloor += 1 }
+            }
         }
+        print("[PR-B004] \(sessions) sesiones: \(flagged) sobre el tope con aviso (lo protegido no se quita), \(underFloor) bajo el mínimo porque el volumen no alcanza")
+        #expect(overCap == 0, "Sesiones sobre el tope sin aviso")
 
         // Gate 3: pantorrilla y core en el plan.
         let withCalves = all.filter { $0.primaryMuscles.contains(.calves) }.count
