@@ -16,7 +16,9 @@ import Foundation
 
 /// Nivel de dolor/ reacción reportado por el usuario durante un set (§16.3).
 /// NO es un diagnóstico: es feedback subjetivo que el motor traduce a un flujo seguro.
-public enum PainLevel: Int, Codable, Sendable, CaseIterable, Hashable {
+/// Es la única escala de dolor de la app (SCRUM-32): la usan la serie guardada
+/// (`PainFeedback`), este motor, la progresión y el agente.
+public enum PainLevel: Int, Codable, Sendable, CaseIterable, Hashable, Comparable {
     case none = 0
     case mild = 1
     case moderate = 2
@@ -24,8 +26,10 @@ public enum PainLevel: Int, Codable, Sendable, CaseIterable, Hashable {
 
     /// ¿Nivel que dispara el flujo conservador y suspende la progresión? (§16.3)
     public var isConservativeDisruptive: Bool {
-        self == .moderate || self == .high
+        self >= .moderate
     }
+
+    public static func < (lhs: PainLevel, rhs: PainLevel) -> Bool { lhs.rawValue < rhs.rawValue }
 }
 
 /// Recomendación de UI para el usuario (nunca un diagnóstico).
@@ -137,9 +141,11 @@ public struct PainFeedbackConfig: Sendable {
         guard missing.isEmpty else {
             throw PainFeedbackEngineError.missingConfig(keys: Array(missing).sorted())
         }
+        // SCRUM-32 (RN-003): moderado o alto suspende la progresión sin excepción. La regla
+        // no se puede relajar ni endurecer con otro umbral.
         let threshold = Int(rule.parameters[PainFeedbackPolicyKeys.suspendProgressionFromSeverity] ?? 2)
-        guard (0...3).contains(threshold) else {
-            throw PainFeedbackEngineError.missingConfig(keys: ["suspendProgressionFromSeverity out of range"])
+        guard threshold == PainLevel.moderate.rawValue else {
+            throw PainFeedbackEngineError.missingConfig(keys: ["suspendProgressionFromSeverity must be moderate"])
         }
         self.rule = rule
     }
@@ -157,9 +163,10 @@ public struct PainFeedbackEngine: Sendable {
         self.config = config
     }
 
-    /// ¿La carga debe dejar de progresar para este nivel (§16.3, gate de progresión)?
+    /// ¿La carga debe dejar de progresar para este nivel (§16.3, gate de progresión)? Es la
+    /// misma regla que usan los motores de progresión (`PainFeedback.blocksProgression`).
     public func suspendsLoadProgression(_ level: PainLevel) -> Bool {
-        level.rawValue >= config.suspendProgressionFromSeverity
+        level.isConservativeDisruptive
     }
 
     public func evaluate(_ input: PainFeedbackInput) throws -> PainEvaluation {

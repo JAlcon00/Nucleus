@@ -19,11 +19,51 @@ public enum PersistenceSchemas {
     /// Formato vigente de `collection` y cómo llegar a él desde la versión 1.
     public static func schema(for collection: PersistenceCollection) -> CollectionSchema {
         switch collection {
-        case .workouts, .pendingOperations, .profile, .blocks, .exercises, .gyms, .restrictions,
+        case .workouts:
+            // v2 (SCRUM-32): el dolor de cada serie en la escala única.
+            return CollectionSchema(
+                current: .initial.next,
+                steps: [SchemaMigrationStep(from: .initial, transform: PainScaleMigration.workout)],
+                isReadable: { collection.decodes($0) }
+            )
+        case .pendingOperations:
+            // v2 (SCRUM-32): el dolor de las series pendientes en la escala única.
+            return CollectionSchema(
+                current: .initial.next,
+                steps: [SchemaMigrationStep(from: .initial, transform: PainScaleMigration.pendingOperations)],
+                isReadable: { collection.decodes($0) }
+            )
+        case .profile, .blocks, .exercises, .gyms, .restrictions,
              .decisions, .agentAudit, .plans, .session, .aiConsent, .checkIns:
-            // Todas siguen en el formato de antes de SCRUM-40.
+            // Siguen en el formato de antes de SCRUM-40.
             return CollectionSchema(current: .initial, steps: [], isReadable: { collection.decodes($0) })
         }
+    }
+}
+
+/// v1 → v2 (SCRUM-32): el dolor de cada serie pasa de la escala anterior (severidad 1–5 y
+/// molestia/punzante) a la escala única con la tabla de `LegacyPainScale`. El modelo
+/// actual lee la forma anterior y guarda la nueva, así que basta con leer y volver a
+/// guardar cada registro.
+enum PainScaleMigration {
+    static func workout(_ data: Data) throws -> Data {
+        try JSONEncoder().encode(JSONDecoder().decode(WorkoutSessionRecord.self, from: data))
+    }
+
+    /// Cada serie pendiente lleva su `SetRecord` dentro del payload de la operación.
+    static func pendingOperations(_ data: Data) throws -> Data {
+        let queue = try JSONDecoder().decode(PendingOperationQueue.self, from: data)
+        let operations = try queue.operations.map { operation -> PendingOperation in
+            switch operation.kind {
+            case .saveSet:
+                let save = try JSONDecoder().decode(StoredSetSave.self, from: operation.payload)
+                return PendingOperation(
+                    id: operation.id, idempotencyKey: operation.idempotencyKey, kind: operation.kind,
+                    payload: try JSONEncoder().encode(save), createdAt: operation.createdAt
+                )
+            }
+        }
+        return try JSONEncoder().encode(PendingOperationQueue(operations: operations))
     }
 }
 

@@ -96,26 +96,43 @@ public enum DifficultyFeedback: String, Codable, Sendable, CaseIterable, Hashabl
     case failed
 }
 
-/// Feedback de dolor/reacción en un set.
-public enum PainFeedback: Codable, Sendable, Hashable {
-    case none
-    case discomfort(muscleGroup: MuscleGroup.ID, severity: Int)
-    case sharpPain(muscleGroup: MuscleGroup.ID, severity: Int)
+/// Dolor reportado en una serie (SCRUM-32): una sola escala, `PainLevel` (ninguno, leve,
+/// moderado, alto). No es un diagnóstico. Se guarda siempre esta forma; la anterior
+/// (severidad 1–5 + molestia/punzante) se sigue leyendo con `LegacyPainScale`, así la
+/// migración de los entrenamientos guardados (ADR-0003, v1 → v2) la traduce.
+public struct PainFeedback: Codable, Sendable, Hashable {
+    public let level: PainLevel
+    /// Músculo donde se sintió, si se indicó.
+    public let muscleGroup: MuscleGroup.ID?
+
+    public init(level: PainLevel, muscleGroup: MuscleGroup.ID? = nil) {
+        self.level = level
+        self.muscleGroup = muscleGroup
+    }
+
+    public static let none = PainFeedback(level: .none)
+
+    /// Moderado o alto: no se sube la carga ni el volumen, sin excepción (RN-003).
+    public var blocksProgression: Bool { level.isConservativeDisruptive }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        let muscle = try container.decodeIfPresent(MuscleGroup.ID.self, forKey: .muscle)
+        if let level = try container.decodeIfPresent(PainLevel.self, forKey: .level) {
+            self.init(level: level, muscleGroup: muscle)
+            return
+        }
+        // Forma anterior a SCRUM-32.
         let kind = try container.decode(String.self, forKey: .kind)
         switch kind {
         case "none":
             self = .none
-        case "discomfort":
-            let muscle = try container.decode(MuscleGroup.ID.self, forKey: .muscle)
+        case "discomfort", "sharpPain":
             let severity = try container.decode(Int.self, forKey: .severity)
-            self = try Self.validated(.discomfort(muscleGroup: muscle, severity: severity))
-        case "sharpPain":
-            let muscle = try container.decode(MuscleGroup.ID.self, forKey: .muscle)
-            let severity = try container.decode(Int.self, forKey: .severity)
-            self = try Self.validated(.sharpPain(muscleGroup: muscle, severity: severity))
+            guard LegacyPainScale.severities.contains(severity) else {
+                throw DomainValidationError.invalidSeverity(value: severity)
+            }
+            self.init(level: LegacyPainScale.level(severity: severity, sharp: kind == "sharpPain"), muscleGroup: muscle)
         default:
             throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown PainFeedback kind: \(kind)"))
         }
@@ -123,36 +140,35 @@ public enum PainFeedback: Codable, Sendable, Hashable {
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        switch self {
-        case .none:
-            try container.encode("none", forKey: .kind)
-        case .discomfort(let muscle, let severity):
-            try container.encode("discomfort", forKey: .kind)
-            try container.encode(muscle, forKey: .muscle)
-            try container.encode(severity, forKey: .severity)
-        case .sharpPain(let muscle, let severity):
-            try container.encode("sharpPain", forKey: .kind)
-            try container.encode(muscle, forKey: .muscle)
-            try container.encode(severity, forKey: .severity)
-        }
-    }
-
-    private static func validated(_ value: PainFeedback) throws -> PainFeedback {
-        switch value {
-        case .discomfort(_, let s), .sharpPain(_, let s):
-            guard (1...5).contains(s) else {
-                throw DomainValidationError.invalidSeverity(value: s)
-            }
-        case .none:
-            break
-        }
-        return value
+        try container.encode(level, forKey: .level)
+        try container.encodeIfPresent(muscleGroup, forKey: .muscle)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case kind
+        case level
         case muscle
+        // Sólo de la forma anterior.
+        case kind
         case severity
+    }
+}
+
+/// Tabla de conversión de la escala anterior (severidad 1–5 y molestia/punzante) a
+/// `PainLevel` (SCRUM-32). Conservadora, decisión de Jesús del 2026-10-26: la seguridad va
+/// primero.
+/// - 1 → leve; 2 y 3 → moderado; 4 y 5 → alto.
+/// - Un dolor punzante nunca queda por debajo de moderado.
+public enum LegacyPainScale {
+    public static let severities = 1...5
+
+    public static func level(severity: Int, sharp: Bool) -> PainLevel {
+        let byNumber: PainLevel
+        switch severity {
+        case ...1: byNumber = .mild
+        case 2, 3: byNumber = .moderate
+        default: byNumber = .high
+        }
+        return sharp ? max(byNumber, .moderate) : byNumber
     }
 }
 

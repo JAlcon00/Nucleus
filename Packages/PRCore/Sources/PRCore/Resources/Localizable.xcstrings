@@ -212,6 +212,18 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "We look after your %@: we avoid the riskiest movements for that area." } }
       }
     },
+    "Baja la intensidad y observa cómo te sientes en las próximas series." : {
+      "comment" : "Dolor moderado: recomendación",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Lower the intensity and notice how you feel over the next sets." } }
+      }
+    },
+    "Detén este ejercicio o cámbialo por otro. Si el dolor sigue, consulta a un profesional de la salud." : {
+      "comment" : "Dolor alto: recomendación",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Stop this exercise or swap it for another. If the pain continues, see a health professional." } }
+      }
+    },
     "Por tu restricción no programamos %@ por ahora." : {
       "comment" : "Por qué tu plan: músculos omitidos por una restricción",
       "localizations" : {

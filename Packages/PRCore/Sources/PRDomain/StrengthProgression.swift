@@ -39,15 +39,15 @@ public enum StrengthProgressionKeys {
     public static let linearIncrement = "linearIncrement"
     /// Fracción del top set para las back-off sets (topSetBackoff).
     public static let backoffFraction = "backoffFraction"
-    /// Umbral de dolor (moderate/high ⇒ >=3) que bloquea la progresión.
-    public static let painSeverityThreshold = "painSeverityThreshold"
+    // SCRUM-32: el dolor ya no tiene umbral propio aquí; bloquea la progresión con
+    // moderado o alto (`PainFeedback.blocksProgression`), igual en toda la app.
     /// RIR bajo (<= threshold) que permite subir carga en autoregulación.
     public static let lowRIRThreshold = "lowRIRThreshold"
     /// Incremento por defecto cuando la carga es continua (extensible/bodyweight).
     public static let continuousDefaultIncrement = "continuousDefaultIncrement"
 
     public static let allRequired: Set<String> = [
-        linearIncrement, backoffFraction, painSeverityThreshold,
+        linearIncrement, backoffFraction,
         lowRIRThreshold, continuousDefaultIncrement,
     ]
 
@@ -55,7 +55,6 @@ public enum StrengthProgressionKeys {
         [
             linearIncrement: 2.5,
             backoffFraction: 0.85,
-            painSeverityThreshold: 3,
             lowRIRThreshold: 1,
             continuousDefaultIncrement: 2.5,
         ]
@@ -66,7 +65,8 @@ public enum StrengthProgressionKeys {
 public enum StrengthProgressionDefaults {
     public static let ruleID = EvidenceRuleID(rawValue: "progression.strength")
 
-    public static func makeRule(version: Int = 1) throws -> EvidenceRule {
+    /// Versión 2 (SCRUM-32): sin umbral de dolor propio.
+    public static func makeRule(version: Int = 2) throws -> EvidenceRule {
         let reference = try EvidenceReference(
             title: "Strength progression strategies: linear/repGoal/topSetBackoff with conservative joint gate",
             source: "Plan §4E / promptMaster §12.2"
@@ -89,7 +89,6 @@ public struct StrengthProgressionConfig: Sendable {
 
     public var linearIncrement: Double { rule.parameters[StrengthProgressionKeys.linearIncrement] ?? 2.5 }
     public var backoffFraction: Double { rule.parameters[StrengthProgressionKeys.backoffFraction] ?? 0.85 }
-    public var painSeverityThreshold: Int { Int(rule.parameters[StrengthProgressionKeys.painSeverityThreshold] ?? 3) }
     public var lowRIRThreshold: Int { Int(rule.parameters[StrengthProgressionKeys.lowRIRThreshold] ?? 1) }
     public var continuousDefaultIncrement: Double { rule.parameters[StrengthProgressionKeys.continuousDefaultIncrement] ?? 2.5 }
 
@@ -249,7 +248,7 @@ public struct StrengthProgressionEngine: Sendable {
 
         // Gate conservador común: dolor moderado/alto cancela cualquier progresión.
         let painGate = input.performed.contains {
-            Self.isModerateOrHigherPain($0.painFeedback, threshold: config.painSeverityThreshold)
+            $0.painFeedback?.blocksProgression == true
         }
         if painGate {
             return make(.holdLoad(weight: input.currentWeight ?? 0), reason: "dolor moderado/alto: progresión cancelada", reference: reference)
@@ -405,16 +404,6 @@ public struct StrengthProgressionEngine: Sendable {
             return input.availableIncrement
         case .continuous, .resisted, .bodyweight:
             return input.availableIncrement ?? config.continuousDefaultIncrement
-        }
-    }
-
-    private static func isModerateOrHigherPain(_ pain: PainFeedback?, threshold: Int) -> Bool {
-        guard let pain else { return false }
-        switch pain {
-        case .none:
-            return false
-        case .discomfort(_, let severity), .sharpPain(_, let severity):
-            return severity >= threshold
         }
     }
 

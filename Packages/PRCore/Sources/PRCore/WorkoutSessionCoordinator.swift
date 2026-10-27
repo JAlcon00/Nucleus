@@ -485,6 +485,24 @@ extension WorkoutSessionCoordinator {
         return next
     }
 
+    // MARK: - SCRUM-32: reportar dolor
+
+    /// Reporta el dolor sentido en la última serie registrada, en la escala única
+    /// (`PainLevel`). Se guarda ANTES de devolver la recomendación, como una serie. No
+    /// diagnostica: la recomendación sale de `PainFeedbackEngine`. Moderado o alto bloquea
+    /// la progresión de carga de ese ejercicio (`PainFeedback.blocksProgression`).
+    @discardableResult
+    public func reportPain(_ level: PainLevel, muscleGroup: MuscleGroup.ID? = nil) throws -> PainRecommendation {
+        var session = try activeSessionForSet()
+        guard let index = session.sets.indices.last else { throw WorkoutSessionError.invalidTransition }
+        session.sets[index].painFeedback = PainFeedback(level: level, muscleGroup: muscleGroup)
+        controller.replaceSession(session, at: clock())
+        persistLive()
+        let engine = try PainFeedbackEngine(config: PainFeedbackConfig(rule: PainFeedbackPolicyDefaults.makeRule()))
+        let exercise = session.sets[index].exerciseID
+        return try engine.evaluate(PainFeedbackInput(level: level, exerciseName: exerciseNames[exercise])).recommendation
+    }
+
     // MARK: - SCRUM-212: dejar para después, saltar y retomar
 
     /// Ejercicios saltados de la sesión (para mostrarlos y retomarlos), con su nombre.

@@ -100,6 +100,14 @@ private func exists(_ url: URL) -> Bool {
     FileManager.default.fileExists(atPath: url.path)
 }
 
+/// Un registro real escrito por la app en la versión 1 (muestra de `PersistenceFormatTests`).
+private func fixtureV1(_ collection: PersistenceCollection) throws -> Data {
+    let url = try #require(Bundle.module.url(
+        forResource: collection.rawValue, withExtension: "json", subdirectory: "Fixtures/Persistence/\(SchemaVersion.initial)"
+    ))
+    return try Data(contentsOf: url)
+}
+
 @Suite("SCRUM-40 · Migraciones seguras de datos guardados")
 struct SchemaMigrationTests {
 
@@ -315,18 +323,28 @@ struct SchemaMigrationTests {
     func userScopedCollectionsMigrateOnSignIn() throws {
         let root = try makeRoot()
         let userDirectory = root.appendingPathComponent("users/\(PlanStore.key(forUser: "u1"))/workouts", isDirectory: true)
-        try AtomicFileRepositoryStore(directory: userDirectory)
-            .write(key: "lift", data: JSONEncoder().encode(LiftV1(name: "Remo", kg: 60)))
+        // Un entrenamiento real guardado en v1 (con dolor en la escala anterior a SCRUM-32).
+        let legacy = try fixtureV1(.workouts)
+        try AtomicFileRepositoryStore(directory: userDirectory).write(key: "w1", data: legacy)
         let persistence = try LocalPersistence(rootURL: root, log: PersistenceLog { _ in })
+        let current = PersistenceSchemas.schema(for: .workouts).current
 
         let scoped = try persistence.scoped(toUser: "u1")
-        #expect(CollectionLayout.readMarker(in: userDirectory) == .version(.initial), "Entrar marca las colecciones del usuario")
 
-        let outcomes = scoped.migrateSchemas(of: [.workouts]) { _ in liftSchemaV2 }
+        #expect(CollectionLayout.readMarker(in: userDirectory) == .version(current), "Entrar migra las colecciones del usuario")
+        let migrated = try #require(try records(in: userDirectory)["w1"])
+        #expect(migrated != legacy)
+        #expect(PersistenceCollection.workouts.decodes(migrated))
+        #expect(try records(in: CollectionLayout.backupURL(for: userDirectory)) == ["w1": legacy], "El original queda como respaldo")
 
-        #expect(outcomes[.workouts] == .migrated(from: .initial, to: v2, records: 1, quarantined: 0))
-        let lift = try #require(try records(in: userDirectory)["lift"])
-        #expect(try JSONDecoder().decode(LiftV2.self, from: lift).title == "Remo")
+        // Un paso más, con un formato de prueba sobre la vista del usuario.
+        let keep = SchemaMigrationStep(from: current) { $0 }
+        let next = CollectionSchema(current: current.next, steps: PersistenceSchemas.schema(for: .workouts).steps + [keep]) {
+            PersistenceCollection.workouts.decodes($0)
+        }
+        let outcomes = scoped.migrateSchemas(of: [.workouts]) { _ in next }
+
+        #expect(outcomes[.workouts] == .migrated(from: current, to: current.next, records: 1, quarantined: 0))
         let rootWorkouts = root.appendingPathComponent("workouts", isDirectory: true)
         #expect(!exists(CollectionLayout.backupURL(for: rootWorkouts)), "La colección sin dueño de la raíz no se migró")
     }
@@ -368,22 +386,26 @@ struct SchemaMigrationTests {
         }
         let persistence = try LocalPersistence(rootURL: root, log: PersistenceLog { _ in })
         #expect(try persistence.migrateLegacyLayout().moved == 8)
-        #expect(persistence.migrateSchemas()[.workouts] == .upToDate(.initial))
+        // Al arrancar, los archivos sueltos (v1) llegan al formato vigente con los pasos reales.
+        let schema = PersistenceSchemas.schema(for: .workouts)
+        #expect(persistence.migrateSchemas()[.workouts] == .migrated(from: .initial, to: schema.current, records: 8, quarantined: 0))
         let afterLaunch = try await DataExportCoordinator().loadHistory(from: try persistence.workoutRepository())
         #expect(afterLaunch == before)
 
-        // Un paso nuevo (v1 → v2) que no puede convertir el primer entrenamiento.
+        // Un paso nuevo (vigente → siguiente) que no puede convertir el primer entrenamiento.
         let firstID = try #require(before.sessions.first?.id)
-        let rejectFirst = SchemaMigrationStep(from: .initial) { data in
+        let rejectFirst = SchemaMigrationStep(from: schema.current) { data in
             let record = try JSONDecoder().decode(WorkoutSessionRecord.self, from: data)
             guard record.id != firstID else { throw CocoaError(.coderInvalidValue) }
             return data
         }
-        let workoutsV2 = CollectionSchema(current: v2, steps: [rejectFirst]) { PersistenceCollection.workouts.decodes($0) }
+        let workoutsNext = CollectionSchema(current: schema.current.next, steps: schema.steps + [rejectFirst]) {
+            PersistenceCollection.workouts.decodes($0)
+        }
 
-        let outcomes = persistence.migrateSchemas(of: [.workouts]) { _ in workoutsV2 }
+        let outcomes = persistence.migrateSchemas(of: [.workouts]) { _ in workoutsNext }
 
-        #expect(outcomes[.workouts] == .migrated(from: .initial, to: v2, records: 7, quarantined: 1))
+        #expect(outcomes[.workouts] == .migrated(from: schema.current, to: schema.current.next, records: 7, quarantined: 1))
         let afterStep = try await DataExportCoordinator().loadHistory(from: try persistence.workoutRepository())
         #expect(afterStep.sessions.map(\.id) == before.sessions.dropFirst().map(\.id))
         #expect(afterStep.unreadableCount == 1, "Exportar avisa del que quedó en cuarentena")

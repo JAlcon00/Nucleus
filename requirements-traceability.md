@@ -146,6 +146,22 @@ Con un plan ilegible, "Rehacer cuestionario" primero guarda el registro intacto 
 plan nuevo. Si la copia falla, no se escribe nada. Si solo fallaba el bloque activo, el
 historial de bloques se conserva. Cobertura: `PRCoreTests/UnreadablePlanTests.swift`.
 
+## Una sola escala de dolor (SCRUM-32, RF-024, RN-003, RN-015)
+
+`PainFeedback` guarda solo el nivel (`PainLevel`: ninguno, leve, moderado, alto) y, si se
+indicó, el músculo. Moderado o alto bloquea la progresión (`PainFeedback.blocksProgression`)
+igual en `PainFeedbackEngine`, `ProgressionEngine` y `StrengthProgressionEngine`, y el
+umbral ya no se puede cambiar. La forma anterior (severidad 1–5 y molestia/punzante) se lee
+con `LegacyPainScale`: 1 → leve; 2 y 3 → moderado; 4 y 5 → alto; punzante nunca por debajo
+de moderado. `workouts` y `pending-operations` migran de v1 a v2 (ADR-0003).
+`WorkoutSessionCoordinator.reportPain` guarda el dolor en la última serie antes de responder,
+y `PainRecommendationPresenter` dice la recomendación sin diagnosticar. Cobertura:
+- `PRDomainTests/PainScaleTests.swift`: la tabla, lectura y guardado, y los tres motores de
+  acuerdo en cada nivel;
+- `PRCoreTests/PainReportTests.swift`: reportar con `LocalPersistence` real, reabrir sin
+  perder el dolor, textos sin diagnóstico, y migración de entrenamientos y series pendientes;
+- `PRCoreTests/PersistenceFormatTests.swift`: muestras v1 (escala anterior) y v2.
+
 ## Catálogo de ejercicios (EPIC-03)
 
 Implementado en PR-0301 con el dataset público *free-exercise-db* (Unlicense)
@@ -343,11 +359,11 @@ récord inventado. Cobertura en `Packages/PRCore/Tests/PRDomainTests/PRCelebrati
 
 | Rule | Components that MUST enforce it |
 |---|---|
-| RN-003 no progression with moderate/high pain | RestrictionPolicyEngine + ProgressionEngine + ActionPolicyValidator |
+| RN-003 no progression with moderate/high pain | RestrictionPolicyEngine + `PainFeedback.blocksProgression` (PainFeedbackEngine, ProgressionEngine, StrengthProgressionEngine) + ActionPolicyValidator |
 | RN-004 restriction not auto-resolved | RestrictionRepository + Restrictions feature |
 | RN-008 no calorie double count | WorkoutReconciliationEngine + summary aggregation |
 | RN-009 no invented external sets | Health import mapping |
-| RN-015 no diagnosis | Agent policy + copy review |
+| RN-015 no diagnosis | Agent policy + copy review + PainRecommendationPresenter (test de palabras de diagnóstico) |
 | RN-017 agent actions validated | AgentCore/ActionPolicyValidator |
 | RN-018 measured vs estimated | Domain metadata + UI formatting |
 
