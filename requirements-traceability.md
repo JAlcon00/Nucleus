@@ -118,6 +118,18 @@ ilegible en Exportar y Progreso. Ver `docs/spec/docs/adr/ADR-0003`. Cobertura:
 - `PRCoreTests/PersistenceFormatTests.swift`: muestras reales por colección y versión,
   como detector en CI de cambios incompatibles.
 
+## Composición de sesión (SCRUM-218, PR-B004, RF-006)
+
+`SessionCompositionRule` (versión `pr-b004-v1`) fija el rango de ejercicios por duración
+(30 → 3–4, 45 → 4–5, 60 → 5–7, 90+ → 7–9) y el mínimo de 2 series (3 en un ancla compuesta
+con objetivo fuerza). `BlockPlanner` reparte las series de modo que nunca queda 1 serie y el
+ancla sale al menos 2 veces por semana. Al componer cada sesión, primero aplica el tope y
+luego el tiempo, y nunca quita las anclas compuestas ni los músculos prioritarios; si eso
+no cabe, lo dice en la explicación. Cobertura:
+- `PRDomainTests/SessionCompositionTests.swift`;
+- `PRCoreTests/BlockPlannerRealCatalogTests.swift` (rango, fuerza y explicación);
+- `PRCoreTests/RoutineCharacterizationTests.swift` (gates "nunca 1 serie" y "tope de ejercicios").
+
 ## Un plan ilegible no se sobrescribe (SCRUM-223, RNF-028)
 
 Con un plan ilegible, "Rehacer cuestionario" primero guarda el registro intacto en

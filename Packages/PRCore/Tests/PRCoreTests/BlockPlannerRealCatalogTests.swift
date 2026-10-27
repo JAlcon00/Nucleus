@@ -64,17 +64,77 @@ struct BlockPlannerRealCatalogTests {
         #expect(count(long) == count(ninety))
     }
 
-    @Test("Con poco tiempo se recortan series pero el ancla de cada ejercicio conserva al menos una")
-    func tightTimeTrimsButKeepsEachExercise() throws {
-        let (roomy, _) = try plan(days: 3, minutes: nil)
+    /// SCRUM-218 cambió esta prueba a propósito. Antes decía "recortar no quita ejercicios,
+    /// sólo series", y por eso quedaban 8 ejercicios de 1 serie. Ahora, con poco tiempo,
+    /// primero salen los aislamientos no protegidos, ningún ejercicio queda con menos de 2
+    /// series y las anclas compuestas nunca se quitan.
+    @Test("Con poco tiempo salen primero los aislamientos, nunca queda 1 serie y las anclas compuestas se quedan")
+    func tightTimeDropsIsolationsKeepsCompoundAnchors() throws {
+        let (roomy, catalog) = try plan(days: 3, minutes: nil)
         let (tight, _) = try plan(days: 3, minutes: TrainingWeek.allowedSessionMinutes.lowerBound)
+        let byID = Dictionary(catalog.exercises.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let anchors = try anchorExercises(days: 3)
         let roomySets = roomy.block.sessions.map { $0.plannedSets.count }.reduce(0, +)
         let tightSets = tight.block.sessions.map { $0.plannedSets.count }.reduce(0, +)
         #expect(tightSets < roomySets)
         for (a, b) in zip(roomy.block.sessions, tight.block.sessions) {
-            #expect(Set(a.plannedSets.map(\.exerciseID)) == Set(b.plannedSets.map(\.exerciseID)),
-                    "Recortar no debe quitar ejercicios, sólo series")
+            let compoundAnchors = Set(a.plannedSets.map(\.exerciseID)).filter { anchors.contains($0) && byID[$0]?.jointClass == .multiJoint }
+            #expect(compoundAnchors.isSubset(of: Set(b.plannedSets.map(\.exerciseID))), "\(b.title): se quitó un ancla compuesta")
+            let counts = Dictionary(grouping: b.plannedSets, by: \.exerciseID).mapValues(\.count)
+            #expect(counts.values.allSatisfy { $0 >= 2 }, "\(b.title): \(counts.values.sorted())")
         }
+    }
+
+    @Test("SCRUM-218: el número de ejercicios cae en el rango por duración y nunca queda 1 serie", arguments: [30, 45, 60, 90])
+    func exercisesWithinRange(minutes: Int) throws {
+        let range = SessionCompositionRule.standard.exerciseRange(forMinutes: minutes)
+        for days in 2...6 {
+            let (result, _) = try plan(days: days, minutes: minutes)
+            let flagged = result.explanation.facts.first { $0.key == "sessionsOverRange" }?.value ?? ""
+            for session in result.block.sessions {
+                let counts = Dictionary(grouping: session.plannedSets, by: \.exerciseID).mapValues(\.count)
+                #expect(counts.count <= range.upperBound || flagged.contains(session.title),
+                        "\(days) días, \(minutes) min, \(session.title): \(counts.count) ejercicios sin aviso")
+                #expect(counts.values.allSatisfy { $0 >= 2 }, "\(days) días, \(minutes) min, \(session.title): \(counts.values.sorted())")
+            }
+        }
+    }
+
+    @Test("SCRUM-218: con objetivo fuerza y 60 min, las anclas compuestas conservan al menos 3 series y se recortan accesorios")
+    func strengthAnchorsKeepThreeSets() throws {
+        let (roomy, catalog) = try plan(days: 3, minutes: nil, goal: .strength)
+        let (sixty, _) = try plan(days: 3, minutes: 60, goal: .strength)
+        let byID = Dictionary(catalog.exercises.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let anchors = try anchorExercises(days: 3, goal: .strength)
+        for (a, b) in zip(roomy.block.sessions, sixty.block.sessions) {
+            let before = Dictionary(grouping: a.plannedSets, by: \.exerciseID).mapValues(\.count)
+            let after = Dictionary(grouping: b.plannedSets, by: \.exerciseID).mapValues(\.count)
+            for (id, sets) in after where anchors.contains(id) && byID[id]?.jointClass == .multiJoint {
+                #expect(sets >= min(3, before[id] ?? sets), "\(b.title): ancla con \(sets) series")
+            }
+            #expect(after.values.reduce(0, +) <= before.values.reduce(0, +))
+        }
+        #expect(sixty.block.sessions.map(\.plannedSets.count).reduce(0, +) < roomy.block.sessions.map(\.plannedSets.count).reduce(0, +))
+    }
+
+    @Test("SCRUM-218: si lo protegido pasa del tope, la explicación lo dice en palabras simples")
+    func overRangeIsExplained() throws {
+        let (result, _) = try plan(days: 2, minutes: 30)
+        let facts = result.explanation.facts
+        #expect(facts.contains { $0.key == "sessionsOverRange" })
+        let lines = PlanRationalePresenter(locale: Locale(identifier: "es")).lines(facts: PlanRationaleFacts.userFacing(facts), emphasis: [], substitutions: [])
+        #expect(lines.contains("En algunas sesiones dejamos más ejercicios de lo habitual para tu tiempo: los básicos no se quitan."))
+    }
+
+    private func anchorExercises(days: Int, goal: TrainingGoal = .hypertrophy) throws -> Set<ExerciseID> {
+        let catalog = try ExerciseCatalogLoader.loadBundled()
+        let input = BlockPlanningInput(
+            goal: goal, phase: .maintenance, experience: .intermediate,
+            trainingDaysPerWeek: days, priorities: builder.defaultPriorities(), plannedWeeks: 6,
+            varietyPreference: .balanced, catalog: catalog.exercises, restrictions: [],
+            equipmentKnownness: builder.defaultEquipmentKnownness()
+        )
+        return TodayPlanBuilder.defaultPlanner().anchorExercises(input: input)
     }
 
     @Test("Con 3 días y variedad equilibrada, cada día tiene su propia plantilla")

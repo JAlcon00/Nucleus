@@ -146,6 +146,8 @@ public struct BlockPlanner: Sendable {
     private let durationEstimator: DurationEstimator
     /// RIR objetivo por tipo de ejercicio (SCRUM-200).
     private let intensityAdvisor: IntensityAdvisor
+    /// Ejercicios por sesión según los minutos y mínimo de series (SCRUM-218).
+    private let compositionRule: SessionCompositionRule
 
     public init(
         splitSelector: SplitSelector = SplitSelector(),
@@ -154,10 +156,12 @@ public struct BlockPlanner: Sendable {
         orderEngine: ExerciseOrderEngine = ExerciseOrderEngine(),
         fatigueEngine: FatigueInterferenceEngine = FatigueInterferenceEngine(),
         durationEstimator: DurationEstimator = DurationEstimator(),
-        intensityAdvisor: IntensityAdvisor = IntensityAdvisor()
+        intensityAdvisor: IntensityAdvisor = IntensityAdvisor(),
+        compositionRule: SessionCompositionRule = .standard
     ) {
         self.durationEstimator = durationEstimator
         self.intensityAdvisor = intensityAdvisor
+        self.compositionRule = compositionRule
         self.splitSelector = splitSelector
         self.volumeAllocator = volumeAllocator
         self.assigner = assigner
@@ -243,7 +247,7 @@ public struct BlockPlanner: Sendable {
 
         let explanation = try buildExplanation(
             input: input, split: split, allocation: allocation, sessionOrder: built.order,
-            restrictedMuscles: restrictedMuscles
+            restrictedMuscles: restrictedMuscles, composition: built.composition
         )
 
         return BlockPlanningResult(block: block, explanation: explanation, split: split)
@@ -261,61 +265,104 @@ public struct BlockPlanner: Sendable {
     private struct DayExercise {
         let exercise: Exercise
         var sets: Int
+        /// Músculos de la sesión para los que se eligió.
+        var muscles: Set<MuscleGroup.ID>
+        /// ¿Es el ancla de alguno de esos músculos?
+        var isAnchor: Bool
+
+        var isCompound: Bool { exercise.jointClass == .multiJoint }
+    }
+
+    /// Sesiones donde lo protegido no dejó cumplir el tope de ejercicios o el tiempo
+    /// (SCRUM-218, decisión 3): se quedan así y la explicación lo dice.
+    struct CompositionNotes: Equatable {
+        var overRange: [String] = []
+        var overTime: [String] = []
     }
 
     /// Construye UNA plantilla por día de entrenamiento (N días ⇒ N sesiones):
     /// - el objetivo semanal de cada músculo se reparte entre los días en que se entrena
-    ///   (suma exacta) y luego entre pocos ejercicios (≈3 series cada uno), no por ejercicio;
-    /// - el ancla se conserva todos los días; los rotables cambian de un día a otro;
-    /// - cada sesión se ordena (rol/prioridad, luego fatiga) y se recorta si no cabe en
-    ///   el tiempo del usuario.
+    ///   (suma exacta, nunca menos de 2 series en un día) y luego entre pocos ejercicios
+    ///   (≈3 series cada uno, nunca menos de 2), no por ejercicio;
+    /// - el ancla sale al menos 2 veces por semana; los rotables cambian de un día a otro;
+    /// - cada sesión se ordena (rol/prioridad, luego fatiga) y se compone con el rango de
+    ///   ejercicios y el tiempo del usuario (SCRUM-218).
     private func buildSessions(
         split: TrainingSplit,
         input: BlockPlanningInput,
         allocation: VolumeAllocation,
         assignmentsByMuscle: [MuscleGroup.ID: MuscleExerciseAssignment]
-    ) throws -> (sessions: [SessionTemplate], order: [SessionOrderExplanation]) {
+    ) throws -> (sessions: [SessionTemplate], order: [SessionOrderExplanation], composition: CompositionNotes) {
         let days = dayPlans(split: split, trainingDays: input.trainingDaysPerWeek)
         let catalog = Dictionary(input.catalog.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let fatigueConfig = try FatigueInterferenceConfig(rule: FatigueInterferenceDefaults.makeRule())
+        let priorityMuscles = Set(input.priorities.filter { $0.priority.rawValue > PriorityTier.normal.rawValue }.map(\.muscleGroupID))
 
-        // Días (índices) en que se entrena cada músculo.
+        // Días (índices) en que se entrena cada músculo: nunca tantos que toque menos de
+        // 2 series en un día (con poco volumen semanal se entrena en menos días).
         var daysByMuscle: [MuscleGroup.ID: [Int]] = [:]
         for (index, day) in days.enumerated() {
             for muscle in day.muscles { daysByMuscle[muscle, default: []].append(index) }
         }
+        for (muscle, muscleDays) in daysByMuscle {
+            guard let weeklySets = allocation.target(for: muscle) else { continue }
+            let usable = max(1, min(muscleDays.count, weeklySets / compositionRule.minimumWorkSets))
+            daysByMuscle[muscle] = (0..<usable).map { muscleDays[$0 * muscleDays.count / usable] }
+        }
 
         var sessions: [SessionTemplate] = []
         var orderExplanations: [SessionOrderExplanation] = []
+        var notes = CompositionNotes()
         for (dayIndex, day) in days.enumerated() {
-            var chosen: [DayExercise] = []
-            for muscle in day.muscles {
-                guard let assignment = assignmentsByMuscle[muscle],
-                      let weeklySets = allocation.target(for: muscle),
-                      let muscleDays = daysByMuscle[muscle],
-                      let position = muscleDays.firstIndex(of: dayIndex) else { continue }
-                // Reparto exacto del objetivo semanal entre los días del músculo.
-                let setsToday = weeklySets / muscleDays.count + (position < weeklySets % muscleDays.count ? 1 : 0)
-                guard setsToday > 0 else { continue }
-                for (exerciseID, sets) in distribute(setsToday, among: assignment, occurrence: position) {
-                    guard let exercise = catalog[exerciseID] else { continue }
-                    if let existing = chosen.firstIndex(where: { $0.exercise.id == exerciseID }) {
-                        chosen[existing].sets += sets
-                    } else {
-                        chosen.append(DayExercise(exercise: exercise, sets: sets))
+            func choose(preferTwoSets: Bool) -> [DayExercise] {
+                var chosen: [DayExercise] = []
+                for (muscleIndex, muscle) in day.muscles.enumerated() {
+                    guard let assignment = assignmentsByMuscle[muscle],
+                          let weeklySets = allocation.target(for: muscle),
+                          let muscleDays = daysByMuscle[muscle],
+                          let position = muscleDays.firstIndex(of: dayIndex) else { continue }
+                    // Reparto exacto del objetivo semanal entre los días del músculo.
+                    let setsToday = weeklySets / muscleDays.count + (position < weeklySets % muscleDays.count ? 1 : 0)
+                    guard setsToday > 0 else { continue }
+                    let picks = distribute(
+                        setsToday, among: assignment, occurrence: position, timesInWeek: muscleDays.count,
+                        muscleIndex: muscleIndex, preferTwoSets: preferTwoSets
+                    )
+                    for pick in picks {
+                        guard let exercise = catalog[pick.exercise] else { continue }
+                        if let existing = chosen.firstIndex(where: { $0.exercise.id == pick.exercise }) {
+                            chosen[existing].sets += pick.sets
+                            chosen[existing].muscles.insert(muscle)
+                            chosen[existing].isAnchor = chosen[existing].isAnchor || pick.isAnchor
+                        } else {
+                            chosen.append(DayExercise(exercise: exercise, sets: pick.sets, muscles: [muscle], isAnchor: pick.isAnchor))
+                        }
                     }
                 }
+                return chosen
+            }
+            var chosen = choose(preferTwoSets: false)
+            // Mínimo del rango sólo si el volumen alcanza: más ejercicios de 2 series, nunca
+            // más series (decisión 1).
+            if let minutes = input.sessionMinutes,
+               chosen.count < compositionRule.exerciseRange(forMinutes: minutes).lowerBound {
+                let finer = choose(preferTwoSets: true)
+                if finer.count > chosen.count { chosen = finer }
             }
             guard !chosen.isEmpty else { continue }
 
-            let (ordered, explanation) = try order(
+            let (ordered, fullOrder) = try order(
                 chosen, title: day.title, input: input, fatigueConfig: fatigueConfig
             )
             var exercises = ordered
             let rx = try prescription(for: input.goal, isAnchor: false)
             if let minutes = input.sessionMinutes {
-                trimToFit(&exercises, minutes: minutes, prescription: rx)
+                let outcome = compose(&exercises, minutes: minutes, goal: input.goal, priorityMuscles: priorityMuscles, prescription: rx)
+                if outcome.overRange { notes.overRange.append(day.title) }
+                if outcome.overTime { notes.overTime.append(day.title) }
             }
+            // "¿Por qué este orden?" sólo con lo que quedó, en su posición final.
+            let explanation = keeping(exercises, in: fullOrder)
             var plannedSets: [PlannedSet] = []
             for item in exercises {
                 // SCRUM-200: cada ejercicio con el RIR de su tipo (barra libre, compuesto, aislado).
@@ -328,27 +375,41 @@ public struct BlockPlanner: Sendable {
             sessions.append(SessionTemplate(title: day.title, plannedSets: plannedSets))
             orderExplanations.append(explanation)
         }
-        return (sessions, orderExplanations)
+        return (sessions, orderExplanations, notes)
     }
 
-    /// Reparte las series del día entre pocos ejercicios del músculo: el ancla (el primer
-    /// día, o junto a rotables si hay series de sobra) y rotables que cambian según
-    /// cuántas veces se entrenó ya ese músculo en la semana.
+    /// Un ejercicio elegido para un músculo en un día.
+    private struct Pick {
+        let exercise: ExerciseID
+        let sets: Int
+        let isAnchor: Bool
+    }
+
+    /// Reparte las series del día entre pocos ejercicios del músculo, cada uno con al menos
+    /// 2 series: el ancla y rotables que cambian según cuántas veces se entrenó ya ese
+    /// músculo en la semana. Con un solo ejercicio ese día, el ancla sale todos los días
+    /// menos uno (si el músculo se entrena 3+ días), así sale al menos 2 veces por semana y
+    /// cada día tiene su propia plantilla (el día que rota cambia según el músculo).
     private func distribute(
         _ sets: Int,
         among assignment: MuscleExerciseAssignment,
-        occurrence: Int
-    ) -> [(ExerciseID, Int)] {
+        occurrence: Int,
+        timesInWeek: Int,
+        muscleIndex: Int,
+        preferTwoSets: Bool
+    ) -> [Pick] {
         let anchor = assignment.assignments.first { $0.role == .anchor } ?? assignment.assignments.first
         guard let anchor else { return [] }
         let rotatables = assignment.assignments.filter { $0.exercise != anchor.exercise }
-        // ≈ 3 series por ejercicio, entre 1 y todos los asignados.
-        let count = min(assignment.assignments.count, max(1, (sets + 2) / 3))
+        // ≈ 3 series por ejercicio (≈ 2 para llegar al mínimo del rango), nunca menos de 2.
+        let perExercise = preferTwoSets ? compositionRule.minimumWorkSets : 3
+        let byPreference = (sets + perExercise - 1) / perExercise
+        let byMinimum = sets / compositionRule.minimumWorkSets
+        let count = max(1, min(assignment.assignments.count, byPreference, byMinimum))
         var picked: [ExerciseID]
-        if count == 1, occurrence > 0, !rotatables.isEmpty {
-            // Pocas series ese día: un solo ejercicio. El ancla se entrena el primer día
-            // de la semana y los demás días rota (cada día tiene su propia plantilla).
-            picked = [rotatables[(occurrence - 1) % rotatables.count].exercise]
+        let rotationDay = timesInWeek - 1 - muscleIndex % max(1, timesInWeek)
+        if count == 1, timesInWeek >= 3, occurrence == rotationDay, !rotatables.isEmpty {
+            picked = [rotatables[muscleIndex % rotatables.count].exercise]
         } else {
             picked = [anchor.exercise]
             if count > 1, !rotatables.isEmpty {
@@ -362,7 +423,9 @@ public struct BlockPlanner: Sendable {
         for id in picked where !unique.contains(id) { unique.append(id) }
         let base = sets / unique.count
         let remainder = sets % unique.count
-        return unique.enumerated().map { index, id in (id, base + (index < remainder ? 1 : 0)) }
+        return unique.enumerated().map { index, id in
+            Pick(exercise: id, sets: base + (index < remainder ? 1 : 0), isAnchor: id == anchor.exercise)
+        }
     }
 
     /// Ordena la sesión: rol funcional y prioridad muscular (`ExerciseOrderEngine`), luego
@@ -404,19 +467,80 @@ public struct BlockPlanner: Sendable {
         ))
     }
 
-    /// Si la sesión excede los minutos del usuario, quita series de los últimos ejercicios
-    /// (menor prioridad), de una en una; un ejercicio nunca baja de 1 serie.
-    private func trimToFit(_ exercises: inout [DayExercise], minutes: Int, prescription: SetPrescription) {
-        func seconds(_ list: [DayExercise]) -> Int {
-            let sets = list.flatMap { item in
+    /// La explicación del orden con sólo los ejercicios que quedaron tras componer la sesión,
+    /// numerados en su posición final.
+    private func keeping(_ kept: [DayExercise], in explanation: SessionOrderExplanation) -> SessionOrderExplanation {
+        let factsByID = Dictionary(explanation.entries.map { ($0.exerciseID, $0.facts) }, uniquingKeysWith: { first, _ in first })
+        let entries = kept.enumerated().map { index, item in
+            SessionOrderExplanation.Entry(exerciseID: item.exercise.id, rank: index + 1, facts: factsByID[item.exercise.id] ?? [])
+        }
+        return SessionOrderExplanation(
+            sessionTitle: explanation.sessionTitle, entries: entries,
+            reorderedByFatigue: explanation.reorderedByFatigue, residualInterference: explanation.residualInterference
+        )
+    }
+
+    /// Lleva la sesión (ya ordenada, de lo más a lo menos importante) a su rango de ejercicios
+    /// y a los minutos del usuario (SCRUM-218). Nunca deja un ejercicio con menos de 2 series
+    /// ni quita lo protegido: anclas compuestas y músculos prioritarios.
+    /// 1. Tope de ejercicios: sale primero un aislamiento no protegido y luego otro no
+    ///    protegido; sus series pasan a otro ejercicio de la sesión del mismo músculo.
+    /// 2. Tiempo, en este orden: quitar aislamientos no protegidos; bajar series hasta el
+    ///    mínimo (3 en un ancla compuesta con objetivo fuerza, 2 en lo demás); sólo entonces
+    ///    quitar otro ejercicio no protegido.
+    /// Los supersets (`CompatibleSuperset`) no se aplican aquí: la sesión guardada todavía no
+    /// tiene cómo representarlos.
+    private func compose(
+        _ exercises: inout [DayExercise],
+        minutes: Int,
+        goal: TrainingGoal,
+        priorityMuscles: Set<MuscleGroup.ID>,
+        prescription: SetPrescription
+    ) -> (overRange: Bool, overTime: Bool) {
+        func isProtected(_ item: DayExercise) -> Bool {
+            (item.isAnchor && item.isCompound) || !item.muscles.isDisjoint(with: priorityMuscles)
+        }
+        func minimumSets(_ item: DayExercise) -> Int {
+            goal == .strength && item.isAnchor && item.isCompound
+                ? compositionRule.strengthAnchorMinimumSets
+                : compositionRule.minimumWorkSets
+        }
+        func fits() -> Bool {
+            let sets = exercises.flatMap { item in
                 Array(repeating: PlannedSet(exerciseID: item.exercise.id, prescription: prescription), count: item.sets)
             }
-            return durationEstimator.estimate(plannedSets: sets)
+            return durationEstimator.estimate(plannedSets: sets) <= minutes * 60
         }
-        while seconds(exercises) > minutes * 60 {
-            guard let index = exercises.lastIndex(where: { $0.sets > 1 }) else { return }
+        func lastRemovable(isolationOnly: Bool) -> Int? {
+            exercises.lastIndex { !isProtected($0) && (!isolationOnly || !$0.isCompound) }
+        }
+
+        // 1. Tope de ejercicios.
+        let cap = compositionRule.exerciseRange(forMinutes: minutes).upperBound
+        var overRange = false
+        while exercises.count > cap {
+            guard let index = lastRemovable(isolationOnly: true) ?? lastRemovable(isolationOnly: false) else {
+                overRange = true
+                break
+            }
+            let removed = exercises.remove(at: index)
+            let sameMuscle = { (item: DayExercise) in !item.muscles.isDisjoint(with: removed.muscles) }
+            if let target = exercises.firstIndex(where: { sameMuscle($0) && $0.isAnchor }) ?? exercises.firstIndex(where: sameMuscle) {
+                exercises[target].sets += removed.sets
+            }
+        }
+
+        // 2. Tiempo.
+        while !fits(), let index = lastRemovable(isolationOnly: true) {
+            exercises.remove(at: index)
+        }
+        while !fits(), let index = exercises.lastIndex(where: { $0.sets > minimumSets($0) }) {
             exercises[index].sets -= 1
         }
+        while !fits(), let index = lastRemovable(isolationOnly: false) {
+            exercises.remove(at: index)
+        }
+        return (overRange, !fits())
     }
 
     /// Los días de entrenamiento de la semana: N sesiones, cada una con su título y músculos.
@@ -525,7 +649,8 @@ public struct BlockPlanner: Sendable {
         split: TrainingSplit,
         allocation: VolumeAllocation,
         sessionOrder: [SessionOrderExplanation],
-        restrictedMuscles: [MuscleGroup.ID] = []
+        restrictedMuscles: [MuscleGroup.ID] = [],
+        composition: CompositionNotes = CompositionNotes()
     ) throws -> BlockExplanation {
         let totalVolume = allocation.targets
             .filter { !restrictedMuscles.contains($0.muscleGroupID) }
@@ -550,6 +675,15 @@ public struct BlockPlanner: Sendable {
         }
         if !restrictedMuscles.isEmpty {
             facts.append(DecisionFact(key: "restrictedMuscles", value: restrictedMuscles.map(\.rawValue).joined(separator: ", ")))
+        }
+        // SCRUM-218: regla de composición y sesiones donde lo protegido no dejó cumplir el
+        // tope de ejercicios o el tiempo (se quedan así; la explicación lo dice).
+        facts.append(DecisionFact(key: "sessionComposition", value: compositionRule.version))
+        if !composition.overRange.isEmpty {
+            facts.append(DecisionFact(key: "sessionsOverRange", value: composition.overRange.joined(separator: ", ")))
+        }
+        if !composition.overTime.isEmpty {
+            facts.append(DecisionFact(key: "sessionsOverTime", value: composition.overTime.joined(separator: ", ")))
         }
         let fatigue = try FatigueInterferenceConfig(rule: FatigueInterferenceDefaults.makeRule()).reference()
         let references = [try volumeConfigReference(), try assignmentRuleReference(), fatigue]

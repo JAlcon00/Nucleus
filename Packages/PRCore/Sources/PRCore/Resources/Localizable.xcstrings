@@ -218,6 +218,18 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Because of your restriction we are not programming %@ for now." } }
       }
     },
+    "En algunas sesiones dejamos más ejercicios de lo habitual para tu tiempo: los básicos no se quitan." : {
+      "comment" : "Por qué tu plan: sesiones con más ejercicios que el rango",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Some sessions keep more exercises than usual for your time: the basics are never removed." } }
+      }
+    },
+    "Algunas sesiones pasan de tu tiempo: no quitamos los ejercicios básicos ni les dejamos menos series de su mínimo." : {
+      "comment" : "Por qué tu plan: sesiones que no caben en el tiempo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Some sessions run over your time: we don't remove the basic exercises or cut them below their minimum sets." } }
+      }
+    },
     "Experiencia" : {
       "comment" : "Título del paso: experiencia",
       "localizations" : {
