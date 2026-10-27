@@ -674,7 +674,7 @@ Evidencia: commit `42ffa7b`.
 
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase C (restricciones ~~SCRUM-31~~ hecha el 2026-10-25, SCRUM-32 en rama el 2026-10-26, 36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–39; ~~SCRUM-40~~ y ~~SCRUM-223~~ hechas el 2026-10-26) → HealthKit, Watch, pestañas.
+En orden: Fase C (restricciones ~~SCRUM-31~~ hecha el 2026-10-25, SCRUM-32 en `main` el 2026-10-27 con su pantalla pendiente en SCRUM-226, 36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–39; ~~SCRUM-40~~ y ~~SCRUM-223~~ hechas el 2026-10-26) → HealthKit, Watch, pestañas.
 
 ### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada; en `main`)
 
@@ -718,9 +718,9 @@ Evidencia: commit `c29e473`, en `main` por el PR #7 (`3f7c717`).
 - `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 528 tests in 93 suites passed … with 5 known issues` (2026-10-26; línea base 520 + 521 sobre SCRUM-40). El build de iOS y el de watchOS pasaron.
 - **Tests:** `Packages/PRCore/Tests/PRCoreTests/UnreadablePlanTests.swift` (7), todos con `LocalPersistence` real. Los dos primeros se escribieron antes del arreglo y fallaban: sin copia en cuarentena y con el historial de bloques perdido.
 
-### SCRUM-218 · PR-B004 Composición de sesión (Must 1.0, en rama hasta después del demo)
+### SCRUM-218 · PR-B004 Composición de sesión (Must 1.0, en `main`)
 
-- Va en la rama `SCRUM-218-composicion-sesion`. **No se sube a `main` hasta después del demo**, porque cambia la rutina de todos y el guion cita una rutina concreta.
+- **En `main` desde el 2026-10-26:** Jesús fusionó el PR #8 (`9e05ebc`), antes del demo. El CI de GitHub pasó en el PR y en `main`. La rutina del demo cambia; el guion no cita números de series.
 - **Decisiones de Jesús (2026-10-26):**
   1. El tope del rango se cumple siempre; el mínimo, solo si el volumen alcanza con 2 series por ejercicio. El piso completo llega con D1 (PR-B003).
   2. Al recortar se protegen las anclas compuestas y los músculos prioritarios. Un ancla de aislamiento de un músculo no prioritario sale primero.
@@ -733,14 +733,14 @@ Evidencia: commit `c29e473`, en `main` por el PR #7 (`3f7c717`).
   2. bajar series hasta el mínimo;
   3. solo entonces quitar otro ejercicio no protegido.
   Nunca 1 serie, y lo protegido no se toca.
-- [ ] Juntar pares compatibles como superset (`CompatibleSuperset`): **pendiente.** La sesión guardada no tiene cómo representar un superset; necesita cambiar el modelo (con su migración, ADR-0003) y el modo entrenamiento. Va aparte.
+- [ ] Juntar pares compatibles como superset (`CompatibleSuperset`): **pasó a SCRUM-224.** La sesión guardada no tiene cómo representar un superset; necesita cambiar el modelo (con su migración, ADR-0003) y el modo entrenamiento.
 - [x] Fuerza con 60 min: las anclas compuestas conservan al menos 3 series y se recortan accesorios.
 - [x] Un músculo entrenado 2 o más veces por semana: su ancla sale en al menos 2 sesiones y sus series por sesión difieren en 1 como máximo.
 - [x] "Más tiempo no es más volumen": con 90 o 180 min no se agregan series (D1 sigue pendiente).
 - [x] En SCRUM-214, "nunca 1 serie" salió de `withKnownIssue` y pasa; "tope de ejercicios" se agregó y pasa.
 - [x] Los planes guardados se regeneran: `StoredPlan.currentGeneratorVersion` sube de 3 a 4, con el mismo bloque y el aviso "plan actualizado".
 
-Evidencia: commit `ca73290` (rama `SCRUM-218-composicion-sesion`).
+Evidencia: commit `ca73290`, en `main` por el PR #8 (`9e05ebc`).
 - `make ci` → `✔ Test run with 524 tests in 79 suites passed` + `Test run with 532 tests in 93 suites passed … with 4 known issues` (2026-10-26; línea base 520 + 528). Los 4 *known issues* que quedan son de SCRUM-215 y SCRUM-219. El build de iOS y el de watchOS pasaron.
 - `make test-ui` → `Executed 30 tests, with 0 failures` (simulador "PR UI Tests").
 - **Matriz de 200 perfiles** (`[PR-B001]` y `[PR-B004]`):
@@ -754,9 +754,30 @@ Evidencia: commit `ca73290` (rama `SCRUM-218-composicion-sesion`).
   - D1, para el mínimo del rango;
   - 👤 Jesús, revisar en el iPhone que el plan regenerado y el aviso "plan actualizado" se vean bien.
 
-### SCRUM-32 · PR-0110 Una sola forma de medir el dolor (Must 1.0, Fase C; en rama)
+### SCRUM-225 · "Ajustar a mi tiempo" nunca deja una serie suelta (High, sale en el demo)
 
-- Va en la rama `SCRUM-32-escala-dolor`, sin subir a `main` todavía.
+- **Origen:** hallado al cerrar SCRUM-218. SCRUM-218 quitó las series sueltas del plan semanal, pero el ajuste del día (SCRUM-30, `HardTimeOptimizer`) todavía dejaba un accesorio de 2 series en 1. Lo usa el guion del demo ("Tengo 30 min").
+- Va en la rama `SCRUM-225-ajuste-sin-series-sueltas`.
+
+**Criterios:**
+- [x] Al ajustar a cualquier tiempo, ningún ejercicio que se queda tiene menos de 2 series de trabajo. El calentamiento no cuenta.
+- [x] Se conserva el orden de recorte de SCRUM-30:
+  1. quitar lo opcional;
+  2. reducir accesorios, ahora hasta 2 series de trabajo;
+  3. quitar accesorios desde el final.
+  Anclas y prioritarios no se tocan.
+- [x] Una sola fuente para el mínimo: `HardTimeOptimizer.minimumWorkSets` sale de `SessionCompositionRule.standard.minimumWorkSets`.
+- [x] La frase sigue diciendo qué se quitó, qué se redujo o que no cabe. Si ya cabe, nada cambia; más tiempo nunca agrega series.
+
+Evidencia: commit `f4380b7` (rama `SCRUM-225-ajuste-sin-series-sueltas`).
+- `make ci` → `✔ Test run with 527 tests in 79 suites passed` + `Test run with 533 tests in 93 suites passed … with 4 known issues` (2026-10-26; línea base 524 + 532). El build de iOS y el de watchOS pasaron.
+- **Reproducción primero:** la prueba de integración (plan real, 16 perfiles, cada sesión ajustada a 30 y 45 min) fallaba en 26 sesiones ajustadas; ahora pasa.
+- **Cambio deliberado:** dos pruebas de SCRUM-30 en `SessionTimeFitTests` cambian sus números (antes reducían a 1 serie de trabajo). Su intención se mantiene.
+- **Sin prueba de UI:** ninguna prueba de UI usa "Ajustar a mi tiempo"; lo cubren las de unidad e integración.
+
+### SCRUM-32 · PR-0110 Una sola forma de medir el dolor (Must 1.0, Fase C; en `main`)
+
+- **En `main` desde el 2026-10-27:** Jesús fusionó el PR #9 (`883336b`). La pantalla para reportar el dolor es SCRUM-226.
 - **Decisiones de Jesús (2026-10-26):**
   1. Tabla conservadora para lo guardado en la escala 1–5: 1 → leve; 2 y 3 → moderado; 4 y 5 → alto. Un dolor punzante nunca queda por debajo de moderado.
   2. Se quita el tipo (molestia/punzante): queda solo el nivel y, opcional, el músculo.
@@ -774,7 +795,7 @@ Evidencia: commit `ca73290` (rama `SCRUM-218-composicion-sesion`).
 - [x] Lo guardado en la escala 1–5 se traduce con la tabla, documentada en ADR-0003 y probada. `workouts` y `pending-operations` pasan de v1 a v2: es la primera migración real de SCRUM-40.
 - [ ] 👤 Manual: reportar cada nivel y revisar la recomendación. Necesita la pantalla, que va aparte.
 
-Evidencia: commit `e1e9a6e` (rama `SCRUM-32-escala-dolor`).
+Evidencia: commit `e1e9a6e`, en `main` por el PR #9 (`883336b`).
 - `make ci` → `✔ Test run with 533 tests in 80 suites passed` + `Test run with 539 tests in 94 suites passed … with 4 known issues` (2026-10-26; línea base 524 + 532 en `main` `9e05ebc`). Los 4 *known issues* son los de SCRUM-215 y SCRUM-219. El build de iOS y el de watchOS pasaron.
 - **Tests:**
   - `PRDomainTests/PainScaleTests.swift` (9): la tabla, leer la forma anterior y la nueva, guardar solo la nueva, y los tres motores de acuerdo en cada nivel.
@@ -788,7 +809,7 @@ Evidencia: commit `e1e9a6e` (rama `SCRUM-32-escala-dolor`).
     - `PainFeedbackEngineTests`: el umbral ya no se puede cambiar;
     - dos pruebas de `SchemaMigrationTests` que daban por hecho que `workouts` seguía en v1. Ahora usan la versión vigente y la migración real.
 - **Pendiente:**
-  - la pantalla para reportar el dolor en el entrenamiento;
+  - la pantalla para reportar el dolor en el entrenamiento (SCRUM-226);
   - `ProgressionEngine` y `StrengthProgressionEngine` todavía no están conectados al plan: hoy la siguiente serie o sesión propone la carga planeada o el último peso hecho, y nada sube la carga solo;
   - si fallan las dos escrituras a disco (la de la serie y la del dolor), al reabrir se recupera la serie sin el dolor. La app ya muestra el aviso de guardado fallido;
   - 👤 Jesús, actualizar la app en un iPhone con entrenamientos guardados y revisar que el historial se vea igual.

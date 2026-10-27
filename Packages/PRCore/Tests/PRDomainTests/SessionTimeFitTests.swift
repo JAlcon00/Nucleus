@@ -104,18 +104,21 @@ struct SessionTimeFitTests {
         #expect(tight.adjustment.fit == .fits(spareMinutes: 1, suggestions: []), "Si no alcanza para nada, no se sugiere nada")
     }
 
-    @Test("45 minutos: se reducen los accesorios empezando por el último")
+    /// SCRUM-225 cambió los números de esta prueba a propósito. Antes el último accesorio
+    /// bajaba hasta 1 serie (41 min); ahora nunca baja de 2 y el penúltimo también se reduce
+    /// (44 min, sigue cabiendo). El orden de recorte, desde el final, es el mismo.
+    @Test("45 minutos: se reducen los accesorios empezando por el último, nunca por debajo de 2 series")
     func reducesFromTheEnd() throws {
         let template = try fullSession()
-        // 3 210 s → el último 4→2 (2 910), 2→1 (2 760), el penúltimo 4→2 (2 460 ≤ 2 700).
+        // 3 210 s → el último 4→2 (2 910); ya no baja a 1 → el penúltimo 4→2 (2 610 ≤ 2 700).
         let (fitted, adjustment) = fitter.fit(template, budgetMinutes: 45, roles: roles, goal: .hypertrophy, phase: .maintenance)
         #expect(adjustment.fit == .trimmed(removed: [], reduced: [
             SetReduction(exerciseID: accessories[2], from: 4, to: 2),
-            SetReduction(exerciseID: accessories[3], from: 4, to: 1),
+            SetReduction(exerciseID: accessories[3], from: 4, to: 2),
         ]))
         #expect(workSets(accessories[0], fitted) == 4)
         #expect(workSets(accessories[1], fitted) == 4)
-        #expect(fitter.minutes(of: fitted) == 41)
+        #expect(fitter.minutes(of: fitted) == 44)
     }
 
     @Test("Si ni recortada cabe lo dice con los minutos que necesita y no quita anclas")
@@ -154,17 +157,20 @@ struct SessionTimeFitTests {
         #expect(workSets(accessory, second.template) < 4)
     }
 
-    @Test("Al reducir se conserva el calentamiento y queda al menos una serie de trabajo")
-    func keepsWarmupAndOneWorkSet() throws {
+    /// SCRUM-225 cambió esta prueba a propósito. Antes quedaba el calentamiento y 1 serie de
+    /// trabajo; ahora el mínimo es de 2 series de trabajo (el calentamiento no cuenta).
+    @Test("Al reducir se conserva el calentamiento y quedan al menos 2 series de trabajo")
+    func keepsWarmupAndTwoWorkSets() throws {
         let anchor = ExerciseID(), accessory = ExerciseID()
-        // Ancla 510 + accesorio (1 cal. + 3) 510 + 30 = 1 050 s; con 15 min el accesorio baja a 2.
+        // Ancla 510 + accesorio (1 cal. + 3) 510 + 30 = 1 050 s; con 15 min (900) el accesorio
+        // baja a 1 cal. + 2 de trabajo: 360 → 900 s, cabe justo.
         let template = try session([(anchor, 4), (accessory, 3)], warmups: [accessory: 1])
         let (fitted, adjustment) = fitter.fit(
             template, budgetMinutes: 15, roles: SessionTimeRoles(anchors: [anchor]), goal: .hypertrophy, phase: .maintenance
         )
         let kept = fitted.plannedSets.filter { $0.exerciseID == accessory }
-        #expect(kept.map(\.prescription.isWarmup) == [true, false])
-        #expect(adjustment.fit == .trimmed(removed: [], reduced: [SetReduction(exerciseID: accessory, from: 3, to: 1)]))
+        #expect(kept.map(\.prescription.isWarmup) == [true, false, false])
+        #expect(adjustment.fit == .trimmed(removed: [], reduced: [SetReduction(exerciseID: accessory, from: 3, to: 2)]))
     }
 
     @Test("El tiempo elegido sólo vale de 30 a 240 minutos y sólo el día en que se eligió")
