@@ -73,9 +73,10 @@ private func makeRoot() throws -> URL {
     return url
 }
 
+/// El registro del plan (los archivos ocultos son de control, p. ej. la marca de versión de SCRUM-40).
 private func planFile(in directory: URL) throws -> URL {
-    let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
-    return try #require(files.first)
+    let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
+    return try #require(files.first { $0.pathExtension == "json" })
 }
 
 private func profile(

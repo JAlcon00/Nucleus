@@ -50,7 +50,11 @@ let package = Package(
         // Tests de contratos de persistencia con fakes in-memory (PR-0201).
         .testTarget(
             name: "PRCoreTests",
-            dependencies: ["PRCore"]
+            dependencies: ["PRCore"],
+            resources: [
+                // Muestras del formato guardado por versión (SCRUM-40, ADR-0003).
+                .copy("Fixtures"),
+            ]
         ),
     ]
 )

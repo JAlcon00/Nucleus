@@ -61,7 +61,9 @@ struct PlanDaysMigrationTests {
 
         // Reescribe el archivo como lo guardaba la versión anterior: sin `trainingWeekdays`.
         let plans = root.appendingPathComponent("plans", isDirectory: true)
-        let file = try #require(try FileManager.default.contentsOfDirectory(at: plans, includingPropertiesForKeys: nil).first)
+        // El registro del plan; los ocultos son de control (marca de versión, SCRUM-40).
+        let files = try FileManager.default.contentsOfDirectory(at: plans, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
+        let file = try #require(files.first { $0.pathExtension == "json" })
         var json = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
         var profileJSON = try #require(json["profile"] as? [String: Any])
         #expect(profileJSON["trainingWeekdays"] != nil, "La versión actual guarda los días")

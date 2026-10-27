@@ -423,8 +423,9 @@ public final class AppEnvironment {
         )
     }
 
-    /// Crea la persistencia por defecto en Application Support/PR/persistence y migra
-    /// una sola vez el layout antiguo (todo en la raíz). Devuelve `nil` si el directorio
+    /// Crea la persistencia por defecto en Application Support/PR/persistence, migra
+    /// una sola vez el layout antiguo (todo en la raíz) y lleva cada colección a su
+    /// formato vigente (SCRUM-40). Devuelve `nil` si el directorio
     /// no puede resolverse (fallback en memoria del app).
     /// `isolated` (sólo pruebas de UI en Debug): nombre de un directorio temporal, nunca los datos reales.
     /// `demo` (sólo Debug, SCRUM-188): Application Support/PR/demo, aparte de los datos reales.
@@ -456,6 +457,9 @@ public final class AppEnvironment {
             // arranque. Las colecciones nuevas son utilizables igualmente.
             persistence.log.migrationFailed()
         }
+        // Cada colección a su formato vigente (SCRUM-40). Una que falla queda intacta y se
+        // registra; las de cada usuario migran al entrar (`scoped(toUser:)`).
+        persistence.migrateSchemas()
         return persistence
     }
 }

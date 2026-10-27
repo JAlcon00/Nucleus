@@ -69,6 +69,28 @@ public struct PersistenceLog: Sendable {
         sink("persistence.migration failed")
     }
 
+    /// Resultado de llevar una colección a su formato vigente (SCRUM-40). Sólo versiones
+    /// y conteos; nada cuando ya estaba al día.
+    func schemaMigration(_ collection: PersistenceCollection, outcome: CollectionSchemaMigrator.Outcome) {
+        let name = collection.rawValue
+        switch outcome {
+        case .absent, .upToDate:
+            return
+        case .migrated(let from, let to, let records, let quarantined):
+            sink("persistence.schema migrated collection=\(name) from=\(from.rawValue) to=\(to.rawValue) records=\(records) quarantined=\(quarantined)")
+        case .newerThanKnown(let found, let known):
+            sink("persistence.schema newer collection=\(name) found=\(found.rawValue) known=\(known.rawValue)")
+        case .untouched(.missingStep(let from)):
+            sink("persistence.schema untouched collection=\(name) missingStepFrom=\(from.rawValue)")
+        case .untouched(.unreadableMarker):
+            sink("persistence.schema untouched collection=\(name) unreadableMarker")
+        }
+    }
+
+    func schemaMigrationFailed(_ collection: PersistenceCollection) {
+        sink("persistence.schema failed collection=\(collection.rawValue)")
+    }
+
     /// Se encontró más de una sesión activa (error): se retomó la más reciente y las demás
     /// pasaron a `abandoned` con sus series intactas. Sólo el conteo, sin contenido.
     public func recoveredExtraActiveSessions(count: Int) {
@@ -106,11 +128,13 @@ public struct LocalPersistence: Sendable {
     /// Colecciones que pertenecen a un usuario (su historial de entrenamientos).
     private static let userScopedCollections: [PersistenceCollection] = [.workouts, .pendingOperations]
 
-    /// Vista de esta persistencia para UN usuario. La primera vez que cualquier usuario
-    /// entra, adopta el historial anterior a las cuentas (que estaba sin dueño): se mueve
-    /// verificado y una sola vez; los demás usuarios empiezan con historial vacío.
+    /// Vista de esta persistencia para UN usuario. Primero lleva sus colecciones a su
+    /// formato vigente (SCRUM-40). La primera vez que cualquier usuario entra, adopta el
+    /// historial anterior a las cuentas (que estaba sin dueño): se mueve verificado y una
+    /// sola vez; los demás usuarios empiezan con historial vacío.
     public func scoped(toUser userID: String) throws -> LocalPersistence {
         let scoped = LocalPersistence(rootURL: rootURL, log: log, userKey: PlanStore.key(forUser: userID))
+        scoped.migrateSchemas(of: Self.userScopedCollections)
         try scoped.adoptUnownedHistoryIfNeeded()
         return scoped
     }
@@ -138,13 +162,59 @@ public struct LocalPersistence: Sendable {
         try Data().write(to: adoptionMarker)
     }
 
-    /// Almacén de UNA colección (su subdirectorio).
+    /// Almacén de UNA colección (su subdirectorio). Si esta llamada crea la carpeta, la
+    /// marca con el formato vigente (SCRUM-40): lo que se escriba ahí ya es de este formato.
     public func store(for collection: PersistenceCollection) throws -> AtomicFileRepositoryStore {
+        try store(for: collection, versionIfNew: PersistenceSchemas.schema(for: collection).current)
+    }
+
+    private func store(for collection: PersistenceCollection, versionIfNew: SchemaVersion) throws -> AtomicFileRepositoryStore {
+        let directory = directory(for: collection)
+        // Un corte a mitad de una migración pudo dejar la colección fuera de su lugar:
+        // se regresa antes de crear una carpeta vacía encima.
+        try CollectionSchemaMigrator.recoverInterruptedSwap(at: directory)
+        let isNew = !FileManager.default.fileExists(atPath: directory.path)
+        let store = try AtomicFileRepositoryStore(directory: directory)
+        if isNew {
+            try CollectionLayout.writeMarker(versionIfNew, in: directory)
+        }
+        return store
+    }
+
+    private func directory(for collection: PersistenceCollection) -> URL {
         var base = rootURL
         if let userKey, Self.userScopedCollections.contains(collection) {
             base = rootURL.appendingPathComponent("users", isDirectory: true).appendingPathComponent(userKey, isDirectory: true)
         }
-        return try AtomicFileRepositoryStore(directory: base.appendingPathComponent(collection.rawValue, isDirectory: true))
+        return base.appendingPathComponent(collection.rawValue, isDirectory: true)
+    }
+
+    /// Lleva cada colección a su formato vigente (SCRUM-40): en la raíz, todas; en una
+    /// vista de usuario, además las de ese usuario. Una colección que falla no detiene a
+    /// las demás: queda intacta, se registra y se reintenta al siguiente arranque.
+    @discardableResult
+    public func migrateSchemas() -> [PersistenceCollection: CollectionSchemaMigrator.Outcome] {
+        migrateSchemas(of: PersistenceCollection.allCases)
+    }
+
+    @discardableResult
+    func migrateSchemas(
+        of collections: [PersistenceCollection],
+        using schemas: (PersistenceCollection) -> CollectionSchema = PersistenceSchemas.schema(for:)
+    ) -> [PersistenceCollection: CollectionSchemaMigrator.Outcome] {
+        var outcomes: [PersistenceCollection: CollectionSchemaMigrator.Outcome] = [:]
+        for collection in collections {
+            do {
+                let outcome = try CollectionSchemaMigrator().migrate(
+                    collectionAt: directory(for: collection), schema: schemas(collection)
+                )
+                log.schemaMigration(collection, outcome: outcome)
+                outcomes[collection] = outcome
+            } catch {
+                log.schemaMigrationFailed(collection)
+            }
+        }
+        return outcomes
     }
 
     public func workoutRepository() throws -> FileWorkoutRepository {
@@ -270,10 +340,12 @@ public struct LocalPersistence: Sendable {
 
     /// Mueve los archivos del layout antiguo (todo en la raíz) a su colección. Segura de
     /// repetir: la segunda vez no hace nada. Registra el resultado sin datos personales.
+    /// Esos archivos son de antes de SCRUM-40: una carpeta que se crea para ellos se marca
+    /// con la versión 1 y `migrateSchemas()` la lleva después al formato vigente.
     @discardableResult
     public func migrateLegacyLayout() throws -> LegacyPersistenceMigration.Report {
         let report = try LegacyPersistenceMigration().run(root: rootURL) { collection in
-            try store(for: collection)
+            try store(for: collection, versionIfNew: .initial)
         }
         if report.didWork {
             log.migration(report)
