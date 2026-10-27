@@ -4,6 +4,7 @@
 > **Actualizado:** 2026-10-27 (tablero sincronizado con Jira y con el código).
 > **Ejecuta:** el agente de IA de Xcode. Hace todo el trabajo asignado en Jira a Gael Durán y Joss Amador, en el orden de este archivo.
 > **Regla:** mientras quede un `[ ]` en las secciones 2 y 3, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
+> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214, 216–218, 222, 223 y 225) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
 
 ---
 
@@ -41,27 +42,27 @@
 
 Cada funcionalidad se cierra cuando todas sus casillas están en `[x]`.
 
-### F-01 · Iniciar sesión y cuestionario — SCRUM-181 (era de Gael)
+### F-01 · Iniciar sesión y cuestionario — SCRUM-181 (era de Gael) · finalizada el 2026-10-27
 - [x] Inicio sesión con Apple y respondo el cuestionario.
 - [x] El cuestionario se responde **una sola vez**; al cerrar y reabrir entro directo a Hoy con el mismo plan → SCRUM-26 (`PlanPersistenceTests`, UI `testReopeningTheAppGoesStraightToToday`).
 - [x] Funciona sin internet después del primer inicio → SCRUM-26 (`PlanPersistenceTests`: credencial `.unavailable` entra a Hoy).
 
-### F-02 · Plan semanal correcto — SCRUM-182 (era de Joss)
+### F-02 · Plan semanal correcto — SCRUM-182 (era de Joss) · finalizada el 2026-10-27
 - [x] La semana tiene exactamente los días elegidos (2 a 7) → SCRUM-27.
 - [x] Cada día tiene su propia sesión con series realistas → SCRUM-28.
 - [x] Más tiempo no agrega series → SCRUM-28.
 
-### F-03 · Pantalla Hoy — SCRUM-183 (era de Joss)
+### F-03 · Pantalla Hoy — SCRUM-183 (era de Joss) · finalizada el 2026-10-27
 - [x] Hoy muestra la sesión correcta del día o "Día de descanso" → SCRUM-27. La UI existe; el cálculo quedó corregido.
 - [x] Ejercicios en orden lógico, de grandes a pequeños → SCRUM-29.
 - [x] Puedo empezar el entrenamiento con un toque.
 
-### F-04 · Registrar series sin internet — SCRUM-184 (era de Gael)
+### F-04 · Registrar series sin internet — SCRUM-184 (era de Gael) · finalizada el 2026-10-27
 - [x] Una serie cumplida se registra con un toque.
 - [x] Cada serie queda guardada al instante en disco → SCRUM-24 (`WorkoutRecoveryTests`: en disco antes de que la UI avance, < 100 ms).
-- [ ] Todo funciona en modo avión → SCRUM-24 (el registro no usa red, sólo disco local; sin prueba automática de modo avión: 👤 Jesús lo marca en dispositivo).
+- 👤 Verificación pendiente: todo funciona en modo avión → SCRUM-24 (el registro no usa red, sólo disco local; no hay prueba automática de modo avión).
 
-### F-05 · Retomar el entrenamiento tras cerrar la app — SCRUM-185 (era de Gael)
+### F-05 · Retomar el entrenamiento tras cerrar la app — SCRUM-185 (era de Gael) · finalizada el 2026-10-27
 - [x] Al reabrir aparece "Tienes un entrenamiento en curso" → SCRUM-24 (UI `testForceQuitMidWorkoutOffersToContinue`).
 - [x] Las series hechas siguen ahí y sigue la siguiente → SCRUM-24 (`WorkoutRecoveryTests`: 5 series → sigue la 6).
 - [x] El descanso muestra el tiempo que realmente queda → SCRUM-24 (`WorkoutRecoveryTests`: descanso guardado como hora de fin).
@@ -73,7 +74,7 @@ Cada funcionalidad se cierra cuando todas sus casillas están en `[x]`.
 - [x] Progreso muestra el registro desde el primer entrenamiento → SCRUM-186 (`ProgressHistoryTests` (9), UI `testProgressLogsTheFirstWorkout`; `make ci` PRDomain 484, PRCore 387, XCTest 151; `make test-ui` 20/20).
 - [x] Exportar muestra el número real de entrenamientos y todas sus series → SCRUM-23.
 
-### F-07 · Ajustar la sesión a mi tiempo (opcional) — SCRUM-187 (era de Joss)
+### F-07 · Ajustar la sesión a mi tiempo (opcional) — SCRUM-187 (era de Joss) · finalizada el 2026-10-27
 Entra al demo solo si F-01 a F-06 están completos.
 - [x] Hoy muestra la duración real de la sesión → SCRUM-30.
 - [x] Con 30 minutos se conservan los ejercicios principales y la app dice qué quitó → SCRUM-30.
@@ -94,15 +95,15 @@ Diagnóstico verificado en el código el 2026-10-20: todos los bugs descritos ab
 
 | # | Jira | Qué | Prioridad | Depende de | Estado |
 |---|---|---|---|---|---|
-| 1 | SCRUM-23 | Historial y export correctos (colecciones separadas) | P0 | — | [ ] criterios [x]; falta 👤 manual |
-| 2 | SCRUM-27 | Días correctos de la semana | P0 | — (su test de integración final espera al #6) | [ ] criterios [x]; integración con plan persistido [x] (`WeekEndToEndTests`); falta 👤 manual |
+| 1 | SCRUM-23 | Historial y export correctos (colecciones separadas) | P0 | — | [x] finalizada el 2026-10-27; verificación 👤 manual pendiente |
+| 2 | SCRUM-27 | Días correctos de la semana | P0 | — (su test de integración final espera al #6) | [x] finalizada el 2026-10-27, con la integración con el plan persistido (`WeekEndToEndTests`); verificación 👤 manual pendiente |
 | 3 | SCRUM-189 | CI en GitHub | P0 soporte | — | [ ] criterios del agente [x]; falta 👤 proteger `main` |
-| 4 | SCRUM-24 | No perder el workout si la app se cierra | P0 | 1 | [ ] criterios [x]; falta 👤 manual |
+| 4 | SCRUM-24 | No perder el workout si la app se cierra | P0 | 1 | [x] finalizada el 2026-10-27; verificación 👤 manual pendiente |
 | 5 | SCRUM-25 | Cerrar bien la sesión al terminar | P0 | 4 | [x] |
-| 6 | SCRUM-26 | Recordar perfil y plan | P0 | 1 | [ ] criterios [x]; falta 👤 manual |
-| 7 | SCRUM-28 | Volumen real y una sesión distinta por día | P0 | 2, 6 | [ ] criterios [x]; falta 👤 manual |
+| 6 | SCRUM-26 | Recordar perfil y plan | P0 | 1 | [x] finalizada el 2026-10-27; verificación 👤 manual pendiente |
+| 7 | SCRUM-28 | Volumen real y una sesión distinta por día | P0 | 2, 6 | [x] finalizada el 2026-10-27; verificación 👤 manual pendiente |
 | 8 | SCRUM-29 | Ejercicios en orden correcto | P0 | 7 | [x] |
-| 9 | SCRUM-30 | Duración real y ajuste de tiempo (F-07) | P1 | 7 | [ ] criterios [x]; falta 👤 sesión larga en dispositivo |
+| 9 | SCRUM-30 | Duración real y ajuste de tiempo (F-07) | P1 | 7 | [x] finalizada el 2026-10-27; verificación 👤 pendiente: sesión larga en dispositivo |
 | 10 | SCRUM-190 | Pruebas de los flujos | soporte | 1–8 | [ ] criterios del agente [x]; falta 👤 manual |
 | 11 | SCRUM-188 | Ambiente demo | soporte | 1–8 | [ ] criterios del agente [x]; falta 👤 firma, iPhone y video |
 | 12 | SCRUM-191 | Integración GitHub–Jira | soporte | 3 | [ ] criterio del agente [x]; falta 👤 instalar "GitHub for Jira" |
@@ -138,7 +139,7 @@ Evidencia: `make ci` → `✔ Test run with 439 tests in 69 suites passed` + `�
 
 ---
 
-### Bloque 1 — SCRUM-23 · Ver y exportar todo mi historial (P0, READY)
+### Bloque 1 — SCRUM-23 · Ver y exportar todo mi historial (P0; finalizada el 2026-10-27)
 
 **Bug actual:**
 - `AppEnvironment` crea **un solo** `AtomicFileRepositoryStore` en `PR/persistence`. La cola (`PendingOperationQueueStore`) y los workouts escriben ahí.
@@ -172,7 +173,7 @@ Evidencia: commit `7b68b38`; `make ci` → `✔ Test run with 427 tests in 68 su
 
 ---
 
-### Bloque 2 — SCRUM-27 · Entrenar los días correctos de la semana (P0)
+### Bloque 2 — SCRUM-27 · Entrenar los días correctos de la semana (P0; finalizada el 2026-10-27)
 
 **Bug actual:** en `TodayPlanCoordinator.weekdayIndex`, el lunes da 1 y el índice 0 nunca ocurre. Con 3 días elegidos solo propone 2, y con 7 días sábado y domingo repiten sesión.
 
@@ -217,7 +218,7 @@ Evidencia: commit `64c95d9`; `make ci` → `✔ Test run with 439 tests in 69 su
 
 ---
 
-### Bloque 4 — SCRUM-24 · No perder el entrenamiento si la app se cierra (P0)
+### Bloque 4 — SCRUM-24 · No perder el entrenamiento si la app se cierra (P0; finalizada el 2026-10-27)
 
 **Bug actual:**
 - `WorkoutSessionCoordinator` solo guarda en `onSessionFinished`, con `try? await workoutRepository?.save`.
@@ -278,7 +279,7 @@ Evidencia: misma corrida de `make ci` que el bloque 4; `PRCoreTests/WorkoutClosi
 
 ---
 
-### Bloque 6 — SCRUM-26 · Recordar mi perfil y mi plan (P0)
+### Bloque 6 — SCRUM-26 · Recordar mi perfil y mi plan (P0; finalizada el 2026-10-27)
 
 **Bug actual:** `FileUserProfileRepository` y `FileTrainingBlockRepository` existen, pero `AppEnvironment` no los usa. Cada arranque repite login y cuestionario y genera un bloque con IDs nuevos.
 
@@ -302,7 +303,7 @@ Evidencia: `make ci` → `✔ Test run with 444 tests in 70 suites passed` + `�
 
 ---
 
-### Bloque 7 — SCRUM-28 · Volumen real y una sesión distinta por día (P0)
+### Bloque 7 — SCRUM-28 · Volumen real y una sesión distinta por día (P0; finalizada el 2026-10-27)
 
 **Bug actual:** `BlockPlanner.buildSessions` asigna `weeklySets / days` series a **cada ejercicio** y repite la misma plantilla todos los días. Salen sesiones de más de 100 series.
 
@@ -335,7 +336,7 @@ Evidencia: `make ci` → `✔ Test run with 443 tests in 70 suites passed` + `�
 **Cambio:** lista curada por músculo (`exercise-staples.json`, 63 ejercicios, orden de preferencia; sentadilla → prensa → extensión, press de banca → inclinado → cruce, remo → jalón…). `ExerciseAssigner` elige el primero permitido como ancla y los siguientes como rotatables; sin ejercicios de referencia disponibles usa la selección genérica, ahora prefiriendo los que trabajan el músculo como principal. Un plan guardado con generador anterior se regenera (`currentGeneratorVersion = 3`, mismo ID de bloque) y avisa.
 Evidencia: `make ci` → `✔ Test run with 451 tests in 71 suites passed` + `✔ Test run with 338 tests in 63 suites passed` (2026-10-21); `ExerciseSelectionQualityTests` (básicos presentes en 3/4/6 días, nada de guillotina/vueltas al mundo/encogimientos/aductores, cada referencia trabaja el músculo como principal); UI en Xcode: 5 de 5 relacionadas. **Límite:** la lista es una curación del equipo (revisable por Jesús); no cubre equipo fuera de barra/mancuernas/máquina/polea/peso corporal. 👤 Jesús: revisar que las rutinas generadas le parezcan razonables.
 
-### Bloque 8 — SCRUM-29 · Ejercicios en el orden correcto (P0)
+### Bloque 8 — SCRUM-29 · Ejercicios en el orden correcto (P0; finalizada el 2026-10-27)
 
 **Bug actual:** `BlockPlanner` recibe `orderEngine` y `fatigueEngine` pero nunca los llama. Puede salir tríceps antes del press de banca.
 
@@ -355,7 +356,7 @@ Evidencia: `make ci` (mismas líneas que el bloque 7, 2026-10-21); `PRDomainTest
 
 ---
 
-### Bloque 9 — SCRUM-30 · Duración real y ajuste a mi tiempo (P1, F-07 opcional)
+### Bloque 9 — SCRUM-30 · Duración real y ajuste a mi tiempo (P1, F-07 opcional; finalizada el 2026-10-27)
 
 Solo se empieza si los bloques 1 a 8 están en `[x]`.
 
@@ -557,7 +558,7 @@ Evidencia: commit `da984cf` (solo documento; `make guards` en verde).
 - **Orden del agente para el demo:** SCRUM-31 → SCRUM-216 (Perfil › Restricciones, solo lectura) → SCRUM-188 → SCRUM-192 → cierre de SCRUM-190 → SCRUM-214.
 - El detalle y los puntajes RICE están en Jira, en el comentario "Priorización 2026-10-25" de cada issue.
 
-### SCRUM-31 · Mis restricciones nunca se saltan (P0, Fase C)
+### SCRUM-31 · Mis restricciones nunca se saltan (P0, Fase C; finalizada el 2026-10-27)
 
 **Criterios:**
 - [x] Con restricciones en vigor, ni el plan, ni las sustituciones, ni lo que se le ofrece a la IA traen un ejercicio prohibido.
@@ -565,7 +566,7 @@ Evidencia: commit `da984cf` (solo documento; `make guards` en verde).
 - [x] Con varias restricciones, un ejercicio vale solo si ninguna lo prohíbe, en cualquier orden. Prohibir por ID gana incluso al permiso de la misma restricción.
 - [x] Una restricción resuelta ya no limita.
 - [x] Con la fecha de revisión vencida, la restricción sigue aplicando hasta que se confirme que se resolvió (RN-004).
-- [ ] La app pregunta "¿cómo sigues?" al vencer la fecha de revisión: es de UI, va con SCRUM-216 y SCRUM-36 (hoy Perfil › Restricciones no recibe datos).
+- La app pregunta "¿cómo sigues?" al vencer la fecha de revisión: es de UI y **pasó a SCRUM-36**.
 - [x] Si no queda ningún ejercicio seguro para un músculo, se omite y la explicación lo dice; nunca se fuerza uno.
 - [x] Una sola implementación: `RestrictionPolicyEngine.verdict(for:under:scope:)`. La usan el plan (`ExerciseAssigner`), las sustituciones, la IA (`PlanPersonalizationValidator`) y el dropset (`IntensityAdvisor`).
 
@@ -587,7 +588,7 @@ Evidencia: commit `285a4ff`; `make ci` → `✔ Test run with 520 tests in 78 su
 - **Por qué no hay prueba en simulador:** hoy ninguna pantalla crea permisos ni resuelve restricciones. La regresión de las zonas del formulario la cubre `RestrictionZonesTests`.
 - **La integración no usa `AppEnvironment`:** vive en el target de la app. Se usan `TodayPlanCoordinator` y `LocalPersistence` reales.
 
-### SCRUM-216 · Perfil › Restricciones muestra las que declaré (solo lectura, demo)
+### SCRUM-216 · Perfil › Restricciones muestra las que declaré (solo lectura, demo; finalizada el 2026-10-27)
 
 **Criterios:**
 - [x] Cada restricción del perfil se ve con su zona, su lado, su nota y su origen ("La declaraste tú" o "Indicación de un profesional"), en palabras simples. También se ve si el plan la sigue cuidando; con la fecha de revisión vencida sigue cuidándose (RN-004).
@@ -612,7 +613,7 @@ Evidencia: commit `f55256f`; `make ci` → `✔ Test run with 520 tests in 78 su
 - **Simulador (iPad A16):** con un perfil real hecho en el cuestionario (codo + nota), Perfil › Restricciones muestra "Codo · La declaraste tú · Tu plan la cuida." y "Tu nota", sin botones.
 - **Pendiente en simulador:** no se vio la fila profesional con revisión vencida ni el estado vacío. Los toques del simulador fallan (mismo problema de entorno que SCRUM-217); los cubren los tests y las previews.
 
-### SCRUM-214 · PR-B001 Test de caracterización del motor de rutinas (Should, demo)
+### SCRUM-214 · PR-B001 Test de caracterización del motor de rutinas (Should, demo; finalizada el 2026-10-27)
 
 **Criterios:**
 - [x] Con el catálogo real, una muestra determinista de 200 perfiles de la matriz reporta las rutinas distintas en total y por número de días. La matriz es {días 2–7} × {variedad} × {objetivo} × {experiencia} × {fase} × {30, 45, 60, 90, 120 min}.
@@ -641,7 +642,7 @@ Evidencia: commit `f55256f`; `make ci` → `✔ Test run with 520 tests in 78 su
 
 Evidencia: commit `a4aacd4`; `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 496 tests in 90 suites passed … with 5 known issues` (2026-10-26; línea base 520 + 494). Test en `Packages/PRCore/Tests/PRCoreTests/RoutineCharacterizationTests.swift`.
 
-### SCRUM-217 · Entorno de pruebas de UI estable (Should, demo)
+### SCRUM-217 · Entorno de pruebas de UI estable (Should, demo; finalizada el 2026-10-27)
 
 **Criterios:**
 - [x] Con el simulador recién arrancado, `make test-ui` corre todas las pruebas de UI de principio a fin dos veces seguidas, sin colgarse, y deja el resultado por prueba. Hoy son 28 en `main`; la 29.ª, `testExportCountsTheFirstWorkout`, llega con SCRUM-190.
@@ -658,14 +659,14 @@ Evidencia: commit `024cc33`.
 - `make test-ui` ×2 seguidas el 2026-10-26: `Executed 28 tests, with 0 failures` (1,199 s) y `Executed 28 tests, with 0 failures` (1,211 s), `make exit=0` las dos.
 - `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 496 tests in 90 suites passed … with 5 known issues` (las de SCRUM-214).
 
-### SCRUM-222 · Hoy en iPhone: los ejercicios se ven con "¿Cómo dormiste?" (Must, demo)
+### SCRUM-222 · Hoy en iPhone: los ejercicios se ven con "¿Cómo dormiste?" (Must, demo; finalizada el 2026-10-27)
 
 **Criterios:**
 - [x] En iPhone, con "¿Cómo dormiste?", toda la pantalla se desplaza y los ejercicios quedan a un deslizamiento. Antes la lista medía 24 pt.
 - [x] "Empezar", "Ordenar" y "¿Por qué este orden?" quedan fijos abajo, siempre a la vista.
 - [x] Lo que se desplaza pasa por debajo de la tira de la semana sin mezclarse. La tarjeta de sueño entra y sale con animación que respeta Reducir movimiento.
 - [x] Previews en iPhone chico y grande, en claro y oscuro, y `.accessibility3`. Sin lógica nueva en la vista.
-- [ ] 👤 Revisarlo en un iPhone real, chico y grande.
+- 👤 Verificación pendiente: revisarlo en un iPhone real, chico y grande.
 
 Evidencia: commit `42ffa7b`.
 - `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 496 tests in 90 suites passed … with 5 known issues`.
@@ -674,9 +675,9 @@ Evidencia: commit `42ffa7b`.
 
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase C (restricciones ~~SCRUM-31~~ hecha el 2026-10-25, SCRUM-32 en `main` el 2026-10-27 con su pantalla pendiente en SCRUM-226, 36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–39; ~~SCRUM-40~~ y ~~SCRUM-223~~ hechas el 2026-10-26) → HealthKit, Watch, pestañas.
+En orden: Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27; quedan SCRUM-226, la pantalla del dolor, y SCRUM-36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27) → HealthKit, Watch, pestañas.
 
-### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada; en `main`)
+### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada; finalizada el 2026-10-27)
 
 - **Decisión de Jesús (2026-10-26):** se trabaja en paralelo con las pruebas manuales del POC.
 - **En `main` desde el 2026-10-26:** Jesús fusionó el PR #6 (`cdc4ed7`), antes del demo. El plan inicial era esperar a después del demo, porque toca la persistencia. El CI de GitHub (`make ci`) pasó en el PR y en `main` después de fusionar.
@@ -701,7 +702,7 @@ Evidencia: commit `cf58811`, en `main` por el PR #6 (`cdc4ed7`).
   - `PersistenceFormatTests.swift` (7): el generador de muestras solo corre con `PR_WRITE_PERSISTENCE_FIXTURES=1`.
 - **Pendiente:** 👤 Jesús, actualizar la app en un iPhone con datos reales. El historial, el plan y Progreso deben verse igual, y la marca se escribe sola.
 
-### SCRUM-223 · Un plan ilegible no se sobrescribe al rehacer el cuestionario (P0, en `main`)
+### SCRUM-223 · Un plan ilegible no se sobrescribe al rehacer el cuestionario (P0; finalizada el 2026-10-27)
 
 - **Origen:** hallado al implementar SCRUM-40. Es P0 por `AGENTS.md` §5 (Jesús lo confirmó el 2026-10-26).
 - **En `main` desde el 2026-10-26:** Jesús fusionó el PR #7 (`3f7c717`) justo después de SCRUM-40. En el PR pasaron `make ci` (4 min 7 s) y GitGuardian, y el CI de `main` después de fusionar también pasó.
@@ -718,7 +719,7 @@ Evidencia: commit `c29e473`, en `main` por el PR #7 (`3f7c717`).
 - `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 528 tests in 93 suites passed … with 5 known issues` (2026-10-26; línea base 520 + 521 sobre SCRUM-40). El build de iOS y el de watchOS pasaron.
 - **Tests:** `Packages/PRCore/Tests/PRCoreTests/UnreadablePlanTests.swift` (7), todos con `LocalPersistence` real. Los dos primeros se escribieron antes del arreglo y fallaban: sin copia en cuarentena y con el historial de bloques perdido.
 
-### SCRUM-218 · PR-B004 Composición de sesión (Must 1.0, en `main`)
+### SCRUM-218 · PR-B004 Composición de sesión (Must 1.0; finalizada el 2026-10-27)
 
 - **En `main` desde el 2026-10-26:** Jesús fusionó el PR #8 (`9e05ebc`), antes del demo. El CI de GitHub pasó en el PR y en `main`. La rutina del demo cambia; el guion no cita números de series.
 - **Decisiones de Jesús (2026-10-26):**
@@ -733,7 +734,7 @@ Evidencia: commit `c29e473`, en `main` por el PR #7 (`3f7c717`).
   2. bajar series hasta el mínimo;
   3. solo entonces quitar otro ejercicio no protegido.
   Nunca 1 serie, y lo protegido no se toca.
-- [ ] Juntar pares compatibles como superset (`CompatibleSuperset`): **pasó a SCRUM-224.** La sesión guardada no tiene cómo representar un superset; necesita cambiar el modelo (con su migración, ADR-0003) y el modo entrenamiento.
+- Juntar pares compatibles como superset (`CompatibleSuperset`): **pasó a SCRUM-224.** La sesión guardada no tiene cómo representar un superset; necesita cambiar el modelo (con su migración, ADR-0003) y el modo entrenamiento.
 - [x] Fuerza con 60 min: las anclas compuestas conservan al menos 3 series y se recortan accesorios.
 - [x] Un músculo entrenado 2 o más veces por semana: su ancla sale en al menos 2 sesiones y sus series por sesión difieren en 1 como máximo.
 - [x] "Más tiempo no es más volumen": con 90 o 180 min no se agregan series (D1 sigue pendiente).
@@ -754,7 +755,7 @@ Evidencia: commit `ca73290`, en `main` por el PR #8 (`9e05ebc`).
   - D1, para el mínimo del rango;
   - 👤 Jesús, revisar en el iPhone que el plan regenerado y el aviso "plan actualizado" se vean bien.
 
-### SCRUM-225 · "Ajustar a mi tiempo" nunca deja una serie suelta (High, sale en el demo; en `main`)
+### SCRUM-225 · "Ajustar a mi tiempo" nunca deja una serie suelta (High, sale en el demo; finalizada el 2026-10-27)
 
 - **Origen:** hallado al cerrar SCRUM-218. SCRUM-218 quitó las series sueltas del plan semanal, pero el ajuste del día (SCRUM-30, `HardTimeOptimizer`) todavía dejaba un accesorio de 2 series en 1. Lo usa el guion del demo ("Tengo 30 min").
 - **En `main` desde el 2026-10-27:** Jesús fusionó el PR #10 (`3e46624`). El CI de GitHub (`make ci`) pasó en `main` después de fusionar.
@@ -776,7 +777,7 @@ Evidencia: commit `f4380b7`, en `main` por el PR #10 (`3e46624`).
 - **Cambio deliberado:** dos pruebas de SCRUM-30 en `SessionTimeFitTests` cambian sus números (antes reducían a 1 serie de trabajo). Su intención se mantiene.
 - **Sin prueba de UI:** ninguna prueba de UI usa "Ajustar a mi tiempo"; lo cubren las de unidad e integración.
 
-### SCRUM-32 · PR-0110 Una sola forma de medir el dolor (Must 1.0, Fase C; en `main`)
+### SCRUM-32 · PR-0110 Una sola forma de medir el dolor (Must 1.0, Fase C; finalizada el 2026-10-27)
 
 - **En `main` desde el 2026-10-27:** Jesús fusionó el PR #9 (`883336b`). La pantalla para reportar el dolor es SCRUM-226.
 - **Decisiones de Jesús (2026-10-26):**
@@ -794,7 +795,7 @@ Evidencia: commit `f4380b7`, en `main` por el PR #10 (`3e46624`).
 - [x] Alto → "Detén este ejercicio o cámbialo por otro. Si el dolor sigue, consulta a un profesional de la salud."
 - [x] Ningún mensaje adivina una lesión (RN-015): un test revisa los textos en español e inglés.
 - [x] Lo guardado en la escala 1–5 se traduce con la tabla, documentada en ADR-0003 y probada. `workouts` y `pending-operations` pasan de v1 a v2: es la primera migración real de SCRUM-40.
-- [ ] 👤 Manual: reportar cada nivel y revisar la recomendación. Necesita la pantalla, que va aparte.
+- 👤 Verificación pendiente: reportar cada nivel y revisar la recomendación. Necesita la pantalla (SCRUM-226).
 
 Evidencia: commit `e1e9a6e`, en `main` por el PR #9 (`883336b`).
 - `make ci` → `✔ Test run with 533 tests in 80 suites passed` + `Test run with 539 tests in 94 suites passed … with 4 known issues` (2026-10-26; línea base 524 + 532 en `main` `9e05ebc`). Los 4 *known issues* son los de SCRUM-215 y SCRUM-219. El build de iOS y el de watchOS pasaron.
