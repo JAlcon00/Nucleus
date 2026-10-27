@@ -675,3 +675,28 @@ Evidencia: commit `42ffa7b`.
 ## 4. Después del POC (no empezar todavía)
 
 En orden: Fase C (restricciones ~~SCRUM-31~~ hecha el 2026-10-25, 32, 36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–40) → HealthKit, Watch, pestañas.
+
+### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada en rama)
+
+- **Decisión de Jesús (2026-10-26):** se trabaja en paralelo con las pruebas manuales del POC.
+- Va en la rama `SCRUM-40-migraciones` y **no se sube a `main` hasta después del demo**, porque toca la persistencia.
+- Criterios aprobados en Jira el 2026-10-26.
+
+**Criterios:**
+- [x] Versión por colección: cada carpeta guarda la suya (`.schema-version`); sin marca es la 1.
+- [x] Migra en orden y una sola vez, también las colecciones de cada usuario. Un corte a la mitad se termina al siguiente arranque sin perder ni duplicar.
+- [x] Nunca se pierde el original:
+  - se escribe aparte y se verifica antes de cambiar las carpetas;
+  - queda un respaldo de la versión anterior;
+  - un registro que no migra va intacto a cuarentena y el resto sí migra.
+- [x] Aviso: lo que está en cuarentena cuenta en el "no pude leer N" de Exportar y Progreso. Un plan en cuarentena da "plan ilegible".
+- [x] Con una versión más nueva, una marca ilegible o un paso faltante no se toca nada, y se registra.
+- [x] Detector en CI: muestras v1 reales de las 7 colecciones que la app escribe. Probado: renombrar un campo de `SleepCheckIn` hace fallar `PersistenceFormatTests`.
+- [x] Regla escrita: ADR-0003 y `AGENTS.md` §3.1.
+
+Evidencia: commit `cf58811` (rama `SCRUM-40-migraciones`).
+- `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 521 tests in 92 suites passed … with 5 known issues` (2026-10-26; línea base 520 + 496). Los 5 *known issues* son los de SCRUM-214. El build de iOS y el de watchOS pasaron.
+- **Tests:**
+  - `Packages/PRCore/Tests/PRCoreTests/SchemaMigrationTests.swift` (18): cubren todo lo de arriba más la integración con el historial demo real. Pasan del layout antiguo a carpetas y a versiones, Exportar cuenta lo mismo, y con un paso nuevo que rechaza un entrenamiento, Exportar avisa 1 ilegible y el respaldo conserva los 8.
+  - `PersistenceFormatTests.swift` (7): el generador de muestras solo corre con `PR_WRITE_PERSISTENCE_FIXTURES=1`.
+- **Pendiente:** 👤 Jesús, actualizar la app en un iPhone con datos reales. El historial, el plan y Progreso deben verse igual, y la marca se escribe sola.

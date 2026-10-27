@@ -133,8 +133,29 @@ public struct AtomicFileRepositoryStore: RepositoryStore {
     }
 
     /// Sólo `*.json` del propio directorio (no subdirectorios ni `*.json.tmp` de una
-    /// escritura interrumpida). Orden estable por clave.
+    /// escritura interrumpida). Orden estable por clave. Los registros en cuarentena
+    /// (no se pudieron migrar, SCRUM-40) cuentan como ilegibles: se avisa, no se ocultan.
     public func readAllEntries() throws -> StoreReadResult {
+        let active = try readActiveEntries()
+        // Si la cuarentena no se puede listar, se lee igual lo activo.
+        let quarantined = (try? quarantinedKeys()) ?? []
+        return StoreReadResult(entries: active.entries, unreadableKeys: active.unreadableKeys + quarantined)
+    }
+
+    /// Claves de los registros guardados en cuarentena (cualquier versión).
+    func quarantinedKeys() throws -> [String] {
+        let quarantine = CollectionLayout.quarantineURL(in: directory)
+        guard FileManager.default.fileExists(atPath: quarantine.path) else { return [] }
+        let paths = try FileManager.default.subpathsOfDirectory(atPath: quarantine.path)
+        return paths
+            .map { URL(fileURLWithPath: $0) }
+            .filter { $0.pathExtension == "json" }
+            .map { $0.deletingPathExtension().lastPathComponent }
+            .sorted()
+    }
+
+    /// Los `*.json` del propio directorio, sin la cuarentena.
+    func readActiveEntries() throws -> StoreReadResult {
         let urls = try FileManager.default.contentsOfDirectory(
             at: directory,
             includingPropertiesForKeys: nil,

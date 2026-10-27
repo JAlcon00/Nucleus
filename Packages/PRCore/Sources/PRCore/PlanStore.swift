@@ -46,13 +46,19 @@ public struct PlanStore: Sendable {
     // MARK: - Plan
 
     public func loadPlan(userID: String) async -> LoadResult {
+        let key = Self.key(forUser: userID)
         let data: Data?
         do {
-            data = try plans.read(key: Self.key(forUser: userID))
+            data = try plans.read(key: key)
         } catch {
             return .unreadable
         }
-        guard let data else { return .none }
+        guard let data else {
+            // Un plan que no se pudo migrar (SCRUM-40) está en cuarentena: se avisa como
+            // ilegible, no se trata como primer arranque.
+            let quarantined = (try? plans.readAllEntries().unreadableKeys.contains(key)) ?? false
+            return quarantined ? .unreadable : .none
+        }
         guard let plan = try? JSONDecoder().decode(StoredPlan.self, from: data),
               plan.userID == userID,
               let block = try? await blocks.block(id: plan.activeBlockID) else {

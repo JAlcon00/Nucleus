@@ -105,6 +105,19 @@ Codable/JSON de escritura atómica (no SwiftData; ver `docs/spec/docs/adr/ADR-00
 delete policies, perfil único y persistencia atómica a disco. El save local es
 inmediato y autoritativo para proteger los datos de workout (RF-028/RF-029).
 
+## Migraciones seguras de datos guardados (SCRUM-40, RNF-028)
+
+Cada colección guarda su versión de formato (`.schema-version`; sin marca = 1) y
+`LocalPersistence.migrateSchemas()` la lleva a la vigente al arrancar. Las de cada usuario
+migran en `scoped(toUser:)`. La migración escribe aparte y cambia las carpetas al final; la
+original queda como respaldo. Un registro que no migra va a cuarentena y cuenta como
+ilegible en Exportar y Progreso. Ver `docs/spec/docs/adr/ADR-0003`. Cobertura:
+- `PRCoreTests/SchemaMigrationTests.swift`: orden, una sola vez, cortes, cuarentena,
+  versión más nueva, paso faltante, por usuario, plan en cuarentena, y layout antiguo →
+  versiones con Exportar.
+- `PRCoreTests/PersistenceFormatTests.swift`: muestras reales por colección y versión,
+  como detector en CI de cambios incompatibles.
+
 ## Catálogo de ejercicios (EPIC-03)
 
 Implementado en PR-0301 con el dataset público *free-exercise-db* (Unlicense)

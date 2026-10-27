@@ -65,6 +65,7 @@ Resumen de lo que se espera (detalle en la skill):
 - **No tragar errores de escritura** (`try?` sobre guardado está prohibido en datos de workout).
 - **Operaciones reintentables idempotentes** (cola de pendientes, guardado de series, sync).
 - **Persistencia compartida:** cada repositorio en su propia colección o prefijo; probar con el `RepositoryStore` real en directorio temporal.
+- **Cambio de modelo persistido = versión + migración + muestra + test** (ADR-0003). Agregar un campo opcional no lo requiere. Renombrar, quitar o cambiar el tipo o el significado de un campo sí: subir `current` en `PersistenceSchemas`, agregar el `SchemaMigrationStep`, guardar la muestra nueva y que `PersistenceFormatTests` pase en `make ci`.
 - **Límite de atasco:** 3 intentos sin avance sobre la misma falla → detenerse, replantear y, si sigue, reportar el bloqueo con evidencia.
 - **Nunca** borrar, desactivar ni debilitar un test para ponerlo en verde.
 
