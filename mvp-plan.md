@@ -82,7 +82,7 @@ Entra al demo solo si F-01 a F-06 están completos.
 ### Soporte
 - [ ] S-01 · Ambiente demo y deploy — SCRUM-188 (era de Gael). Ver bloque 11.
 - [ ] S-02 · CI en GitHub — SCRUM-189 (era de Joss). Ver bloque 3. CI verde en `main` (`bb3c472`); falta 👤 proteger `main`.
-- [ ] S-03 · Pruebas de los flujos — SCRUM-190 (era de Joss). Ver bloque 10.
+- [ ] S-03 · Pruebas de los flujos — SCRUM-190 (era de Joss). Ver bloque 10. Criterios del agente [x]; falta 👤 pruebas manuales.
 - [ ] S-04 · Integración GitHub–Jira — SCRUM-191 (era de Joss). Ver bloque 12.
 - [ ] S-05 · Presentación con demo — SCRUM-192 (era de Gael). Ver bloque 13.
 
@@ -103,7 +103,7 @@ Diagnóstico verificado en el código el 2026-10-20: todos los bugs descritos ab
 | 7 | SCRUM-28 | Volumen real y una sesión distinta por día | P0 | 2, 6 | [ ] criterios [x]; falta 👤 manual |
 | 8 | SCRUM-29 | Ejercicios en orden correcto | P0 | 7 | [x] |
 | 9 | SCRUM-30 | Duración real y ajuste de tiempo (F-07) | P1 | 7 | [ ] |
-| 10 | SCRUM-190 | Pruebas de los flujos | soporte | 1–8 | [ ] |
+| 10 | SCRUM-190 | Pruebas de los flujos | soporte | 1–8 | [ ] criterios del agente [x]; falta 👤 manual |
 | 11 | SCRUM-188 | Ambiente demo | soporte | 1–8 | [ ] |
 | 12 | SCRUM-191 | Integración GitHub–Jira | soporte | 3 | [ ] |
 | 13 | SCRUM-192 | Guion de presentación | soporte | 10, 11 | [ ] |
@@ -380,14 +380,20 @@ Evidencia: commit `1c50415`; `make ci` → `✔ Test run with 513 tests in 77 su
 ### Bloque 10 — SCRUM-190 · Pruebas de los flujos (soporte)
 
 **Agente:**
-- [ ] Crear `docs/poc/pruebas-flujos.md` con una lista de pruebas por flujo, cada una con pasos y resultado esperado:
+- [x] Crear `docs/poc/pruebas-flujos.md` con una lista de pruebas por flujo, cada una con pasos y resultado esperado:
   1. Primer uso.
   2. Entrenar.
   3. Recuperación (cierre forzado y modo avión).
   4. Exportar.
-- [ ] Ejecutar las pruebas automatizables y anotar resultado y fecha.
+- [x] Ejecutar las pruebas automatizables y anotar resultado y fecha.
 
-**👤 Humano (Jesús):** ejecutar las pruebas manuales (cierre forzado, modo avión, iPhone real) y anotar pasó/falló con fecha.
+Evidencia: commits `fd7074c` (lista de pruebas y `testExportCountsTheFirstWorkout`) y `e3de2e7` (resultados), rama al día con `main` (`787144e`).
+- `make test-ui` → `Executed 30 tests, with 0 failures (0 unexpected) in 1306.026 seconds` (2026-10-26, simulador "PR UI Tests").
+- `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 496 tests in 90 suites passed … with 5 known issues` (2026-10-26). Los 5 *known issues* son los de la caracterización de SCRUM-214.
+- Unidad e integración por flujo: 91, 74, 18 y 7 en verde (2026-10-23).
+- UI por flujo: 9, 6, 1 y 2 en verde (2026-10-26).
+
+**👤 Humano (Jesús):** ejecutar las pruebas manuales (cierre forzado, modo avión, iPhone real) y anotar pasó/falló con fecha. En `pruebas-flujos.md` son P1.8, P3.1, P3.7 y P4.7.
 
 ---
 
