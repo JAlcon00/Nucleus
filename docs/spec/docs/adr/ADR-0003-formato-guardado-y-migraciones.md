@@ -85,12 +85,28 @@ archivo por registro, con escritura atómica (ADR-0001). Antes de esta decisión
 | Cambio | Qué hacer |
 |---|---|
 | Agregar un campo opcional (o con valor por defecto al decodificar) | Nada más: la muestra vigente sigue pasando. |
-| Renombrar, quitar o cambiar el tipo de un campo, o cambiar su significado | 1. Subir `current` de la colección en `PersistenceSchemas`. 2. Agregar el `SchemaMigrationStep` desde la versión anterior. 3. Guardar la muestra nueva con `PR_WRITE_PERSISTENCE_FIXTURES=1 swift test --filter PersistenceFormatTests` (la de la versión anterior se queda). 4. `make ci`. |
+| Renombrar, quitar o cambiar el tipo de un campo, o cambiar su significado | 1. Subir `current` de la colección en `PersistenceSchemas`. 2. Agregar el `SchemaMigrationStep` desde la versión anterior. 3. Guardar la muestra nueva con `PR_WRITE_PERSISTENCE_FIXTURES=1 swift test --filter PersistenceFormatTests` (la de la versión anterior se queda). Revisar que la muestra de **cada** versión traiga el campo que cambió: si la anterior no lo trae, el paso no se prueba. 4. `make ci`. |
+
+## Versiones de cada colección
+
+| Colección | Versión vigente | Historia | Qué cambió |
+|---|---|---|---|
+| `workouts` | v2 | SCRUM-32 | El dolor de cada serie pasa a la escala única (`PainLevel`) con la tabla de `LegacyPainScale`: 1 → leve; 2 y 3 → moderado; 4 y 5 → alto; punzante nunca por debajo de moderado. |
+| `pending-operations` | v2 | SCRUM-32 | Lo mismo, dentro del `SetRecord` de cada serie pendiente. |
+| Las demás | v1 | SCRUM-40 | Formato de antes de SCRUM-40. |
+
+- La primera migración real fue la de SCRUM-32. El modelo actual sigue leyendo la forma
+  anterior del dolor, así que el paso solo lee y vuelve a guardar cada registro.
+- Las muestras v1 de `workouts` y `pending-operations` se escribieron con el código de
+  antes de SCRUM-32 (`origin/main` `9e05ebc`) y traen dolor en la forma anterior.
+  - Una serie que la cola ya tiene no se vuelve a encolar (idempotencia). Por eso el
+    generador quita la serie encolada sin dolor antes de encolar la que lo trae.
 
 ## Consecuencias
 
-- **Para los usuarios no cambia nada hoy.** Todas las colecciones quedan en la versión
-  1; al primer arranque solo se escribe la marca.
+- **Para los usuarios.** Con SCRUM-40 todas las colecciones quedaron en la versión 1 y
+  al primer arranque solo se escribió la marca. Con SCRUM-32, `workouts` y
+  `pending-operations` migran a v2 al abrir la app (ver la tabla de arriba).
 - **Espacio en disco.** Durante una migración la colección ocupa el doble, y después
   queda un respaldo de la versión anterior. Son archivos JSON pequeños.
 - **Casos límite conocidos:**

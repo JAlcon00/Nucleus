@@ -674,7 +674,7 @@ Evidencia: commit `42ffa7b`.
 
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase C (restricciones ~~SCRUM-31~~ hecha el 2026-10-25, 32, 36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–39; ~~SCRUM-40~~ y ~~SCRUM-223~~ hechas el 2026-10-26) → HealthKit, Watch, pestañas.
+En orden: Fase C (restricciones ~~SCRUM-31~~ hecha el 2026-10-25, SCRUM-32 en rama el 2026-10-26, 36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–39; ~~SCRUM-40~~ y ~~SCRUM-223~~ hechas el 2026-10-26) → HealthKit, Watch, pestañas.
 
 ### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada; en `main`)
 
@@ -753,3 +753,42 @@ Evidencia: commit `ca73290` (rama `SCRUM-218-composicion-sesion`).
   - el superset, que va aparte;
   - D1, para el mínimo del rango;
   - 👤 Jesús, revisar en el iPhone que el plan regenerado y el aviso "plan actualizado" se vean bien.
+
+### SCRUM-32 · PR-0110 Una sola forma de medir el dolor (Must 1.0, Fase C; en rama)
+
+- Va en la rama `SCRUM-32-escala-dolor`, sin subir a `main` todavía.
+- **Decisiones de Jesús (2026-10-26):**
+  1. Tabla conservadora para lo guardado en la escala 1–5: 1 → leve; 2 y 3 → moderado; 4 y 5 → alto. Un dolor punzante nunca queda por debajo de moderado.
+  2. Se quita el tipo (molestia/punzante): queda solo el nivel y, opcional, el músculo.
+  3. Ahora va la lógica; la pantalla para reportar el dolor es otra historia.
+
+**Criterios:**
+- [x] Una sola escala (ninguno, leve, moderado, alto) en el modelo guardado, en los tres motores y en el agente (`ReportPain` ya usaba `PainLevel`). Hoy ninguna pantalla muestra el dolor: la de reportarlo va aparte.
+- [x] Con dolor moderado o alto no se sube la carga ni el volumen, sin excepción (RN-003):
+  - `PainFeedbackEngine`, `ProgressionEngine` y `StrengthProgressionEngine` usan la misma regla (`PainFeedback.blocksProgression`);
+  - el umbral ya no se puede configurar;
+  - antes, una molestia de 2 o un punzante de 1 dejaban subir la carga; ahora son moderado y no la suben.
+- [x] Moderado → "Baja la intensidad y observa cómo te sientes en las próximas series."
+- [x] Alto → "Detén este ejercicio o cámbialo por otro. Si el dolor sigue, consulta a un profesional de la salud."
+- [x] Ningún mensaje adivina una lesión (RN-015): un test revisa los textos en español e inglés.
+- [x] Lo guardado en la escala 1–5 se traduce con la tabla, documentada en ADR-0003 y probada. `workouts` y `pending-operations` pasan de v1 a v2: es la primera migración real de SCRUM-40.
+- [ ] 👤 Manual: reportar cada nivel y revisar la recomendación. Necesita la pantalla, que va aparte.
+
+Evidencia: commit `e1e9a6e` (rama `SCRUM-32-escala-dolor`).
+- `make ci` → `✔ Test run with 533 tests in 80 suites passed` + `Test run with 539 tests in 94 suites passed … with 4 known issues` (2026-10-26; línea base 524 + 532 en `main` `9e05ebc`). Los 4 *known issues* son los de SCRUM-215 y SCRUM-219. El build de iOS y el de watchOS pasaron.
+- **Tests:**
+  - `PRDomainTests/PainScaleTests.swift` (9): la tabla, leer la forma anterior y la nueva, guardar solo la nueva, y los tres motores de acuerdo en cada nivel.
+  - `PRCoreTests/PainReportTests.swift` (7), con `LocalPersistence` real:
+    - el dolor se guarda en la última serie antes de responder;
+    - la siguiente serie no propone más peso;
+    - al reabrir, la serie pendiente sin dolor no lo borra;
+    - los textos;
+    - la migración de entrenamientos y series pendientes.
+  - Se cambiaron a propósito:
+    - `PainFeedbackEngineTests`: el umbral ya no se puede cambiar;
+    - dos pruebas de `SchemaMigrationTests` que daban por hecho que `workouts` seguía en v1. Ahora usan la versión vigente y la migración real.
+- **Pendiente:**
+  - la pantalla para reportar el dolor en el entrenamiento;
+  - `ProgressionEngine` y `StrengthProgressionEngine` todavía no están conectados al plan: hoy la siguiente serie o sesión propone la carga planeada o el último peso hecho, y nada sube la carga solo;
+  - si fallan las dos escrituras a disco (la de la serie y la del dolor), al reabrir se recupera la serie sin el dolor. La app ya muestra el aviso de guardado fallido;
+  - 👤 Jesús, actualizar la app en un iPhone con entrenamientos guardados y revisar que el historial se vea igual.
