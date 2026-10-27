@@ -263,12 +263,12 @@ struct StrengthProgressionTests {
 
     // MARK: - Gate común
 
-    @Test("dolor moderado/alto cancela la progresión en cualquier estrategia")
-    func painCancelsAllStrategies() throws {
-        let sets = [evidence(reps: 12, pain: .discomfort(muscleGroup: .shoulders, severity: 3))]
+    @Test("dolor moderado/alto cancela la progresión en cualquier estrategia", arguments: [PainLevel.moderate, .high])
+    func painCancelsAllStrategies(level: PainLevel) throws {
+        let sets = [evidence(reps: 12, pain: PainFeedback(level: level, muscleGroup: .shoulders))]
         for strategy in ProgressionStrategy.strengthStrategies {
             let eval = try engine.evaluate(input(strategy: strategy, sets: sets, increment: 2.5))
-            #expect(eval.decision == .holdLoad(weight: 40), "\(strategy) no debía progresar con dolor moderado/alto")
+            #expect(eval.decision == .holdLoad(weight: 40), "\(strategy) no debía progresar con dolor \(level)")
         }
     }
 

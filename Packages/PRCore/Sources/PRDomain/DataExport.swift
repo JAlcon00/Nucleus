@@ -169,16 +169,18 @@ public struct ExportEngine: Sendable {
         )
     }
 
+    /// Escala única (SCRUM-32): `none`, `mild`, `moderate` o `high`, con el músculo si se
+    /// indicó (`moderate:shoulders`).
     private static func painSummary(_ pain: PainFeedback?) -> String? {
         guard let pain else { return nil }
-        switch pain {
-        case .none:
-            return "none"
-        case .discomfort(let muscle, let severity):
-            return "discomfort:\(muscle.rawValue):\(severity)"
-        case .sharpPain(let muscle, let severity):
-            return "sharpPain:\(muscle.rawValue):\(severity)"
+        let level: String
+        switch pain.level {
+        case .none: level = "none"
+        case .mild: level = "mild"
+        case .moderate: level = "moderate"
+        case .high: level = "high"
         }
+        return pain.muscleGroup.map { "\(level):\($0.rawValue)" } ?? level
     }
 
     // MARK: - CSV rendering (RFC-4180 "": escape de comillas)

@@ -222,11 +222,11 @@ revierta (`revert` → `.unknown`). Cobertura en `PRDomainTests/MissingEquipment
 
 | Rule | Components that MUST enforce it |
 |---|---|
-| RN-003 no progression with moderate/high pain | RestrictionPolicyEngine + ProgressionEngine + ActionPolicyValidator |
+| RN-003 no progression with moderate/high pain | RestrictionPolicyEngine + `PainFeedback.blocksProgression` (PainFeedbackEngine, ProgressionEngine, StrengthProgressionEngine) + ActionPolicyValidator |
 | RN-004 restriction not auto-resolved | RestrictionRepository + Restrictions feature |
 | RN-008 no calorie double count | WorkoutReconciliationEngine + summary aggregation |
 | RN-009 no invented external sets | Health import mapping |
-| RN-015 no diagnosis | Agent policy + copy review |
+| RN-015 no diagnosis | Agent policy + copy review + PainRecommendationPresenter (test de palabras de diagnóstico) |
 | RN-017 agent actions validated | AgentCore/ActionPolicyValidator |
 | RN-018 measured vs estimated | Domain metadata + UI formatting |
 
