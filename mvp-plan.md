@@ -1,7 +1,7 @@
 # mvp-plan.md — Plan activo: MVP / POC de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica POC: SCRUM-180).
-> **Actualizado:** 2026-10-22 (tablero sincronizado con Jira y con el código).
+> **Actualizado:** 2026-10-26 (tablero sincronizado con Jira y con el código).
 > **Ejecuta:** el agente de IA de Xcode. Hace todo el trabajo asignado en Jira a Gael Durán y Joss Amador, en el orden de este archivo.
 > **Regla:** mientras quede un `[ ]` en las secciones 2 y 3, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
 
@@ -80,11 +80,11 @@ Entra al demo solo si F-01 a F-06 están completos.
 - [x] Con más tiempo no se agregan series → SCRUM-30.
 
 ### Soporte
-- [ ] S-01 · Ambiente demo y deploy — SCRUM-188 (era de Gael). Ver bloque 11.
+- [ ] S-01 · Ambiente demo y deploy — SCRUM-188 (era de Gael). Ver bloque 11. Criterios del agente [x]; falta 👤 firma, iPhone y video.
 - [ ] S-02 · CI en GitHub — SCRUM-189 (era de Joss). Ver bloque 3. CI verde en `main` (`bb3c472`); falta 👤 proteger `main`.
 - [ ] S-03 · Pruebas de los flujos — SCRUM-190 (era de Joss). Ver bloque 10. Criterios del agente [x]; falta 👤 pruebas manuales.
-- [ ] S-04 · Integración GitHub–Jira — SCRUM-191 (era de Joss). Ver bloque 12.
-- [ ] S-05 · Presentación con demo — SCRUM-192 (era de Gael). Ver bloque 13.
+- [ ] S-04 · Integración GitHub–Jira — SCRUM-191 (era de Joss). Ver bloque 12. Criterio del agente [x]; falta 👤 instalar "GitHub for Jira".
+- [ ] S-05 · Presentación con demo — SCRUM-192 (era de Gael). Ver bloque 13. Criterios del agente [x]; falta 👤 ensayo.
 
 ---
 
@@ -102,11 +102,11 @@ Diagnóstico verificado en el código el 2026-10-20: todos los bugs descritos ab
 | 6 | SCRUM-26 | Recordar perfil y plan | P0 | 1 | [ ] criterios [x]; falta 👤 manual |
 | 7 | SCRUM-28 | Volumen real y una sesión distinta por día | P0 | 2, 6 | [ ] criterios [x]; falta 👤 manual |
 | 8 | SCRUM-29 | Ejercicios en orden correcto | P0 | 7 | [x] |
-| 9 | SCRUM-30 | Duración real y ajuste de tiempo (F-07) | P1 | 7 | [ ] |
+| 9 | SCRUM-30 | Duración real y ajuste de tiempo (F-07) | P1 | 7 | [ ] criterios [x]; falta 👤 sesión larga en dispositivo |
 | 10 | SCRUM-190 | Pruebas de los flujos | soporte | 1–8 | [ ] criterios del agente [x]; falta 👤 manual |
-| 11 | SCRUM-188 | Ambiente demo | soporte | 1–8 | [ ] |
-| 12 | SCRUM-191 | Integración GitHub–Jira | soporte | 3 | [ ] |
-| 13 | SCRUM-192 | Guion de presentación | soporte | 10, 11 | [ ] |
+| 11 | SCRUM-188 | Ambiente demo | soporte | 1–8 | [ ] criterios del agente [x]; falta 👤 firma, iPhone y video |
+| 12 | SCRUM-191 | Integración GitHub–Jira | soporte | 3 | [ ] criterio del agente [x]; falta 👤 instalar "GitHub for Jira" |
+| 13 | SCRUM-192 | Guion de presentación | soporte | 10, 11 | [ ] criterios del agente [x]; falta 👤 ensayo |
 
 Definition of Done para todos los bloques:
 - Cumple los criterios.
@@ -436,10 +436,19 @@ Evidencia: commit `7ecb106`; `make ci` → `✔ Test run with 520 tests in 78 su
 ### Bloque 12 — SCRUM-191 · Integración GitHub–Jira (soporte)
 
 **Agente:**
-- [ ] Todos los commits y ramas desde ahora llevan la clave `SCRUM-XX` (regla en AGENTS.md).
+- [x] Todos los commits y ramas desde ahora llevan la clave `SCRUM-XX` (regla en AGENTS.md).
+
+Evidencia (2026-10-26, `main` @ `e32fe97`):
+- **Commits:** desde que entró la regla (`08f5930`, 2026-10-20) hay 80 commits en `main` sin contar merges, y 78 empiezan con `SCRUM-XX`.
+  - Excepciones: `51df8c2` y `8716e7e` (2026-10-21), dos commits de documentación (`docs(ux)`, `docs(mvp-plan)`).
+  - Desde entonces, 53 de 53 llevan la clave.
+- **Ramas:** las de los PR #2, #4 y #5 llevan la clave (`SCRUM-189-ci-xcode-26-5`, `scrum-193-198-cierre-huecos`, `SCRUM-186-progreso-historial`), y también todas las ramas de trabajo desde el 25 de octubre.
+  - Excepción: la del PR #1 (`claude/swiftui-auditoria-ui-design-063bc9`, 2026-10-21).
+- **Comprobación:** `git log --no-merges --invert-grep --grep="^SCRUM-" 08f5930..origin/main`.
 
 **👤 Humano (Jesús):**
 - Instalar la app "GitHub for Jira" en `creadevs` y conectarla al repo `JAlcon00/Nucleus`.
+  - Al instalarla, verificar que enlaza la rama en minúsculas `scrum-193-198-cierre-huecos`. Si no la enlaza, las ramas nuevas van en mayúsculas, como `SCRUM-23-...`.
 - Opcional: automatización que mueva la historia a **TEST** al fusionar el PR.
 
 ---
