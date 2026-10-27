@@ -674,12 +674,12 @@ Evidencia: commit `42ffa7b`.
 
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase C (restricciones ~~SCRUM-31~~ hecha el 2026-10-25, 32, 36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–40) → HealthKit, Watch, pestañas.
+En orden: Fase C (restricciones ~~SCRUM-31~~ hecha el 2026-10-25, 32, 36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–39; ~~SCRUM-40~~ y ~~SCRUM-223~~ hechas el 2026-10-26) → HealthKit, Watch, pestañas.
 
-### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada en rama)
+### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada; en `main`)
 
 - **Decisión de Jesús (2026-10-26):** se trabaja en paralelo con las pruebas manuales del POC.
-- Va en la rama `SCRUM-40-migraciones` y **no se sube a `main` hasta después del demo**, porque toca la persistencia.
+- **En `main` desde el 2026-10-26:** Jesús fusionó el PR #6 (`cdc4ed7`), antes del demo. El plan inicial era esperar a después del demo, porque toca la persistencia. El CI de GitHub (`make ci`) pasó en el PR y en `main` después de fusionar.
 - Criterios aprobados en Jira el 2026-10-26.
 
 **Criterios:**
@@ -694,17 +694,17 @@ En orden: Fase C (restricciones ~~SCRUM-31~~ hecha el 2026-10-25, 32, 36) → Fa
 - [x] Detector en CI: muestras v1 reales de las 7 colecciones que la app escribe. Probado: renombrar un campo de `SleepCheckIn` hace fallar `PersistenceFormatTests`.
 - [x] Regla escrita: ADR-0003 y `AGENTS.md` §3.1.
 
-Evidencia: commit `cf58811` (rama `SCRUM-40-migraciones`).
+Evidencia: commit `cf58811`, en `main` por el PR #6 (`cdc4ed7`).
 - `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 521 tests in 92 suites passed … with 5 known issues` (2026-10-26; línea base 520 + 496). Los 5 *known issues* son los de SCRUM-214. El build de iOS y el de watchOS pasaron.
 - **Tests:**
   - `Packages/PRCore/Tests/PRCoreTests/SchemaMigrationTests.swift` (18): cubren todo lo de arriba más la integración con el historial demo real. Pasan del layout antiguo a carpetas y a versiones, Exportar cuenta lo mismo, y con un paso nuevo que rechaza un entrenamiento, Exportar avisa 1 ilegible y el respaldo conserva los 8.
   - `PersistenceFormatTests.swift` (7): el generador de muestras solo corre con `PR_WRITE_PERSISTENCE_FIXTURES=1`.
 - **Pendiente:** 👤 Jesús, actualizar la app en un iPhone con datos reales. El historial, el plan y Progreso deben verse igual, y la marca se escribe sola.
 
-### SCRUM-223 · Un plan ilegible no se sobrescribe al rehacer el cuestionario (P0, en rama sobre SCRUM-40)
+### SCRUM-223 · Un plan ilegible no se sobrescribe al rehacer el cuestionario (P0, en `main`)
 
 - **Origen:** hallado al implementar SCRUM-40. Es P0 por `AGENTS.md` §5 (Jesús lo confirmó el 2026-10-26).
-- Va en la rama `SCRUM-223-plan-ilegible`, que sale de `SCRUM-40-migraciones`. Entra a `main` junto con SCRUM-40, después del demo.
+- **En `main` desde el 2026-10-26:** Jesús fusionó el PR #7 (`3f7c717`) justo después de SCRUM-40. En el PR pasaron `make ci` (4 min 7 s) y GitGuardian, y el CI de `main` después de fusionar también pasó.
 
 **Criterios:**
 - [x] Antes de escribir un plan nuevo encima de uno ilegible, el registro se copia intacto a la cuarentena de `plans/` (`.quarantine/damaged/`), sin pisar una copia anterior.
@@ -714,6 +714,6 @@ Evidencia: commit `cf58811` (rama `SCRUM-40-migraciones`).
 - [x] Rehacer dos veces guarda cada versión dañada una sola vez.
 - [x] El registro de la app anota la copia sin datos personales.
 
-Evidencia: commit `c29e473` (rama `SCRUM-223-plan-ilegible`).
+Evidencia: commit `c29e473`, en `main` por el PR #7 (`3f7c717`).
 - `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 528 tests in 93 suites passed … with 5 known issues` (2026-10-26; línea base 520 + 521 sobre SCRUM-40). El build de iOS y el de watchOS pasaron.
 - **Tests:** `Packages/PRCore/Tests/PRCoreTests/UnreadablePlanTests.swift` (7), todos con `LocalPersistence` real. Los dos primeros se escribieron antes del arreglo y fallaban: sin copia en cuarentena y con el historial de bloques perdido.
