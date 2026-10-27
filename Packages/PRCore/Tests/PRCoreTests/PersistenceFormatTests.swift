@@ -135,15 +135,26 @@ struct PersistenceFormatTests {
         try persistence.planStore().saveSession(userID: userID)
         try persistence.aiConsentStore().save(.granted(at: now), userID: userID, at: now)
         try persistence.sleepCheckInStore().save(SleepCheckIn(day: "2026-10-26", hours: 6.5, quality: .poor), userID: userID)
-        let sessions = try await persistence.workoutRepository().loadAllSessions().items
-        let workout = try #require(sessions.min { $0.startedAt < $1.startedAt })
-        let set = try #require(workout.sets.first)
-        _ = try SetPersistenceGuard().enqueueSetSave(set, in: workout.id, queue: try persistence.pendingOperationQueue(), now: now)
+        // El entrenamiento de la muestra trae dolor reportado en dos series (SCRUM-32).
+        let firstWorkout = try #require(try persistence.store(for: .workouts).readAllEntries().entries.first)
+        var workout = try JSONDecoder().decode(WorkoutSessionRecord.self, from: firstWorkout.data)
+        try #require(workout.sets.count >= 2)
+        workout.sets[0].painFeedback = PainFeedback(level: .moderate, muscleGroup: .chest)
+        workout.sets[1].painFeedback = PainFeedback(level: .mild)
+        try persistence.workoutRepository().persist(workout)
+        // El demo ya encoló esa serie sin dolor: se cambia por la versión con dolor.
+        let queue = try persistence.pendingOperationQueue()
+        let key = workout.sets[0].id.rawValue.persistenceKey
+        if let queued = try queue.load().operations.first(where: { $0.idempotencyKey == key }) {
+            try queue.remove(id: queued.id)
+        }
+        try #require(try SetPersistenceGuard().enqueueSetSave(workout.sets[0], in: workout.id, queue: queue, now: now))
 
-        let output = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-            .appendingPathComponent("Fixtures/Persistence/\(SchemaVersion.initial)", isDirectory: true)
-        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        // Cada colección se guarda en la carpeta de su versión vigente.
+        let fixtures = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Fixtures/Persistence", isDirectory: true)
         for collection in writtenCollections {
+            let output = fixtures.appendingPathComponent("\(PersistenceSchemas.schema(for: collection).current)", isDirectory: true)
+            try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
             let entry = try #require(try persistence.store(for: collection).readAllEntries().entries.first)
             try entry.data.write(to: output.appendingPathComponent("\(collection.rawValue).json"), options: .atomic)
         }

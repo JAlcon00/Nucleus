@@ -100,7 +100,7 @@ struct ProgressionEngineTests {
 
     @Test("Dolor moderado/alto cancela la progresión")
     func painCancelsProgression() throws {
-        let sets = [set(reps: 12, pain: .discomfort(muscleGroup: .shoulders, severity: 3))]
+        let sets = [set(reps: 12, pain: PainFeedback(level: .moderate, muscleGroup: .shoulders))]
         let eval = try engine.evaluate(input(weight: 40, sets: sets, increment: 2.5))
         #expect(eval.blockedByPain)
         #expect(eval.outcome == .hold(weight: 40))
@@ -109,7 +109,7 @@ struct ProgressionEngineTests {
 
     @Test("Dolor leve/none no bloquea la progresión")
     func mildPainDoesNotBlock() throws {
-        let sets = [set(reps: 12, pain: .discomfort(muscleGroup: .shoulders, severity: 1))]
+        let sets = [set(reps: 12, pain: PainFeedback(level: .mild, muscleGroup: .shoulders))]
         let eval = try engine.evaluate(input(weight: 40, sets: sets, increment: 2.5))
         #expect(!eval.blockedByPain)
         guard case .increase = eval.outcome else {

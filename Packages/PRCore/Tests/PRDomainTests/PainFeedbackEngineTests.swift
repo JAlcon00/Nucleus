@@ -85,14 +85,19 @@ final class PainFeedbackEngineTests: XCTestCase {
         XCTAssertThrowsError(try PainFeedbackConfig(rule: rule))
     }
 
-    func testCustomThreshold() throws {
-        // Umbral en 3 (high) ⇒ moderate NO suspende, high sí.
-        var params = PainFeedbackPolicyKeys.defaults()
-        params[PainFeedbackPolicyKeys.suspendProgressionFromSeverity] = 3
-        var rule = try PainFeedbackPolicyDefaults.makeRule()
-        rule.parameters = params
-        let engine = try PainFeedbackEngine(config: PainFeedbackConfig(rule: rule))
-        XCTAssertFalse(try engine.evaluate(PainFeedbackInput(level: .moderate)).suspendsLoadProgression)
+    /// SCRUM-32 invirtió esta prueba a propósito. Antes un umbral de 3 dejaba pasar el dolor
+    /// moderado sin suspender la progresión; RN-003 dice "sin excepción", así que una regla
+    /// con otro umbral (más laxo o más estricto) se rechaza.
+    func testThresholdCannotBeChanged() throws {
+        for threshold in [0.0, 1, 3] {
+            var params = PainFeedbackPolicyKeys.defaults()
+            params[PainFeedbackPolicyKeys.suspendProgressionFromSeverity] = threshold
+            var rule = try PainFeedbackPolicyDefaults.makeRule()
+            rule.parameters = params
+            XCTAssertThrowsError(try PainFeedbackConfig(rule: rule), "Umbral \(threshold) no debe aceptarse")
+        }
+        let engine = try makeEngine()
+        XCTAssertTrue(try engine.evaluate(PainFeedbackInput(level: .moderate)).suspendsLoadProgression)
         XCTAssertTrue(try engine.evaluate(PainFeedbackInput(level: .high)).suspendsLoadProgression)
     }
 

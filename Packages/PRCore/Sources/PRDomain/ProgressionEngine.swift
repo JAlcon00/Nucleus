@@ -15,20 +15,19 @@ import Foundation
 
 /// Claves canónicas de la regla de double progression.
 public enum ProgressionConfigKeys {
-    /// Severidad mínima de dolor que bloquea la progresión (moderate/high ⇒ >=3).
-    public static let painSeverityThreshold = "painSeverityThreshold"
+    // SCRUM-32: el dolor ya no tiene umbral propio aquí; bloquea la progresión con
+    // moderado o alto (`PainFeedback.blocksProgression`), igual en toda la app.
     /// ¿Exigir el rango superior de reps para subir carga? 1 = doble progresión clásica.
     public static let requireUpperBoundReps = "requireUpperBoundReps"
     /// Incremento por defecto cuando la carga es continua (extensible/bodyweight).
     public static let continuousDefaultIncrement = "continuousDefaultIncrement"
 
     public static let allRequired: Set<String> = [
-        painSeverityThreshold, requireUpperBoundReps, continuousDefaultIncrement,
+        requireUpperBoundReps, continuousDefaultIncrement,
     ]
 
     public static func defaults() -> [String: Double] {
         [
-            painSeverityThreshold: 3,
             requireUpperBoundReps: 1,
             continuousDefaultIncrement: 2.5,
         ]
@@ -39,7 +38,8 @@ public enum ProgressionConfigKeys {
 public enum DoubleProgressionDefaults {
     public static let ruleID = EvidenceRuleID(rawValue: "progression.double")
 
-    public static func makeRule(version: Int = 1) throws -> EvidenceRule {
+    /// Versión 2 (SCRUM-32): sin umbral de dolor propio.
+    public static func makeRule(version: Int = 2) throws -> EvidenceRule {
         let reference = try EvidenceReference(
             title: "Double progression: increase load only when upper rep range is met",
             source: "Plan §4E / promptMaster §12.3"
@@ -59,10 +59,6 @@ public enum DoubleProgressionDefaults {
 /// Configuración versionada de double progression.
 public struct DoubleProgressionConfig: Sendable {
     public let rule: EvidenceRule
-
-    public var painSeverityThreshold: Int {
-        Int(rule.parameters[ProgressionConfigKeys.painSeverityThreshold] ?? 3)
-    }
 
     public var requireUpperBoundReps: Bool {
         (rule.parameters[ProgressionConfigKeys.requireUpperBoundReps] ?? 1) > 0
@@ -162,7 +158,7 @@ public struct ProgressionEvaluation: Equatable, Sendable {
 /// Reglas deterministas — subir carga SÓLO si todas se cumplen:
 /// 1. todas las working sets relevantes alcanzan el rango superior de reps;
 /// 2. ningún set falló de forma excesiva (`failed`);
-/// 3. no hay dolor moderado/alto (severity >= config);
+/// 3. no hay dolor moderado/alto (`PainFeedback.blocksProgression`, SCRUM-32);
 /// 4. no hay caída significativa reciente;
 /// 5. se respeta el incremento disponible del equipo (RN-013): para equipos con
 ///    paso discreto/fijo se usa `availableIncrement`; si se desconoce, se mantiene
@@ -179,7 +175,7 @@ public struct ProgressionEngine: Sendable {
         var reasons: [String] = []
 
         // 3) Gate de dolor moderado/alto cancela la progresión (RF-024).
-        let painGate = input.performedSets.contains { Self.isModerateOrHigherPain($0.painFeedback, threshold: config.painSeverityThreshold) }
+        let painGate = input.performedSets.contains { $0.painFeedback?.blocksProgression == true }
         if painGate {
             reasons.append("dolor moderado/alto detectado: progresión cancelada")
             return holdEvaluation(input, reference: reference, blockedByPain: true, reasons: reasons)
@@ -249,16 +245,6 @@ public struct ProgressionEngine: Sendable {
     }
 
     // MARK: - Helpers
-
-    private static func isModerateOrHigherPain(_ pain: PainFeedback?, threshold: Int) -> Bool {
-        guard let pain else { return false }
-        switch pain {
-        case .none:
-            return false
-        case .discomfort(_, let severity), .sharpPain(_, let severity):
-            return severity >= threshold
-        }
-    }
 
     private func stepIncrement(for input: ProgressionEvaluationInput) -> Double? {
         switch input.loadability {
