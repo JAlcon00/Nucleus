@@ -143,6 +143,46 @@ struct HardTimeOptimizerTests {
         #expect(result.withinLimit)
     }
 
+    @Test("SCRUM-225: un accesorio de 2 series se quita en lugar de quedar en 1")
+    func twoSetAccessoryIsDroppedNotHalved() {
+        let optimizer = HardTimeOptimizer()
+        let items = [
+            makeItem(name: "Ancla", role: .anchor, muscles: [.chest]),
+            makeItem(name: "Accesorio", role: .rotatable, muscles: [.biceps], sets: 2, perSet: 30, rest: 60),
+        ]
+        // 510 + (2×30 + 60) + 30 = 660; con 600 ya no se puede partir: se quita.
+        let result = optimizer.optimize(items: items, limitSeconds: 600)
+        #expect(result.kept.map(\.name) == ["Ancla"])
+        #expect(result.withinLimit)
+    }
+
+    @Test("SCRUM-225: un accesorio de 6 baja a 3 y luego a 2, nunca a 1")
+    func accessoryNeverGoesBelowTwo() {
+        let optimizer = HardTimeOptimizer()
+        let items = [
+            makeItem(name: "Ancla", role: .anchor, muscles: [.chest]),
+            makeItem(name: "Accesorio", role: .rotatable, muscles: [.biceps], sets: 6, perSet: 30, rest: 60),
+        ]
+        // Ancla 510; accesorio con 2 series = 120; total 660. Con 680 cabe con 2 (no con 1).
+        let result = optimizer.optimize(items: items, limitSeconds: 680)
+        #expect(result.kept.first { $0.name == "Accesorio" }?.setCount == 2)
+        #expect(result.withinLimit)
+    }
+
+    @Test("SCRUM-225: con calentamiento, el mínimo es de 2 series de trabajo")
+    func minimumCountsWorkSetsNotWarmups() {
+        let optimizer = HardTimeOptimizer()
+        let accessory = SessionItem(
+            exerciseID: ExerciseID(), name: "Accesorio", role: .rotatable, muscleGroups: [.biceps],
+            setCount: 4, secondsPerSet: 30, restSeconds: 60, warmupSets: 1
+        )
+        let items = [makeItem(name: "Ancla", role: .anchor, muscles: [.chest]), accessory]
+        // 510 + (4×30 + 3×60) + 30 = 840. Partir a la mitad dejaría 2 = 1 cal. + 1 de trabajo;
+        // el mínimo es 1 cal. + 2 de trabajo = 3: 510 + 210 + 30 = 750 ≤ 760.
+        let result = optimizer.optimize(items: items, limitSeconds: 760)
+        #expect(result.kept.first { $0.name == "Accesorio" }?.setCount == 3)
+    }
+
     @Test("tolerance is documented in result")
     func documentsTolerance() {
         let optimizer = HardTimeOptimizer()

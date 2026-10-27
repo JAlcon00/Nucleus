@@ -104,6 +104,38 @@ struct SessionTimeBudgetTests {
         #expect(try today(30).todayTemplate != full, "La sesión de ~40 min no cabe en 30 sin recortar")
     }
 
+    @Test("SCRUM-225: ajustar a 30 o 45 min nunca deja un ejercicio con menos de 2 series de trabajo")
+    func adjustmentNeverLeavesSingleSets() throws {
+        let catalog = try ExerciseCatalogLoader.loadBundled()
+        let builder = TodayPlanBuilder()
+        let planner = TodayPlanBuilder.defaultPlanner()
+        let fitter = SessionTimeFitter()
+        var adjusted = 0
+        for goal in [TrainingGoal.hypertrophy, .strength] {
+            for days in [2, 3, 4, 6] {
+                for usual in [60, 90] {
+                    let profile = OnboardingProfile(
+                        goal: goal, phase: .maintenance, experience: .intermediate,
+                        trainingDaysPerWeek: days, usualSessionMinutes: usual, varietyPreference: .balanced
+                    )
+                    let block = try builder.generate(profile: profile, catalog: catalog, planner: planner).block
+                    for session in block.sessions {
+                        let roles = try builder.timeRoles(for: session, profile: profile, block: block, catalog: catalog, planner: planner)
+                        for budget in [30, 45] {
+                            let (template, adjustment) = fitter.fit(session, budgetMinutes: budget, roles: roles, goal: goal, phase: .maintenance)
+                            if case .fits = adjustment.fit { continue }
+                            adjusted += 1
+                            let exercises = Set(template.plannedSets.map(\.exerciseID))
+                            let single = exercises.filter { workSets($0, template) < 2 }
+                            #expect(single.isEmpty, "\(goal.rawValue) \(days)d \(usual)min → \(budget)min, \(session.title): \(single.count) ejercicio(s) con 1 serie")
+                        }
+                    }
+                }
+            }
+        }
+        #expect(adjusted > 0, "Alguna sesión tenía que recortarse")
+    }
+
     @MainActor
     @Test("Desde Hoy: 30 min recorta, el entrenamiento empieza recortado y tras un cierre se retoma igual")
     func coordinatorToWorkoutAndRecovery() async throws {

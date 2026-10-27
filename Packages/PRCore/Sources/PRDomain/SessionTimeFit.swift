@@ -13,8 +13,9 @@
 //  - Si cabe, no cambia nada: más tiempo nunca es más volumen (RN-001). Como mucho se
 //    sugiere movilidad o cardio, si encajan con el objetivo y la fase.
 //  - Si no cabe: primero se quita lo opcional y después se reducen y quitan accesorios
-//    desde el final de la sesión (lo menos importante). Anclas y prioritarios nunca se
-//    tocan y el orden se conserva.
+//    desde el final de la sesión (lo menos importante). Un accesorio nunca baja de 2
+//    series de trabajo: si ni así cabe, se quita (SCRUM-225). Anclas y prioritarios nunca
+//    se tocan y el orden se conserva.
 //  - Si ni recortada cabe, se dice cuánto necesita: nunca se quitan anclas en silencio.
 //  Puro y determinista.
 //
@@ -215,7 +216,8 @@ public struct SessionTimeFitter: Sendable {
                 isPriorityMuscle: roles.priority.contains(id),
                 setCount: sets.count,
                 secondsPerSet: estimator.setDuration(for: id, profile: nil),
-                restSeconds: Double(first.prescription.restSeconds.upperBound)
+                restSeconds: Double(first.prescription.restSeconds.upperBound),
+                warmupSets: sets.filter(\.prescription.isWarmup).count
             )
         }
     }

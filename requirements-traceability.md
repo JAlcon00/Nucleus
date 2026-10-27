@@ -130,6 +130,15 @@ no cabe, lo dice en la explicación. Cobertura:
 - `PRCoreTests/BlockPlannerRealCatalogTests.swift` (rango, fuerza y explicación);
 - `PRCoreTests/RoutineCharacterizationTests.swift` (gates "nunca 1 serie" y "tope de ejercicios").
 
+## "Ajustar a mi tiempo" sin series sueltas (SCRUM-225, RF-006)
+
+El ajuste del día (`SessionTimeFitter` → `HardTimeOptimizer`) reduce un accesorio solo hasta
+su calentamiento más `minimumWorkSets` (2, de `SessionCompositionRule`). Si ni así cabe, lo
+quita. Cobertura:
+- `PRDomainTests/HardTimeOptimizerTests.swift` (2 series se quita; 6 baja a 3 y luego a 2; el calentamiento no cuenta);
+- `PRDomainTests/SessionTimeFitTests.swift`;
+- `PRCoreTests/SessionTimeBudgetTests.swift` (plan real, 16 perfiles, cada sesión ajustada a 30 y 45 min, nunca 1 serie).
+
 ## Un plan ilegible no se sobrescribe (SCRUM-223, RNF-028)
 
 Con un plan ilegible, "Rehacer cuestionario" primero guarda el registro intacto en

@@ -24,6 +24,9 @@ public struct SessionItem: Equatable, Sendable {
     public var setCount: Int
     public let secondsPerSet: Double
     public let restSeconds: Double
+    /// Cuántas de `setCount` son de calentamiento: el mínimo al recortar es de series de
+    /// trabajo (SCRUM-225).
+    public let warmupSets: Int
 
     public init(
         id: UUID = UUID(),
@@ -34,7 +37,8 @@ public struct SessionItem: Equatable, Sendable {
         isPriorityMuscle: Bool = false,
         setCount: Int,
         secondsPerSet: Double,
-        restSeconds: Double
+        restSeconds: Double,
+        warmupSets: Int = 0
     ) {
         self.id = id
         self.exerciseID = exerciseID
@@ -45,6 +49,7 @@ public struct SessionItem: Equatable, Sendable {
         self.setCount = setCount
         self.secondsPerSet = secondsPerSet
         self.restSeconds = restSeconds
+        self.warmupSets = warmupSets
     }
 }
 
@@ -97,9 +102,16 @@ public struct TimeOptimizerResult: Equatable, Sendable {
 public struct HardTimeOptimizer: Sendable {
     /// Segundos de transición entre ejercicios.
     public var transitionSeconds: Double
+    /// Un accesorio no baja de estas series de trabajo: si ni así cabe, se quita (SCRUM-225).
+    /// Es el mismo mínimo que el plan semanal (SCRUM-218).
+    public var minimumWorkSets: Int
 
-    public init(transitionSeconds: Double = 30) {
+    public init(
+        transitionSeconds: Double = 30,
+        minimumWorkSets: Int = SessionCompositionRule.standard.minimumWorkSets
+    ) {
         self.transitionSeconds = transitionSeconds
+        self.minimumWorkSets = minimumWorkSets
     }
 
     /// Duración (segundos) de un `SessionItem` en solitario.
@@ -183,14 +195,17 @@ public struct HardTimeOptimizer: Sendable {
         items.contains { $0.role != .anchor && !$0.isPriorityMuscle }
     }
 
-    /// Reduce a la mitad el set-count del último accesorio con >1 set. Devuelve true.
-    /// Se empieza por el final porque la sesión va de lo más a lo menos importante.
+    /// Reduce a la mitad el set-count del último accesorio que todavía está por encima del
+    /// mínimo (calentamiento + `minimumWorkSets` de trabajo), sin bajar de ese mínimo.
+    /// Devuelve true. Se empieza por el final porque la sesión va de lo más a lo menos
+    /// importante. Nunca deja una serie de trabajo suelta (SCRUM-225).
     private func reduceAccessory(_ items: inout [SessionItem]) -> Bool {
-        guard let idx = items.lastIndex(where: { $0.role != .anchor && !$0.isPriorityMuscle && $0.setCount > 1 }) else {
+        func minimum(_ item: SessionItem) -> Int { item.warmupSets + minimumWorkSets }
+        guard let idx = items.lastIndex(where: { $0.role != .anchor && !$0.isPriorityMuscle && $0.setCount > minimum($0) }) else {
             return false
         }
         var item = items[idx]
-        item.setCount = max(1, Int(ceil(Double(item.setCount) / 2)))
+        item.setCount = max(minimum(item), Int(ceil(Double(item.setCount) / 2)))
         items[idx] = item
         return true
     }
