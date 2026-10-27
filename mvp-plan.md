@@ -700,3 +700,20 @@ Evidencia: commit `cf58811` (rama `SCRUM-40-migraciones`).
   - `Packages/PRCore/Tests/PRCoreTests/SchemaMigrationTests.swift` (18): cubren todo lo de arriba más la integración con el historial demo real. Pasan del layout antiguo a carpetas y a versiones, Exportar cuenta lo mismo, y con un paso nuevo que rechaza un entrenamiento, Exportar avisa 1 ilegible y el respaldo conserva los 8.
   - `PersistenceFormatTests.swift` (7): el generador de muestras solo corre con `PR_WRITE_PERSISTENCE_FIXTURES=1`.
 - **Pendiente:** 👤 Jesús, actualizar la app en un iPhone con datos reales. El historial, el plan y Progreso deben verse igual, y la marca se escribe sola.
+
+### SCRUM-223 · Un plan ilegible no se sobrescribe al rehacer el cuestionario (P0, en rama sobre SCRUM-40)
+
+- **Origen:** hallado al implementar SCRUM-40. Es P0 por `AGENTS.md` §5 (Jesús lo confirmó el 2026-10-26).
+- Va en la rama `SCRUM-223-plan-ilegible`, que sale de `SCRUM-40-migraciones`. Entra a `main` junto con SCRUM-40, después del demo.
+
+**Criterios:**
+- [x] Antes de escribir un plan nuevo encima de uno ilegible, el registro se copia intacto a la cuarentena de `plans/` (`.quarantine/damaged/`), sin pisar una copia anterior.
+- [x] Si la copia falla, no se escribe el plan nuevo: la activación falla y se puede reintentar.
+- [x] Registro sano con bloque activo ilegible: el plan nuevo conserva el historial de bloques, y el bloque se queda intacto.
+- [x] No se borra ningún bloque.
+- [x] Rehacer dos veces guarda cada versión dañada una sola vez.
+- [x] El registro de la app anota la copia sin datos personales.
+
+Evidencia: commit `c29e473` (rama `SCRUM-223-plan-ilegible`).
+- `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 528 tests in 93 suites passed … with 5 known issues` (2026-10-26; línea base 520 + 521 sobre SCRUM-40). El build de iOS y el de watchOS pasaron.
+- **Tests:** `Packages/PRCore/Tests/PRCoreTests/UnreadablePlanTests.swift` (7), todos con `LocalPersistence` real. Los dos primeros se escribieron antes del arreglo y fallaban: sin copia en cuarentena y con el historial de bloques perdido.

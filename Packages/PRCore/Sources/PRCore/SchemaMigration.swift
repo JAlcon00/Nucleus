@@ -108,6 +108,9 @@ public struct CollectionSchema: Sendable {
 enum CollectionLayout {
     static let markerFileName = ".schema-version"
     static let quarantineDirectoryName = ".quarantine"
+    /// Dentro de la cuarentena: registros ilegibles guardados antes de escribir encima
+    /// (SCRUM-223), aparte de los que no se pudieron migrar (`v<N>/`).
+    static let damagedDirectoryName = "damaged"
 
     /// Qué dice la marca de versión de una carpeta.
     enum Marker: Equatable {

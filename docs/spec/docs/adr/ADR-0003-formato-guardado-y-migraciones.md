@@ -71,6 +71,15 @@ archivo por registro, con escritura atómica (ADR-0001). Antes de esta decisión
      guardarla, conserva cada campo; que las muestras anteriores migran; y que hay
      exactamente un paso por versión.
 
+8. **Registros dañados que se reemplazan (SCRUM-223).**
+   - Antes de guardar un plan nuevo encima de uno ilegible ("Rehacer cuestionario"), el
+     registro actual se copia intacto a `plans/.quarantine/damaged/<clave>-<n>.json`. Las
+     copias no se pisan ni se duplican.
+   - Si la copia no se puede guardar y verificar, no se escribe el plan nuevo.
+   - Si el registro se podía leer y solo fallaba su bloque activo, el plan nuevo conserva
+     su historial de bloques.
+   - Estas copias viajan con la colección en cada migración y cuentan como ilegibles.
+
 ## Regla para cambiar un modelo guardado
 
 | Cambio | Qué hacer |
