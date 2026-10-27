@@ -1,7 +1,7 @@
 # mvp-plan.md — Plan activo: MVP / POC de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica POC: SCRUM-180).
-> **Actualizado:** 2026-10-26 (tablero sincronizado con Jira y con el código).
+> **Actualizado:** 2026-10-27 (tablero sincronizado con Jira y con el código).
 > **Ejecuta:** el agente de IA de Xcode. Hace todo el trabajo asignado en Jira a Gael Durán y Joss Amador, en el orden de este archivo.
 > **Regla:** mientras quede un `[ ]` en las secciones 2 y 3, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
 
@@ -754,10 +754,10 @@ Evidencia: commit `ca73290`, en `main` por el PR #8 (`9e05ebc`).
   - D1, para el mínimo del rango;
   - 👤 Jesús, revisar en el iPhone que el plan regenerado y el aviso "plan actualizado" se vean bien.
 
-### SCRUM-225 · "Ajustar a mi tiempo" nunca deja una serie suelta (High, sale en el demo)
+### SCRUM-225 · "Ajustar a mi tiempo" nunca deja una serie suelta (High, sale en el demo; en `main`)
 
 - **Origen:** hallado al cerrar SCRUM-218. SCRUM-218 quitó las series sueltas del plan semanal, pero el ajuste del día (SCRUM-30, `HardTimeOptimizer`) todavía dejaba un accesorio de 2 series en 1. Lo usa el guion del demo ("Tengo 30 min").
-- Va en la rama `SCRUM-225-ajuste-sin-series-sueltas`.
+- **En `main` desde el 2026-10-27:** Jesús fusionó el PR #10 (`3e46624`). El CI de GitHub (`make ci`) pasó en `main` después de fusionar.
 
 **Criterios:**
 - [x] Al ajustar a cualquier tiempo, ningún ejercicio que se queda tiene menos de 2 series de trabajo. El calentamiento no cuenta.
@@ -769,8 +769,9 @@ Evidencia: commit `ca73290`, en `main` por el PR #8 (`9e05ebc`).
 - [x] Una sola fuente para el mínimo: `HardTimeOptimizer.minimumWorkSets` sale de `SessionCompositionRule.standard.minimumWorkSets`.
 - [x] La frase sigue diciendo qué se quitó, qué se redujo o que no cabe. Si ya cabe, nada cambia; más tiempo nunca agrega series.
 
-Evidencia: commit `f4380b7` (rama `SCRUM-225-ajuste-sin-series-sueltas`).
+Evidencia: commit `f4380b7`, en `main` por el PR #10 (`3e46624`).
 - `make ci` → `✔ Test run with 527 tests in 79 suites passed` + `Test run with 533 tests in 93 suites passed … with 4 known issues` (2026-10-26; línea base 524 + 532). El build de iOS y el de watchOS pasaron.
+- Con `main` ya fusionado (trae SCRUM-32): `make ci` → `✔ Test run with 536 tests in 80 suites passed` + `Test run with 540 tests in 94 suites passed … with 4 known issues` (2026-10-27).
 - **Reproducción primero:** la prueba de integración (plan real, 16 perfiles, cada sesión ajustada a 30 y 45 min) fallaba en 26 sesiones ajustadas; ahora pasa.
 - **Cambio deliberado:** dos pruebas de SCRUM-30 en `SessionTimeFitTests` cambian sus números (antes reducían a 1 serie de trabajo). Su intención se mantiene.
 - **Sin prueba de UI:** ninguna prueba de UI usa "Ajustar a mi tiempo"; lo cubren las de unidad e integración.
