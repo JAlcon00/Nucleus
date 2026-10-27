@@ -682,6 +682,8 @@ final class PRUITests: XCTestCase {
         tap(app, "summary.done")
 
         openTab(app, "Perfil")
+        // En iPhone "Exportar" queda abajo de "Sobre ti" y la IA: hay que bajar, como la persona.
+        XCTAssertTrue(scrollTo(app, "profile.export").waitForExistence(timeout: 5), "Perfil ofrece exportar")
         tap(app, "profile.export")
         XCTAssertTrue(app.staticTexts["1 sesión"].waitForExistence(timeout: 10), "Exportar debe contar el entrenamiento una sola vez")
         XCTAssertTrue(app.buttons["JSON completo"].waitForExistence(timeout: 10), "Debe ofrecer el JSON")
