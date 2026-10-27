@@ -783,9 +783,17 @@ public final class TodayPlanCoordinator {
         // Mientras llega el plan nuevo, "Hoy" muestra carga (nunca el plan anterior ni descanso).
         generation = .reading
         let previous: (plan: StoredPlan, block: TrainingBlock)?
+        let replacesUnreadable: Bool
         switch await planStore.loadPlan(userID: userID) {
-        case .loaded(let stored, let block): previous = (stored, block)
-        case .none, .unreadable: previous = nil
+        case .loaded(let stored, let block):
+            previous = (stored, block)
+            replacesUnreadable = false
+        case .none:
+            previous = nil
+            replacesUnreadable = false
+        case .unreadable:
+            previous = nil
+            replacesUnreadable = true
         }
         let change = previous.map { PlanChangeDecider.decide(old: $0.plan.profile, new: profile) } ?? .newBlock
         do {
@@ -837,6 +845,11 @@ public final class TodayPlanCoordinator {
                 try show(profile: profile, block: block, explanation: result.explanation)
                 return true
             case .newBlock:
+                // SCRUM-223: el plan ilegible se guarda intacto antes de escribir encima; si
+                // no se puede, no se escribe nada (la activación falla y se puede reintentar).
+                let rescuedHistory = replacesUnreadable
+                    ? try planStore.preserveUnreadablePlan(userID: userID).blockHistory
+                    : []
                 generation = .generating
                 let base = try builder.generate(profile: profile, catalog: catalog, planner: planner)
                 let personalized = try await personalize(base, profile: profile, blockID: base.block.id)
@@ -855,7 +868,7 @@ public final class TodayPlanCoordinator {
                     userID: userID,
                     profile: profile,
                     activeBlockID: block.id,
-                    blockHistory: (previous?.plan.blockHistory ?? []) + [block.id],
+                    blockHistory: (previous?.plan.blockHistory ?? rescuedHistory) + [block.id],
                     explanation: result.explanation,
                     updatedAt: saveClock(),
                     personalization: personalized.record

@@ -118,6 +118,13 @@ ilegible en Exportar y Progreso. Ver `docs/spec/docs/adr/ADR-0003`. Cobertura:
 - `PRCoreTests/PersistenceFormatTests.swift`: muestras reales por colección y versión,
   como detector en CI de cambios incompatibles.
 
+## Un plan ilegible no se sobrescribe (SCRUM-223, RNF-028)
+
+Con un plan ilegible, "Rehacer cuestionario" primero guarda el registro intacto en
+`plans/.quarantine/damaged/` (`PlanStore.preserveUnreadablePlan`) y solo después escribe el
+plan nuevo. Si la copia falla, no se escribe nada. Si solo fallaba el bloque activo, el
+historial de bloques se conserva. Cobertura: `PRCoreTests/UnreadablePlanTests.swift`.
+
 ## Catálogo de ejercicios (EPIC-03)
 
 Implementado en PR-0301 con el dataset público *free-exercise-db* (Unlicense)

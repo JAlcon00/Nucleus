@@ -91,6 +91,12 @@ public struct PersistenceLog: Sendable {
         sink("persistence.schema failed collection=\(collection.rawValue)")
     }
 
+    /// Un registro ilegible se guardó intacto en cuarentena antes de escribir encima
+    /// (SCRUM-223). Sólo la colección.
+    func damagedRecordPreserved(_ collection: PersistenceCollection) {
+        sink("persistence.quarantine damaged collection=\(collection.rawValue) count=1")
+    }
+
     /// Se encontró más de una sesión activa (error): se retomó la más reciente y las demás
     /// pasaron a `abandoned` con sus series intactas. Sólo el conteo, sin contenido.
     public func recoveredExtraActiveSessions(count: Int) {
@@ -179,6 +185,17 @@ public struct LocalPersistence: Sendable {
             try CollectionLayout.writeMarker(versionIfNew, in: directory)
         }
         return store
+    }
+
+    /// Cuarentena de registros dañados de una colección (SCRUM-223): copias intactas que se
+    /// guardan antes de escribir encima de un registro ilegible. Las lecturas de la colección
+    /// las cuentan como ilegibles y viajan con ella en cada migración (SCRUM-40).
+    func damagedRecordsStore(for collection: PersistenceCollection) throws -> AtomicFileRepositoryStore {
+        _ = try store(for: collection)
+        let quarantine = CollectionLayout.quarantineURL(in: directory(for: collection))
+        return try AtomicFileRepositoryStore(
+            directory: quarantine.appendingPathComponent(CollectionLayout.damagedDirectoryName, isDirectory: true)
+        )
     }
 
     private func directory(for collection: PersistenceCollection) -> URL {
