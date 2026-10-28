@@ -124,3 +124,30 @@ de tríceps con cuerda (las clasificaba como cardio). Cambios en `ExerciseInflec
   - lo que no cuadra con su músculo principal queda en una lista con su razón;
   - un caso nuevo hace fallar la prueba.
 - Los planes guardados se regeneran con `currentGeneratorVersion` 6.
+
+## Actualización 2026-10-28 · SCRUM-219: equipo guiado, fatiga y más staples
+
+La selección por objetivo, experiencia y fase (`ExerciseSelectionRule`, `pr-b005-v1`) necesitó
+tres cambios en el mapeo:
+
+- **Smith como equipo propio.** El dataset la marca "machine" (o "barbell"); si el nombre dice
+  "smith", el equipo es `smithMachine`. Guía la barra como una máquina, pero el gesto es el de
+  la barra: es el ancla del novato con objetivo de fuerza. El equipo por defecto de la app la
+  incluye.
+- **Fatiga sistémica por patrón y equipo.** Antes era fija por clase articular (0.5 compuesto,
+  0.25 aislamiento), así que el déficit no podía elegir algo que cansara menos. Ahora
+  (`ExerciseInflector.systemicFatigue`):
+  - compuesto: 0.5, más la bisagra (+0.2), la sentadilla (+0.15) y la zancada o la cargada (+0.1);
+  - aislamiento: 0.25;
+  - equipo: barra +0.15, mancuerna o kettlebell +0.05, polea, Smith o bandas −0.1, máquina −0.15;
+    en un aislamiento cuenta un tercio.
+  Ejemplos: sentadilla con barra 0.8, prensa 0.5, peso muerto rumano 0.85, press de banca con
+  barra 0.65, en máquina 0.35.
+- **15 staples más** (63 → 78), para que cada slot tenga variantes guiadas e inclinadas entre
+  las cuales elegir y rotar: press de banca e inclinado en Smith, press inclinado con barra y en
+  máquina de palanca, mariposa, remo isolateral y remo en Smith, press de hombro en Smith,
+  aperturas inversas en máquina, curl y extensión de tríceps en máquina, fondos en máquina,
+  sentadilla y sentadilla dividida en Smith, y peso muerto con piernas rígidas en Smith. Van al
+  final de cada lista, así que el orden curado de los anteriores no cambia. Su patrón queda
+  fijado en `CatalogClassificationTests`.
+- Los planes guardados se regeneran con `currentGeneratorVersion` 7.

@@ -638,6 +638,8 @@ Evidencia: commit `f55256f`; `make ci` → `✔ Test run with 520 tests in 78 su
 | Ejercicios con menos de 2 series de trabajo | **1,394 de 5,943** (23 %) | 0 |
 | Planes con pantorrilla / con core | **0/200** / **0/200** | 200/200 |
 
+**Gate de la Fase B:** con SCRUM-219 (en rama) ya no queda ningún `withKnownIssue`. Fuerza/hipertrofia 100 % y novato/avanzado 97 %.
+
 **Conclusión:** hoy el conjunto de ejercicios solo depende de la variedad. Objetivo, fase, experiencia, minutos y días cambian el reparto de series y el orden, pero no qué ejercicios salen. Es más drástico que la simulación de la auditoría (16 conjuntos en 8,100 perfiles, sobre `0b0a1f6`).
 
 Evidencia: commit `a4aacd4`; `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 496 tests in 90 suites passed … with 5 known issues` (2026-10-26; línea base 520 + 494). Test en `Packages/PRCore/Tests/PRCoreTests/RoutineCharacterizationTests.swift`.
@@ -847,7 +849,7 @@ Evidencia: commit `d78c0f9`, en `main` por el PR #11 (`e528029`).
   - Se cambiaron a propósito por el paso nuevo: `OnboardingTests` (3), `ExperienceFlowTests` (3) y las pruebas de UI del cuestionario (`Paso 1 de 7/8`, prioritarios en todos los niveles).
 - **Pendiente:**
   - D1 (SCRUM-220): con 30–60 min, pantorrilla y core muchas veces no caben;
-  - SCRUM-219: que la experiencia cambie los ejercicios (el gate novato/avanzado sigue en 20 %).
+  - ~~SCRUM-219: que la experiencia cambie los ejercicios (el gate novato/avanzado sigue en 20 %)~~ (en rama: 97 %).
 - 👤 Verificación pendiente: revisar el paso nuevo en el iPhone como principiante, claro y oscuro, y con letra grande.
 
 ### SCRUM-226 · Reportar el dolor de una serie durante el entrenamiento (High, Fase C; finalizada el 2026-10-28)
@@ -910,7 +912,7 @@ Evidencia: commit `c863787`, en `main` por el PR #13 (`8f15788`).
   - 56 conjuntos de ejercicios distintos y 71 rutinas distintas;
   - pantorrilla 145/200 y core 178/200, sin cambio;
   - 0 ejercicios con menos de 2 series;
-  - pares novato/avanzado distintos: 20 %, sin cambio (es de SCRUM-219).
+  - pares novato/avanzado distintos: 20 %, sin cambio (es de SCRUM-219; en su rama sube a 97 %).
 - **Tests:**
   - `PRCoreTests/CatalogClassificationTests.swift` (9);
   - `PlanPersistenceTests.planWithElbowLoadingExerciseIsRegenerated`.
@@ -918,3 +920,61 @@ Evidencia: commit `c863787`, en `main` por el PR #13 (`8f15788`).
 - **Pendiente:**
   - con restricción de codo, tríceps y bíceps reciben ejercicios que los trabajan de rebote (remos, pullover). La tabla zona → patrones de SCRUM-209 no cambió;
   - la clasificación sigue siendo por reglas de nombre. Las listas de excepciones son la vigilancia.
+
+### SCRUM-219 · PR-B005 Selección por slots, objetivo, experiencia y fase, con variación entre bloques (Must, Fase B; en rama)
+
+- Va en la rama `SCRUM-219-seleccion-ejercicios`. Se desbloqueó con SCRUM-37 (catálogo bien clasificado).
+- **Antes:** el ancla de cada músculo era siempre el primer staple. Objetivo, experiencia y fase no cambiaban qué ejercicios salían, y un bloque nuevo repetía el anterior.
+- **Regla nueva:** `ExerciseSelectionRule` (`pr-b005-v1`, en `PRDomain`):
+  - **slots por músculo:** pecho = press plano, inclinado y apertura; espalda = remo, jalón y brazos rectos; hombro = press, elevación lateral y deltoide posterior; cuádriceps = sentadilla, zancada y extensión; femoral = bisagra y curl; glúteo = empuje de cadera y patada; bíceps, pantorrilla y core, uno;
+  - **ancla:** el mejor del primer slot por experiencia y objetivo. El novato recibe lo guiado (máquina; Smith si busca fuerza). Desde intermedio, la fuerza pide la barra en los básicos (press, remo, sentadilla, bisagra), la hipertrofia la mancuerna o la máquina, y la salud y la recomposición lo guiado. La fase no cambia el ancla;
+  - **rotables:** cubren los otros slots antes de repetir uno. Se eligen por experiencia y fase: en déficit pesa la fatiga sistémica y los accesorios pasan a lo guiado;
+  - **entre bloques:** los rotables giran entre los 3 mejores de cada slot según el lugar del bloque en el historial (`blockSequence`). El mismo bloque sale igual (nunca al azar) y un bloque regenerado conserva su lugar.
+- **Catálogo (ADR-0002):**
+  - la Smith es equipo propio y entra en el equipo por defecto;
+  - la fatiga sistémica depende del patrón y el equipo;
+  - 15 staples más, variantes guiadas e inclinadas (63 → 78).
+- `currentGeneratorVersion` 6 → 7: los planes guardados se regeneran con el mismo bloque y el aviso "plan actualizado".
+
+**Criterios:**
+- [x] Cada músculo cubre sus slots antes de repetir uno, en la asignación y en la semana.
+- [x] Fuerza contra hipertrofia: el ancla cambia en al menos 4 músculos, en cada nivel de experiencia (7 en intermedio y avanzado, 4 en novato).
+- [x] El novato ancla en lo guiado (máquina, Smith, prensa) donde el slot lo tiene. El avanzado y el competitivo con objetivo de fuerza, en la barra libre en los básicos.
+- [x] En déficit, la sesión media cansa menos que en superávit con el mismo perfil, desde intermedio en todos los objetivos. Novato y principiante ya reciben lo guiado: ahí queda igual o menor, nunca mayor. Las anclas no cambian con la fase.
+- [x] Bloques consecutivos: las anclas se quedan y al menos la mitad de los rotables cambia. El mismo bloque sale igual.
+- [x] Con cualquier zona del formulario, o con poco equipo, nunca sale un ejercicio prohibido ni con equipo ausente.
+- [x] En SCRUM-214 pasan "cambia por objetivo" y "cambia por experiencia", sin `withKnownIssue`: el gate de la Fase B ya no tiene ninguno.
+
+**Decisiones del agente, a revisar por Jesús en el PR:**
+1. La tabla de anclas por objetivo y experiencia (queda en el log de `make ci` con el prefijo `[PR-B005]`).
+2. En déficit sólo los rotables bajan la fatiga: lo principal se mantiene por especificidad.
+3. El criterio de déficit, para novato y principiante, se cumple como "igual o menor".
+4. La variación entre bloques usa el lugar del bloque en el historial y no el `blockID`: dos UUID pueden caer en la misma rotación, el lugar no.
+
+Evidencia: commit `3b51dd0` (rama `SCRUM-219-seleccion-ejercicios`).
+- `make ci` → `✔ Test run with 545 tests in 82 suites passed` + `✔ Test run with 574 tests in 100 suites passed` (2026-10-28; línea base 539 + 567 con 2 *known issues*). Ya no queda ningún *known issue*. El build de iOS y el de watchOS pasaron, sin warnings nuevos.
+- `make test-ui` → 31 de 31 pruebas OK (23 min 52 s).
+- **Matriz de SCRUM-214, antes → después:**
+  - conjuntos de ejercicios distintos en 200 perfiles: 56 → 133; rutinas distintas: 71 → 149;
+  - pares fuerza/hipertrofia distintos: 60 % → 100 %;
+  - pares novato/avanzado distintos: 20 % → 97 %;
+  - 0 ejercicios con menos de 2 series; pantorrilla 145/200 y core 178/200, sin cambio.
+- **Fatiga de la sesión media, déficit contra superávit, 3 días:**
+  - hipertrofia: intermedio 0.495 contra 0.517; novato 0.419 contra 0.419;
+  - fuerza: intermedio 0.644 contra 0.664.
+  - Todas las combinaciones quedan en el log con `[PR-B005] fatiga media`.
+- **Tests:**
+  - `PRDomainTests/ExerciseAssignmentTests.swift`, suite "Slots y scoring por eje" (6);
+  - `PRCoreTests/ExerciseSelectionTests.swift` (5 pruebas, la de restricciones con las 8 zonas del formulario);
+  - `BlockPlannerRealCatalogTests.slotsCoveredBeforeRepeating` (3 variedades);
+  - `PlanPersistenceTests.secondBlockRotatesAndKeepsItsPlace`.
+- **Cambios a propósito en pruebas existentes:**
+  - SCRUM-214 quita sus dos `withKnownIssue`;
+  - `CatalogClassificationTests` y `ExerciseSelectionQualityTests` pasan de 63 a 78 staples (los 15 nuevos con su patrón fijado).
+- **En el camino:**
+  - la ab rollout con barra salía como ancla de core con objetivo de fuerza. El dataset la marca compuesta, así que quedaba protegida y pasaba del tiempo; lo encontró la prueba de SCRUM-215. Ahora la barra sólo pesa en los básicos;
+  - el día que rota un músculo con un solo ejercicio tomaba un rotable por índice y podía saltarse un slot. Ahora toma el primero.
+- **Pendiente:**
+  - "Por qué tu plan" todavía no explica por qué tocó máquina o barra;
+  - la app aún no abre un bloque nuevo al terminar las semanas; hoy uno nuevo sale al cambiar objetivo, fase o días, y ahí ya rota;
+  - glúteo no tiene variante guiada en el catálogo: el novato recibe el hip thrust con barra.

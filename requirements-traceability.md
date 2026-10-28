@@ -233,6 +233,26 @@ Cobertura en `PRCoreTests/CatalogClassificationTests.swift`:
 `PlanPersistenceTests.planWithElbowLoadingExerciseIsRegenerated`: un plan del generador 5
 se regenera sin el ejercicio que carga el codo.
 
+**Selección por slots, objetivo, experiencia y fase (SCRUM-219, PR-B005, RF-023).** Antes
+el ancla era siempre el primer staple: objetivo, experiencia y fase no cambiaban los
+ejercicios. Ahora `ExerciseSelectionRule` (`pr-b005-v1`) reparte los staples por slot
+funcional de cada músculo. Dentro de cada slot:
+- el ancla sale por objetivo y experiencia: el novato recibe lo guiado y el avanzado con
+  objetivo de fuerza, la barra en los básicos;
+- los rotables salen por experiencia y fase: en déficit, menos fatiga;
+- los rotables giran con el lugar del bloque en el historial (`blockSequence`), sin azar.
+
+Cobertura:
+- `PRDomainTests/ExerciseAssignmentTests.swift`, suite "Slots y scoring por eje" (6): slots,
+  objetivo, experiencia, fase, rotación entre bloques y slot sin equipo;
+- `PRCoreTests/ExerciseSelectionTests.swift` (5, catálogo real): tabla de anclas,
+  novato/avanzado, déficit, bloques consecutivos y restricción o equipo limitado por zona;
+- `BlockPlannerRealCatalogTests.slotsCoveredBeforeRepeating`: cobertura de slots en la
+  asignación y en la semana;
+- `PlanPersistenceTests.secondBlockRotatesAndKeepsItsPlace`: el segundo bloque rota y al
+  regenerarse conserva su lugar;
+- SCRUM-214: "cambia por objetivo" y "cambia por experiencia" salen de `withKnownIssue`.
+
 ## Evidence Registry (EPIC-03)
 
 Implementado en PR-0303 en `Packages/PRCore/Sources/PRDomain/Evidence.swift`
