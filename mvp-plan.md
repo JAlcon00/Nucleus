@@ -1,10 +1,10 @@
 # mvp-plan.md — Plan activo: MVP / POC de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica POC: SCRUM-180).
-> **Actualizado:** 2026-10-27 (tablero sincronizado con Jira y con el código).
+> **Actualizado:** 2026-10-28 (tablero sincronizado con Jira y con el código).
 > **Ejecuta:** el agente de IA de Xcode. Hace todo el trabajo asignado en Jira a Gael Durán y Joss Amador, en el orden de este archivo.
 > **Regla:** mientras quede un `[ ]` en las secciones 2 y 3, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
-> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
+> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 el 2026-10-28) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
 
 ---
 
@@ -675,7 +675,7 @@ Evidencia: commit `42ffa7b`.
 
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27; quedan SCRUM-226, la pantalla del dolor, y SCRUM-36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27) → HealthKit, Watch, pestañas.
+En orden: Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; queda SCRUM-36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27) → HealthKit, Watch, pestañas.
 
 ### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada; finalizada el 2026-10-27)
 
@@ -779,7 +779,7 @@ Evidencia: commit `f4380b7`, en `main` por el PR #10 (`3e46624`).
 
 ### SCRUM-32 · PR-0110 Una sola forma de medir el dolor (Must 1.0, Fase C; finalizada el 2026-10-27)
 
-- **En `main` desde el 2026-10-27:** Jesús fusionó el PR #9 (`883336b`). La pantalla para reportar el dolor es SCRUM-226.
+- **En `main` desde el 2026-10-27:** Jesús fusionó el PR #9 (`883336b`). La pantalla para reportar el dolor es SCRUM-226, en `main` desde el 2026-10-28.
 - **Decisiones de Jesús (2026-10-26):**
   1. Tabla conservadora para lo guardado en la escala 1–5: 1 → leve; 2 y 3 → moderado; 4 y 5 → alto. Un dolor punzante nunca queda por debajo de moderado.
   2. Se quita el tipo (molestia/punzante): queda solo el nivel y, opcional, el músculo.
@@ -795,7 +795,7 @@ Evidencia: commit `f4380b7`, en `main` por el PR #10 (`3e46624`).
 - [x] Alto → "Detén este ejercicio o cámbialo por otro. Si el dolor sigue, consulta a un profesional de la salud."
 - [x] Ningún mensaje adivina una lesión (RN-015): un test revisa los textos en español e inglés.
 - [x] Lo guardado en la escala 1–5 se traduce con la tabla, documentada en ADR-0003 y probada. `workouts` y `pending-operations` pasan de v1 a v2: es la primera migración real de SCRUM-40.
-- 👤 Verificación pendiente: reportar cada nivel y revisar la recomendación. Necesita la pantalla (SCRUM-226).
+- 👤 Verificación pendiente: reportar cada nivel y revisar la recomendación. Ya se puede: la pantalla está en `main` (SCRUM-226).
 
 Evidencia: commit `e1e9a6e`, en `main` por el PR #9 (`883336b`).
 - `make ci` → `✔ Test run with 533 tests in 80 suites passed` + `Test run with 539 tests in 94 suites passed … with 4 known issues` (2026-10-26; línea base 524 + 532 en `main` `9e05ebc`). Los 4 *known issues* son los de SCRUM-215 y SCRUM-219. El build de iOS y el de watchOS pasaron.
@@ -811,7 +811,7 @@ Evidencia: commit `e1e9a6e`, en `main` por el PR #9 (`883336b`).
     - `PainFeedbackEngineTests`: el umbral ya no se puede cambiar;
     - dos pruebas de `SchemaMigrationTests` que daban por hecho que `workouts` seguía en v1. Ahora usan la versión vigente y la migración real.
 - **Pendiente:**
-  - la pantalla para reportar el dolor en el entrenamiento (SCRUM-226);
+  - ~~la pantalla para reportar el dolor en el entrenamiento~~ (SCRUM-226, en `main` desde el 2026-10-28);
   - `ProgressionEngine` y `StrengthProgressionEngine` todavía no están conectados al plan: hoy la siguiente serie o sesión propone la carga planeada o el último peso hecho, y nada sube la carga solo;
   - si fallan las dos escrituras a disco (la de la serie y la del dolor), al reabrir se recupera la serie sin el dolor. La app ya muestra el aviso de guardado fallido;
   - 👤 Jesús, actualizar la app en un iPhone con entrenamientos guardados y revisar que el historial se vea igual.
@@ -850,9 +850,9 @@ Evidencia: commit `d78c0f9`, en `main` por el PR #11 (`e528029`).
   - SCRUM-219: que la experiencia cambie los ejercicios (el gate novato/avanzado sigue en 20 %).
 - 👤 Verificación pendiente: revisar el paso nuevo en el iPhone como principiante, claro y oscuro, y con letra grande.
 
-### SCRUM-226 · Reportar el dolor de una serie durante el entrenamiento (High, Fase C; en rama)
+### SCRUM-226 · Reportar el dolor de una serie durante el entrenamiento (High, Fase C; finalizada el 2026-10-28)
 
-- Va en la rama `SCRUM-226-reportar-dolor`. La lógica es de SCRUM-32; esta historia pone la pantalla.
+- **En `main` desde el 2026-10-28:** Jesús fusionó el PR #12 (`44fed74`). La lógica es de SCRUM-32; esta historia pone la pantalla.
 - **Cómo se ve:** en el descanso, "Reportar dolor" (secundario, debajo del tiempo) abre la hoja "¿Te dolió esta serie?":
   - abre a media altura, con la escala al alcance del pulgar;
   - al reportar dolor crece y la recomendación queda arriba;
@@ -869,7 +869,7 @@ Evidencia: commit `d78c0f9`, en `main` por el PR #11 (`e528029`).
 - [x] Sin internet se guarda igual (todo es local); si el guardado falla, sale el aviso de guardado fallido que ya existe.
 - [x] Ningún texto nombra una lesión ni promete recuperación (RN-015).
 
-Evidencia: commit `72c5385` (rama `SCRUM-226-reportar-dolor`).
+Evidencia: commit `72c5385`, en `main` por el PR #12 (`44fed74`).
 - `make ci` → `✔ Test run with 539 tests in 81 suites passed` + `Test run with 557 tests in 96 suites passed … with 2 known issues` (2026-10-27; línea base 539 + 547). Los 2 *known issues* son de SCRUM-219. El build de iOS y el de watchOS pasaron. Contraste de la recomendación medido con `contrast_check.py`: texto ≥ 14:1 e iconos ≥ 4.5:1, en claro y oscuro.
 - `make test-ui` → 31 de 31 pruebas OK, incluida la nueva (1 min 9 s). Capturas revisadas en el simulador: descanso, hoja a media altura, moderado, al reabrir y alto con saltar.
 - **Tests:**
