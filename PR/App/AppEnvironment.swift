@@ -189,6 +189,7 @@ public final class AppEnvironment {
                 templates: templates,
                 exerciseNames: exerciseNames,
                 dropsetAdvice: dropsetAdvice,
+                exerciseMuscles: exerciseMuscles,
                 celebrationPresenter: PRCelebrationPresenter(locale: Self.presentationLocale),
                 clock: clock
             ) {
@@ -249,6 +250,11 @@ public final class AppEnvironment {
         Dictionary(catalog.exercises.map { ($0.id, $0.canonicalName) }, uniquingKeysWith: { first, _ in first })
     }
 
+    /// Músculos de cada ejercicio para decir dónde dolió (SCRUM-226).
+    private var exerciseMuscles: [ExerciseID: [MuscleGroup.ID]] {
+        PainMuscleOptions.byExercise(catalog.exercises)
+    }
+
     /// Consejo de dropset por ejercicio para la persona (lo decide el dominio; SCRUM-200).
     private var dropsetAdvice: [ExerciseID: DropsetAdvice] {
         guard let profile = completedProfile else { return [:] }
@@ -283,6 +289,7 @@ public final class AppEnvironment {
                     template: template,
                     exerciseNames: exerciseNames,
                     dropsetAdvice: dropsetAdvice,
+                    exerciseMuscles: exerciseMuscles,
                     celebrationPresenter: presenter,
                     clock: clock
                 )
@@ -290,13 +297,13 @@ public final class AppEnvironment {
                 persistence.log.saveFailed(.workouts)
                 coordinator = WorkoutSessionCoordinator(
                     template: template, exerciseNames: exerciseNames, dropsetAdvice: dropsetAdvice,
-                    celebrationPresenter: presenter, clock: clock
+                    exerciseMuscles: exerciseMuscles, celebrationPresenter: presenter, clock: clock
                 )
             }
         } else {
             coordinator = WorkoutSessionCoordinator(
                 template: template, exerciseNames: exerciseNames, dropsetAdvice: dropsetAdvice,
-                celebrationPresenter: presenter, clock: clock
+                exerciseMuscles: exerciseMuscles, celebrationPresenter: presenter, clock: clock
             )
         }
         activeWorkout = coordinator

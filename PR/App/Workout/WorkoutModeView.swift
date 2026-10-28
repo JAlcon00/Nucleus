@@ -89,6 +89,12 @@ struct WorkoutModeView: View {
             }
             Button("Seguir entrenando", role: .cancel) {}
         }
+        .sheet(isPresented: $reportingPain) { painSheet }
+        .sensoryFeedback(trigger: coordinator.painReport?.level, painFeedback)
+        // Si la sesión termina con la hoja abierta (p. ej. saltar lo último), se cierra.
+        .onChange(of: coordinator.painReport == nil) { _, isGone in
+            if isGone { reportingPain = false }
+        }
         .onAppear { syncTicker() }
         .onDisappear { timer?.invalidate(); timer = nil }
     }
@@ -96,6 +102,11 @@ struct WorkoutModeView: View {
     @State private var finishTapped = false
     /// SCRUM-212: "Saltar" pide confirmación (no se puede deshacer sin "Retomar").
     @State private var confirmingSkip: String?
+    /// SCRUM-226: hoja "¿Te dolió esta serie?". Abre a media altura (la escala queda al
+    /// alcance del pulgar) y crece al reportar dolor, para que la recomendación se vea entera.
+    @State private var reportingPain = false
+    @State private var painDetent: PresentationDetent = .medium
+    private let painPresenter = PainRecommendationPresenter(locale: AppEnvironment.presentationLocale)
 
     private var isLive: Bool {
         switch coordinator.phase {
@@ -125,6 +136,13 @@ struct WorkoutModeView: View {
             } else if let restView {
                 restView
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if let report = coordinator.painReport {
+                    // SCRUM-226: en el descanso se puede decir si dolió la serie. Secundario:
+                    // no tapa el tiempo ni lo que sigue.
+                    painButton(report)
+                        .padding(.horizontal, DSpace.l)
+                        .padding(.bottom, DSpace.m)
+                }
                 if let next {
                     // En pleno descanso: qué sigue y, si la máquina está ocupada, cambiarlo.
                     queueActions(for: next, label: "Sigue: \(next.exerciseName)")
@@ -192,9 +210,59 @@ struct WorkoutModeView: View {
         }
     }
 
+    /// SCRUM-226: botón del descanso para reportar el dolor de la serie que se acaba de
+    /// hacer. Dice lo ya reportado; con moderado o alto lleva el icono de aviso.
+    private func painButton(_ report: PainReportUI) -> some View {
+        Button {
+            painDetent = report.level.map { $0 > PainLevel.none } == true ? .large : .medium
+            reportingPain = true
+        } label: {
+            Label(
+                painPresenter.reportButtonTitle(for: report.level),
+                systemImage: report.recommendation == .continueNormal ? "hand.raised" : "exclamationmark.triangle"
+            )
+        }
+        .buttonStyle(.surface)
+        .accessibilityHint("Di si te dolió la serie que acabas de hacer.")
+        .accessibilityIdentifier("workout.pain")
+    }
+
+    /// Hoja del dolor. "Sin dolor" la cierra; saltar el ejercicio también. Un error aquí es
+    /// de estado (la sesión ya terminó): el guardado fallido lo avisa `persistenceFailed`.
+    @ViewBuilder
+    private var painSheet: some View {
+        if let report = coordinator.painReport {
+            PainReportSheet(
+                report: report,
+                onReport: { level, muscle in
+                    _ = try? coordinator.reportPain(level, muscleGroup: muscle)
+                    if level == PainLevel.none {
+                        reportingPain = false
+                    } else {
+                        painDetent = .large
+                    }
+                },
+                onSkipExercise: {
+                    _ = try? coordinator.skipPainfulExercise()
+                    reportingPain = false
+                },
+                onDone: { reportingPain = false }
+            )
+            .presentationDetents([.medium, .large], selection: $painDetent)
+            .presentationDragIndicator(.visible)
+        }
+    }
+
+    /// Háptico al guardar el dolor: confirmación breve sin dolor o leve; aviso con
+    /// moderado o alto (la recomendación de la hoja lo explica).
+    private func painFeedback(_ old: PainLevel?, _ new: PainLevel?) -> SensoryFeedback? {
+        guard let new, new != old else { return nil }
+        return new.isConservativeDisruptive ? .warning : .success
+    }
+
     /// Tarjeta de educación contextual derivada (determinista, PR-1501) del estado de
-    /// la sesión. Sin molestia reportada (PR-1403 no está cableado aún) salvo que la UI
-    /// lo ofrezca; aquí sólo calentamiento/descanso, respetando el nivel del usuario.
+    /// la sesión: calentamiento/descanso, respetando el nivel del usuario. La
+    /// recomendación por dolor va en la hoja del dolor (SCRUM-226), no aquí.
     private var coachingCard: CoachingCard? {
         var isWarmup = false
         var restActive = false
@@ -358,6 +426,40 @@ struct WorkoutModeView: View {
     }
     .dynamicTypeSize(.accessibility3)
     .ironEnergyTheme()
+}
+
+#Preview("Descanso · dolor moderado reportado") {
+    NavigationStack {
+        WorkoutModeView(coordinator: makeRestingPreviewCoordinator(pain: .moderate))
+    }
+    .ironEnergyTheme()
+}
+
+#Preview("Descanso · sin reportar · oscuro") {
+    NavigationStack {
+        WorkoutModeView(coordinator: makeRestingPreviewCoordinator(pain: nil))
+    }
+    .ironEnergyTheme()
+    .preferredColorScheme(.dark)
+}
+
+/// En el descanso tras la primera de dos series, con o sin dolor reportado (SCRUM-226).
+@MainActor
+private func makeRestingPreviewCoordinator(pain: PainLevel?) -> WorkoutSessionCoordinator {
+    let exerciseID = ExerciseID()
+    let set = try? PlannedSet(
+        exerciseID: exerciseID,
+        prescription: SetPrescription(targetRepRange: 8...10, targetLoad: 82.5, loadUnit: .kilograms, restSeconds: 90...120)
+    )
+    let coordinator = WorkoutSessionCoordinator(
+        template: SessionTemplate(title: "Press banca", plannedSets: [set, set].compactMap { $0 }),
+        exerciseNames: [exerciseID: "Press banca"],
+        exerciseMuscles: [exerciseID: [.chest, .triceps, .shoulders]]
+    )
+    _ = coordinator.start()
+    _ = try? coordinator.completeCurrentSet()
+    if let pain { _ = try? coordinator.reportPain(pain) }
+    return coordinator
 }
 
 @MainActor

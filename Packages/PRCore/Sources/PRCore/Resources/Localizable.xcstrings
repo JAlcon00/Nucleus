@@ -224,6 +224,42 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Stop this exercise or swap it for another. If the pain continues, see a health professional." } }
       }
     },
+    "Sin dolor" : {
+      "comment" : "Escala de dolor: ninguno",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No pain" } }
+      }
+    },
+    "Leve" : {
+      "comment" : "Escala de dolor: leve",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Mild" } }
+      }
+    },
+    "Moderado" : {
+      "comment" : "Escala de dolor: moderado",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Moderate" } }
+      }
+    },
+    "Alto" : {
+      "comment" : "Escala de dolor: alto",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "High" } }
+      }
+    },
+    "Reportar dolor" : {
+      "comment" : "Botón del descanso para reportar dolor",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Report pain" } }
+      }
+    },
+    "Dolor: %@" : {
+      "comment" : "Botón del descanso con el dolor ya reportado",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pain: %@" } }
+      }
+    },
     "Por tu restricción no programamos %@ por ahora." : {
       "comment" : "Por qué tu plan: músculos omitidos por una restricción",
       "localizations" : {

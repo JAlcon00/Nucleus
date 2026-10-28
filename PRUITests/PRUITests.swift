@@ -605,6 +605,55 @@ final class PRUITests: XCTestCase {
         XCTAssertTrue(element(app, "summary.skipped").waitForExistence(timeout: 10), "El resumen muestra lo saltado")
     }
 
+    /// SCRUM-226: en el descanso se reporta el dolor de la serie. Moderado da la
+    /// recomendación y se puede decir dónde; al reabrir la app sigue guardado. Alto ofrece
+    /// saltar el ejercicio, que queda para retomar.
+    func testPainIsReportedDuringRestAndKeptAfterReopening() {
+        let storeID = "ui-\(UUID().uuidString.prefix(8))"
+        let app = launch(storeID: storeID)
+        completeOnboarding(app)
+        tap(app, "today.start")
+        // Hasta el primer descanso (el calentamiento puede no tenerlo).
+        let pain = element(app, "workout.pain")
+        for _ in 1...4 where !pain.exists {
+            tap(app, "workout.completeSet")
+            _ = pain.waitForExistence(timeout: 3)
+        }
+        XCTAssertTrue(pain.exists, "En el descanso se puede reportar el dolor")
+        XCTAssertTrue(pain.label.contains("Reportar dolor"), "Antes de reportar: '\(pain.label)'")
+
+        pain.tap()
+        tap(app, "pain.level.moderate")
+        let advice = element(app, "pain.recommendation")
+        XCTAssertTrue(advice.waitForExistence(timeout: 5), "Moderado muestra la recomendación")
+        XCTAssertTrue(advice.label.contains("Baja la intensidad"), "Recomendación: '\(advice.label)'")
+        XCTAssertFalse(element(app, "pain.skip").exists, "Moderado no ofrece saltar")
+        let muscle = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'pain.muscle.'")).firstMatch
+        XCTAssertTrue(muscle.exists, "Se puede decir dónde (opcional)")
+        muscle.tap()
+        tap(app, "pain.done")
+        XCTAssertTrue(pain.waitForExistence(timeout: 5))
+        XCTAssertTrue(pain.label.contains("Moderado"), "El botón dice lo reportado: '\(pain.label)'")
+
+        app.terminate()   // cierre forzado: el dolor ya está en la serie guardada
+        let reopened = launch(storeID: storeID)
+        XCTAssertTrue(element(reopened, "today.activeBanner").waitForExistence(timeout: 20))
+        tap(reopened, "today.resume")
+        let painAfter = element(reopened, "workout.pain")
+        XCTAssertTrue(painAfter.waitForExistence(timeout: 10), "Al reabrir sigue el descanso")
+        XCTAssertTrue(painAfter.label.contains("Moderado"), "El dolor sigue en la serie: '\(painAfter.label)'")
+
+        painAfter.tap()
+        tap(reopened, "pain.level.high")
+        let stop = element(reopened, "pain.recommendation")
+        XCTAssertTrue(stop.waitForExistence(timeout: 5))
+        XCTAssertTrue(stop.label.contains("Detén este ejercicio"), "Recomendación: '\(stop.label)'")
+        tap(reopened, "pain.skip")
+        XCTAssertTrue(element(reopened, "workout.resume.0").waitForExistence(timeout: 5),
+                      "El ejercicio que dolió queda saltado y se puede retomar")
+    }
+
     func testStartShowsTheFirstSetNotABlackScreen() {
         let app = launch()
         completeOnboarding(app)

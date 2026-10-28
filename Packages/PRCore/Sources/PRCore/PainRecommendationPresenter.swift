@@ -29,6 +29,26 @@ public struct PainRecommendationPresenter: Sendable {
         }
     }
 
+    /// Nombre de cada nivel de la escala única (SCRUM-226). Siempre con texto: el color
+    /// nunca es lo único que los distingue.
+    public func levelName(_ level: PainLevel) -> String {
+        switch level {
+        case .none: return resource("Sin dolor", "Escala de dolor: ninguno")
+        case .mild: return resource("Leve", "Escala de dolor: leve")
+        case .moderate: return resource("Moderado", "Escala de dolor: moderado")
+        case .high: return resource("Alto", "Escala de dolor: alto")
+        }
+    }
+
+    /// Texto del botón del descanso: invita a reportar o dice lo ya reportado.
+    public func reportButtonTitle(for level: PainLevel?) -> String {
+        switch level {
+        case nil: return resource("Reportar dolor", "Botón del descanso para reportar dolor")
+        case .none?: return levelName(.none)
+        case let reported?: return resource("Dolor: \(levelName(reported))", "Botón del descanso con el dolor ya reportado")
+        }
+    }
+
     private static let bundle = LocalizedStringResource.BundleDescription.atURL(Bundle.module.bundleURL)
 
     private func resource(_ key: String.LocalizationValue, _ comment: StaticString) -> String {
