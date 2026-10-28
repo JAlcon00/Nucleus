@@ -4,7 +4,7 @@
 > **Actualizado:** 2026-10-28 (tablero sincronizado con Jira y con el código).
 > **Ejecuta:** el agente de IA de Xcode. Hace todo el trabajo asignado en Jira a Gael Durán y Joss Amador, en el orden de este archivo.
 > **Regla:** mientras quede un `[ ]` en las secciones 2 y 3, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
-> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 el 2026-10-28) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
+> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 y SCRUM-37 el 2026-10-28) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
 
 ---
 
@@ -675,7 +675,7 @@ Evidencia: commit `42ffa7b`.
 
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; queda SCRUM-36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 37–39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27) → HealthKit, Watch, pestañas.
+En orden: Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; queda SCRUM-36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27 y ~~SCRUM-37~~, el catálogo, el 2026-10-28) → HealthKit, Watch, pestañas.
 
 ### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada; finalizada el 2026-10-27)
 
@@ -881,9 +881,9 @@ Evidencia: commit `72c5385`, en `main` por el PR #12 (`44fed74`).
   - si se salta el descanso, el botón ya no se ve (la serie siguiente es la acción principal).
 - 👤 Verificación pendiente: reportar cada nivel en el iPhone y revisar la recomendación, la legibilidad (Liquid Glass, Reduce Transparency, Increase Contrast) y el háptico.
 
-### SCRUM-37 · PR-0115 Clasificación del catálogo de ejercicios (P0 desde el 2026-10-28; en rama)
+### SCRUM-37 · PR-0115 Clasificación del catálogo de ejercicios (P0 desde el 2026-10-28; finalizada el 2026-10-28)
 
-- Va en la rama `SCRUM-37-clasificacion-catalogo`.
+- **En `main` desde el 2026-10-28:** Jesús fusionó el PR #13 (`8f15788`). Los planes guardados se regeneran solos al abrir la app.
 - **Por qué es P0:** la auditoría encontró que la restricción de codo se saltaba.
   - Para tríceps, el plan asignaba la extensión con cuerda sobre la cabeza, fondos y el jalón con cuerda; para bíceps, el curl martillo con cuerda.
   - "Rope" los volvía cardio, y las restricciones filtraban solo por patrón.
@@ -903,7 +903,7 @@ Evidencia: commit `72c5385`, en `main` por el PR #12 (`44fed74`).
 - [x] La búsqueda sin conexión responde en menos de 100 ms.
 - [x] `exercises.json` está versionado (`git ls-files`, 2026-10-28).
 
-Evidencia: commit `c863787` (rama `SCRUM-37-clasificacion-catalogo`).
+Evidencia: commit `c863787`, en `main` por el PR #13 (`8f15788`).
 - `make ci` → `✔ Test run with 539 tests in 81 suites passed` + `Test run with 567 tests in 99 suites passed … with 2 known issues` (2026-10-28; línea base 539 + 557). Los 2 *known issues* son de SCRUM-219. El build de iOS y el de watchOS pasaron.
 - `make test-ui` → 31 de 31 pruebas OK (incluye la de la zona explicada en "Tu semana" y la de volumen realista de Hoy).
 - **Matriz de SCRUM-214, después del cambio:**
