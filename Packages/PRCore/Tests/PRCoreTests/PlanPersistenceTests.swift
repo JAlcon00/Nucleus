@@ -268,6 +268,40 @@ struct PlanPersistenceTests {
         #expect(next.todayPlan.notice == nil)
         #expect(next.todayPlan.plan?.block.id == block.id)
     }
+
+    @Test("Un plan del generador 4 (sin pantorrilla ni core) se regenera con el mismo bloque y avisa (SCRUM-215)")
+    func planWithoutMaintenanceIsRegenerated() async throws {
+        let root = try makeRoot()
+        let roomy = profile(days: 4, minutes: 120)
+        let first = try AppInstance(root: root)
+        await first.todayPlan.activate(profile: roomy, userID: "u1")
+        guard case .loaded(var stored, var block) = await first.planStore.loadPlan(userID: "u1") else {
+            Issue.record("no hay plan"); return
+        }
+        let catalog = try ExerciseCatalogLoader.loadBundled()
+        let byID = Dictionary(catalog.exercises.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        func isMaintenance(_ id: ExerciseID) -> Bool {
+            guard let muscle = byID[id]?.primaryMuscles.first?.muscleGroupID else { return false }
+            return muscle == .calves || muscle == .core
+        }
+        func hasMaintenance(_ block: TrainingBlock) -> Bool {
+            block.sessions.contains { $0.plannedSets.contains { isMaintenance($0.exerciseID) } }
+        }
+        #expect(hasMaintenance(block))
+        // Como lo guardaba el generador 4: sin ejercicios de pantorrilla ni de core.
+        for index in block.sessions.indices {
+            block.sessions[index].plannedSets.removeAll { isMaintenance($0.exerciseID) }
+        }
+        stored.generatorVersion = 4
+        try await first.planStore.save(plan: stored, block: block)
+
+        let app = try AppInstance(root: root)
+        #expect(await app.todayPlan.restore(userID: "u1") == .restored(roomy))
+        let migrated = try #require(app.todayPlan.plan?.block)
+        #expect(migrated.id == block.id)
+        #expect(hasMaintenance(migrated))
+        #expect(app.todayPlan.notice == .planUpdated)
+    }
 }
 
 @MainActor

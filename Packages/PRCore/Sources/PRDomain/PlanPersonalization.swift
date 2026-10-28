@@ -421,7 +421,7 @@ public enum PlanRationaleFacts {
     public static let userFacingKeys: Set<String> = [
         "goal", "phase", "plannedWeeks", "split", "trainingDaysPerWeek", "totalWeeklySets",
         "restrictedRegions", "restrictedMuscles", "emphasizedMuscles", "substitution",
-        "sessionsOverRange", "sessionsOverTime",
+        "sessionsOverRange", "sessionsOverTime", "maintenanceLeftOut",
     ]
 
     /// Los hechos de la lista, en su orden original.

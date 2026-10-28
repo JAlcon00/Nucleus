@@ -363,7 +363,8 @@ public struct TodayPlanBuilder: Sendable {
         BlockPlanner(volumeAllocator: VolumeAllocator(config: try! VolumeConfig(rule: VolumeDefaults.makeRule())))
     }
 
-    /// Prioridades por defecto: musculatura estándar del split a tier `.normal`.
+    /// Prioridades por defecto: los 8 grupos principales a `.normal`, y pantorrilla y core a
+    /// `.maintain` (SCRUM-215) para que el plan no los deje fuera.
     public func defaultPriorities() -> [MusclePriority] {
         [
             MusclePriority(muscleGroupID: .chest, priority: .normal),
@@ -374,6 +375,8 @@ public struct TodayPlanBuilder: Sendable {
             MusclePriority(muscleGroupID: .quadriceps, priority: .normal),
             MusclePriority(muscleGroupID: .hamstrings, priority: .normal),
             MusclePriority(muscleGroupID: .glutes, priority: .normal),
+            MusclePriority(muscleGroupID: .calves, priority: .maintain),
+            MusclePriority(muscleGroupID: .core, priority: .maintain),
         ]
     }
 

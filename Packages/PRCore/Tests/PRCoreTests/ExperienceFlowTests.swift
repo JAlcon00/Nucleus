@@ -5,8 +5,9 @@
 //  SCRUM-210 (FB-3): la experiencia va primero y decide el formulario:
 //  - novato/principiante: lenguaje simple, sin "Variedad" (queda estable);
 //  - intermedio: el flujo de siempre;
-//  - avanzado/competitivo: lenguaje técnico y hasta 2 músculos prioritarios que el
-//    motor usa como `.emphasize`.
+//  - avanzado/competitivo: lenguaje técnico.
+//  Desde SCRUM-215 todos los niveles pueden elegir hasta 2 músculos prioritarios
+//  (opcional), que el motor usa como `.emphasize`; quien empieza lo ve en palabras simples.
 //  Los textos cambian por nivel y el RIR se explica en palabras a quien empieza.
 //
 
@@ -35,17 +36,18 @@ private func draft(_ experience: ExperienceLevel, variety: VarietyPreference? = 
 @Suite("Formulario según la experiencia (SCRUM-210)")
 struct ExperienceFlowTests {
 
-    @Test("Pasos por nivel: guiado sin variedad, estándar igual, experto con prioritarios")
+    @Test("Pasos por nivel: todos con prioritarios (SCRUM-215), guiado sin variedad y el más corto")
     func stepsPerLevel() {
-        let guided: [OnboardingStep] = [.experience, .goal, .phase, .daysPerWeek, .sessionMinutes, .restrictions]
-        let standard: [OnboardingStep] = [.experience, .goal, .phase, .daysPerWeek, .sessionMinutes, .variety, .restrictions]
-        let expert: [OnboardingStep] = [.experience, .goal, .phase, .daysPerWeek, .sessionMinutes, .variety, .priorityMuscles, .restrictions]
+        let guided: [OnboardingStep] = [.experience, .goal, .phase, .daysPerWeek, .sessionMinutes, .priorityMuscles, .restrictions]
+        let standard: [OnboardingStep] = [.experience, .goal, .phase, .daysPerWeek, .sessionMinutes, .variety, .priorityMuscles, .restrictions]
         #expect(OnboardingFlowPolicy.steps(for: .novice) == guided)
         #expect(OnboardingFlowPolicy.steps(for: .beginner) == guided)
         #expect(OnboardingFlowPolicy.steps(for: .intermediate) == standard)
-        #expect(OnboardingFlowPolicy.steps(for: .advanced) == expert)
-        #expect(OnboardingFlowPolicy.steps(for: .competitive) == expert)
+        #expect(OnboardingFlowPolicy.steps(for: .advanced) == standard)
+        #expect(OnboardingFlowPolicy.steps(for: .competitive) == standard)
         #expect(OnboardingFlowPolicy.steps(for: nil) == standard, "Antes de elegir: el flujo estándar")
+        let counts = ExperienceLevel.allCases.map { OnboardingFlowPolicy.steps(for: $0).count }
+        #expect(OnboardingFlowPolicy.steps(for: .novice).count == counts.min(), "Quien empieza sigue con el formulario más corto")
     }
 
     @Test("Elegir la experiencia cambia los pasos que siguen (y se puede volver a cambiar)")
@@ -53,7 +55,7 @@ struct ExperienceFlowTests {
         var flow = OnboardingFlowController()
         #expect(flow.currentStep == .experience)
         flow = flow.answering(.experience(.beginner))
-        #expect(flow.stepCount == 6)
+        #expect(flow.stepCount == 7)
         #expect(flow.audience == .guided)
         flow = flow.answering(.experience(.advanced))
         #expect(flow.stepCount == 8)
@@ -65,7 +67,7 @@ struct ExperienceFlowTests {
     func guidedDefaults() throws {
         let profile = try OnboardingProfileBuilder().build(from: draft(.novice, variety: .varied, priority: [.chest]))
         #expect(profile.varietyPreference == .stable)
-        #expect(profile.priorityMuscles.isEmpty, "Los prioritarios son sólo para avanzados")
+        #expect(profile.priorityMuscles == [.chest], "SCRUM-215: quien empieza también puede elegir prioritarios")
         let noVariety = try OnboardingProfileBuilder().build(from: draft(.beginner, variety: nil))
         #expect(noVariety.varietyPreference == OnboardingFlowPolicy.guidedVariety)
     }
@@ -120,6 +122,11 @@ struct ExperienceFlowTests {
         #expect(guided.subtitle(for: .phase) != expert.subtitle(for: .phase))
         #expect(standard.title(for: .phase) == "Fase")
         #expect(expert.title(for: .priorityMuscles) == "Músculos prioritarios")
+        // SCRUM-215: quien empieza ve el paso en palabras simples y que se puede saltar.
+        #expect(guided.title(for: .priorityMuscles) == "¿Quieres enfocarte en algo?")
+        #expect(guided.subtitle(for: .priorityMuscles).hasPrefix("Puedes saltarlo."))
+        #expect(!guided.subtitle(for: .priorityMuscles).contains("volumen"), "Sin jerga para quien empieza")
+        #expect(standard.title(for: .priorityMuscles) == "Músculos prioritarios")
 
         let guidedPhase = OnboardingChoicePresenter(locale: spanish, audience: .guided).choices(for: .phase).map(\.label)
         let expertPhase = OnboardingChoicePresenter(locale: spanish, audience: .expert).choices(for: .phase).map(\.label)

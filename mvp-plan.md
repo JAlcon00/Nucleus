@@ -815,3 +815,37 @@ Evidencia: commit `e1e9a6e`, en `main` por el PR #9 (`883336b`).
   - `ProgressionEngine` y `StrengthProgressionEngine` todavía no están conectados al plan: hoy la siguiente serie o sesión propone la carga planeada o el último peso hecho, y nada sube la carga solo;
   - si fallan las dos escrituras a disco (la de la serie y la del dolor), al reabrir se recupera la serie sin el dolor. La app ya muestra el aviso de guardado fallido;
   - 👤 Jesús, actualizar la app en un iPhone con entrenamientos guardados y revisar que el historial se vea igual.
+
+### SCRUM-215 · PR-B002 Prioridades en todos los niveles, más pantorrilla y core (P0, Fase B; en rama)
+
+- Va en la rama `SCRUM-215-prioridades-musculares`.
+- **Decisiones de Jesús (2026-10-27):**
+  1. Gana el tiempo: pantorrilla y core entran si caben, después de quitar otros aislamientos y bajar series. Si no caben en la semana, "Por qué tu plan" lo dice.
+  2. D3: el paso "Músculos prioritarios" también para Novato y Principiante, en palabras simples y opcional.
+  3. El core va en el día con más espacio: todos los días en cuerpo completo, pierna en torso/pierna y jalón en empuje/jalón/pierna. La pantorrilla, con la pierna.
+
+**Criterios:**
+- [x] Todos los niveles ven el paso "Músculos prioritarios", opcional, con 0 a 2 músculos.
+- [x] Novato y Principiante: "¿Quieres enfocarte en algo?" / "Puedes saltarlo…", se salta con un toque y su cuestionario sigue siendo el más corto (7 pasos contra 8).
+- [x] Sin énfasis: los 8 grupos principales en `.normal`, y pantorrilla y core en `.maintain`, con al menos 2 series de trabajo por ejercicio.
+- [x] Con énfasis (cualquier nivel), el músculo elegido queda en `.emphasize` y recibe más series que uno `.normal`. El orden frente a otro aislamiento lo cubre `BlockPlannerOrderTests`.
+- [x] Un perfil guardado antes conserva sus prioridades (o ninguna). Los planes guardados se regeneran (`currentGeneratorVersion` 4 → 5) con el mismo bloque y el aviso "plan actualizado".
+- [x] Pantorrilla y core nunca hacen que una sesión pase de los minutos, y ningún ejercicio queda con 1 serie.
+- [x] En SCRUM-214, "pantorrilla y core en el plan" salió de `withKnownIssue`. Por la decisión 1 ahora exige que ningún plan los deje fuera sin decirlo.
+
+Evidencia: commit `d78c0f9` (rama `SCRUM-215-prioridades-musculares`).
+- `make ci` → `✔ Test run with 539 tests in 81 suites passed` + `Test run with 547 tests in 95 suites passed … with 2 known issues` (2026-10-27; línea base 536 + 540 con 4). Los 2 *known issues* que quedan son de SCRUM-219. El build de iOS y el de watchOS pasaron.
+- `make test-ui` → 30 de 30 pruebas OK (incluye `testBeginnerFlowIsSimplerAndExplainsRIR` y `testAdvancedFlowAsksPriorityMuscles` con el paso de prioritarios).
+- **Matriz de 200 perfiles** (SCRUM-214):
+  - planes con pantorrilla: **145/200** (antes 0); con core: **178/200** (antes 0). Los que no la tienen lo dicen en "Por qué tu plan";
+  - con 90 min o más casi todos los tienen; con 30–60 min dependen del tiempo (gana el tiempo);
+  - 0 ejercicios con menos de 2 series; las sesiones sobre el tope siguen en 24 (todas con aviso), y 217 quedan bajo el mínimo porque el volumen no alcanza (D1).
+- **Tests:**
+  - `PRDomainTests/MaintenanceCompositionTests.swift` (3): orden de recorte con catálogo sintético y aviso cuando no caben.
+  - `PRCoreTests/MuscleCoverageTests.swift` (6): catálogo real, día de cada músculo por split, gana el tiempo, restricción y énfasis en cualquier nivel.
+  - `PlanPersistenceTests`: un plan del generador 4 se regenera con el mismo bloque y avisa.
+  - Se cambiaron a propósito por el paso nuevo: `OnboardingTests` (3), `ExperienceFlowTests` (3) y las pruebas de UI del cuestionario (`Paso 1 de 7/8`, prioritarios en todos los niveles).
+- **Pendiente:**
+  - D1 (SCRUM-220): con 30–60 min, pantorrilla y core muchas veces no caben;
+  - SCRUM-219: que la experiencia cambie los ejercicios (el gate novato/avanzado sigue en 20 %);
+  - 👤 Jesús: revisar el paso nuevo en el iPhone como principiante, claro y oscuro, y con letra grande.
