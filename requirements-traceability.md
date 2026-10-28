@@ -215,6 +215,24 @@ de PRDomain (ver `docs/spec/docs/adr/ADR-0002`). Cobertura en
 `Packages/PRCore/Tests/PRCoreTests/ExerciseCatalogTests.swift`: carga del bundle,
 determinismo de IDs, patrones MVP e idempotencia del seed (RF-034).
 
+**Clasificación revisada (SCRUM-37, P0, RF-034, RF-023).** Con restricción de codo, el
+plan asignaba tríceps y bíceps con cuerda, porque los clasificaba como cardio. Ahora:
+- las reglas por nombre de `ExerciseInflector` van en orden;
+- `contraindicationTags` cubre codo, hombro y cuello, así que la restricción ya no depende
+  solo del patrón (ver la actualización de ADR-0002).
+
+Cobertura en `PRCoreTests/CatalogClassificationTests.swift`:
+- cada zona del formulario contra el catálogo real (asignación por músculo y variedad, y
+  plan completo), con un criterio que no usa la clasificación;
+- los 63 staples con su patrón esperado;
+- todo el catálogo: campos válidos, sin músculos repetidos, ángulos y aperturas;
+- la lista con razón de lo que no cuadra con su músculo principal y de lo que queda como
+  cardio;
+- la búsqueda en menos de 100 ms.
+
+`PlanPersistenceTests.planWithElbowLoadingExerciseIsRegenerated`: un plan del generador 5
+se regenera sin el ejercicio que carga el codo.
+
 ## Evidence Registry (EPIC-03)
 
 Implementado en PR-0303 en `Packages/PRCore/Sources/PRDomain/Evidence.swift`

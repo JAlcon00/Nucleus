@@ -302,6 +302,44 @@ struct PlanPersistenceTests {
         #expect(hasMaintenance(migrated))
         #expect(app.todayPlan.notice == .planUpdated)
     }
+
+    @Test("SCRUM-37: un plan del generador 5 con un ejercicio que carga el codo se regenera sin él")
+    func planWithElbowLoadingExerciseIsRegenerated() async throws {
+        let root = try makeRoot()
+        var restricted = profile(days: 4, minutes: 90)
+        restricted.restrictions = BodyRegionRestrictionRule.restrictions(
+            for: RestrictionsAnswer(zones: [.elbow]), now: Date(timeIntervalSince1970: 1_792_670_400)
+        )
+        let first = try AppInstance(root: root)
+        await first.todayPlan.activate(profile: restricted, userID: "u1")
+        guard case .loaded(var stored, var block) = await first.planStore.loadPlan(userID: "u1") else {
+            Issue.record("no hay plan"); return
+        }
+        let catalog = try ExerciseCatalogLoader.loadBundled()
+        let byID = Dictionary(catalog.exercises.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        func loadsElbow(_ id: ExerciseID) -> Bool {
+            byID[id]?.primaryMuscles.contains { [.triceps, .biceps, .forearms].contains($0.muscleGroupID) } ?? false
+        }
+        func hasElbowWork(_ block: TrainingBlock) -> Bool {
+            block.sessions.contains { $0.plannedSets.contains { loadsElbow($0.exerciseID) } }
+        }
+        #expect(!hasElbowWork(block))
+        // Como lo guardaba el generador 5: el jalón con cuerda contaba como cardio y pasaba.
+        let rope = try #require(catalog.exercises.first { $0.aliases.first == "Triceps Pushdown - Rope Attachment" })
+        let prescription = try #require(block.sessions[0].plannedSets.first?.prescription)
+        block.sessions[0].plannedSets.append(contentsOf: Array(
+            repeating: PlannedSet(exerciseID: rope.id, prescription: prescription), count: 2
+        ))
+        stored.generatorVersion = 5
+        try await first.planStore.save(plan: stored, block: block)
+
+        let app = try AppInstance(root: root)
+        #expect(await app.todayPlan.restore(userID: "u1") == .restored(restricted))
+        let migrated = try #require(app.todayPlan.plan?.block)
+        #expect(migrated.id == block.id)
+        #expect(!hasElbowWork(migrated))
+        #expect(app.todayPlan.notice == .planUpdated)
+    }
 }
 
 @MainActor
