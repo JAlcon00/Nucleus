@@ -94,3 +94,33 @@ en el código (`ExerciseInflector`) y ajustables sin cambiar el dataset.
   `Package.swift`, `ExerciseCatalog.swift` y `ExerciseCatalogTests.swift`.
 - El dominio `Exercise`/`ExerciseFamily` (PR-0102/PR-0103) no cambia; los datos
   ya persistidos con IDs deterministas siguen siendo válidos.
+## Actualización 2026-10-28 · SCRUM-37 (P0): clasificación revisada y contraindicaciones
+
+La consecuencia negativa "nombre ambiguo" se volvió un bug de seguridad. Las restricciones
+filtraban solo por patrón, y con restricción de codo el plan asignaba extensiones y jalones
+de tríceps con cuerda (las clasificaba como cardio). Cambios en `ExerciseInflector`:
+
+- **Orden de las reglas:**
+  - lo aislado y específico va antes que lo genérico;
+  - curls y extensiones van antes que press, remos y jalones;
+  - la zancada va antes que la sentadilla ("split squat" es zancada);
+  - el press inclinado o declinado es de pecho.
+- **Coincidencias por palabra:**
+  - "row" solo cuenta como palabra, así que "narrow" ya no es remo;
+  - "rope" ya no significa cardio; solo "battling ropes", "rope climb" y saltar la cuerda lo son;
+  - "kickback" con glúteo como principal es cadera.
+- **`contraindicationTags`** deja de estar vacío. Es la red de seguridad: `RestrictionPolicyEngine` ya cruzaba estas etiquetas.
+  - **Codo:** tríceps, bíceps o antebrazo como principal.
+  - **Hombro y cuello:** la carga termina sobre o detrás de la cabeza (vertical de manos, arrancada, envión, push press, sentadilla con barra arriba).
+  - **Hombro:** remo al mentón o al cuello.
+  - **Cuello:** todo lo que nombra el cuello.
+- **Otras correcciones:**
+  - un músculo cuenta una sola vez;
+  - el press vertical lleva ángulo `overhead`;
+  - las aperturas y todo lo de una articulación son aislamiento (`accessoryIsolation`).
+- **Pruebas** (`PRCoreTests/CatalogClassificationTests.swift`):
+  - cada zona del formulario se prueba contra el catálogo real con un criterio que no usa la clasificación (el nombre del dataset y el músculo principal);
+  - los 63 staples tienen su patrón fijado;
+  - lo que no cuadra con su músculo principal queda en una lista con su razón;
+  - un caso nuevo hace fallar la prueba.
+- Los planes guardados se regeneran con `currentGeneratorVersion` 6.

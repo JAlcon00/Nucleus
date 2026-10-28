@@ -880,3 +880,41 @@ Evidencia: commit `72c5385`, en `main` por el PR #12 (`44fed74`).
   - la última serie de la sesión va directo al resumen, sin descanso: su dolor no se puede reportar desde esta pantalla;
   - si se salta el descanso, el botón ya no se ve (la serie siguiente es la acción principal).
 - 👤 Verificación pendiente: reportar cada nivel en el iPhone y revisar la recomendación, la legibilidad (Liquid Glass, Reduce Transparency, Increase Contrast) y el háptico.
+
+### SCRUM-37 · PR-0115 Clasificación del catálogo de ejercicios (P0 desde el 2026-10-28; en rama)
+
+- Va en la rama `SCRUM-37-clasificacion-catalogo`.
+- **Por qué es P0:** la auditoría encontró que la restricción de codo se saltaba.
+  - Para tríceps, el plan asignaba la extensión con cuerda sobre la cabeza, fondos y el jalón con cuerda; para bíceps, el curl martillo con cuerda.
+  - "Rope" los volvía cardio, y las restricciones filtraban solo por patrón.
+  - Otros casos: sentadilla dividida como sentadilla (rodilla), remo al mentón como remo, vertical de manos como press horizontal y press tras nuca como movilidad (hombro), "Rickshaw Carry" sin ser cargada (muñeca y cuello).
+- **Decisión de Jesús:** se arregla dentro de SCRUM-37, subida a P0.
+
+**Criterios:**
+- [x] Ninguna zona del formulario deja pasar un ejercicio que la cargue, en ningún músculo ni variedad, ni en el plan completo. El criterio no usa la clasificación: usa el nombre del dataset y el músculo principal.
+- [x] Los 63 staples tienen 0 errores de patrón o músculo principal, y el patrón de cada uno queda fijado (antes había 7 mal).
+- [x] Todo el catálogo es válido:
+  - todo ejercicio tiene patrón, músculo principal, rol y familia;
+  - ningún músculo se repite (antes se repetían en 42 ejercicios);
+  - el press vertical lleva ángulo "overhead";
+  - las aperturas son aislamiento.
+- [x] Lo que no cuadra con su músculo principal (43, sobre todo olímpicos, aductores y pullovers) y lo de fuerza que queda como cardio o movilidad (5) está en una lista con su razón. Un caso nuevo hace fallar la prueba.
+- [x] Los planes guardados se regeneran (`currentGeneratorVersion` 5 → 6) con el mismo bloque y el aviso "plan actualizado".
+- [x] La búsqueda sin conexión responde en menos de 100 ms.
+- [x] `exercises.json` está versionado (`git ls-files`, 2026-10-28).
+
+Evidencia: commit `c863787` (rama `SCRUM-37-clasificacion-catalogo`).
+- `make ci` → `✔ Test run with 539 tests in 81 suites passed` + `Test run with 567 tests in 99 suites passed … with 2 known issues` (2026-10-28; línea base 539 + 557). Los 2 *known issues* son de SCRUM-219. El build de iOS y el de watchOS pasaron.
+- `make test-ui` → 31 de 31 pruebas OK (incluye la de la zona explicada en "Tu semana" y la de volumen realista de Hoy).
+- **Matriz de SCRUM-214, después del cambio:**
+  - 56 conjuntos de ejercicios distintos y 71 rutinas distintas;
+  - pantorrilla 145/200 y core 178/200, sin cambio;
+  - 0 ejercicios con menos de 2 series;
+  - pares novato/avanzado distintos: 20 %, sin cambio (es de SCRUM-219).
+- **Tests:**
+  - `PRCoreTests/CatalogClassificationTests.swift` (9);
+  - `PlanPersistenceTests.planWithElbowLoadingExerciseIsRegenerated`.
+- **Docs:** actualización de ADR-0002 y de la matriz de trazabilidad.
+- **Pendiente:**
+  - con restricción de codo, tríceps y bíceps reciben ejercicios que los trabajan de rebote (remos, pullover). La tabla zona → patrones de SCRUM-209 no cambió;
+  - la clasificación sigue siendo por reglas de nombre. Las listas de excepciones son la vigilancia.
