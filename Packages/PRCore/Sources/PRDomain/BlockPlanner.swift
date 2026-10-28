@@ -35,6 +35,10 @@ public struct BlockPlanningInput: Sendable {
     /// ID del bloque a generar. `nil` = ID nuevo. Para regenerar un bloque guardado
     /// conservando su identidad (SCRUM-26).
     public var blockID: TrainingBlockID?
+    /// Lugar del bloque en el historial de la persona (0 = el primero). Los rotables cambian
+    /// de un bloque al siguiente; las anclas no (SCRUM-219). Al regenerar un bloque guardado
+    /// se pasa el suyo, así sale igual.
+    public var blockSequence: Int
 
     public init(
         goal: TrainingGoal,
@@ -48,10 +52,12 @@ public struct BlockPlanningInput: Sendable {
         restrictions: [TrainingRestriction],
         equipmentKnownness: EquipmentKnownness,
         sessionMinutes: Int? = nil,
-        blockID: TrainingBlockID? = nil
+        blockID: TrainingBlockID? = nil,
+        blockSequence: Int = 0
     ) {
         self.sessionMinutes = sessionMinutes
         self.blockID = blockID
+        self.blockSequence = blockSequence
         self.goal = goal
         self.phase = phase
         self.experience = experience
@@ -193,13 +199,7 @@ public struct BlockPlanner: Sendable {
         var restrictedMuscles: [MuscleGroup.ID] = []
         var firstRestrictionError: ExerciseAssignmentError?
         for assignment in allocation.targets {
-            let assignmentInput = ExerciseAssignmentInput(
-                muscleGroupID: assignment.muscleGroupID,
-                catalog: input.catalog,
-                varietyPreference: input.varietyPreference,
-                restrictions: input.restrictions,
-                equipmentKnownness: input.equipmentKnownness
-            )
+            let assignmentInput = assignmentInput(for: assignment.muscleGroupID, input: input)
             do {
                 assignmentsByMuscle[assignment.muscleGroupID] = try assigner.assign(input: assignmentInput)
             } catch let error as ExerciseAssignmentError where isEmptiedByRestrictions(assignmentInput) {
@@ -422,8 +422,9 @@ public struct BlockPlanner: Sendable {
         let count = max(1, min(assignment.assignments.count, byPreference, byMinimum))
         var picked: [ExerciseID]
         let rotationDay = timesInWeek - 1 - muscleIndex % max(1, timesInWeek)
-        if count == 1, timesInWeek >= 3, occurrence == rotationDay, !rotatables.isEmpty {
-            picked = [rotatables[muscleIndex % rotatables.count].exercise]
+        if count == 1, timesInWeek >= 3, occurrence == rotationDay, let first = rotatables.first {
+            // El primer rotable cubre el siguiente slot del músculo (SCRUM-219).
+            picked = [first.exercise]
         } else {
             picked = [anchor.exercise]
             if count > 1, !rotatables.isEmpty {
@@ -649,16 +650,24 @@ public struct BlockPlanner: Sendable {
     /// ejercicios permitidos no tiene ancla; no es un error aquí porque `plan` ya lo manejó.
     public func anchorExercises(input: BlockPlanningInput) -> Set<ExerciseID> {
         Set(input.priorities.compactMap { priority -> ExerciseID? in
-            let assignmentInput = ExerciseAssignmentInput(
-                muscleGroupID: priority.muscleGroupID,
-                catalog: input.catalog,
-                varietyPreference: input.varietyPreference,
-                restrictions: input.restrictions,
-                equipmentKnownness: input.equipmentKnownness
-            )
-            guard let assignment = try? assigner.assign(input: assignmentInput) else { return nil }
+            guard let assignment = try? assigner.assign(input: assignmentInput(for: priority.muscleGroupID, input: input))
+            else { return nil }
             return (assignment.assignments.first { $0.role == .anchor } ?? assignment.assignments.first)?.exercise
         })
+    }
+
+    /// Lo que el assigner necesita para un músculo: catálogo, restricciones, equipo, y el
+    /// objetivo, la experiencia, la fase y el lugar del bloque (SCRUM-219).
+    private func assignmentInput(for muscle: MuscleGroup.ID, input: BlockPlanningInput) -> ExerciseAssignmentInput {
+        ExerciseAssignmentInput(
+            muscleGroupID: muscle,
+            catalog: input.catalog,
+            varietyPreference: input.varietyPreference,
+            restrictions: input.restrictions,
+            equipmentKnownness: input.equipmentKnownness,
+            selectionProfile: ExerciseSelectionProfile(goal: input.goal, experience: input.experience, phase: input.phase),
+            blockSequence: input.blockSequence
+        )
     }
 
     /// ¿El músculo se quedó sin ejercicios SÓLO por las restricciones? Si sin ellas tampoco
@@ -670,7 +679,9 @@ public struct BlockPlanner: Sendable {
             catalog: input.catalog,
             varietyPreference: input.varietyPreference,
             restrictions: [],
-            equipmentKnownness: input.equipmentKnownness
+            equipmentKnownness: input.equipmentKnownness,
+            selectionProfile: input.selectionProfile,
+            blockSequence: input.blockSequence
         )
         return (try? assigner.assign(input: unrestricted)) != nil
     }
@@ -712,6 +723,8 @@ public struct BlockPlanner: Sendable {
         // SCRUM-218: regla de composición y sesiones donde lo protegido no dejó cumplir el
         // tope de ejercicios o el tiempo (se quedan así; la explicación lo dice).
         facts.append(DecisionFact(key: "sessionComposition", value: compositionRule.version))
+        // SCRUM-219: regla de selección por slots, objetivo, experiencia y fase.
+        facts.append(DecisionFact(key: "exerciseSelection", value: assigner.selectionRule.version))
         if !composition.overRange.isEmpty {
             facts.append(DecisionFact(key: "sessionsOverRange", value: composition.overRange.joined(separator: ", ")))
         }

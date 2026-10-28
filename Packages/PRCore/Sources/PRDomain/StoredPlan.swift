@@ -24,8 +24,10 @@ public struct StoredPlan: Codable, Sendable, Equatable {
     ///     el ancla al menos 2 veces por semana;
     /// 5 = pantorrilla y core en mantenimiento (SCRUM-215), si caben en el tiempo;
     /// 6 = catálogo bien clasificado (SCRUM-37): las restricciones ya no dejan pasar
-    ///     ejercicios mal clasificados (p. ej. tríceps con cuerda con restricción de codo).
-    public static let currentGeneratorVersion = 6
+    ///     ejercicios mal clasificados (p. ej. tríceps con cuerda con restricción de codo);
+    /// 7 = selección por slots, objetivo, experiencia y fase (SCRUM-219), con rotables que
+    ///     cambian de un bloque al siguiente.
+    public static let currentGeneratorVersion = 7
 
     public let userID: String
     public var profile: OnboardingProfile
@@ -77,6 +79,12 @@ public struct StoredPlan: Codable, Sendable, Equatable {
 
     /// ¿Se generó con un generador anterior al actual (hay que regenerarlo)?
     public var needsMigration: Bool { generatorVersion < Self.currentGeneratorVersion }
+
+    /// Lugar de `blockID` en el historial (0 = el primero), para regenerarlo igual
+    /// (SCRUM-219). Si no está, el último.
+    public func blockSequence(of blockID: TrainingBlockID) -> Int {
+        blockHistory.firstIndex(of: blockID) ?? max(0, blockHistory.count - 1)
+    }
 }
 
 /// Sesión recordada entre arranques: SOLO el identificador opaco del usuario (más la

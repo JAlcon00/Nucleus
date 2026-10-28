@@ -137,6 +137,56 @@ struct BlockPlannerRealCatalogTests {
         return TodayPlanBuilder.defaultPlanner().anchorExercises(input: input)
     }
 
+    /// SCRUM-219: los ejercicios de un músculo cubren sus slots (pecho: plano, inclinado,
+    /// apertura) antes de repetir uno, en la asignación y en la semana. Sin límite de tiempo: la
+    /// composición por minutos puede quitar aislamientos (SCRUM-218).
+    @Test("SCRUM-219: cada músculo cubre sus slots antes de repetir uno, en la asignación y en la semana",
+          arguments: VarietyPreference.allCases)
+    func slotsCoveredBeforeRepeating(variety: VarietyPreference) throws {
+        let catalog = try ExerciseCatalogLoader.loadBundled()
+        let byID = Dictionary(catalog.exercises.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let rule = ExerciseSelectionRule.standard
+        let equipment = builder.defaultEquipmentKnownness()
+        let muscles = builder.defaultPriorities().map(\.muscleGroupID)
+        /// Slots del músculo que tienen algún ejercicio de referencia con el equipo por defecto.
+        func available(_ muscle: MuscleGroup) -> Set<ExerciseSlot> {
+            Set(catalog.exercises.filter { exercise in
+                guard exercise.staple?.muscle == muscle, case .knownAvailable(let owned) = equipment else { return false }
+                return owned.contains(exercise.equipment)
+            }.compactMap { rule.slot(of: $0, for: muscle) })
+        }
+        for goal in [TrainingGoal.strength, .hypertrophy] {
+            for experience in [ExperienceLevel.novice, .intermediate, .advanced] {
+                let profile = ExerciseSelectionProfile(goal: goal, experience: experience, phase: .maintenance)
+                for muscle in muscles {
+                    let assignment = try ExerciseAssigner().assign(input: ExerciseAssignmentInput(
+                        muscleGroupID: muscle, catalog: catalog.exercises, varietyPreference: variety,
+                        restrictions: [], equipmentKnownness: equipment, selectionProfile: profile
+                    ))
+                    let slots = assignment.assignments.compactMap { byID[$0.exercise].flatMap { rule.slot(of: $0, for: muscle) } }
+                    let firstRound = Array(slots.prefix(available(muscle).count))
+                    #expect(Set(firstRound).count == firstRound.count, "\(goal), \(experience), \(variety), \(muscle): \(slots)")
+                }
+                for days in 2...6 {
+                    let input = BlockPlanningInput(
+                        goal: goal, phase: .maintenance, experience: experience, trainingDaysPerWeek: days,
+                        priorities: builder.defaultPriorities(), plannedWeeks: 6, varietyPreference: variety,
+                        catalog: catalog.exercises, restrictions: [], equipmentKnownness: equipment
+                    )
+                    let block = try TodayPlanBuilder.defaultPlanner().plan(input: input).block
+                    let used = Set(block.sessions.flatMap { $0.plannedSets.map(\.exerciseID) }).compactMap { byID[$0] }
+                    for muscle in muscles {
+                        let slots = used.filter { $0.staple?.muscle == muscle }.compactMap { rule.slot(of: $0, for: muscle) }
+                        // Un slot se repite sólo cuando ya salieron todos los del músculo.
+                        if Set(slots).count < slots.count {
+                            #expect(Set(slots) == available(muscle), "\(goal), \(experience), \(variety), \(days) días, \(muscle): \(slots)")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     @Test("Con 3 días y variedad equilibrada, cada día tiene su propia plantilla")
     func eachDayHasItsOwnTemplate() throws {
         let (result, _) = try plan(days: 3)
@@ -239,8 +289,8 @@ struct ExerciseSelectionQualityTests {
     func curatedIDsResolve() throws {
         let catalog = try ExerciseCatalogLoader.loadBundled()
         let total = catalog.exercises.filter { $0.staple != nil }.count
-        // 10 músculos curados, 63 ids en exercise-staples.json; ningún id de la lista quedó sin resolver.
-        #expect(total == 63, "esperados 63 ejercicios de referencia, hay \(total)")
+        // 10 músculos curados, 78 ids en exercise-staples.json (SCRUM-219 sumó 15); ningún id de la lista quedó sin resolver.
+        #expect(total == 78, "esperados 78 ejercicios de referencia, hay \(total)")
     }
 
     @Test("Los ejercicios nunca recomendados quedan fuera del plan (guillotina, vueltas al mundo, encogimientos)",

@@ -100,19 +100,28 @@ public struct ExerciseAssignmentInput: Sendable {
     public let restrictions: [TrainingRestriction]
     /// Disponibilidad de equipment (conocido o unknown).
     public let equipmentKnownness: EquipmentKnownness
+    /// Objetivo, experiencia y fase de la persona (SCRUM-219).
+    public let selectionProfile: ExerciseSelectionProfile
+    /// Lugar del bloque en el historial de la persona (0 = el primero). Los rotables giran con
+    /// él; las anclas no.
+    public let blockSequence: Int
 
     public init(
         muscleGroupID: MuscleGroup.ID,
         catalog: [Exercise],
         varietyPreference: VarietyPreference,
         restrictions: [TrainingRestriction],
-        equipmentKnownness: EquipmentKnownness
+        equipmentKnownness: EquipmentKnownness,
+        selectionProfile: ExerciseSelectionProfile = .neutral,
+        blockSequence: Int = 0
     ) {
         self.muscleGroupID = muscleGroupID
         self.catalog = catalog
         self.varietyPreference = varietyPreference
         self.restrictions = restrictions
         self.equipmentKnownness = equipmentKnownness
+        self.selectionProfile = selectionProfile
+        self.blockSequence = blockSequence
     }
 }
 
@@ -125,12 +134,18 @@ public struct ExerciseAssignmentInput: Sendable {
 /// - Restricciones: `RestrictionPolicyEngine.verdict`, la misma evaluación que sustituciones,
 ///   IA y dropset (SCRUM-31): se excluye lo que cualquier restricción en vigor prohíbe; el
 ///   permiso de una restricción sólo refina esa restricción.
-/// - Con ejercicios de referencia disponibles (lista curada, `Exercise.staple`), el primero
-///   por orden de preferencia es el `anchor` y los siguientes los `rotatable` (tantos como
-///   indique la variedad). Sin ellos, el mejor candidato por familia es el `anchor` y el resto
-///   de la familia los `rotatable`, prefiriendo los que trabajan el músculo como principal.
+/// - Con ejercicios de referencia disponibles (lista curada, `Exercise.staple`), se reparten
+///   por slot funcional del músculo (`ExerciseSelectionRule`, SCRUM-219): el `anchor` es el
+///   mejor del primer slot para el objetivo y la experiencia; los `rotatable` (tantos como
+///   indique la variedad) cubren los demás slots antes de repetir uno y giran con el bloque.
+///   Sin ellos, el mejor candidato por familia es el `anchor` y el resto de la familia los
+///   `rotatable`, prefiriendo los que trabajan el músculo como principal.
 public struct ExerciseAssigner: Sendable {
-    public init() {}
+    public let selectionRule: ExerciseSelectionRule
+
+    public init(selectionRule: ExerciseSelectionRule = .standard) {
+        self.selectionRule = selectionRule
+    }
 
     public func assign(input: ExerciseAssignmentInput) throws -> MuscleExerciseAssignment {
         let working = input.catalog.filter { works($0, muscleGroupID: input.muscleGroupID) }
@@ -146,23 +161,12 @@ public struct ExerciseAssigner: Sendable {
         // Nº de rotatables según variedad (configurable, respeta anchors).
         let rotatableCount = Self.rotatableCount(for: input.varietyPreference)
 
-        // 1) Ejercicios de referencia del músculo (lista curada, en orden de preferencia).
-        //    El primero permitido es el anchor; los siguientes rotan entre días. La lista está
-        //    ordenada para que lo consecutivo sea complementario (sentadilla → prensa →
-        //    extensión), por eso los rotatables NO se limitan a la familia del anchor.
-        let staples = permitted
-            .filter { $0.staple?.muscle == input.muscleGroupID }
-            .sorted { ($0.staple?.rank ?? .max) < ($1.staple?.rank ?? .max) }
-        if let anchor = staples.first {
-            var assignments = [AssignedExercise(exercise: anchor.id, role: .anchor)]
-            for rotatable in staples.dropFirst().prefix(rotatableCount) {
-                assignments.append(AssignedExercise(exercise: rotatable.id, role: .rotatable))
-            }
-            return MuscleExerciseAssignment(
-                muscleGroupID: input.muscleGroupID,
-                familyID: anchor.substitutionFamilyID,
-                assignments: assignments
-            )
+        // 1) Ejercicios de referencia del músculo (lista curada), por slot funcional. Los
+        //    rotatables NO se limitan a la familia del anchor: cubren los otros slots
+        //    (sentadilla → zancada → extensión).
+        let staples = permitted.filter { $0.staple?.muscle == input.muscleGroupID }
+        if let assignment = slotAssignment(staples, input: input, rotatableCount: rotatableCount) {
+            return assignment
         }
 
         // 2) Sin ejercicios de referencia disponibles (equipo limitado, restricciones o un
@@ -203,6 +207,78 @@ public struct ExerciseAssigner: Sendable {
             familyID: anchorFamily,
             assignments: assignments
         )
+    }
+
+    // MARK: - Slots (SCRUM-219)
+
+    /// Ancla y rotatables de los ejercicios de referencia, por slot del músculo. `nil` si
+    /// ninguno cumple un slot (se usa la selección genérica).
+    /// - El ancla es el mejor del primer slot con ejercicios para el objetivo y la experiencia.
+    /// - Cada slot ordena sus rotatables por experiencia y fase, y los mejores
+    ///   `rotationPool` giran según `blockSequence`: el mismo bloque da lo mismo, el siguiente
+    ///   cambia.
+    /// - Ronda a ronda: primero uno de cada slot que el ancla no cubre, luego segundas opciones.
+    private func slotAssignment(
+        _ staples: [Exercise],
+        input: ExerciseAssignmentInput,
+        rotatableCount: Int
+    ) -> MuscleExerciseAssignment? {
+        let muscle = input.muscleGroupID
+        let profile = input.selectionProfile
+        let slots = selectionRule.slots(for: muscle).map { slot in
+            staples.filter { selectionRule.slot(of: $0, for: muscle) == slot }
+        }.filter { !$0.isEmpty }
+        guard let anchorSlot = slots.first,
+              let anchor = ranked(anchorSlot, by: { selectionRule.anchorScore($0, profile: profile) }).first
+        else { return nil }
+
+        let queues = slots.map { candidates in
+            rotated(
+                ranked(candidates.filter { $0.id != anchor.id }, by: { selectionRule.rotationScore($0, profile: profile) }),
+                by: input.blockSequence
+            )
+        }
+        var rotatables: [Exercise] = []
+        let rounds = (queues.map(\.count).max() ?? 0) + 1
+        for round in 0..<rounds {
+            for (index, queue) in queues.enumerated() {
+                // El slot del ancla ya está cubierto en la primera ronda.
+                let position = index == 0 ? round - 1 : round
+                guard rotatables.count < rotatableCount, queue.indices.contains(position) else { continue }
+                rotatables.append(queue[position])
+            }
+        }
+
+        let assignments = [AssignedExercise(exercise: anchor.id, role: .anchor)]
+            + rotatables.map { AssignedExercise(exercise: $0.id, role: .rotatable) }
+        return MuscleExerciseAssignment(
+            muscleGroupID: muscle,
+            familyID: anchor.substitutionFamilyID,
+            assignments: assignments
+        )
+    }
+
+    /// De mayor a menor puntaje; empata el orden de la lista curada y, al final, el ID.
+    private func ranked(_ exercises: [Exercise], by score: (Exercise) -> Double) -> [Exercise] {
+        exercises
+            .map { (exercise: $0, score: score($0)) }
+            .sorted { lhs, rhs in
+                if lhs.score != rhs.score { return lhs.score > rhs.score }
+                let lhsRank = lhs.exercise.staple?.rank ?? .max
+                let rhsRank = rhs.exercise.staple?.rank ?? .max
+                if lhsRank != rhsRank { return lhsRank < rhsRank }
+                return lhs.exercise.id.rawValue.uuidString < rhs.exercise.id.rawValue.uuidString
+            }
+            .map(\.exercise)
+    }
+
+    /// Gira los mejores `rotationPool` según el bloque; el resto queda detrás, en su orden.
+    private func rotated(_ exercises: [Exercise], by blockSequence: Int) -> [Exercise] {
+        let pool = min(selectionRule.rotationPool, exercises.count)
+        guard pool > 1 else { return exercises }
+        let offset = ((blockSequence % pool) + pool) % pool
+        let head = Array(exercises.prefix(pool))
+        return Array(head[offset...] + head[..<offset]) + exercises.dropFirst(pool)
     }
 
     // MARK: - Helpers

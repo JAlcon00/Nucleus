@@ -340,6 +340,42 @@ struct PlanPersistenceTests {
         #expect(!hasElbowWork(migrated))
         #expect(app.todayPlan.notice == .planUpdated)
     }
+
+    /// SCRUM-219: el bloque nuevo va después del anterior en el historial y sus rotables
+    /// cambian; al regenerarlo (generador 6 → 7) conserva su lugar, así sale el mismo.
+    @Test("SCRUM-219: el segundo bloque rota frente al primero y al regenerarse conserva su lugar en el historial")
+    func secondBlockRotatesAndKeepsItsPlace() async throws {
+        let root = try makeRoot()
+        let first = try AppInstance(root: root)
+        await first.todayPlan.activate(profile: profile(goal: .strength), userID: "u1")
+        // Cambiar el objetivo abre un bloque nuevo: es el segundo del historial.
+        let second = profile(goal: .hypertrophy)
+        await first.todayPlan.activate(profile: second, userID: "u1")
+        guard case .loaded(var stored, let block) = await first.planStore.loadPlan(userID: "u1") else {
+            Issue.record("no hay plan"); return
+        }
+        #expect(stored.blockHistory.count == 2)
+        #expect(stored.blockSequence(of: block.id) == 1)
+
+        let builder = TodayPlanBuilder()
+        let catalog = try ExerciseCatalogLoader.loadBundled()
+        func exercises(_ sequence: Int) throws -> [[ExerciseID]] {
+            try builder.generate(profile: second, catalog: catalog, planner: TodayPlanBuilder.defaultPlanner(), blockSequence: sequence)
+                .block.sessions.map { $0.plannedSets.map(\.exerciseID) }
+        }
+        let asSecond = try exercises(1)
+        #expect(asSecond != (try exercises(0)), "el segundo bloque salió igual que si fuera el primero")
+        #expect(block.sessions.map { $0.plannedSets.map(\.exerciseID) } == asSecond)
+
+        stored.generatorVersion = 6
+        try await first.planStore.save(plan: stored, block: block)
+        let app = try AppInstance(root: root)
+        #expect(await app.todayPlan.restore(userID: "u1") == .restored(second))
+        let migrated = try #require(app.todayPlan.plan?.block)
+        #expect(migrated.id == block.id)
+        #expect(migrated.sessions.map { $0.plannedSets.map(\.exerciseID) } == asSecond)
+        #expect(app.todayPlan.notice == .planUpdated)
+    }
 }
 
 @MainActor

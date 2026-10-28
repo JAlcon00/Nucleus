@@ -156,7 +156,8 @@ enum ExerciseInflector {
     static let secondaryActivation = 0.4
     // Fracción de la contribución que se traduce a fatiga local por grupo.
     static let localFatigueRatio = 0.5
-    // Costo sistémico de fatiga según clase articular.
+    // Costo sistémico de fatiga según clase articular; el patrón y el equipo lo ajustan
+    // (`systemicFatigue`, SCRUM-219).
     static let multiJointFatigue = 0.5
     static let singleJointFatigue = 0.25
     // Umbral de grupos primarios para considerar multiarticular.
@@ -382,8 +383,45 @@ enum ExerciseInflector {
 
     // MARK: Otros campos
 
-    static func equipment(for raw: String?) -> EquipmentType {
-        equipmentMap[raw ?? ""] ?? .other
+    /// El dataset marca la Smith como "machine" (o "barbell"); el nombre la distingue
+    /// (SCRUM-219: guía la barra como una máquina, pero el gesto es el de la barra).
+    static func equipment(for raw: String?, name: String = "") -> EquipmentType {
+        if name.lowercased().contains("smith") { return .smithMachine }
+        return equipmentMap[raw ?? ""] ?? .other
+    }
+
+    /// Costo sistémico de fatiga (SCRUM-219). Lo axial con barra libre cuesta más que lo guiado:
+    /// - compuesto: 0.5, más la bisagra (+0.2), la sentadilla (+0.15) y la zancada o la cargada
+    ///   (+0.1);
+    /// - aislamiento: 0.25;
+    /// - equipo: barra +0.15, mancuerna o kettlebell +0.05, polea, Smith o bandas −0.1, máquina
+    ///   −0.15. En un aislamiento cuenta un tercio.
+    static func systemicFatigue(pattern: MovementPattern, jointClass: JointClass, equipment: EquipmentType) -> Double {
+        let equipmentShift: Double
+        switch equipment {
+        case .barbell: equipmentShift = 0.15
+        case .dumbbell, .kettlebell: equipmentShift = 0.05
+        case .bodyweight, .other: equipmentShift = 0
+        case .cable, .smithMachine, .bands: equipmentShift = -0.1
+        case .machine, .plateLoaded, .sled: equipmentShift = -0.15
+        }
+        switch jointClass {
+        case .singleJoint:
+            return singleJointFatigue + equipmentShift / 3
+        case .multiJoint:
+            let patternShift: Double
+            switch pattern {
+            case .hinge: patternShift = 0.2
+            case .squat: patternShift = 0.15
+            case .lunge, .carry: patternShift = 0.1
+            case .horizontalPress, .verticalPress, .horizontalPull, .verticalPull, .kneeExtension,
+                 .kneeFlexion, .hipExtension, .shoulderAbduction, .shoulderExtension, .elbowFlexion,
+                 .elbowExtension, .calfPlantarFlexion, .trunkFlexion, .trunkExtension, .trunkRotation,
+                 .conditioning, .mobility, .posing:
+                patternShift = 0
+            }
+            return min(1, max(0.05, multiJointFatigue + patternShift + equipmentShift))
+        }
     }
 
     static func parseLevel(_ raw: String?) -> DemandLevel {
@@ -577,7 +615,7 @@ public enum ExerciseCatalogLoader {
                 familyByName[familyName] = family
             }
 
-            let equipment = ExerciseInflector.equipment(for: entry.equipment)
+            let equipment = ExerciseInflector.equipment(for: entry.equipment, name: entry.name)
             let jointClass = ExerciseInflector.jointClass(
                 for: entry.mechanic,
                 primaryCount: entry.primaryMuscles.count,
@@ -608,9 +646,9 @@ public enum ExerciseCatalogLoader {
                 jointClass: jointClass,
                 stabilityDemand: ExerciseInflector.parseLevel(entry.level),
                 skillDemand: ExerciseInflector.parseLevel(entry.level),
-                systemicFatigueCost: try FatigueCost(normalized: isMultiJoint
-                    ? ExerciseInflector.multiJointFatigue
-                    : ExerciseInflector.singleJointFatigue),
+                systemicFatigueCost: try FatigueCost(normalized: ExerciseInflector.systemicFatigue(
+                    pattern: pattern, jointClass: jointClass, equipment: equipment
+                )),
                 localFatigue: try ExerciseInflector.makeLocalFatigue(
                     contributions: primary + secondary,
                     ratio: ExerciseInflector.localFatigueRatio

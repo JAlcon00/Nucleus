@@ -4,7 +4,7 @@
 //
 //  SCRUM-37 (P0) con el catálogo real: una restricción nunca deja pasar un ejercicio que
 //  carga su zona (con un criterio que no usa la clasificación que se prueba: el nombre del
-//  dataset y el músculo principal); los 63 ejercicios de referencia tienen el patrón
+//  dataset y el músculo principal); los 78 ejercicios de referencia tienen el patrón
 //  esperado; todo el catálogo es válido y lo que no cuadra está en una lista con su razón;
 //  la búsqueda sin conexión responde en menos de 100 ms.
 //
@@ -131,36 +131,44 @@ struct CatalogRestrictionTests {
 }
 
 /// Patrón esperado de cada ejercicio de referencia (`exercise-staples.json`), revisado uno
-/// por uno el 2026-10-28.
+/// por uno el 2026-10-28. SCRUM-219 sumó 15 variantes guiadas (máquina y Smith) e inclinadas.
 private let staplePatterns: [String: MovementPattern] = [
     // Pecho
     "Barbell Bench Press - Medium Grip": .horizontalPress, "Incline Dumbbell Press": .horizontalPress,
     "Dumbbell Bench Press": .horizontalPress, "Cable Crossover": .horizontalPress,
     "Machine Bench Press": .horizontalPress, "Dumbbell Flyes": .horizontalPress, "Pushups": .horizontalPress,
+    "Smith Machine Bench Press": .horizontalPress, "Barbell Incline Bench Press - Medium Grip": .horizontalPress,
+    "Leverage Incline Chest Press": .horizontalPress, "Smith Machine Incline Bench Press": .horizontalPress,
+    "Butterfly": .horizontalPress,
     // Espalda
     "Bent Over Barbell Row": .horizontalPull, "Wide-Grip Lat Pulldown": .verticalPull,
     "Seated Cable Rows": .horizontalPull, "One-Arm Dumbbell Row": .horizontalPull,
     "Close-Grip Front Lat Pulldown": .verticalPull, "T-Bar Row with Handle": .horizontalPull,
     "Pullups": .verticalPull, "Straight-Arm Pulldown": .verticalPull,
+    "Leverage Iso Row": .horizontalPull, "Smith Machine Bent Over Row": .horizontalPull,
     // Hombro
     "Dumbbell Shoulder Press": .verticalPress, "Side Lateral Raise": .shoulderAbduction,
     "Seated Barbell Military Press": .verticalPress, "Cable Seated Lateral Raise": .shoulderAbduction,
     "Face Pull": .shoulderExtension, "Cable Rear Delt Fly": .shoulderExtension,
     "Machine Shoulder (Military) Press": .verticalPress, "Arnold Dumbbell Press": .verticalPress,
+    "Smith Machine Overhead Shoulder Press": .verticalPress, "Reverse Machine Flyes": .shoulderExtension,
     // Bíceps
     "Barbell Curl": .elbowFlexion, "Incline Dumbbell Curl": .elbowFlexion, "Hammer Curls": .elbowFlexion,
     "Preacher Curl": .elbowFlexion, "Standing Biceps Cable Curl": .elbowFlexion, "Concentration Curls": .elbowFlexion,
+    "Machine Bicep Curl": .elbowFlexion,
     // Tríceps
     "Triceps Pushdown": .elbowExtension, "EZ-Bar Skullcrusher": .elbowExtension,
     "Cable Rope Overhead Triceps Extension": .elbowExtension, "Dips - Triceps Version": .horizontalPress,
     "Standing Dumbbell Triceps Extension": .elbowExtension, "Triceps Pushdown - Rope Attachment": .elbowExtension,
-    "Bench Dips": .horizontalPress,
+    "Bench Dips": .horizontalPress, "Machine Triceps Extension": .elbowExtension, "Dip Machine": .horizontalPress,
     // Cuádriceps
     "Barbell Squat": .squat, "Leg Press": .squat, "Leg Extensions": .kneeExtension, "Dumbbell Lunges": .lunge,
     "Hack Squat": .squat, "Front Barbell Squat": .squat, "Split Squat with Dumbbells": .lunge,
+    "Smith Machine Squat": .squat, "Smith Single-Leg Split Squat": .lunge,
     // Femoral
     "Romanian Deadlift": .hinge, "Seated Leg Curl": .kneeFlexion, "Lying Leg Curls": .kneeFlexion,
     "Stiff-Legged Dumbbell Deadlift": .hinge, "Good Morning": .hinge, "Standing Leg Curl": .kneeFlexion,
+    "Smith Machine Stiff-Legged Deadlift": .hinge,
     // Glúteo
     "Barbell Hip Thrust": .hinge, "Barbell Glute Bridge": .hinge, "One-Legged Cable Kickback": .hipExtension,
     "Single Leg Glute Bridge": .hinge, "Glute Kickback": .hipExtension,
@@ -172,13 +180,13 @@ private let staplePatterns: [String: MovementPattern] = [
     "Crunches": .trunkFlexion, "Barbell Ab Rollout - On Knees": .trunkFlexion,
 ]
 
-@Suite("SCRUM-37 · Los 63 ejercicios de referencia")
+@Suite("SCRUM-37 · Los 78 ejercicios de referencia")
 struct StapleClassificationTests {
 
     @Test("Cada staple tiene el patrón esperado y su músculo como principal")
     func staplesAreClassified() throws {
         let staples = try ExerciseCatalogLoader.loadBundled().exercises.filter { $0.staple != nil }
-        #expect(staples.count == 63)
+        #expect(staples.count == 78)
         #expect(Set(staples.map(english)) == Set(staplePatterns.keys))
         for exercise in staples {
             let name = english(exercise)

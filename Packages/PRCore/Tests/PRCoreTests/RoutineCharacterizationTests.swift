@@ -6,8 +6,8 @@
 //  Mide cuántas rutinas distintas salen de una muestra determinista de 200 perfiles de la
 //  matriz {días 2–7} × {variedad} × {objetivo} × {experiencia} × {fase} × {30, 45, 60, 90,
 //  120 min}, y deja escrita la línea base (`[PR-B001]` en el log de `make ci`).
-//  Las comprobaciones del gate de la Fase B que hoy fallan van en `withKnownIssue`; cada
-//  historia que las arregla quita la suya. Cerrar la Fase B = ningún `withKnownIssue` aquí.
+//  Las comprobaciones del gate de la Fase B que fallaban iban en `withKnownIssue`; cada
+//  historia que las arregló quitó la suya. Desde SCRUM-219 (2026-10-28) no queda ninguna.
 //  No cambia el motor ni exige más series con más minutos (eso es PR-B003, decisión D1).
 //
 
@@ -229,14 +229,9 @@ struct RoutineCharacterizationTests {
         }
         print("[PR-B001] pares fuerza/hipertrofia con ejercicios distintos: \(goalDiffers)/\(bases.count) (\(percent(goalDiffers, bases.count)) %)")
         print("[PR-B001] pares novato/avanzado con ejercicios distintos: \(experienceDiffers)/\(bases.count) (\(percent(experienceDiffers, bases.count)) %)")
-        withKnownIssue("SCRUM-219 (PR-B005): la selección por cobertura y scoring hace que el objetivo cambie los ejercicios") {
-            #expect(percent(goalDiffers, bases.count) >= 80, "Fuerza vs hipertrofia")
-        }
-        // SCRUM-215 no cambia qué ejercicios salen por nivel (las prioridades son opcionales y
-        // la matriz no elige ninguna): esta comprobación queda para la selección de SCRUM-219.
-        withKnownIssue("SCRUM-219 (PR-B005): la selección por experiencia hace que el novato y el avanzado tengan ejercicios distintos") {
-            #expect(percent(experienceDiffers, bases.count) >= 80, "Novato vs avanzado")
-        }
+        // SCRUM-219 (PR-B005): las anclas salen por objetivo y experiencia.
+        #expect(percent(goalDiffers, bases.count) >= 80, "Fuerza vs hipertrofia")
+        #expect(percent(experienceDiffers, bases.count) >= 80, "Novato vs avanzado")
 
         // Gate 2: ningún ejercicio con menos de 2 series de trabajo (SCRUM-218).
         let occurrences = all.flatMap(\.workSetsPerExercise)

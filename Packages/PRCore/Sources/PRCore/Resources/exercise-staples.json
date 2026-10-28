@@ -6,7 +6,12 @@
   "Cable_Crossover",
   "Machine_Bench_Press",
   "Dumbbell_Flyes",
-  "Pushups"
+  "Pushups",
+  "Smith_Machine_Bench_Press",
+  "Barbell_Incline_Bench_Press_-_Medium_Grip",
+  "Leverage_Incline_Chest_Press",
+  "Smith_Machine_Incline_Bench_Press",
+  "Butterfly"
  ],
  "back": [
   "Bent_Over_Barbell_Row",
@@ -16,7 +21,9 @@
   "Close-Grip_Front_Lat_Pulldown",
   "T-Bar_Row_with_Handle",
   "Pullups",
-  "Straight-Arm_Pulldown"
+  "Straight-Arm_Pulldown",
+  "Leverage_Iso_Row",
+  "Smith_Machine_Bent_Over_Row"
  ],
  "shoulders": [
   "Dumbbell_Shoulder_Press",
@@ -26,7 +33,9 @@
   "Face_Pull",
   "Cable_Rear_Delt_Fly",
   "Machine_Shoulder_Military_Press",
-  "Arnold_Dumbbell_Press"
+  "Arnold_Dumbbell_Press",
+  "Smith_Machine_Overhead_Shoulder_Press",
+  "Reverse_Machine_Flyes"
  ],
  "biceps": [
   "Barbell_Curl",
@@ -34,7 +43,8 @@
   "Hammer_Curls",
   "Preacher_Curl",
   "Standing_Biceps_Cable_Curl",
-  "Concentration_Curls"
+  "Concentration_Curls",
+  "Machine_Bicep_Curl"
  ],
  "triceps": [
   "Triceps_Pushdown",
@@ -43,7 +53,9 @@
   "Dips_-_Triceps_Version",
   "Standing_Dumbbell_Triceps_Extension",
   "Triceps_Pushdown_-_Rope_Attachment",
-  "Bench_Dips"
+  "Bench_Dips",
+  "Machine_Triceps_Extension",
+  "Dip_Machine"
  ],
  "quadriceps": [
   "Barbell_Squat",
@@ -52,7 +64,9 @@
   "Dumbbell_Lunges",
   "Hack_Squat",
   "Front_Barbell_Squat",
-  "Split_Squat_with_Dumbbells"
+  "Split_Squat_with_Dumbbells",
+  "Smith_Machine_Squat",
+  "Smith_Single-Leg_Split_Squat"
  ],
  "hamstrings": [
   "Romanian_Deadlift",
@@ -60,7 +74,8 @@
   "Lying_Leg_Curls",
   "Stiff-Legged_Dumbbell_Deadlift",
   "Good_Morning",
-  "Standing_Leg_Curl"
+  "Standing_Leg_Curl",
+  "Smith_Machine_Stiff-Legged_Deadlift"
  ],
  "glutes": [
   "Barbell_Hip_Thrust",
