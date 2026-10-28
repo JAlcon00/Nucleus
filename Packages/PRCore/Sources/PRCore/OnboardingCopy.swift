@@ -33,7 +33,8 @@ public struct OnboardingCopy: Sendable {
         case (.sessionMinutes, .standard): return resource("Minutos por sesión", "Título del paso minutos")
         case (.sessionMinutes, .expert): return resource("Duración de la sesión", "Título del paso minutos (avanzado)")
         case (.variety, _): return resource("Variedad", "Título del paso variedad")
-        case (.priorityMuscles, _): return resource("Músculos prioritarios", "Título del paso músculos prioritarios")
+        case (.priorityMuscles, .guided): return resource("¿Quieres enfocarte en algo?", "Título del paso músculos prioritarios (principiante)")
+        case (.priorityMuscles, .standard), (.priorityMuscles, .expert): return resource("Músculos prioritarios", "Título del paso músculos prioritarios")
         case (.restrictions, .guided): return resource("¿Algo te molesta?", "Título del paso restricciones (principiante)")
         case (.restrictions, .standard), (.restrictions, .expert): return resource("Restricciones", "Título del paso restricciones")
         }
@@ -71,7 +72,9 @@ public struct OnboardingCopy: Sendable {
             return resource("Rotación de ejercicios entre semanas.", "Subtítulo del paso variedad (avanzado)")
         case (.variety, .guided), (.variety, .standard):
             return resource("Cuánto cambian tus ejercicios de una semana a otra.", "Subtítulo del paso variedad")
-        case (.priorityMuscles, _):
+        case (.priorityMuscles, .guided):
+            return resource("Puedes saltarlo. Si eliges hasta 2 músculos, les damos más trabajo en tu semana.", "Subtítulo del paso músculos prioritarios (principiante)")
+        case (.priorityMuscles, .standard), (.priorityMuscles, .expert):
             return resource("Opcional. Hasta 2: reciben más volumen semanal (énfasis).", "Subtítulo del paso músculos prioritarios")
         case (.restrictions, .guided):
             return resource("Opcional. Si algo te duele, lo cuidamos en tu plan.", "Subtítulo del paso restricciones (principiante)")

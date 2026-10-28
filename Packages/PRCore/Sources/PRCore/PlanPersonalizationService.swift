@@ -303,6 +303,12 @@ public struct PlanRationalePresenter: Sendable {
         if value["sessionsOverTime"] != nil {
             lines.append(resource("Algunas sesiones pasan de tu tiempo: no quitamos los ejercicios básicos ni les dejamos menos series de su mínimo.", "Por qué tu plan: sesiones que no caben en el tiempo"))
         }
+        // SCRUM-215: pantorrilla o core que no cupieron en los minutos de la sesión.
+        let leftOut = Self.list(value["maintenanceLeftOut"], MuscleGroup.init(rawValue:)).map(vocabulary.muscleName)
+        if !leftOut.isEmpty {
+            let names = leftOut.formatted(.list(type: .and).locale(locale))
+            lines.append(resource("Con tus minutos por sesión no hay espacio para \(names); con más tiempo por sesión, sí.", "Por qué tu plan: pantorrilla o core sin espacio en el tiempo"))
+        }
         return lines
     }
 

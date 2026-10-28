@@ -99,6 +99,8 @@ private struct GeneratedRoutine {
     let exercisesPerSession: [(title: String, count: Int)]
     /// Sesiones que la explicación marca sobre el tope de ejercicios.
     let sessionsOverRange: Set<String>
+    /// Pantorrilla o core que la explicación dice que no cupieron en el tiempo (SCRUM-215).
+    let maintenanceLeftOut: Set<MuscleGroup.ID>
 }
 
 private let blockID = TrainingBlockID(rawValue: UUID(uuidString: "00000000-0000-0000-0000-000000000214") ?? UUID())
@@ -118,6 +120,7 @@ private struct Engine {
         let result = try builder.generate(profile: profileCase.profile, catalog: catalog, planner: planner, blockID: blockID)
         let block = result.block
         let overRange = result.explanation.facts.first { $0.key == "sessionsOverRange" }?.value ?? ""
+        let leftOut = result.explanation.facts.first { $0.key == "maintenanceLeftOut" }?.value ?? ""
         var shape: [String] = []
         var workSets: [Int] = []
         var perSession: [(title: String, count: Int)] = []
@@ -137,7 +140,8 @@ private struct Engine {
         return GeneratedRoutine(
             exercises: exercises, shape: shape, workSetsPerExercise: workSets, primaryMuscles: primary,
             exercisesPerSession: perSession,
-            sessionsOverRange: Set(overRange.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) })
+            sessionsOverRange: Set(overRange.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }),
+            maintenanceLeftOut: Set(leftOut.split(separator: ",").compactMap { MuscleGroup(rawValue: $0.trimmingCharacters(in: .whitespaces)) })
         )
     }
 }
@@ -228,7 +232,9 @@ struct RoutineCharacterizationTests {
         withKnownIssue("SCRUM-219 (PR-B005): la selección por cobertura y scoring hace que el objetivo cambie los ejercicios") {
             #expect(percent(goalDiffers, bases.count) >= 80, "Fuerza vs hipertrofia")
         }
-        withKnownIssue("SCRUM-215 (PR-B002) y SCRUM-219 (PR-B005): prioridades por nivel y selección hacen que la experiencia cambie los ejercicios") {
+        // SCRUM-215 no cambia qué ejercicios salen por nivel (las prioridades son opcionales y
+        // la matriz no elige ninguna): esta comprobación queda para la selección de SCRUM-219.
+        withKnownIssue("SCRUM-219 (PR-B005): la selección por experiencia hace que el novato y el avanzado tengan ejercicios distintos") {
             #expect(percent(experienceDiffers, bases.count) >= 80, "Novato vs avanzado")
         }
 
@@ -257,13 +263,15 @@ struct RoutineCharacterizationTests {
         print("[PR-B004] \(sessions) sesiones: \(flagged) sobre el tope con aviso (lo protegido no se quita), \(underFloor) bajo el mínimo porque el volumen no alcanza")
         #expect(overCap == 0, "Sesiones sobre el tope sin aviso")
 
-        // Gate 3: pantorrilla y core en el plan.
+        // Gate 3: pantorrilla y core en el plan (SCRUM-215). Decisión de Jesús (2026-10-27):
+        // gana el tiempo. Entran en mantenimiento y, si no caben en la semana con los minutos
+        // del perfil, la explicación lo dice. Ningún plan los deja fuera sin decirlo.
         let withCalves = all.filter { $0.primaryMuscles.contains(.calves) }.count
         let withCore = all.filter { $0.primaryMuscles.contains(.core) }.count
         print("[PR-B001] planes con pantorrilla: \(withCalves)/\(all.count); con core: \(withCore)/\(all.count)")
-        withKnownIssue("SCRUM-215 (PR-B002): las prioridades por defecto incluyen pantorrilla y core") {
-            #expect(withCalves == all.count, "Pantorrilla")
-            #expect(withCore == all.count, "Core")
-        }
+        let unexplained = all.filter { routine in
+            [MuscleGroup.calves, .core].contains { !routine.primaryMuscles.contains($0) && !routine.maintenanceLeftOut.contains($0) }
+        }.count
+        #expect(unexplained == 0, "Planes sin pantorrilla o core que no lo dicen")
     }
 }

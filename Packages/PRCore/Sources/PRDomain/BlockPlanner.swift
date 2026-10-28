@@ -276,6 +276,9 @@ public struct BlockPlanner: Sendable {
     /// Sesiones donde lo protegido no dejó cumplir el tope de ejercicios o el tiempo
     /// (SCRUM-218, decisión 3): se quedan así y la explicación lo dice.
     struct CompositionNotes: Equatable {
+        /// Músculos de mantenimiento (pantorrilla, core) que no cupieron en ninguna sesión de
+        /// la semana con los minutos del usuario (SCRUM-215: gana el tiempo).
+        var maintenanceLeftOut: [MuscleGroup.ID] = []
         var overRange: [String] = []
         var overTime: [String] = []
     }
@@ -297,6 +300,7 @@ public struct BlockPlanner: Sendable {
         let catalog = Dictionary(input.catalog.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let fatigueConfig = try FatigueInterferenceConfig(rule: FatigueInterferenceDefaults.makeRule())
         let priorityMuscles = Set(input.priorities.filter { $0.priority.rawValue > PriorityTier.normal.rawValue }.map(\.muscleGroupID))
+        let maintenanceMuscles = Set(input.priorities.filter { $0.priority == .maintain }.map(\.muscleGroupID))
 
         // Días (índices) en que se entrena cada músculo: nunca tantos que toque menos de
         // 2 series en un día (con poco volumen semanal se entrena en menos días).
@@ -313,6 +317,7 @@ public struct BlockPlanner: Sendable {
         var sessions: [SessionTemplate] = []
         var orderExplanations: [SessionOrderExplanation] = []
         var notes = CompositionNotes()
+        var programmed: Set<MuscleGroup.ID> = []
         for (dayIndex, day) in days.enumerated() {
             func choose(preferTwoSets: Bool) -> [DayExercise] {
                 var chosen: [DayExercise] = []
@@ -357,7 +362,10 @@ public struct BlockPlanner: Sendable {
             var exercises = ordered
             let rx = try prescription(for: input.goal, isAnchor: false)
             if let minutes = input.sessionMinutes {
-                let outcome = compose(&exercises, minutes: minutes, goal: input.goal, priorityMuscles: priorityMuscles, prescription: rx)
+                let outcome = compose(
+                    &exercises, minutes: minutes, goal: input.goal,
+                    priorityMuscles: priorityMuscles, maintenanceMuscles: maintenanceMuscles, prescription: rx
+                )
                 if outcome.overRange { notes.overRange.append(day.title) }
                 if outcome.overTime { notes.overTime.append(day.title) }
             }
@@ -374,7 +382,13 @@ public struct BlockPlanner: Sendable {
             }
             sessions.append(SessionTemplate(title: day.title, plannedSets: plannedSets))
             orderExplanations.append(explanation)
+            for item in exercises { programmed.formUnion(item.muscles) }
         }
+        // Un músculo de mantenimiento con ejercicios permitidos que no quedó en ninguna sesión:
+        // no cupo en el tiempo. El que dejó fuera una restricción se explica aparte.
+        notes.maintenanceLeftOut = input.priorities
+            .filter { $0.priority == .maintain && assignmentsByMuscle[$0.muscleGroupID] != nil && !programmed.contains($0.muscleGroupID) }
+            .map(\.muscleGroupID)
         return (sessions, orderExplanations, notes)
     }
 
@@ -482,11 +496,14 @@ public struct BlockPlanner: Sendable {
 
     /// Lleva la sesión (ya ordenada, de lo más a lo menos importante) a su rango de ejercicios
     /// y a los minutos del usuario (SCRUM-218). Nunca deja un ejercicio con menos de 2 series
-    /// ni quita lo protegido: anclas compuestas y músculos prioritarios.
-    /// 1. Tope de ejercicios: sale primero un aislamiento no protegido y luego otro no
-    ///    protegido; sus series pasan a otro ejercicio de la sesión del mismo músculo.
-    /// 2. Tiempo, en este orden: quitar aislamientos no protegidos; bajar series hasta el
-    ///    mínimo (3 en un ancla compuesta con objetivo fuerza, 2 en lo demás); sólo entonces
+    /// ni quita lo protegido: anclas compuestas y músculos prioritarios. Lo de mantenimiento
+    /// (pantorrilla y core, SCRUM-215) sale después del resto de lo no protegido.
+    /// 1. Tope de ejercicios: sale primero un aislamiento no protegido, luego otro no
+    ///    protegido y, al final, lo de mantenimiento; sus series pasan a otro ejercicio de la
+    ///    sesión del mismo músculo.
+    /// 2. Tiempo, en este orden: quitar aislamientos no protegidos que no son de
+    ///    mantenimiento; bajar series hasta el mínimo (3 en un ancla compuesta con objetivo
+    ///    fuerza, 2 en lo demás); quitar los aislamientos de mantenimiento; sólo entonces
     ///    quitar otro ejercicio no protegido.
     /// Los supersets (`CompatibleSuperset`) no se aplican aquí: la sesión guardada todavía no
     /// tiene cómo representarlos.
@@ -495,10 +512,14 @@ public struct BlockPlanner: Sendable {
         minutes: Int,
         goal: TrainingGoal,
         priorityMuscles: Set<MuscleGroup.ID>,
+        maintenanceMuscles: Set<MuscleGroup.ID>,
         prescription: SetPrescription
     ) -> (overRange: Bool, overTime: Bool) {
         func isProtected(_ item: DayExercise) -> Bool {
             (item.isAnchor && item.isCompound) || !item.muscles.isDisjoint(with: priorityMuscles)
+        }
+        func isMaintenance(_ item: DayExercise) -> Bool {
+            !item.muscles.isDisjoint(with: maintenanceMuscles)
         }
         func minimumSets(_ item: DayExercise) -> Int {
             goal == .strength && item.isAnchor && item.isCompound
@@ -511,15 +532,22 @@ public struct BlockPlanner: Sendable {
             }
             return durationEstimator.estimate(plannedSets: sets) <= minutes * 60
         }
-        func lastRemovable(isolationOnly: Bool) -> Int? {
-            exercises.lastIndex { !isProtected($0) && (!isolationOnly || !$0.isCompound) }
+        /// El último ejercicio no protegido que se puede quitar; con `sparingMaintenance`,
+        /// sin contar lo de mantenimiento.
+        func lastRemovable(isolationOnly: Bool, sparingMaintenance: Bool = false) -> Int? {
+            exercises.lastIndex {
+                !isProtected($0) && (!isolationOnly || !$0.isCompound) && !(sparingMaintenance && isMaintenance($0))
+            }
         }
 
         // 1. Tope de ejercicios.
         let cap = compositionRule.exerciseRange(forMinutes: minutes).upperBound
         var overRange = false
         while exercises.count > cap {
-            guard let index = lastRemovable(isolationOnly: true) ?? lastRemovable(isolationOnly: false) else {
+            guard let index = lastRemovable(isolationOnly: true, sparingMaintenance: true)
+                ?? lastRemovable(isolationOnly: false, sparingMaintenance: true)
+                ?? lastRemovable(isolationOnly: true)
+                ?? lastRemovable(isolationOnly: false) else {
                 overRange = true
                 break
             }
@@ -531,11 +559,14 @@ public struct BlockPlanner: Sendable {
         }
 
         // 2. Tiempo.
-        while !fits(), let index = lastRemovable(isolationOnly: true) {
+        while !fits(), let index = lastRemovable(isolationOnly: true, sparingMaintenance: true) {
             exercises.remove(at: index)
         }
         while !fits(), let index = exercises.lastIndex(where: { $0.sets > minimumSets($0) }) {
             exercises[index].sets -= 1
+        }
+        while !fits(), let index = lastRemovable(isolationOnly: true) {
+            exercises.remove(at: index)
         }
         while !fits(), let index = lastRemovable(isolationOnly: false) {
             exercises.remove(at: index)
@@ -580,20 +611,22 @@ public struct BlockPlanner: Sendable {
         }
     }
 
-    /// Las clases de cada día de entrenamiento del split.
+    /// Las clases de cada día de entrenamiento del split. El core va en el día con más
+    /// espacio (SCRUM-215): pierna en torso/pierna y jalón en empuje/jalón/pierna, donde
+    /// sólo hay espalda y bíceps; la pantorrilla, con la pierna.
     private func classification(for split: TrainingSplit) -> [[MuscleGroup.ID]] {
         switch split {
         case .fullBody:
-            return [[.chest, .back, .shoulders, .biceps, .triceps, .quadriceps, .hamstrings, .glutes, .calves]]
+            return [[.chest, .back, .shoulders, .biceps, .triceps, .quadriceps, .hamstrings, .glutes, .calves, .core]]
         case .upperLower:
             return [
                 [.chest, .back, .shoulders, .biceps, .triceps],
-                [.quadriceps, .hamstrings, .glutes, .calves],
+                [.quadriceps, .hamstrings, .glutes, .calves, .core],
             ]
         case .pushPullLegs:
             return [
                 [.chest, .shoulders, .triceps],
-                [.back, .biceps, .forearms],
+                [.back, .biceps, .forearms, .core],
                 [.quadriceps, .hamstrings, .glutes, .calves],
             ]
         }
@@ -684,6 +717,10 @@ public struct BlockPlanner: Sendable {
         }
         if !composition.overTime.isEmpty {
             facts.append(DecisionFact(key: "sessionsOverTime", value: composition.overTime.joined(separator: ", ")))
+        }
+        // SCRUM-215: pantorrilla o core que no cupieron en la semana con los minutos del usuario.
+        if !composition.maintenanceLeftOut.isEmpty {
+            facts.append(DecisionFact(key: "maintenanceLeftOut", value: composition.maintenanceLeftOut.map(\.rawValue).joined(separator: ", ")))
         }
         let fatigue = try FatigueInterferenceConfig(rule: FatigueInterferenceDefaults.makeRule()).reference()
         let references = [try volumeConfigReference(), try assignmentRuleReference(), fatigue]

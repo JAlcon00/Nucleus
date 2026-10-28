@@ -141,7 +141,8 @@ struct OnboardingTests {
 
     @Test("SCRUM-209: el formulario ya no tiene paso Gimnasio")
     func noGymStep() {
-        #expect(OnboardingStep.ordered == [.experience, .goal, .phase, .daysPerWeek, .sessionMinutes, .variety, .restrictions])
+        // SCRUM-215: el flujo estándar también tiene el paso de prioritarios (opcional).
+        #expect(OnboardingStep.ordered == [.experience, .goal, .phase, .daysPerWeek, .sessionMinutes, .variety, .priorityMuscles, .restrictions])
     }
 
     // MARK: - Draft / back-navigation
@@ -180,16 +181,19 @@ struct OnboardingTests {
         #expect(advanced.currentStep == .experience) // no avanza
     }
 
-    @Test("el paso opcional (restricciones) permite avanzar sin respuesta")
+    @Test("los pasos opcionales (prioritarios y restricciones) permiten avanzar sin respuesta")
     func optionalStepsAdvanceWithoutAnswer() throws {
         var flow = OnboardingFlowController()
-        // Llega hasta restricciones (opcional) con respuestas en los obligatorios previos.
-        // Principiante: sin paso de variedad (SCRUM-210).
+        // Llega a los pasos opcionales con respuestas en los obligatorios previos.
+        // Principiante: sin paso de variedad (SCRUM-210), con prioritarios (SCRUM-215).
         flow = flow.answering(.experience(.beginner)).advance()
         flow = flow.answering(.goal(.generalHealth)).advance()
         flow = flow.answering(.phase(.maintenance)).advance()
         flow = flow.answering(.trainingDays(firstDays(5))).advance()
         flow = flow.answering(.sessionMinutes(45)).advance()
+        #expect(flow.currentStep == .priorityMuscles)
+        #expect(flow.canAdvance == true, "Prioritarios se salta con un toque")
+        flow = flow.advance()
         #expect(flow.currentStep == .restrictions)
         #expect(flow.canAdvance == true)
     }
@@ -203,7 +207,8 @@ struct OnboardingTests {
         flow = flow.answering(.phase(.surplus)).advance()        // → days
         flow = flow.answering(.trainingDays(firstDays(6))).advance()         // → session
         flow = flow.answering(.sessionMinutes(120)).advance()    // → variety
-        flow = flow.answering(.variety(.varied)).advance()       // → restrictions
+        flow = flow.answering(.variety(.varied)).advance()       // → priorityMuscles
+        flow = flow.advance()                                    // opcional → restrictions
         #expect(flow.currentStep == .restrictions)
         #expect(flow.isAtEnd == true)
         #expect(flow.isFlowComplete == true)

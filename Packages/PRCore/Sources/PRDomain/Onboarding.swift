@@ -25,7 +25,7 @@ public enum OnboardingStep: String, Codable, Sendable, CaseIterable, Hashable {
     case daysPerWeek
     case sessionMinutes
     case variety
-    /// Hasta 2 músculos a enfatizar (sólo avanzado/competitivo, SCRUM-210).
+    /// Hasta 2 músculos a enfatizar. Opcional, en todos los niveles (SCRUM-210, SCRUM-215).
     case priorityMuscles
     case restrictions
     // SCRUM-209: sin paso "Gimnasio": sólo hay una disciplina y el plan usa el equipo
@@ -72,22 +72,22 @@ public enum OnboardingFlowPolicy {
     /// Variedad que se asume cuando no se pregunta (guiado): estable, para aprender la
     /// técnica con los mismos ejercicios.
     public static let guidedVariety = VarietyPreference.stable
-    /// Músculos prioritarios que puede elegir un avanzado.
+    /// Músculos prioritarios que se pueden elegir, en cualquier nivel.
     public static let maxPriorityMuscles = 2
     /// Músculos que se ofrecen como prioritarios (las prioridades del planificador).
     public static let priorityMuscleOptions: [MuscleGroup] = [
         .chest, .back, .shoulders, .biceps, .triceps, .quadriceps, .hamstrings, .glutes,
     ]
 
-    /// Pasos en orden. Sin experiencia elegida todavía: el flujo estándar.
+    /// Pasos en orden. Sin experiencia elegida todavía: el flujo estándar. Todos los niveles
+    /// pueden elegir músculos prioritarios (SCRUM-215); quien empieza sigue sin "Variedad",
+    /// así que su formulario sigue siendo el más corto.
     public static func steps(for experience: ExperienceLevel?) -> [OnboardingStep] {
         let audience = experience.map(OnboardingAudience.init) ?? .standard
         switch audience {
         case .guided:
-            return [.experience, .goal, .phase, .daysPerWeek, .sessionMinutes, .restrictions]
-        case .standard:
-            return [.experience, .goal, .phase, .daysPerWeek, .sessionMinutes, .variety, .restrictions]
-        case .expert:
+            return [.experience, .goal, .phase, .daysPerWeek, .sessionMinutes, .priorityMuscles, .restrictions]
+        case .standard, .expert:
             return [.experience, .goal, .phase, .daysPerWeek, .sessionMinutes, .variety, .priorityMuscles, .restrictions]
         }
     }
@@ -105,7 +105,8 @@ public enum OnboardingAnswer: Equatable, Sendable {
     case trainingDays(Set<WeekDay>)
     case sessionMinutes(Int)
     case variety(VarietyPreference)
-    /// Músculos a enfatizar (avanzado, SCRUM-210): como mucho `maxPriorityMuscles`.
+    /// Músculos a enfatizar (SCRUM-210, todos los niveles desde SCRUM-215): como mucho
+    /// `maxPriorityMuscles`.
     case priorityMuscles(Set<MuscleGroup>)
     /// Zonas con molestia y nota opcional (SCRUM-209).
     case restrictions(RestrictionsAnswer)

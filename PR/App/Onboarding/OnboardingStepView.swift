@@ -212,7 +212,7 @@ struct OnboardingStepView: View {
         }
     }
 
-    /// Músculos prioritarios elegidos (avanzado, SCRUM-210).
+    /// Músculos prioritarios elegidos (SCRUM-210; todos los niveles desde SCRUM-215).
     private var priorityMuscles: Set<MuscleGroup> {
         if case .priorityMuscles(let value)? = selected { return value }
         return []
@@ -557,6 +557,49 @@ struct OnboardingStepView: View {
             isAtEnd: false,
             choices: [],
             selected: .trainingDays([.monday, .wednesday, .friday]),
+            onAnswer: { _ in },
+            onAdvance: {},
+            onGoBack: {},
+            onFinish: {}
+        )
+    }
+    .dynamicTypeSize(.accessibility3)
+    .ironEnergyTheme()
+}
+
+#Preview("Prioritarios · principiante · oscuro") {
+    NavigationStack {
+        OnboardingStepView(
+            step: .priorityMuscles,
+            indexPlusOne: 6,
+            stepCount: 7,
+            canAdvance: true,
+            canGoBack: true,
+            isAtEnd: false,
+            choices: [],
+            selected: nil,
+            audience: .guided,
+            onAnswer: { _ in },
+            onAdvance: {},
+            onGoBack: {},
+            onFinish: {}
+        )
+    }
+    .ironEnergyTheme()
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Prioritarios · 2 elegidos · accessibility3") {
+    NavigationStack {
+        OnboardingStepView(
+            step: .priorityMuscles,
+            indexPlusOne: 7,
+            stepCount: 8,
+            canAdvance: true,
+            canGoBack: true,
+            isAtEnd: false,
+            choices: [],
+            selected: .priorityMuscles([.shoulders, .glutes]),
             onAnswer: { _ in },
             onAdvance: {},
             onGoBack: {},

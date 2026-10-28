@@ -101,15 +101,12 @@ final class PRUITests: XCTestCase {
         minutes.buttons.element(boundBy: 0).tap()
         tap(app, "onboarding.next")
         let guided = ["novice", "beginner"].contains(experience)
-        let expert = ["advanced", "competitive"].contains(experience)
         // Quien empieza no ve "Variedad" (queda estable).
         if !guided { tap(app, "onboarding.option.balanced"); tap(app, "onboarding.next") }
-        // Avanzado: músculos prioritarios (opcional, hasta 2).
-        if expert {
-            XCTAssertTrue(element(app, "onboarding.priority.glutes").waitForExistence(timeout: 10), "Paso de prioritarios")
-            for muscle in priority { tap(app, "onboarding.priority.\(muscle)") }
-            tap(app, "onboarding.next")
-        }
+        // Músculos prioritarios (opcional, hasta 2): todos los niveles desde SCRUM-215.
+        XCTAssertTrue(element(app, "onboarding.priority.glutes").waitForExistence(timeout: 10), "Paso de prioritarios")
+        for muscle in priority { tap(app, "onboarding.priority.\(muscle)") }
+        tap(app, "onboarding.next")
         // SCRUM-209: sin paso "Gimnasio"; restricciones opcionales (zonas + nota).
         XCTAssertTrue(element(app, "onboarding.zone.shoulder").waitForExistence(timeout: 10), "Paso de restricciones con zonas")
         for zone in zones { tap(app, "onboarding.zone.\(zone)") }
@@ -131,7 +128,12 @@ final class PRUITests: XCTestCase {
         selectDays(app, ["monday", "wednesday", "friday"])
         tap(app, "onboarding.next")
         tap(app, "onboarding.next")
-        XCTAssertTrue(element(app, "onboarding.zone.shoulder").waitForExistence(timeout: 10), "Principiante: de minutos a restricciones")
+        // SCRUM-215: después de los minutos, prioritarios en palabras simples; se salta con un toque.
+        XCTAssertTrue(app.staticTexts["¿Quieres enfocarte en algo?"].waitForExistence(timeout: 10), "Principiante: prioritarios en palabras simples")
+        XCTAssertTrue(element(app, "onboarding.priority.glutes").exists)
+        XCTAssertTrue(element(app, "onboarding.next").isEnabled, "Se puede saltar sin elegir")
+        tap(app, "onboarding.next")
+        XCTAssertTrue(element(app, "onboarding.zone.shoulder").waitForExistence(timeout: 10), "Principiante: de prioritarios a restricciones")
         tap(app, "onboarding.next")
         tap(app, "aiConsent.decline")
         tap(app, "weekIntro.done")
@@ -231,7 +233,7 @@ final class PRUITests: XCTestCase {
         let app = launch()
         completeAboutYou(app)
         tap(app, "onboarding.option.intermediate")
-        XCTAssertTrue(app.staticTexts["Paso 1 de 7"].exists, "Un toque no debe cambiar de paso (intermedio: 7 pasos)")
+        XCTAssertTrue(app.staticTexts["Paso 1 de 8"].exists, "Un toque no debe cambiar de paso (intermedio: 8 pasos desde SCRUM-215)")
     }
 
     func testDefaultDaysAndMinutesCanAdvanceWithoutTouchingTheSteppers() {
@@ -432,13 +434,13 @@ final class PRUITests: XCTestCase {
         XCTAssertTrue(element(app, "today.start").isHittable, "Empezar sigue a la vista")
     }
 
-    /// SCRUM-210: un principiante ve 6 pasos (sin "Variedad"), lenguaje simple y, en Hoy,
-    /// el RIR explicado en palabras.
+    /// SCRUM-210: un principiante ve 7 pasos (sin "Variedad"; con prioritarios opcionales
+    /// desde SCRUM-215), lenguaje simple y, en Hoy, el RIR explicado en palabras.
     func testBeginnerFlowIsSimplerAndExplainsRIR() {
         let app = launch()
         completeAboutYou(app)
         tap(app, "onboarding.option.beginner")
-        XCTAssertTrue(app.staticTexts["Paso 1 de 6"].waitForExistence(timeout: 5), "Principiante: 6 pasos")
+        XCTAssertTrue(app.staticTexts["Paso 1 de 7"].waitForExistence(timeout: 5), "Principiante: 7 pasos")
         tap(app, "onboarding.next")
         XCTAssertTrue(element(app, "onboarding.option.hypertrophy").waitForExistence(timeout: 10))
         XCTAssertEqual(element(app, "onboarding.option.hypertrophy").label, "Ganar músculo", "Lenguaje simple")
