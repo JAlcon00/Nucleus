@@ -162,6 +162,27 @@ y `PainRecommendationPresenter` dice la recomendación sin diagnosticar. Cobertu
   perder el dolor, textos sin diagnóstico, y migración de entrenamientos y series pendientes;
 - `PRCoreTests/PersistenceFormatTests.swift`: muestras v1 (escala anterior) y v2.
 
+## Prioridades en todos los niveles, pantorrilla y core (SCRUM-215, PR-B002, RF-004)
+
+`OnboardingFlowPolicy` muestra el paso "Músculos prioritarios" (opcional, hasta 2) en todos
+los niveles; a Novato y Principiante, con `OnboardingCopy` en palabras simples, y su
+formulario sigue siendo el más corto. `TodayPlanBuilder.defaultPriorities()` agrega
+pantorrilla y core en `.maintain`. El core va en el día con más espacio (pierna en
+torso/pierna, jalón en empuje/jalón/pierna). Gana el tiempo: `BlockPlanner.compose` quita
+primero los demás aislamientos y baja series; solo después pantorrilla y core. Si no caben
+en la semana, el hecho `maintenanceLeftOut` y "Por qué tu plan" lo dicen; si los dejó fuera
+una restricción, se explica como restricción. `StoredPlan.currentGeneratorVersion` = 5.
+Cobertura:
+- `PRDomainTests/MaintenanceCompositionTests.swift`: orden de recorte con catálogo sintético
+  y aviso cuando no caben;
+- `PRCoreTests/MuscleCoverageTests.swift`: catálogo real, presencia con tiempo, día de cada
+  músculo por split, gana el tiempo, restricción y énfasis en cualquier nivel;
+- `PRCoreTests/RoutineCharacterizationTests.swift`: gate "ningún plan sin pantorrilla o core
+  sin decirlo";
+- `PRCoreTests/PlanPersistenceTests.swift`: un plan del generador 4 se regenera con el mismo
+  bloque y avisa;
+- `ExperienceFlowTests`, `OnboardingTests` y la prueba de UI del principiante.
+
 ## Catálogo de ejercicios (EPIC-03)
 
 Implementado en PR-0301 con el dataset público *free-exercise-db* (Unlicense)
