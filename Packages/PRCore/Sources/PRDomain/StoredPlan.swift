@@ -22,8 +22,10 @@ public struct StoredPlan: Codable, Sendable, Equatable {
     ///     candidato por coincidencia de datos);
     /// 4 = composición de sesión (SCRUM-218): rango de ejercicios por duración, nunca 1 serie,
     ///     el ancla al menos 2 veces por semana;
-    /// 5 = pantorrilla y core en mantenimiento (SCRUM-215), si caben en el tiempo.
-    public static let currentGeneratorVersion = 5
+    /// 5 = pantorrilla y core en mantenimiento (SCRUM-215), si caben en el tiempo;
+    /// 6 = catálogo bien clasificado (SCRUM-37): las restricciones ya no dejan pasar
+    ///     ejercicios mal clasificados (p. ej. tríceps con cuerda con restricción de codo).
+    public static let currentGeneratorVersion = 6
 
     public let userID: String
     public var profile: OnboardingProfile
