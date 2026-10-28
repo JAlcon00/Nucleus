@@ -4,7 +4,7 @@
 > **Actualizado:** 2026-10-27 (tablero sincronizado con Jira y con el código).
 > **Ejecuta:** el agente de IA de Xcode. Hace todo el trabajo asignado en Jira a Gael Durán y Joss Amador, en el orden de este archivo.
 > **Regla:** mientras quede un `[ ]` en las secciones 2 y 3, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
-> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214, 216–218, 222, 223 y 225) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
+> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
 
 ---
 
@@ -816,9 +816,9 @@ Evidencia: commit `e1e9a6e`, en `main` por el PR #9 (`883336b`).
   - si fallan las dos escrituras a disco (la de la serie y la del dolor), al reabrir se recupera la serie sin el dolor. La app ya muestra el aviso de guardado fallido;
   - 👤 Jesús, actualizar la app en un iPhone con entrenamientos guardados y revisar que el historial se vea igual.
 
-### SCRUM-215 · PR-B002 Prioridades en todos los niveles, más pantorrilla y core (P0, Fase B; en rama)
+### SCRUM-215 · PR-B002 Prioridades en todos los niveles, más pantorrilla y core (P0, Fase B; finalizada el 2026-10-27)
 
-- Va en la rama `SCRUM-215-prioridades-musculares`.
+- **En `main` desde el 2026-10-27:** Jesús fusionó el PR #11 (`e528029`). El CI de GitHub (`make ci`) pasó en `main` después de fusionar.
 - **Decisiones de Jesús (2026-10-27):**
   1. Gana el tiempo: pantorrilla y core entran si caben, después de quitar otros aislamientos y bajar series. Si no caben en la semana, "Por qué tu plan" lo dice.
   2. D3: el paso "Músculos prioritarios" también para Novato y Principiante, en palabras simples y opcional.
@@ -833,7 +833,7 @@ Evidencia: commit `e1e9a6e`, en `main` por el PR #9 (`883336b`).
 - [x] Pantorrilla y core nunca hacen que una sesión pase de los minutos, y ningún ejercicio queda con 1 serie.
 - [x] En SCRUM-214, "pantorrilla y core en el plan" salió de `withKnownIssue`. Por la decisión 1 ahora exige que ningún plan los deje fuera sin decirlo.
 
-Evidencia: commit `d78c0f9` (rama `SCRUM-215-prioridades-musculares`).
+Evidencia: commit `d78c0f9`, en `main` por el PR #11 (`e528029`).
 - `make ci` → `✔ Test run with 539 tests in 81 suites passed` + `Test run with 547 tests in 95 suites passed … with 2 known issues` (2026-10-27; línea base 536 + 540 con 4). Los 2 *known issues* que quedan son de SCRUM-219. El build de iOS y el de watchOS pasaron.
 - `make test-ui` → 30 de 30 pruebas OK (incluye `testBeginnerFlowIsSimplerAndExplainsRIR` y `testAdvancedFlowAsksPriorityMuscles` con el paso de prioritarios).
 - **Matriz de 200 perfiles** (SCRUM-214):
@@ -847,5 +847,5 @@ Evidencia: commit `d78c0f9` (rama `SCRUM-215-prioridades-musculares`).
   - Se cambiaron a propósito por el paso nuevo: `OnboardingTests` (3), `ExperienceFlowTests` (3) y las pruebas de UI del cuestionario (`Paso 1 de 7/8`, prioritarios en todos los niveles).
 - **Pendiente:**
   - D1 (SCRUM-220): con 30–60 min, pantorrilla y core muchas veces no caben;
-  - SCRUM-219: que la experiencia cambie los ejercicios (el gate novato/avanzado sigue en 20 %);
-  - 👤 Jesús: revisar el paso nuevo en el iPhone como principiante, claro y oscuro, y con letra grande.
+  - SCRUM-219: que la experiencia cambie los ejercicios (el gate novato/avanzado sigue en 20 %).
+- 👤 Verificación pendiente: revisar el paso nuevo en el iPhone como principiante, claro y oscuro, y con letra grande.
