@@ -106,6 +106,8 @@ public final class WorkoutSessionCoordinator: Identifiable {
     private let exerciseNames: [ExerciseID: String]
     /// Consejo de dropset por ejercicio (lo decide `IntensityAdvisor`; SCRUM-200).
     private let dropsetAdvice: [ExerciseID: DropsetAdvice]
+    /// Músculos de cada ejercicio para decir dónde dolió (SCRUM-226; `PainMuscleOptions`).
+    private let exerciseMuscles: [ExerciseID: [MuscleGroup.ID]]
     private var controller: ActiveWorkoutController
     private let completer: SetCompleter
     private let restTimer: RestTimer
@@ -145,6 +147,7 @@ public final class WorkoutSessionCoordinator: Identifiable {
         template: SessionTemplate,
         exerciseNames: [ExerciseID: String] = [:],
         dropsetAdvice: [ExerciseID: DropsetAdvice] = [:],
+        exerciseMuscles: [ExerciseID: [MuscleGroup.ID]] = [:],
         completer: SetCompleter = SetCompleter(),
         restTimer: RestTimer = RestTimer(),
         summaryBuilder: WorkoutSummaryBuilder = WorkoutSummaryBuilder(),
@@ -162,6 +165,7 @@ public final class WorkoutSessionCoordinator: Identifiable {
         self.template = template
         self.exerciseNames = exerciseNames
         self.dropsetAdvice = dropsetAdvice
+        self.exerciseMuscles = exerciseMuscles
         self.controller = ActiveWorkoutController()
         self.completer = completer
         self.restTimer = restTimer
@@ -491,15 +495,61 @@ extension WorkoutSessionCoordinator {
     /// (`PainLevel`). Se guarda ANTES de devolver la recomendación, como una serie. No
     /// diagnostica: la recomendación sale de `PainFeedbackEngine`. Moderado o alto bloquea
     /// la progresión de carga de ese ejercicio (`PainFeedback.blocksProgression`).
+    /// Reportar otra vez reemplaza lo anterior: gana el último nivel elegido (SCRUM-226).
+    /// "Sin dolor" se guarda sin músculo.
     @discardableResult
     public func reportPain(_ level: PainLevel, muscleGroup: MuscleGroup.ID? = nil) throws -> PainRecommendation {
         var session = try activeSessionForSet()
         guard let index = session.sets.indices.last else { throw WorkoutSessionError.invalidTransition }
-        session.sets[index].painFeedback = PainFeedback(level: level, muscleGroup: muscleGroup)
+        let muscle = level == .none ? nil : muscleGroup
+        session.sets[index].painFeedback = PainFeedback(level: level, muscleGroup: muscle)
         controller.replaceSession(session, at: clock())
         persistLive()
+        return try painRecommendation(for: level, exercise: session.sets[index].exerciseID)
+    }
+
+    /// SCRUM-226: la última serie hecha, para la hoja "¿Te dolió?" del descanso. Lee lo
+    /// guardado, así que al reabrir la app sigue el nivel reportado. `nil` sin series o
+    /// fuera de una sesión en curso.
+    public var painReport: PainReportUI? {
+        guard let session = controller.current?.session,
+              session.lifecycle == .active,
+              let last = session.sets.last else { return nil }
+        let exercise = last.exerciseID
+        let reported = last.painFeedback
+        let recommendation: PainRecommendation = reported.map { feedback in
+            // El motor siempre responde con su regla por defecto (lo prueba
+            // `PainReportFlowTests`). Si no pudiera, lo más seguro: moderado o alto se
+            // tratan como alto.
+            (try? painRecommendation(for: feedback.level, exercise: exercise))
+                ?? (feedback.level.isConservativeDisruptive ? .stopAndRest : .continueNormal)
+        } ?? .continueNormal
+        return PainReportUI(
+            exerciseName: exerciseNames[exercise] ?? exerciseFallbackName(exercise),
+            level: reported?.level,
+            muscleGroup: reported?.muscleGroup,
+            muscleOptions: exerciseMuscles[exercise] ?? [],
+            recommendation: recommendation,
+            canSkipExercise: !(session.queue?.skipped ?? []).contains(exercise)
+                && WorkoutQueue.hasPendingSets(exercise, template: template, sets: session.sets)
+        )
+    }
+
+    /// SCRUM-226: salta el ejercicio que dolió (el de la última serie), aunque no sea el
+    /// que sigue. Mismas reglas que "Saltar ejercicio" (SCRUM-212): las series hechas se
+    /// quedan, no se crean series y se puede retomar antes de terminar.
+    @discardableResult
+    public func skipPainfulExercise() throws -> WorkoutSessionPhase {
+        guard let exercise = try activeSessionForSet().sets.last?.exerciseID else {
+            throw WorkoutSessionError.invalidTransition
+        }
+        return try changeQueue(on: exercise) { exercise, state, session in
+            WorkoutQueue.skipping(exercise, in: state, template: template, sets: session.sets)
+        }
+    }
+
+    private func painRecommendation(for level: PainLevel, exercise: ExerciseID) throws -> PainRecommendation {
         let engine = try PainFeedbackEngine(config: PainFeedbackConfig(rule: PainFeedbackPolicyDefaults.makeRule()))
-        let exercise = session.sets[index].exerciseID
         return try engine.evaluate(PainFeedbackInput(level: level, exerciseName: exerciseNames[exercise])).recommendation
     }
 
@@ -537,9 +587,11 @@ extension WorkoutSessionCoordinator {
         try changeQueue { _, state, _ in WorkoutQueue.resuming(exercise, in: state) }
     }
 
-    /// Aplica un cambio a la cola sobre el ejercicio actual. Guarda ANTES de cambiar la
-    /// pantalla (como una serie). Sólo con la sesión activa o en descanso (no en pausa).
+    /// Aplica un cambio a la cola sobre el ejercicio actual (o sobre `target`). Guarda ANTES
+    /// de cambiar la pantalla (como una serie). Sólo con la sesión activa o en descanso (no
+    /// en pausa).
     private func changeQueue(
+        on target: ExerciseID? = nil,
         _ change: (ExerciseID, ExerciseQueueState, WorkoutSessionRecord) -> ExerciseQueueState
     ) throws -> WorkoutSessionPhase {
         let session = try activeSessionForSet()
@@ -551,7 +603,7 @@ extension WorkoutSessionCoordinator {
         }
         let state = session.queue ?? .empty
         guard let current = currentSet() else { throw WorkoutSessionError.allSetsCompleted }
-        let exercise = template.plannedSets[current.index].exerciseID
+        let exercise = target ?? template.plannedSets[current.index].exerciseID
         let next = change(exercise, state, session)
         guard next != state else { return phase }
         var updated = session

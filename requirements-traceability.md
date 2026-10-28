@@ -183,6 +183,30 @@ Cobertura:
   bloque y avisa;
 - `ExperienceFlowTests`, `OnboardingTests` y la prueba de UI del principiante.
 
+## Reportar el dolor en el entrenamiento (SCRUM-226, RF-024, RN-003, RN-015)
+
+En el descanso, "Reportar dolor" abre la hoja "¿Te dolió esta serie?" (`PainReportSheet`),
+que solo presenta `WorkoutSessionCoordinator.painReport`:
+- el ejercicio de la última serie y el nivel ya guardado (gana el último);
+- los músculos del ejercicio (`PainMuscleOptions`, del catálogo) para decir dónde, opcional;
+- la recomendación de `PainFeedbackEngine`;
+- si ese ejercicio todavía se puede saltar.
+
+La escala usa siempre texto (`PainRecommendationPresenter.levelName`). Según el nivel:
+- "Sin dolor" se guarda sin músculo y cierra la hoja;
+- leve se confirma con un háptico;
+- moderado y alto muestran la recomendación de SCRUM-32;
+- alto ofrece saltar el ejercicio que dolió (`skipPainfulExercise`, mismas reglas que
+  SCRUM-212) aunque no sea el que sigue.
+
+Cobertura:
+- `PRCoreTests/PainReportFlowTests.swift`: la hoja describe la última serie; gana el último
+  nivel sin duplicar series; sin dolor no lleva músculo; la recomendación es la del motor;
+  saltar el que dolió y retomarlo; no se ofrece si ya terminó; reabrir conserva el reporte;
+  aviso si falla el guardado; músculos del catálogo real; textos sin diagnóstico;
+- `PRUITests.testPainIsReportedDuringRestAndKeptAfterReopening`: moderado, músculo,
+  reabrir y alto con saltar, en el simulador.
+
 ## Catálogo de ejercicios (EPIC-03)
 
 Implementado en PR-0301 con el dataset público *free-exercise-db* (Unlicense)

@@ -849,3 +849,34 @@ Evidencia: commit `d78c0f9`, en `main` por el PR #11 (`e528029`).
   - D1 (SCRUM-220): con 30–60 min, pantorrilla y core muchas veces no caben;
   - SCRUM-219: que la experiencia cambie los ejercicios (el gate novato/avanzado sigue en 20 %).
 - 👤 Verificación pendiente: revisar el paso nuevo en el iPhone como principiante, claro y oscuro, y con letra grande.
+
+### SCRUM-226 · Reportar el dolor de una serie durante el entrenamiento (High, Fase C; en rama)
+
+- Va en la rama `SCRUM-226-reportar-dolor`. La lógica es de SCRUM-32; esta historia pone la pantalla.
+- **Cómo se ve:** en el descanso, "Reportar dolor" (secundario, debajo del tiempo) abre la hoja "¿Te dolió esta serie?":
+  - abre a media altura, con la escala al alcance del pulgar;
+  - al reportar dolor crece y la recomendación queda arriba;
+  - el botón del descanso dice lo reportado ("Dolor: Moderado").
+
+**Criterios:**
+- [x] En el descanso se puede reportar el dolor de la serie que se acaba de hacer, sin tapar el tiempo ni lo que sigue.
+- [x] Las cuatro opciones de la escala única van con texto (el color no es lo único que las distingue), con áreas de toque de 52 pt o más, y se usan con una mano.
+- [x] El músculo es opcional: se ofrecen los del ejercicio (catálogo). Sin indicarlo se guarda sin músculo, y "Sin dolor" nunca lleva músculo.
+- [x] Moderado: "Baja la intensidad y observa cómo te sientes en las próximas series."
+- [x] Alto: "Detén este ejercicio o cámbialo por otro. Si el dolor sigue, consulta a un profesional de la salud." y "Saltar …" directo, que salta el ejercicio que dolió aunque no sea el que sigue. Se puede retomar (SCRUM-212). Si ya no le quedan series, no se ofrece.
+- [x] Sin dolor o leve: háptico breve sin mensaje. "Sin dolor" cierra la hoja.
+- [x] Cambiar el nivel antes de la siguiente serie guarda el último elegido, en la misma serie y sin duplicarla.
+- [x] Sin internet se guarda igual (todo es local); si el guardado falla, sale el aviso de guardado fallido que ya existe.
+- [x] Ningún texto nombra una lesión ni promete recuperación (RN-015).
+
+Evidencia: commit `72c5385` (rama `SCRUM-226-reportar-dolor`).
+- `make ci` → `✔ Test run with 539 tests in 81 suites passed` + `Test run with 557 tests in 96 suites passed … with 2 known issues` (2026-10-27; línea base 539 + 547). Los 2 *known issues* son de SCRUM-219. El build de iOS y el de watchOS pasaron. Contraste de la recomendación medido con `contrast_check.py`: texto ≥ 14:1 e iconos ≥ 4.5:1, en claro y oscuro.
+- `make test-ui` → 31 de 31 pruebas OK, incluida la nueva (1 min 9 s). Capturas revisadas en el simulador: descanso, hoja a media altura, moderado, al reabrir y alto con saltar.
+- **Tests:**
+  - `PRCoreTests/PainReportFlowTests.swift` (10), con `LocalPersistence` real;
+  - `PRUITests.testPainIsReportedDuringRestAndKeptAfterReopening`: moderado con recomendación y músculo; al reabrir sigue "Moderado"; alto con saltar, y queda para retomar.
+- **Previews:** la hoja sin reportar, leve, moderado (oscuro), alto con y sin saltar, y `.accessibility3`; el descanso con y sin dolor reportado.
+- **Pendiente:**
+  - la última serie de la sesión va directo al resumen, sin descanso: su dolor no se puede reportar desde esta pantalla;
+  - si se salta el descanso, el botón ya no se ve (la serie siguiente es la acción principal).
+- 👤 Verificación pendiente: reportar cada nivel en el iPhone y revisar la recomendación, la legibilidad (Liquid Glass, Reduce Transparency, Increase Contrast) y el háptico.
