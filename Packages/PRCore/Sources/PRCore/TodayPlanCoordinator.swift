@@ -180,18 +180,22 @@ public struct TodayPlanBuilder: Sendable {
         )
     }
 
-    /// Genera un bloque para el perfil. `blockID` conserva la identidad al regenerar.
+    /// Genera un bloque para el perfil. `blockID` conserva la identidad al regenerar;
+    /// `blockSequence` es su lugar en el historial (SCRUM-219: los rotables cambian de un
+    /// bloque al siguiente y el mismo bloque sale igual).
     public func generate(
         profile: OnboardingProfile,
         catalog: ExerciseCatalog,
         planner: BlockPlanner,
         blockID: TrainingBlockID? = nil,
+        blockSequence: Int = 0,
         emphasis: [MuscleGroup] = []
     ) throws -> BlockPlanningResult {
         // SCRUM-205/210: músculos con énfasis (los que eligió la persona avanzada y los que
         // la IA propuso y se aceptaron); el motor decide cuántas series implica.
         var input = try makeInput(profile: profile, catalog: catalog.exercises, emphasis: profile.priorityMuscles + emphasis)
         input.blockID = blockID
+        input.blockSequence = blockSequence
         do {
             return try planner.plan(input: input)
         } catch {
@@ -382,7 +386,7 @@ public struct TodayPlanBuilder: Sendable {
 
     /// Seed básico de equipment de gimnasio (documentado).
     public func defaultEquipmentKnownness() -> EquipmentKnownness {
-        .knownAvailable([.barbell, .dumbbell, .machine, .cable, .bodyweight])
+        .knownAvailable([.barbell, .dumbbell, .machine, .smithMachine, .cable, .bodyweight])
     }
 
     // MARK: - Helpers
@@ -825,10 +829,11 @@ public final class TodayPlanCoordinator {
             case .regenerateInPlace:
                 guard let previous else { return failActivation() }
                 generation = .generating
+                let sequence = previous.plan.blockSequence(of: previous.block.id)
                 let base = try builder.generate(
-                    profile: profile, catalog: catalog, planner: planner, blockID: previous.block.id
+                    profile: profile, catalog: catalog, planner: planner, blockID: previous.block.id, blockSequence: sequence
                 )
-                let personalized = try await personalize(base, profile: profile, blockID: previous.block.id)
+                let personalized = try await personalize(base, profile: profile, blockID: previous.block.id, blockSequence: sequence)
                 let result = personalized.result
                 var block = result.block
                 block.startDate = previous.block.startDate
@@ -854,8 +859,10 @@ public final class TodayPlanCoordinator {
                     ? try planStore.preserveUnreadablePlan(userID: userID).blockHistory
                     : []
                 generation = .generating
-                let base = try builder.generate(profile: profile, catalog: catalog, planner: planner)
-                let personalized = try await personalize(base, profile: profile, blockID: base.block.id)
+                // El bloque nuevo va al final del historial: sus rotables cambian frente al anterior.
+                let history = previous?.plan.blockHistory ?? rescuedHistory
+                let base = try builder.generate(profile: profile, catalog: catalog, planner: planner, blockSequence: history.count)
+                let personalized = try await personalize(base, profile: profile, blockID: base.block.id, blockSequence: history.count)
                 let result = personalized.result
                 var block = result.block
                 block.status = .active
@@ -871,7 +878,7 @@ public final class TodayPlanCoordinator {
                     userID: userID,
                     profile: profile,
                     activeBlockID: block.id,
-                    blockHistory: (previous?.plan.blockHistory ?? rescuedHistory) + [block.id],
+                    blockHistory: history + [block.id],
                     explanation: result.explanation,
                     updatedAt: saveClock(),
                     personalization: personalized.record
@@ -896,7 +903,8 @@ public final class TodayPlanCoordinator {
     private func personalize(
         _ base: BlockPlanningResult,
         profile: OnboardingProfile,
-        blockID: TrainingBlockID
+        blockID: TrainingBlockID,
+        blockSequence: Int
     ) async throws -> PersonalizedPlan {
         guard let flow else {
             return PersonalizedPlan(
@@ -916,7 +924,9 @@ public final class TodayPlanCoordinator {
             conversationID: newConversationID(),
             now: saveClock(),
             regenerate: { emphasis in
-                try builder.generate(profile: profile, catalog: catalog, planner: planner, blockID: blockID, emphasis: emphasis)
+                try builder.generate(
+                    profile: profile, catalog: catalog, planner: planner, blockID: blockID, blockSequence: blockSequence, emphasis: emphasis
+                )
             }
         )
     }
@@ -933,7 +943,8 @@ public final class TodayPlanCoordinator {
             return substitution
         }
         let regenerated = try builder.generate(
-            profile: stored.profile, catalog: catalog, planner: planner, blockID: blockID, emphasis: emphasis
+            profile: stored.profile, catalog: catalog, planner: planner, blockID: blockID,
+            blockSequence: stored.blockSequence(of: blockID), emphasis: emphasis
         )
         guard !substitutions.isEmpty, let flow else { return regenerated }
         let review = try flow.validator.reviewSubstitutions(
