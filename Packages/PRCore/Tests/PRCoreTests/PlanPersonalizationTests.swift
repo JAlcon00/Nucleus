@@ -163,7 +163,14 @@ struct PlanPersonalizationTests {
     func invalidAdjustmentsAreRejected() async throws {
         let fixture = try PersonalizationFixture()
         let base = try fixture.base()
-        let planned = try #require(exerciseIDs(base.block).first)
+        // Se aceptan los énfasis en pecho y espalda, y el plan se regenera con ellos. Desde
+        // SCRUM-219 el énfasis puede cambiar un aislamiento por otro (pecho cubre su apertura y
+        // el tope de la sesión quita el aislamiento de un músculo no prioritario, SCRUM-218), así
+        // que `planned` sale de lo que está en los dos planes, en orden fijo: un Set no tiene un
+        // orden estable entre procesos (antes salía uno al azar y fallaba 1 de cada 25 veces).
+        let emphasized = try fixture.base(emphasis: [.chest, .back])
+        let planned = try #require(exerciseIDs(base.block).intersection(exerciseIDs(emphasized.block))
+            .sorted { $0.rawValue.uuidString < $1.rawValue.uuidString }.first)
         let plannedExercise = try #require(fixture.catalog.exercises.first { $0.id == planned })
         let otherMuscle = try #require(fixture.catalog.exercises.first { candidate in
             !exerciseIDs(base.block).contains(candidate.id)
@@ -195,6 +202,8 @@ struct PlanPersonalizationTests {
             .rejected(.unknownExercise),
         ])
         #expect(exerciseIDs(personalized.result.block).contains(planned), "Ninguna sustitución inválida se aplicó")
+        #expect(exerciseIDs(personalized.result.block) == exerciseIDs(emphasized.block),
+                "El plan es el del énfasis aceptado, sin ninguna sustitución")
     }
 
     @Test("Un sustituto prohibido por una restricción lo rechaza ActionPolicyValidator")

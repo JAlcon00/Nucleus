@@ -973,7 +973,8 @@ Evidencia: commit `3b51dd0` (rama `SCRUM-219-seleccion-ejercicios`).
   - `CatalogClassificationTests` y `ExerciseSelectionQualityTests` pasan de 63 a 78 staples (los 15 nuevos con su patrón fijado).
 - **En el camino:**
   - la ab rollout con barra salía como ancla de core con objetivo de fuerza. El dataset la marca compuesta, así que quedaba protegida y pasaba del tiempo; lo encontró la prueba de SCRUM-215. Ahora la barra sólo pesa en los básicos;
-  - el día que rota un músculo con un solo ejercicio tomaba un rotable por índice y podía saltarse un slot. Ahora toma el primero.
+  - el día que rota un músculo con un solo ejercicio tomaba un rotable por índice y podía saltarse un slot. Ahora toma el primero;
+  - el CI de GitHub del PR #14 falló en `PlanPersonalizationTests` ("Inválidos se rechazan…"). La prueba tomaba un ejercicio al azar del plan (`.first` de un `Set`, cuyo orden cambia en cada proceso) y suponía que seguía ahí después de aceptar el énfasis en pecho y espalda. Desde SCRUM-219, ese énfasis cubre la apertura de pecho, y el tope de la sesión (SCRUM-218) quita el jalón de tríceps, cuyas series pasan al otro de tríceps. Es lo esperado, y fallaba 1 de cada 25 veces. Ahora elige en orden fijo entre lo que está en los dos planes y además comprueba que el plan es exactamente el del énfasis aceptado. Pasó 5 de 5 seguidas y `make ci` volvió a pasar (545 + 574).
 - **Pendiente:**
   - "Por qué tu plan" todavía no explica por qué tocó máquina o barra;
   - la app aún no abre un bloque nuevo al terminar las semanas; hoy uno nuevo sale al cambiar objetivo, fase o días, y ahí ya rota;
