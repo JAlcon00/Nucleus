@@ -335,7 +335,9 @@ public struct LocalPersistence: Sendable {
             log.recoveredExtraActiveSessions(count: plan.extraActiveCount)
         }
         guard let record = plan.restore else { return .none }
-        guard let template = templates.first(where: { $0.id == record.templateID }) else {
+        // La copia guardada al empezar manda (SCRUM-36): si el plan se regeneró a mitad del
+        // entrenamiento, su plantilla ya no está entre las conocidas, pero se retoma igual.
+        guard let template = record.template ?? templates.first(where: { $0.id == record.templateID }) else {
             var abandoned = record
             abandoned.lifecycle = .abandoned
             abandoned.endedAt = abandoned.endedAt ?? clock()

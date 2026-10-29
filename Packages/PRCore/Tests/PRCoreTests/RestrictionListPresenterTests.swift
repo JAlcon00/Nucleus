@@ -7,6 +7,8 @@
 //  nota, en palabras simples; sin restricciones, un estado vacío. Integración con la
 //  persistencia real: el perfil guardado y reabierto trae la restricción de codo que la
 //  pantalla recibe, y es el mismo con el que se arma el plan.
+//  SCRUM-36 cambió a propósito la forma del estado: las resueltas van aparte, en el historial
+//  (`ordering` lo comprueba así).
 //
 
 import Foundation
@@ -16,7 +18,7 @@ import PRDomain
 
 private let zone = TimeZone(identifier: "America/Mexico_City") ?? .gmt
 private let now = Date(timeIntervalSince1970: 1_792_670_400)
-private let spanish = RestrictionListPresenter(locale: Locale(identifier: "es_MX"))
+private let spanish = RestrictionListPresenter(locale: Locale(identifier: "es_MX"), timeZone: zone)
 
 /// Perfil hecho con el cuestionario real (paso "Restricciones" de SCRUM-209).
 private func questionnaireProfile(zones: Set<BodyRegion>, note: String = "") throws -> OnboardingProfile {
@@ -34,10 +36,11 @@ private func questionnaireProfile(zones: Set<BodyRegion>, note: String = "") thr
     return try OnboardingProfileBuilder(clock: { now }).build(from: draft)
 }
 
+/// Las que el plan cuida y, después, el historial.
 private func items(_ state: RestrictionListState) -> [RestrictionListItem] {
     switch state {
     case .empty: return []
-    case .loaded(let items, _): return items
+    case .loaded(let current, let history, _): return current + history
     }
 }
 
@@ -48,11 +51,12 @@ struct RestrictionListPresenterTests {
     func questionnaireElbow() throws {
         let profile = try questionnaireProfile(zones: [.elbow], note: "Me molesta al cargar la barra")
         let state = spanish.state(for: profile, now: now)
-        guard case .loaded(let items, let note) = state else {
+        guard case .loaded(let items, let history, let note) = state else {
             Issue.record("Debía haber una restricción: \(state)")
             return
         }
         #expect(note == "Me molesta al cargar la barra")
+        #expect(history.isEmpty)
         let elbow = try #require(items.first)
         #expect(items.count == 1)
         #expect(elbow.region == "Codo")
@@ -81,20 +85,28 @@ struct RestrictionListPresenterTests {
         #expect(item.statusKind == .reviewNeeded, "La fecha vencida no la resuelve")
         #expect(item.status == "Llegó su fecha de revisión; tu plan la sigue cuidando.")
         #expect(item.note == "Sin press por encima de la cabeza")
+        #expect(item.review == "Revisión: 21 oct 2026")
+        #expect(item.canAllowExercises, "Con origen profesional se ofrece permitir un ejercicio")
+        // SCRUM-36: VoiceOver también lee la fecha de revisión.
         #expect(item.accessibilityLabel
-                == "Hombro. Lado derecho. Indicación de un profesional. Llegó su fecha de revisión; tu plan la sigue cuidando. Nota: Sin press por encima de la cabeza.")
+                == "Hombro. Lado derecho. Indicación de un profesional. Llegó su fecha de revisión; tu plan la sigue cuidando. Revisión: 21 oct 2026. Nota: Sin press por encima de la cabeza.")
     }
 
-    @Test("Orden: las que toca revisar, luego las activas de la cabeza a los pies y al final las resueltas")
+    @Test("Orden: las que toca revisar, luego las activas de la cabeza a los pies; las resueltas, en el historial")
     func ordering() throws {
         var profile = try questionnaireProfile(zones: [.knee, .neck])
         profile.restrictions += [
             TrainingRestriction(bodyRegion: .wrist, startDate: now, status: .resolved),
             TrainingRestriction(bodyRegion: .ankle, startDate: now, status: .reviewNeeded),
         ]
-        let shown = items(spanish.state(for: profile, now: now))
-        #expect(shown.map(\.region) == ["Tobillo", "Cuello", "Rodilla", "Muñeca"])
-        #expect(shown.last?.status == "Resuelta: ya no limita tu plan.")
+        guard case .loaded(let current, let history, _) = spanish.state(for: profile, now: now) else {
+            Issue.record("Debía haber restricciones")
+            return
+        }
+        #expect(current.map(\.region) == ["Tobillo", "Cuello", "Rodilla"])
+        #expect(history.map(\.region) == ["Muñeca"])
+        #expect(history.first?.status == "Resuelta: ya no limita tu plan.")
+        #expect(history.allSatisfy { !$0.isEditable })
     }
 
     @Test("Sin restricciones hay estado vacío; la nota del paso se conserva aunque no haya zonas")

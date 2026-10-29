@@ -6,6 +6,8 @@
 //
 //  Tests para la gestión determinista de restricciones (PR-1401): create/edit/review/
 //  resolve, userReported vs professionalGuidance, y reviewDate sin auto-resolución.
+//  SCRUM-36 (decisión 1 de Jesús, 2026-10-29) cambió a propósito dos pruebas: una activa ya
+//  se puede resolver, y resolver siempre pide confirmación explícita y guarda la fecha.
 //
 
 import XCTest
@@ -99,19 +101,23 @@ final class RestrictionManagerTests: XCTestCase {
 
     // MARK: - Resolve
 
-    func testResolveRequiresReviewFirst() throws {
+    /// Antes: "resolver exige revisión primero". Desde SCRUM-36 una activa se resuelve por
+    /// acción explícita ("Ya no me molesta"), nunca sin confirmar.
+    func testResolveActiveRequiresExplicitConfirmation() throws {
         let r = try XCTUnwrap(try manager.create(from: userDraft(), explicitlyConfirmed: false, now: now))
-        XCTAssertThrowsError(try manager.resolve(r)) { error in
-            if case .invalidStateTransition = (error as? RestrictionManagerError)! { } else {
-                XCTFail("expected invalidStateTransition")
-            }
+        XCTAssertThrowsError(try manager.resolve(r, explicitlyConfirmed: false)) { error in
+            XCTAssertEqual(error as? RestrictionManagerError, .needsExplicitConfirmation)
         }
+        let resolved = try manager.resolve(r, explicitlyConfirmed: true, now: now.addingTimeInterval(86400))
+        XCTAssertEqual(resolved.status, .resolved)
+        XCTAssertEqual(resolved.resolvedDate, now.addingTimeInterval(86400))
+        XCTAssertFalse(resolved.isInForce)
     }
 
     func testResolveAfterReviewWorks() throws {
         let r = try XCTUnwrap(try manager.create(from: userDraft(), explicitlyConfirmed: false, now: now))
         let reviewed = manager.review(r, asOf: now.addingTimeInterval(86400 * 10))
-        let resolved = try manager.resolve(reviewed)
+        let resolved = try manager.resolve(reviewed, explicitlyConfirmed: true)
         XCTAssertEqual(resolved.status, .resolved)
     }
 
@@ -125,15 +131,16 @@ final class RestrictionManagerTests: XCTestCase {
 
     func testResolvedIsTerminal() throws {
         let r = try XCTUnwrap(try manager.create(from: userDraft(), explicitlyConfirmed: false, now: now))
-        let resolved = try manager.resolve(manager.review(r, asOf: now.addingTimeInterval(86400 * 10)))
-        XCTAssertThrowsError(try manager.resolve(resolved))
+        let resolved = try manager.resolve(manager.review(r, asOf: now.addingTimeInterval(86400 * 10)), explicitlyConfirmed: true)
+        XCTAssertThrowsError(try manager.resolve(resolved, explicitlyConfirmed: true))
     }
 
     // MARK: - Fifths & persistence helpers
 
     func testStatusTransitionsAreValidated() {
         XCTAssertTrue(RestrictionStatus.active.canTransition(to: .reviewNeeded))
-        XCTAssertFalse(RestrictionStatus.active.canTransition(to: .resolved))
+        XCTAssertTrue(RestrictionStatus.active.canTransition(to: .resolved), "SCRUM-36: por acción explícita")
+        XCTAssertFalse(RestrictionStatus.resolved.canTransition(to: .active), "Una resuelta es historial")
         XCTAssertTrue(RestrictionStatus.reviewNeeded.canTransition(to: .resolved))
         XCTAssertTrue(RestrictionStatus.reviewNeeded.canTransition(to: .active))
     }

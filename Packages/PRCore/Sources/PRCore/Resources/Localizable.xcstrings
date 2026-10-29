@@ -1033,6 +1033,126 @@
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Note: %@" } }
       }
+    },
+    "Revisión: %@" : {
+      "comment" : "Restricciones: fecha de revisión",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Review: %@" } }
+      }
+    },
+    "Resuelta el %@" : {
+      "comment" : "Restricciones: fecha en que la persona la resolvió",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Resolved on %@" } }
+      }
+    },
+    "También evita: %@" : {
+      "comment" : "Restricciones: VoiceOver lee los ejercicios que se evitan",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Also avoids: %@" } }
+      }
+    },
+    "Permitidos: %@" : {
+      "comment" : "Restricciones: VoiceOver lee los ejercicios permitidos por un profesional",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Allowed: %@" } }
+      }
+    },
+    "¿Te lo indicó un profesional?" : {
+      "comment" : "Restricciones: confirmar origen profesional, título",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Did a professional tell you this?" } }
+      }
+    },
+    "Tu plan seguirá esta indicación tal cual la guardes. Revísala antes de confirmar." : {
+      "comment" : "Restricciones: confirmar origen profesional, mensaje",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your plan will follow this guidance exactly as you save it. Check it before you confirm." } }
+      }
+    },
+    "Sí, me lo indicó" : {
+      "comment" : "Restricciones: confirmar origen profesional, botón",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Yes, they told me" } }
+      }
+    },
+    "¿Tu profesional lo permite?" : {
+      "comment" : "Restricciones: confirmar permitir un ejercicio, título",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Does your professional allow it?" } }
+      }
+    },
+    "Tu plan podrá incluir %@ aunque cuide esta zona. Hazlo sólo si te lo indicaron." : {
+      "comment" : "Restricciones: confirmar permitir un ejercicio, mensaje con el nombre del ejercicio",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your plan may include %@ even while it works around this area. Only do this if you were told so." } }
+      }
+    },
+    "Sí, lo permite" : {
+      "comment" : "Restricciones: confirmar permitir un ejercicio, botón",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Yes, it's allowed" } }
+      }
+    },
+    "¿Ya no te molesta?" : {
+      "comment" : "Restricciones: confirmar resolver, título",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Doesn't it bother you anymore?" } }
+      }
+    },
+    "Tu plan volverá a incluir lo que carga esta zona: %@. Quedará en tu historial." : {
+      "comment" : "Restricciones: confirmar resolver, mensaje con la zona",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your plan will include what loads this area again: %@. It will stay in your history." } }
+      }
+    },
+    "Ya no me molesta" : {
+      "comment" : "Restricciones: confirmar resolver, botón",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "It doesn't bother me anymore" } }
+      }
+    },
+    "¿Tu profesional te dio de alta?" : {
+      "comment" : "Restricciones: confirmar resolver una indicación profesional, título",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Did your professional clear you?" } }
+      }
+    },
+    "Tu plan volverá a incluir lo que carga esta zona: %@. Hazlo sólo si te lo indicaron. Quedará en tu historial." : {
+      "comment" : "Restricciones: confirmar resolver una indicación profesional, mensaje con la zona",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your plan will include what loads this area again: %@. Only do this if you were told so. It will stay in your history." } }
+      }
+    },
+    "Sí, me dio de alta" : {
+      "comment" : "Restricciones: confirmar resolver una indicación profesional, botón",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Yes, they cleared me" } }
+      }
+    },
+    "Tu plan de hoy ya lo respeta, pero no se pudo guardar. Inténtalo de nuevo para que no se pierda al cerrar la app." : {
+      "comment" : "Restricciones: el cambio aplica pero el guardado falló",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Today's plan already respects it, but it couldn't be saved. Try again so it isn't lost when you close the app." } }
+      }
+    },
+    "No pudimos armar tu plan con este cambio. No se cambió nada." : {
+      "comment" : "Restricciones: no se pudo generar el plan, nada cambió",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "We couldn't build your plan with this change. Nothing was changed." } }
+      }
+    },
+    "La nota puede tener hasta %lld caracteres." : {
+      "comment" : "Restricciones: nota demasiado larga, con el máximo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The note can be up to %lld characters." } }
+      }
+    },
+    "No se pudo hacer ese cambio. No se cambió nada." : {
+      "comment" : "Restricciones: cambio rechazado, nada cambió",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "That change couldn't be made. Nothing was changed." } }
+      }
     }
   },
   "version" : "1.0"

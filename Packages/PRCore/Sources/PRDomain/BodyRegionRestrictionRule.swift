@@ -98,25 +98,23 @@ public enum BodyRegionRestrictionRule {
     }
 
     /// Restricciones para las zonas elegidas (orden estable por zona). Reutiliza la
-    /// restricción anterior de una zona si existe (mismo ID y fecha). Las anteriores que
-    /// el formulario no puede mostrar (zona no seleccionable) o de origen profesional se
-    /// conservan siempre: desmarcar en el formulario nunca debilita una restricción
-    /// profesional.
+    /// restricción EN VIGOR de una zona si existe (mismo ID y fecha); una resuelta es
+    /// historial, así que volver a marcar su zona crea una activa nueva (SCRUM-36).
+    /// Nada se borra (SCRUM-36, decisión 2 de Jesús):
+    /// - una declarada por la persona cuya zona se desmarcó queda resuelta, en el historial;
+    /// - las de zonas que el formulario no muestra, las de origen profesional y las resueltas
+    ///   se conservan tal cual: desmarcar nunca debilita una restricción profesional.
     public static func restrictions(
         for answer: RestrictionsAnswer,
         now: Date,
         newID: () -> RestrictionID = { RestrictionID() }
     ) -> [TrainingRestriction] {
-        let previousByRegion = Dictionary(
-            answer.previous.map { ($0.bodyRegion, $0) },
+        let inForceByRegion = Dictionary(
+            answer.previous.filter(\.isInForce).map { ($0.bodyRegion, $0) },
             uniquingKeysWith: { first, _ in first }
         )
-        let kept = answer.previous.filter { restriction in
-            !answer.zones.contains(restriction.bodyRegion)
-                && (!selectableRegions.contains(restriction.bodyRegion) || restriction.source == .professionalGuidance)
-        }
         let chosen = BodyRegion.allCases.filter(answer.zones.contains).map { region in
-            if let previous = previousByRegion[region] { return previous }
+            if let previous = inForceByRegion[region] { return previous }
             return TrainingRestriction(
                 id: newID(),
                 bodyRegion: region,
@@ -126,6 +124,17 @@ public enum BodyRegionRestrictionRule {
                 forbiddenPatterns: forbiddenPatterns(for: region),
                 restrictionTags: tag(for: region).map { [$0] } ?? []
             )
+        }
+        let chosenIDs = Set(chosen.map(\.id))
+        let kept = answer.previous.filter { !chosenIDs.contains($0.id) }.map { restriction in
+            let unmarked = restriction.isInForce
+                && restriction.source == .userReported
+                && selectableRegions.contains(restriction.bodyRegion)
+                && !answer.zones.contains(restriction.bodyRegion)
+            guard unmarked else { return restriction }
+            var resolved = restriction.updatedStatus(.resolved)
+            resolved.resolvedDate = now
+            return resolved
         }
         return chosen + kept
     }

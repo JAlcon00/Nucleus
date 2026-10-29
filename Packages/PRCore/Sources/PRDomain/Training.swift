@@ -333,6 +333,10 @@ public struct WorkoutSessionRecord: Identifiable, Codable, Sendable, Hashable {
     /// Ejercicios dejados para después o saltados (SCRUM-212). `nil` en sesiones
     /// anteriores o sin cambios: se sigue el orden de la plantilla.
     public var queue: ExerciseQueueState?
+    /// Copia de la plantilla con la que empezó (SCRUM-36). Si el plan se regenera a mitad
+    /// del entrenamiento (p. ej. al agregar una restricción), la sesión se retoma igual.
+    /// `nil` en sesiones anteriores: se busca por `templateID`.
+    public var template: SessionTemplate?
 
     public init(
         id: WorkoutID = WorkoutID(),
@@ -342,8 +346,10 @@ public struct WorkoutSessionRecord: Identifiable, Codable, Sendable, Hashable {
         lifecycle: WorkoutLifecycleState = .planned,
         sets: [SetRecord] = [],
         healthWorkoutReferenceID: UUID? = nil,
-        rest: RestSnapshot? = nil
+        rest: RestSnapshot? = nil,
+        template: SessionTemplate? = nil
     ) {
+        self.template = template
         self.rest = rest
         self.id = id
         self.templateID = templateID

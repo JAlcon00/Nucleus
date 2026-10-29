@@ -85,7 +85,8 @@ public struct ActiveWorkoutController: Sendable {
         let session = WorkoutSessionRecord(
             templateID: template?.id,
             startedAt: now,
-            lifecycle: .active
+            lifecycle: .active,
+            template: template
         )
         let state = ActiveWorkoutState(session: session, lastTransitionAt: now)
         self.state = state
