@@ -470,6 +470,51 @@ final class PRUITests: XCTestCase {
         XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15), "El plan se armó igual")
     }
 
+    /// SCRUM-36: una restricción se agrega desde Perfil sin rehacer el cuestionario y el plan
+    /// la cuida desde ese momento ("Por qué tu plan" lo dice y Hoy no trae curls ni tríceps).
+    /// "Ya no me molesta" pide confirmación, la deja en el historial y el plan deja de cuidarla.
+    func testRestrictionIsAddedAndResolvedFromProfile() {
+        let app = launch()
+        completeOnboarding(app)
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
+
+        openTab(app, "Perfil")
+        tap(app, "profile.restrictions")
+        XCTAssertTrue(element(app, "restrictions.empty").waitForExistence(timeout: 10), "Sin restricciones al empezar")
+        tap(app, "restrictions.add")
+        tap(app, "restrictions.zone.elbow")
+        tap(app, "restrictions.form.save")
+        XCTAssertTrue(element(app, "restrictions.row").waitForExistence(timeout: 15), "La restricción aparece en la lista")
+
+        openTab(app, "Plan")
+        let rationale = scrollTo(app, "plan.rationale", upwards: true)
+        XCTAssertTrue(rationale.waitForExistence(timeout: 15), "Debe verse \"Por qué tu plan es así\"")
+        XCTAssertTrue(rationale.label.localizedCaseInsensitiveContains("codo"), "El plan cuida el codo: \(rationale.label)")
+
+        openTab(app, "Hoy")
+        XCTAssertTrue(element(app, "today.start").waitForExistence(timeout: 15))
+        let exercises = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'today.exercise.'"))
+        for index in 0..<exercises.count {
+            let label = exercises.element(boundBy: index).label.lowercased()
+            XCTAssertFalse(label.contains("curl") || label.contains("tríceps"), "Hoy no carga el codo: \(label)")
+        }
+
+        openTab(app, "Perfil")
+        tap(app, "restrictions.row")
+        XCTAssertTrue(element(app, "restrictions.detail").waitForExistence(timeout: 10), "Abre el detalle de la restricción")
+        XCTAssertTrue(scrollTo(app, "restrictions.resolve").waitForExistence(timeout: 5), "El detalle ofrece \"Ya no me molesta\"")
+        tap(app, "restrictions.resolve")
+        let confirm = app.alerts.buttons["Ya no me molesta"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5), "Resolver pide confirmación")
+        confirm.tap()
+        XCTAssertTrue(element(app, "restrictions.history.row").waitForExistence(timeout: 15), "Queda en el historial")
+
+        openTab(app, "Plan")
+        let updated = scrollTo(app, "plan.rationale", upwards: true)
+        XCTAssertTrue(updated.waitForExistence(timeout: 15))
+        XCTAssertFalse(updated.label.localizedCaseInsensitiveContains("codo"), "Resuelta: el plan ya no la cuida: \(updated.label)")
+    }
+
     /// SCRUM-208: "Cerrar sesión" pide confirmación, vuelve al login y, al entrar con la
     /// misma cuenta, el plan sigue ahí (no se borró nada).
     func testSignOutAsksAndKeepsThePlan() {

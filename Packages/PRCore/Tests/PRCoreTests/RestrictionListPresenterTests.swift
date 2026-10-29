@@ -44,7 +44,7 @@ private func items(_ state: RestrictionListState) -> [RestrictionListItem] {
     }
 }
 
-@Suite("Perfil › Restricciones en solo lectura (SCRUM-216)")
+@Suite("Perfil › Restricciones: lo que se ve (SCRUM-216 / SCRUM-36)")
 struct RestrictionListPresenterTests {
 
     @Test("La restricción de codo del cuestionario se ve con su zona, quién la declaró, que el plan la cuida y la nota")

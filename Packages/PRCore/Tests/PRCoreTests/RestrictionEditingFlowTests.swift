@@ -270,3 +270,78 @@ struct RestrictionEditingFlowTests {
         #expect(context.restrictions.map(\.bodyRegion) == [.shoulder])
     }
 }
+
+@MainActor
+@Suite("SCRUM-36 · Lo que decide la pantalla de restricciones")
+struct RestrictionScreenModelTests {
+
+    private func model(_ app: App) -> RestrictionScreenModel {
+        let onboarding = app.onboarding
+        return RestrictionScreenModel(
+            session: app.session,
+            profile: { if case .completed(let profile) = onboarding.phase { return profile }; return nil },
+            catalog: app.catalog.exercises,
+            presenter: RestrictionListPresenter(locale: Locale(identifier: "es_MX")),
+            clock: { app.now }
+        )
+    }
+
+    private func app() async throws -> App {
+        let app = try App(planStore: try LocalPersistence(rootURL: try makeRoot(), log: PersistenceLog { _ in }).planStore())
+        await app.completeQuestionnaire(try profile())
+        return app
+    }
+
+    @Test("Agregar propia se guarda directo; la misma zona otra vez abre la existente")
+    func addAndOpenExisting() async throws {
+        let app = try await app()
+        let screen = model(app)
+        #expect(await screen.add(.knee, details: RestrictionDetails()) == .done)
+        let knee = try #require(screen.zones.first { $0.region == .knee }?.existing)
+        #expect(await screen.add(.knee, details: RestrictionDetails(side: .left)) == .openExisting(knee))
+        #expect(app.profile?.restrictions.count == 1)
+    }
+
+    @Test("Origen profesional: primero pide confirmar (sin tocar nada) y confirmado se guarda")
+    func professionalAsksFirst() async throws {
+        let app = try await app()
+        let screen = model(app)
+        let presenter = RestrictionListPresenter(locale: Locale(identifier: "es_MX"))
+        let details = RestrictionDetails(source: .professionalGuidance)
+        #expect(await screen.add(.lumbar, details: details) == .needsConfirmation(presenter.professionalConfirmation()))
+        #expect(app.profile?.restrictions.isEmpty == true)
+        #expect(await screen.add(.lumbar, details: details, confirmed: true) == .done)
+        #expect(app.profile?.restrictions.first?.source == .professionalGuidance)
+    }
+
+    @Test("Resolver siempre pide confirmar; permitir en una propia no se aplica")
+    func resolveAndAllow() async throws {
+        let app = try await app()
+        let screen = model(app)
+        _ = await screen.add(.elbow, details: RestrictionDetails())
+        let elbow = try #require(app.profile?.restrictions.first?.id)
+        let item = try #require(screen.item(elbow))
+        let curl = try #require(screen.exercises(matching: "curl").first)
+
+        guard case .needsConfirmation = await screen.allow(curl.id, in: elbow) else {
+            Issue.record("Permitir siempre se confirma"); return
+        }
+        guard case .failed = await screen.allow(curl.id, in: elbow, confirmed: true) else {
+            Issue.record("En una propia no se puede permitir"); return
+        }
+        #expect(await screen.resolve(elbow) == .needsConfirmation(RestrictionListPresenter(locale: Locale(identifier: "es_MX")).resolveConfirmation(for: item)))
+        #expect(app.profile?.restrictions.first?.isInForce == true)
+        #expect(await screen.resolve(elbow, confirmed: true) == .done)
+        #expect(screen.item(elbow)?.isEditable == false, "Pasa al historial")
+    }
+
+    @Test("Buscar: sin texto no hay resultados; con texto, del catálogo y como mucho 25")
+    func searching() async throws {
+        let app = try await app()
+        let screen = model(app)
+        #expect(screen.exercises(matching: "   ").isEmpty)
+        let results = screen.exercises(matching: "press")
+        #expect(!results.isEmpty)
+        #expect(results.count <= RestrictionScreenModel.searchLimit)
+    }
+}

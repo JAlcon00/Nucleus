@@ -76,6 +76,10 @@ public final class AppEnvironment {
     /// Arranque y sesión (SCRUM-26): recuerda al usuario y su plan entre arranques.
     public let session: AppSessionCoordinator
 
+    /// Perfil › Restricciones (SCRUM-216 / SCRUM-36): ver, agregar, editar y resolver, sobre
+    /// el mismo perfil con el que se arma el plan.
+    public let restrictionScreen: RestrictionScreenModel
+
     /// Consentimiento para compartir el perfil con la IA (SCRUM-202).
     public let aiConsent: AIConsentCoordinator
 
@@ -135,10 +139,6 @@ public final class AppEnvironment {
         }
     }
 
-    /// SCRUM-216: Perfil › Restricciones, del mismo perfil con el que se arma el plan.
-    public var restrictionList: RestrictionListState {
-        RestrictionListPresenter(locale: Self.presentationLocale).state(for: completedProfile, now: now)
-    }
 
     /// Registra el check-in y aplica el ajuste del día que decide el motor.
     public func recordSleep(hours: Double, quality: SleepQuality) {
@@ -416,6 +416,17 @@ public final class AppEnvironment {
             planStore: planStore,
             aiConsent: self.aiConsent,
             sleepCheckIns: self.sleepCheckIns,
+            clock: { fixedDate ?? Date() }
+        )
+        let onboarding = self.onboarding
+        self.restrictionScreen = RestrictionScreenModel(
+            session: self.session,
+            profile: {
+                if case .completed(let profile) = onboarding.phase { return profile }
+                return nil
+            },
+            catalog: resolvedCatalog.exercises,
+            presenter: RestrictionListPresenter(locale: Self.presentationLocale),
             clock: { fixedDate ?? Date() }
         )
     }

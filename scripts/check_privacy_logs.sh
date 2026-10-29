@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
 # Guard de privacidad de logs (SCRUM-198, U5): los datos de "Sobre ti" (nombre, edad/año de
-# nacimiento, sexo, estatura y peso) nunca se loguean. Falla si una llamada de logging
+# nacimiento, sexo, estatura y peso) y las notas de las restricciones (la del cuestionario y
+# la de cada restricción, SCRUM-36) nunca se loguean. Falla si una llamada de logging
 # (print, NSLog, os_log, Logger/PRLogger, `log.`, `sink(`, dump) menciona alguno de esos
 # campos en el paquete, la app o el reloj.
 #
@@ -12,7 +13,7 @@ set -euo pipefail
 REPO_ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
 LOG_CALL='(\blog\.[a-zA-Z]+\(|\bprint\(|\bdebugPrint\(|\bdump\(|NSLog\(|os_log\(|Logger\(|PRLogger|\blogger\.|\.log\.|\bsink\()'
-PERSONAL='(aboutYou|AboutYou|birthYear|heightCentimeters|DeclaredSex|givenName|displayName|restrictionNote|\.weight\b|\.sex\b)'
+PERSONAL='(aboutYou|AboutYou|birthYear|heightCentimeters|DeclaredSex|givenName|displayName|restrictionNote|\.notes\b|trimmedNotes|\.weight\b|\.sex\b)'
 
 found=0
 for dir in "$REPO_ROOT/Packages/PRCore/Sources" "$REPO_ROOT/PR/App" "$REPO_ROOT/PRWatch/App"; do
