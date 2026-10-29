@@ -1,10 +1,10 @@
 # mvp-plan.md — Plan activo: MVP / POC de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica POC: SCRUM-180).
-> **Actualizado:** 2026-10-28 (tablero sincronizado con Jira y con el código).
+> **Actualizado:** 2026-10-29 (tablero sincronizado con Jira y con el código).
 > **Ejecuta:** el agente de IA de Xcode. Hace todo el trabajo asignado en Jira a Gael Durán y Joss Amador, en el orden de este archivo.
 > **Regla:** mientras quede un `[ ]` en las secciones 2 y 3, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
-> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 y SCRUM-37 el 2026-10-28) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
+> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 y SCRUM-37 el 2026-10-28; SCRUM-219 el 2026-10-29) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
 
 ---
 
@@ -638,7 +638,7 @@ Evidencia: commit `f55256f`; `make ci` → `✔ Test run with 520 tests in 78 su
 | Ejercicios con menos de 2 series de trabajo | **1,394 de 5,943** (23 %) | 0 |
 | Planes con pantorrilla / con core | **0/200** / **0/200** | 200/200 |
 
-**Gate de la Fase B:** con SCRUM-219 (en rama) ya no queda ningún `withKnownIssue`. Fuerza/hipertrofia 100 % y novato/avanzado 97 %.
+**Gate de la Fase B:** con SCRUM-219 (en `main` desde el 2026-10-29) ya no queda ningún `withKnownIssue`. Fuerza/hipertrofia 100 % y novato/avanzado 97 %.
 
 **Conclusión:** hoy el conjunto de ejercicios solo depende de la variedad. Objetivo, fase, experiencia, minutos y días cambian el reparto de series y el orden, pero no qué ejercicios salen. Es más drástico que la simulación de la auditoría (16 conjuntos en 8,100 perfiles, sobre `0b0a1f6`).
 
@@ -677,7 +677,7 @@ Evidencia: commit `42ffa7b`.
 
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; queda SCRUM-36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27 y ~~SCRUM-37~~, el catálogo, el 2026-10-28) → HealthKit, Watch, pestañas.
+En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; quedan la decisión D1, SCRUM-220, y los supersets, SCRUM-224) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; queda SCRUM-36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27 y ~~SCRUM-37~~, el catálogo, el 2026-10-28) → HealthKit, Watch, pestañas.
 
 ### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada; finalizada el 2026-10-27)
 
@@ -849,7 +849,7 @@ Evidencia: commit `d78c0f9`, en `main` por el PR #11 (`e528029`).
   - Se cambiaron a propósito por el paso nuevo: `OnboardingTests` (3), `ExperienceFlowTests` (3) y las pruebas de UI del cuestionario (`Paso 1 de 7/8`, prioritarios en todos los niveles).
 - **Pendiente:**
   - D1 (SCRUM-220): con 30–60 min, pantorrilla y core muchas veces no caben;
-  - ~~SCRUM-219: que la experiencia cambie los ejercicios (el gate novato/avanzado sigue en 20 %)~~ (en rama: 97 %).
+  - ~~SCRUM-219: que la experiencia cambie los ejercicios (el gate novato/avanzado sigue en 20 %)~~ (en `main` desde el 2026-10-29: 97 %).
 - 👤 Verificación pendiente: revisar el paso nuevo en el iPhone como principiante, claro y oscuro, y con letra grande.
 
 ### SCRUM-226 · Reportar el dolor de una serie durante el entrenamiento (High, Fase C; finalizada el 2026-10-28)
@@ -912,7 +912,7 @@ Evidencia: commit `c863787`, en `main` por el PR #13 (`8f15788`).
   - 56 conjuntos de ejercicios distintos y 71 rutinas distintas;
   - pantorrilla 145/200 y core 178/200, sin cambio;
   - 0 ejercicios con menos de 2 series;
-  - pares novato/avanzado distintos: 20 %, sin cambio (es de SCRUM-219; en su rama sube a 97 %).
+  - pares novato/avanzado distintos: 20 %, sin cambio (es de SCRUM-219; con ella sube a 97 %).
 - **Tests:**
   - `PRCoreTests/CatalogClassificationTests.swift` (9);
   - `PlanPersistenceTests.planWithElbowLoadingExerciseIsRegenerated`.
@@ -921,9 +921,10 @@ Evidencia: commit `c863787`, en `main` por el PR #13 (`8f15788`).
   - con restricción de codo, tríceps y bíceps reciben ejercicios que los trabajan de rebote (remos, pullover). La tabla zona → patrones de SCRUM-209 no cambió;
   - la clasificación sigue siendo por reglas de nombre. Las listas de excepciones son la vigilancia.
 
-### SCRUM-219 · PR-B005 Selección por slots, objetivo, experiencia y fase, con variación entre bloques (Must, Fase B; en rama)
+### SCRUM-219 · PR-B005 Selección por slots, objetivo, experiencia y fase, con variación entre bloques (Must, Fase B; finalizada el 2026-10-29)
 
-- Va en la rama `SCRUM-219-seleccion-ejercicios`. Se desbloqueó con SCRUM-37 (catálogo bien clasificado).
+- **En `main` desde el 2026-10-29:** Jesús fusionó el PR #14 (`2505f8c`). La primera corrida del CI de GitHub falló por una prueba que elegía un ejercicio al azar (ver "En el camino"); con el arreglo (`a005f57`) pasó. Los planes guardados se regeneran solos al abrir la app.
+- Se desbloqueó con SCRUM-37 (catálogo bien clasificado).
 - **Antes:** el ancla de cada músculo era siempre el primer staple. Objetivo, experiencia y fase no cambiaban qué ejercicios salían, y un bloque nuevo repetía el anterior.
 - **Regla nueva:** `ExerciseSelectionRule` (`pr-b005-v1`, en `PRDomain`):
   - **slots por músculo:** pecho = press plano, inclinado y apertura; espalda = remo, jalón y brazos rectos; hombro = press, elevación lateral y deltoide posterior; cuádriceps = sentadilla, zancada y extensión; femoral = bisagra y curl; glúteo = empuje de cadera y patada; bíceps, pantorrilla y core, uno;
@@ -951,7 +952,7 @@ Evidencia: commit `c863787`, en `main` por el PR #13 (`8f15788`).
 3. El criterio de déficit, para novato y principiante, se cumple como "igual o menor".
 4. La variación entre bloques usa el lugar del bloque en el historial y no el `blockID`: dos UUID pueden caer en la misma rotación, el lugar no.
 
-Evidencia: commit `3b51dd0` (rama `SCRUM-219-seleccion-ejercicios`).
+Evidencia: commits `3b51dd0` y `a005f57`, en `main` por el PR #14 (`2505f8c`).
 - `make ci` → `✔ Test run with 545 tests in 82 suites passed` + `✔ Test run with 574 tests in 100 suites passed` (2026-10-28; línea base 539 + 567 con 2 *known issues*). Ya no queda ningún *known issue*. El build de iOS y el de watchOS pasaron, sin warnings nuevos.
 - `make test-ui` → 31 de 31 pruebas OK (23 min 52 s).
 - **Matriz de SCRUM-214, antes → después:**
