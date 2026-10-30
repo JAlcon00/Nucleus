@@ -207,6 +207,46 @@ Cobertura:
 - `PRUITests.testPainIsReportedDuringRestAndKeptAfterReopening`: moderado, músculo,
   reabrir y alto con saltar, en el simulador.
 
+## Restricciones editables desde Perfil (SCRUM-36, RF-023, RN-004, RN-020)
+
+Perfil › Restricciones deja de ser de solo lectura. Las piezas:
+- **`RestrictionEditor`** (PRDomain): agregar una zona (patrones de SCRUM-209, sin duplicar
+  una en vigor), editar, evitar un ejercicio, permitirlo (sólo con origen profesional),
+  quitarlo y resolver.
+- **`AppSessionCoordinator.updateRestrictions`**: regenera el mismo bloque y lo guarda.
+- **`RestrictionScreenModel`**: decide cuándo confirmar, cuándo abrir la existente y qué aviso
+  mostrar.
+- **`RestrictionListPresenter`**: las en vigor y el historial.
+
+Las reglas:
+- Una activa se resuelve por acción explícita, con su fecha, y queda en el historial.
+- Una fecha de revisión vencida nunca la resuelve (RN-004).
+- Cualquier cambio a una profesional pide confirmación (RN-020).
+- En el cuestionario, una zona resuelta marcada otra vez vuelve a proteger; desmarcar resuelve
+  y no borra; sólo salen marcadas las zonas en vigor.
+- El registro de un entrenamiento guarda su plantilla: si el plan se regenera a la mitad, se
+  retoma igual.
+- El guard de logs también cubre las notas de las restricciones.
+
+Cobertura:
+- `PRDomainTests/RestrictionEditorTests.swift` (11):
+  - agregar, no duplicar, confirmación profesional, editar, nota larga;
+  - evitar y permitir; un permiso sólo refina su restricción;
+  - resolver; la fecha de revisión no cura;
+  - el cuestionario con las resueltas.
+- `PRDomainTests/RestrictionManagerTests.swift`: dos pruebas cambiadas a propósito por la
+  decisión 1.
+- `PRCoreTests/RestrictionEditingFlowTests.swift` (12, con `LocalPersistence` real):
+  - agregar y reabrir; resolver;
+  - cambio inválido; plan imposible; disco que falla;
+  - entrenamiento en curso;
+  - rehacer el cuestionario; la nota no llega a la IA;
+  - lo que decide la pantalla.
+- `PRCoreTests/RestrictionListPresenterTests.swift`: en vigor e historial, revisión en VoiceOver.
+- `PRUITests.testRestrictionIsAddedAndResolvedFromProfile`: agregar codo desde Perfil → "Por
+  qué tu plan" lo cuida y Hoy sin curls ni tríceps → resolver con confirmación → historial y
+  el plan deja de cuidarlo.
+
 ## Catálogo de ejercicios (EPIC-03)
 
 Implementado en PR-0301 con el dataset público *free-exercise-db* (Unlicense)
