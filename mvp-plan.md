@@ -1,10 +1,10 @@
 # mvp-plan.md — Plan activo: MVP / POC de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica POC: SCRUM-180).
-> **Actualizado:** 2026-10-29 (tablero sincronizado con Jira y con el código).
+> **Actualizado:** 2026-10-30 (tablero sincronizado con Jira y con el código).
 > **Ejecuta:** el agente de IA de Xcode. Hace todo el trabajo asignado en Jira a Gael Durán y Joss Amador, en el orden de este archivo.
 > **Regla:** mientras quede un `[ ]` en las secciones 2 y 3, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
-> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 y SCRUM-37 el 2026-10-28; SCRUM-219 el 2026-10-29) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
+> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 y SCRUM-37 el 2026-10-28; SCRUM-219 el 2026-10-29; SCRUM-36 el 2026-10-30) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
 
 ---
 
@@ -566,7 +566,7 @@ Evidencia: commit `da984cf` (solo documento; `make guards` en verde).
 - [x] Con varias restricciones, un ejercicio vale solo si ninguna lo prohíbe, en cualquier orden. Prohibir por ID gana incluso al permiso de la misma restricción.
 - [x] Una restricción resuelta ya no limita.
 - [x] Con la fecha de revisión vencida, la restricción sigue aplicando hasta que se confirme que se resolvió (RN-004).
-- La app pregunta "¿cómo sigues?" al vencer la fecha de revisión: es de UI y **pasó a SCRUM-36**.
+- La app pregunta "¿cómo sigues?" al vencer la fecha de revisión: es de UI y pasó a SCRUM-36. SCRUM-36 lo cubre en Perfil › Restricciones: dice que llegó la revisión y deja resolverla o mover la fecha. **Pendiente:** un aviso que lo pregunte desde Hoy no se hizo.
 - [x] Si no queda ningún ejercicio seguro para un músculo, se omite y la explicación lo dice; nunca se fuerza uno.
 - [x] Una sola implementación: `RestrictionPolicyEngine.verdict(for:under:scope:)`. La usan el plan (`ExerciseAssigner`), las sustituciones, la IA (`PlanPersonalizationValidator`) y el dropset (`IntensityAdvisor`).
 
@@ -677,7 +677,7 @@ Evidencia: commit `42ffa7b`.
 
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; quedan la decisión D1, SCRUM-220, y los supersets, SCRUM-224) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; queda SCRUM-36, en rama) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27 y ~~SCRUM-37~~, el catálogo, el 2026-10-28) → HealthKit, Watch, pestañas.
+En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; quedan la decisión D1, SCRUM-220, y los supersets, SCRUM-224) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27 y ~~SCRUM-37~~, el catálogo, el 2026-10-28) → HealthKit, Watch, pestañas.
 
 ### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada; finalizada el 2026-10-27)
 
@@ -981,9 +981,9 @@ Evidencia: commits `3b51dd0` y `a005f57`, en `main` por el PR #14 (`2505f8c`).
   - la app aún no abre un bloque nuevo al terminar las semanas; hoy uno nuevo sale al cambiar objetivo, fase o días, y ahí ya rota;
   - glúteo no tiene variante guiada en el catálogo: el novato recibe el hip thrust con barra.
 
-### SCRUM-36 · PR-0114 Restricciones editables desde Perfil (P0, Fase C; en rama)
+### SCRUM-36 · PR-0114 Restricciones editables desde Perfil (P0, Fase C; finalizada el 2026-10-30)
 
-- Va en la rama `SCRUM-36-restricciones-editables`. Criterios aprobados por Jesús el 2026-10-29.
+- **En `main` desde el 2026-10-30:** Jesús fusionó el PR #15 (`05ada17`). El CI de GitHub (`make ci`) pasó en el PR. Criterios aprobados por Jesús el 2026-10-29.
 - **Decisiones de Jesús:**
   1. una activa se puede resolver ("Ya no me molesta"), siempre con confirmación;
   2. desmarcar una zona en el cuestionario la resuelve y no la borra;
@@ -1011,7 +1011,7 @@ Evidencia: commits `3b51dd0` y `a005f57`, en `main` por el PR #14 (`2505f8c`).
 - [x] Ningún texto diagnostica.
 - [x] UI: un estado por pantalla, una acción principal, toques de 44 pt o más, el color no es lo único que dice el estado, y previews.
 
-Evidencia: commits `0e12fb4` (lógica) y `c96d494` (pantalla), en la rama `SCRUM-36-restricciones-editables`.
+Evidencia: commits `0e12fb4` (lógica) y `c96d494` (pantalla), en `main` por el PR #15 (`05ada17`).
 - `make ci` → `✔ Test run with 556 tests in 84 suites passed` + `✔ Test run with 586 tests in 102 suites passed` (2026-10-29; línea base 545 + 574). Los builds de iOS y watchOS pasaron, sin warnings nuevos, y el guard de logs pasó.
 - `make test-ui`: no salió todo verde en una sola corrida. La prueba nueva `testRestrictionIsAddedAndResolvedFromProfile` pasó en las dos corridas completas. En cada corrida fallaron pruebas distintas, ninguna de lo que toca esta historia:
   - corrida 1: 31 de 32; `testPainIsReportedDuringRestAndKeptAfterReopening` se quedó en "Timed out while evaluating UI query". Sola pasó 4 de 4;
