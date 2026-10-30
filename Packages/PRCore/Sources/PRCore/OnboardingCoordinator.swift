@@ -169,9 +169,11 @@ public final class OnboardingCoordinator {
                 (.sessionMinutes, .sessionMinutes(profile.usualSessionMinutes)),
                 (.variety, .variety(profile.varietyPreference)),
                 (.priorityMuscles, .priorityMuscles(Set(profile.priorityMuscles))),
+                // Sólo las zonas en vigor salen marcadas: una resuelta es historial y no debe
+                // volver por rehacer el cuestionario (SCRUM-36).
                 (.restrictions, .restrictions(RestrictionsAnswer(
                     zones: Set(profile.restrictions
-                        .filter { BodyRegionRestrictionRule.selectableRegions.contains($0.bodyRegion) }
+                        .filter { $0.isInForce && BodyRegionRestrictionRule.selectableRegions.contains($0.bodyRegion) }
                         .map(\.bodyRegion)),
                     note: profile.restrictionNote ?? "",
                     previous: profile.restrictions

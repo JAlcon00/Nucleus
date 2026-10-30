@@ -73,15 +73,22 @@ public enum RestrictionManagerError: Error, Equatable, Sendable {
 /// - `update` revalida y aplica ediciones.
 /// - `review(asOf:)` sólo pasa `active` → `reviewNeeded` cuando pasa `reviewDate`;
 ///   NUNCA resuelve automáticamente (§16.2).
-/// - `resolve` exige transición válida (sólo desde `reviewNeeded`) y, para origen
-///   profesional, confirmación explícita.
+/// - `resolve` es siempre una acción explícita de la persona (SCRUM-36): exige
+///   confirmación con cualquier origen, vale desde `active` o `reviewNeeded` y guarda la
+///   fecha. Para el origen profesional la confirmación dice que el profesional la dio de alta.
 public struct RestrictionManager: Sendable {
     public init() {}
 
-    public func create(from draft: RestrictionDraft, explicitlyConfirmed: Bool, now: Date = Date()) throws -> TrainingRestriction {
+    public func create(
+        from draft: RestrictionDraft,
+        explicitlyConfirmed: Bool,
+        now: Date = Date(),
+        id: RestrictionID = RestrictionID()
+    ) throws -> TrainingRestriction {
         try validate(draft, explicitlyConfirmed: explicitlyConfirmed)
         let side = draft.side
         let restriction = TrainingRestriction(
+            id: id,
             bodyRegion: draft.bodyRegion,
             side: side,
             startDate: now,
@@ -103,6 +110,10 @@ public struct RestrictionManager: Sendable {
         explicitlyConfirmed: Bool
     ) throws -> TrainingRestriction {
         try validate(draft, explicitlyConfirmed: explicitlyConfirmed)
+        // Editar una profesional (también pasarla a "la declaré yo") pide confirmación (RN-020).
+        if restriction.source == .professionalGuidance && !explicitlyConfirmed {
+            throw RestrictionManagerError.needsExplicitConfirmation
+        }
         var updated = restriction
         updated.bodyRegion = draft.bodyRegion
         updated.side = draft.side
@@ -121,17 +132,21 @@ public struct RestrictionManager: Sendable {
         restriction.refreshed(asOf: now)
     }
 
-    /// Resolver una restricción requiere acción explícita del usuario (§16.2).
+    /// Resolver una restricción requiere acción explícita del usuario (§16.2), con cualquier
+    /// origen (SCRUM-36). Guarda la fecha; la restricción queda en el historial.
     public func resolve(
         _ restriction: TrainingRestriction,
-        explicitlyConfirmed: Bool = true
+        explicitlyConfirmed: Bool,
+        now: Date = Date()
     ) throws -> TrainingRestriction {
-        if restriction.source == .professionalGuidance && !explicitlyConfirmed {
+        guard explicitlyConfirmed else {
             throw RestrictionManagerError.needsExplicitConfirmation
         }
         do {
             let next: RestrictionStatus = try restriction.status.transitioning(to: .resolved)
-            return restriction.updatedStatus(next)
+            var resolved = restriction.updatedStatus(next)
+            resolved.resolvedDate = now
+            return resolved
         } catch {
             throw RestrictionManagerError.invalidStateTransition(
                 from: restriction.status.rawValue,

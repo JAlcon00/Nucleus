@@ -677,7 +677,7 @@ Evidencia: commit `42ffa7b`.
 
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; quedan la decisión D1, SCRUM-220, y los supersets, SCRUM-224) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; queda SCRUM-36) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27 y ~~SCRUM-37~~, el catálogo, el 2026-10-28) → HealthKit, Watch, pestañas.
+En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; quedan la decisión D1, SCRUM-220, y los supersets, SCRUM-224) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; queda SCRUM-36, en rama) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27 y ~~SCRUM-37~~, el catálogo, el 2026-10-28) → HealthKit, Watch, pestañas.
 
 ### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada; finalizada el 2026-10-27)
 
@@ -980,3 +980,54 @@ Evidencia: commits `3b51dd0` y `a005f57`, en `main` por el PR #14 (`2505f8c`).
   - "Por qué tu plan" todavía no explica por qué tocó máquina o barra;
   - la app aún no abre un bloque nuevo al terminar las semanas; hoy uno nuevo sale al cambiar objetivo, fase o días, y ahí ya rota;
   - glúteo no tiene variante guiada en el catálogo: el novato recibe el hip thrust con barra.
+
+### SCRUM-36 · PR-0114 Restricciones editables desde Perfil (P0, Fase C; en rama)
+
+- Va en la rama `SCRUM-36-restricciones-editables`. Criterios aprobados por Jesús el 2026-10-29.
+- **Decisiones de Jesús:**
+  1. una activa se puede resolver ("Ya no me molesta"), siempre con confirmación;
+  2. desmarcar una zona en el cuestionario la resuelve y no la borra;
+  3. evitar un ejercicio vale con cualquier origen; permitirlo, sólo con origen profesional;
+  4. el lado se guarda, pero el plan cuida la zona en los dos lados.
+- **Cómo se ve:** Perfil › Restricciones tiene una acción principal, "Agregar restricción". Debajo van:
+  - las que tu plan cuida: cada una abre su detalle para editar el lado, el origen, la revisión o la nota; evitar o permitir un ejercicio; y "Ya no me molesta";
+  - el historial de las resueltas.
+
+**Criterios:**
+- [x] Agregar una zona (las 8 del formulario) con lado opcional: queda activa con los patrones de SCRUM-209.
+- [x] El plan se regenera en el mismo bloque sin lo que la carga, y "Por qué tu plan" la menciona.
+- [x] Una zona en vigor no se duplica: se abre la existente.
+- [x] Origen profesional: sin confirmación no se guarda (RN-020). La fecha de revisión es opcional.
+- [x] Evitar un ejercicio concreto: el plan y las sustituciones no lo programan.
+- [x] Permitir sólo en una profesional, con confirmación. Sólo refina esa restricción: si otra lo prohíbe, sigue fuera.
+- [x] Una revisión vencida dice "Requiere revisión" y sigue aplicándose (RN-004).
+- [x] "Ya no me molesta", con confirmación: queda resuelta con su fecha, deja de limitar, el plan se regenera y va al historial.
+- [x] Volver a marcar una zona resuelta crea una activa nueva; la resuelta queda en el historial.
+- [x] Desmarcar en el cuestionario resuelve y no borra; las profesionales no se tocan.
+- [x] Un entrenamiento en curso no cambia y se retoma igual.
+- [x] Sin internet funciona.
+- [x] Si el guardado falla, en disco no queda nada a medias y se avisa.
+- [x] La nota nunca va a la IA ni a los logs.
+- [x] Ningún texto diagnostica.
+- [x] UI: un estado por pantalla, una acción principal, toques de 44 pt o más, el color no es lo único que dice el estado, y previews.
+
+Evidencia: commits `0e12fb4` (lógica) y `c96d494` (pantalla), en la rama `SCRUM-36-restricciones-editables`.
+- `make ci` → `✔ Test run with 556 tests in 84 suites passed` + `✔ Test run with 586 tests in 102 suites passed` (2026-10-29; línea base 545 + 574). Los builds de iOS y watchOS pasaron, sin warnings nuevos, y el guard de logs pasó.
+- `make test-ui`: no salió todo verde en una sola corrida. La prueba nueva `testRestrictionIsAddedAndResolvedFromProfile` pasó en las dos corridas completas. En cada corrida fallaron pruebas distintas, ninguna de lo que toca esta historia:
+  - corrida 1: 31 de 32; `testPainIsReportedDuringRestAndKeptAfterReopening` se quedó en "Timed out while evaluating UI query". Sola pasó 4 de 4;
+  - corrida 2 (51 min, el doble de lo normal): 30 de 32; `testBeginnerFlowIsSimplerAndExplainsRIR` falló con `kAXErrorServerNotFound` (se cayó el servidor de accesibilidad del simulador) y `testTodayWeekStripOpensTheDay` no vio el detalle en 10 s. Solas, las dos pasaron.
+- **Tests:**
+  - `PRDomainTests/RestrictionEditorTests.swift` (11);
+  - `PRCoreTests/RestrictionEditingFlowTests.swift` (12, con `LocalPersistence` real);
+  - `RestrictionListPresenterTests` (6, adaptadas al historial);
+  - `PRUITests.testRestrictionIsAddedAndResolvedFromProfile`.
+- **Cambios a propósito en pruebas existentes:**
+  - `RestrictionManagerTests`: resolver desde activa, siempre con confirmación (decisión 1);
+  - `RestrictionListPresenterTests`: las resueltas van al historial, y VoiceOver lee la fecha de revisión.
+- **En el camino:**
+  - dos bugs latentes que esta historia habría destapado: al rehacer el cuestionario, una zona resuelta marcada otra vez volvía resuelta y no protegía el plan, y el cuestionario salía con las zonas resueltas marcadas. Se arreglaron;
+  - si el plan se regeneraba a mitad de un entrenamiento, al reabrir la app el entrenamiento quedaba abandonado (su plantilla ya no estaba). Ahora el registro guarda su plantilla y se retoma igual. También protege las migraciones del generador y "Rehacer cuestionario";
+  - navegación: un enlace por valor dejaba el detalle debajo de la lista. Lo encontró la prueba de UI y ahora es un enlace con destino de vista.
+- **Pendiente:**
+  - 👤 Jesús, en el iPhone: agregar, editar y resolver, con letra grande y con Reduce Transparency e Increase Contrast;
+  - crear una restricción desde el reporte de dolor (SCRUM-226) queda fuera de alcance.

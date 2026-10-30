@@ -49,8 +49,10 @@ public enum RestrictionStatus: String, Codable, Sendable, CaseIterable, Hashable
     case reviewNeeded
     case resolved
 
+    /// SCRUM-36 (decisión 1 de Jesús): una activa se puede resolver por acción explícita de la
+    /// persona ("Ya no me molesta"); la fecha de revisión nunca la resuelve sola.
     private static let transitions: [RestrictionStatus: Set<RestrictionStatus>] = [
-        .active: [.reviewNeeded],
+        .active: [.reviewNeeded, .resolved],
         .reviewNeeded: [.active, .resolved],
         .resolved: [],
     ]
@@ -90,6 +92,8 @@ public struct TrainingRestriction: Identifiable, Codable, Sendable, Hashable {
     public var allowedExerciseIDs: Set<ExerciseID>
     public var restrictionTags: Set<RestrictionTag>
     public var notes: String?
+    /// Cuándo la persona la resolvió (SCRUM-36). Opcional: las guardadas antes no lo traen.
+    public var resolvedDate: Date?
 
     public init(
         id: RestrictionID = RestrictionID(),
@@ -103,8 +107,10 @@ public struct TrainingRestriction: Identifiable, Codable, Sendable, Hashable {
         forbiddenExerciseIDs: Set<ExerciseID> = [],
         allowedExerciseIDs: Set<ExerciseID> = [],
         restrictionTags: Set<RestrictionTag> = [],
-        notes: String? = nil
+        notes: String? = nil,
+        resolvedDate: Date? = nil
     ) {
+        self.resolvedDate = resolvedDate
         self.id = id
         self.bodyRegion = bodyRegion
         self.side = side

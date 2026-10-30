@@ -17,6 +17,19 @@
 import Foundation
 import PRDomain
 
+/// Qué pasó al cambiar las restricciones desde Perfil (SCRUM-36).
+public enum RestrictionUpdateOutcome: Equatable, Sendable {
+    /// Guardado: el plan ya lo respeta.
+    case saved
+    /// El plan de hoy ya lo respeta, pero el disco falló: hay que reintentar o se pierde al
+    /// cerrar la app.
+    case notSaved
+    /// El cambio no es válido (falta confirmación, la zona ya está…): no se aplicó nada.
+    case rejected(RestrictionEditError)
+    /// No se pudo armar el plan con el cambio (o no hay perfil): no se aplicó nada.
+    case planFailed
+}
+
 @MainActor
 public final class AppSessionCoordinator {
     private let onboarding: OnboardingCoordinator
@@ -63,6 +76,36 @@ public final class AppSessionCoordinator {
         profile.aboutYou = aboutYou
         onboarding.showCompleted(profile)
         return await todayPlan.activate(profile: profile, userID: onboarding.auth.profile?.userIdentifier)
+    }
+
+    /// Cambia las restricciones desde Perfil › Restricciones (SCRUM-36). `change` es una
+    /// operación de `RestrictionEditor` sobre la lista del perfil. Si es válida, el mismo
+    /// bloque se regenera sin lo prohibido y se guarda junto con el perfil; si el plan no se
+    /// puede armar, se vuelve al anterior y no se aplica nada. Un entrenamiento en curso sigue
+    /// con su plantilla (la guarda su registro) y el cambio aplica desde la siguiente sesión.
+    public func updateRestrictions(
+        _ change: ([TrainingRestriction]) throws -> [TrainingRestriction]
+    ) async -> RestrictionUpdateOutcome {
+        guard case .completed(let previous) = onboarding.phase else { return .planFailed }
+        var profile = previous
+        do {
+            profile.restrictions = try change(previous.restrictions)
+        } catch let error as RestrictionEditError {
+            return .rejected(error)
+        } catch {
+            return .planFailed
+        }
+        guard profile != previous else { return .saved }
+        let userID = onboarding.auth.profile?.userIdentifier
+        guard await todayPlan.activate(profile: profile, userID: userID) else {
+            // Sin plan con el cambio: se vuelve al plan anterior (nada a medias).
+            await todayPlan.activate(profile: previous, userID: userID)
+            return .planFailed
+        }
+        onboarding.showCompleted(profile)
+        // El plan de hoy ya la respeta; si el disco falló, hay que reintentar para que no se
+        // pierda al cerrar la app (`saveFailed`).
+        return todayPlan.saveFailed ? .notSaved : .saved
     }
 
     /// Arranque de la app. `autoSignIn` es el modo simulado de Debug.
