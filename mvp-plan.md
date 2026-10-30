@@ -677,7 +677,7 @@ Evidencia: commit `42ffa7b`.
 
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; quedan la decisión D1, SCRUM-220, y los supersets, SCRUM-224) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27 y ~~SCRUM-37~~, el catálogo, el 2026-10-28) → HealthKit, Watch, pestañas.
+En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; ~~D1, SCRUM-220~~, decidida el 2026-10-30: opción B, ADR-0004; quedan el volumen por experiencia, SCRUM-227 · PR-B003, y los supersets, SCRUM-224) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27 y ~~SCRUM-37~~, el catálogo, el 2026-10-28) → HealthKit, Watch, pestañas.
 
 ### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada; finalizada el 2026-10-27)
 
@@ -1031,3 +1031,18 @@ Evidencia: commits `0e12fb4` (lógica) y `c96d494` (pantalla), en `main` por el 
 - **Pendiente:**
   - 👤 Jesús, en el iPhone: agregar, editar y resolver, con letra grande y con Reduce Transparency e Increase Contrast;
   - crear una restricción desde el reporte de dolor (SCRUM-226) queda fuera de alcance.
+
+### SCRUM-220 · Decisión D1: ¿más tiempo puede dar más series? (Must, Fase B; decidida el 2026-10-30)
+
+- **Decisión de Jesús: B** ([ADR-0004](docs/spec/docs/adr/ADR-0004-volumen-por-tiempo-y-experiencia.md)).
+  - El volumen semanal de cada músculo lo marca la experiencia dentro del rango de su nivel: novato el mínimo, principiante un cuarto, intermedio la mitad, avanzado y competitivo el máximo.
+  - Los minutos sólo lo recortan y nunca lo hacen pasar del máximo.
+  - "Ajustar a mi tiempo" sigue sólo recortando.
+- **Por qué** (medido con el motor real sobre `dd91a49`):
+  - hoy todos reciben 72 series por semana;
+  - con 90 y 120 min las sesiones usan entre el 20 % y el 46 % del tiempo elegido, y 24 de 60 quedan bajo el mínimo de ejercicios;
+  - el nivel no cambia el volumen.
+- **`promptMaster`:** RN-002 ya decía "no aumentar volumen **sólo** por más tiempo"; se agregó la referencia al ADR. `AGENTS.md` no lo mencionaba.
+- **Sigue:** SCRUM-227 (PR-B003), READY, con los criterios y las pruebas que se reescriben.
+- **Aparte:** los valores de los rangos (D1b) y si la fase baja el volumen.
+

@@ -1583,7 +1583,7 @@ MVP debe permitir evolución a Bodybuilding Mode sin reescribir el core.
 Descanso programado mantiene consistency streak.
 
 ## RN-002
-No aumentar volumen sólo por más tiempo disponible.
+No aumentar volumen sólo por más tiempo disponible. El volumen lo marca la experiencia dentro del rango de evidencia; el tiempo sólo lo limita y nunca lo hace pasar del máximo (ADR-0004, decisión D1).
 
 ## RN-003
 No subir carga ante dolor moderado/alto reportado.
