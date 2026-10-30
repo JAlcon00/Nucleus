@@ -6,10 +6,16 @@ PR es una aplicación nativa para **iPhone y Apple Watch** diseñada para compor
 
 ## Estado
 
-Proyecto en fase de especificación/implementación inicial.
+MVP / POC en desarrollo activo. El plan vivo está en [`mvp-plan.md`](./mvp-plan.md), sincronizado con Jira.
+
+- 74 de 93 historias de [`backlog.md`](./backlog.md) terminadas; la Fase A está cerrada.
+- ~810 tests en verde: 662 de Swift Testing y ~150 de XCTest.
+- CI local con `make ci`: guards, SwiftPM, tests y builds de iOS y watchOS.
+- Ya funciona: Sign in with Apple, cuestionario de onboarding, plan semanal, pantalla Hoy, registro de series de un toque, temporizador de descanso, resumen y export JSON/CSV.
 
 Documentos principales:
 
+- [`mvp-plan.md`](./mvp-plan.md) — plan activo del MVP/POC.
 - [`promptMaster.md`](./promptMaster.md) — contrato funcional/técnico maestro.
 - [`backlog.md`](./backlog.md) — backlog ejecutable y priorizado.
 - [`plan.md`](./plan.md) — secuencia de implementación y gates.
