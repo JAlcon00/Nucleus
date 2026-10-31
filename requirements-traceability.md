@@ -79,7 +79,8 @@ IDs no cambian). Cobertura: `PRDomainTests/BlockPlannerOrderTests.swift`,
 Hoy / cuestionario / login / perfil ilegible). Cambiar objetivo, fase o días cierra el bloque
 anterior (`completed`) y crea uno nuevo; otros cambios regeneran el mismo bloque; un plan de
 generador anterior se migra conservando el ID. Cobertura:
-`PRCoreTests/PlanPersistenceTests.swift` y `PRUITests` (reabrir y rehacer).
+`PRCoreTests/PlanPersistenceTests.swift` y `PRUITests`: reabrir en `IntermediateQuestionnaireJourney` y
+rehacer en `ProfileJourney`.
 
 ## Calidad de la asignación de ejercicios (RF-034, mejora sobre SCRUM-28/29)
 
@@ -95,7 +96,7 @@ estado (nunca desde `tick()`); el descanso va como hora de fin (`RestSnapshot`).
 `LocalPersistence.recoverWorkout` drena la cola de pendientes (idempotente) y restaura.
 Una sesión en estado final rechaza otras transiciones y fija `endedAt`. Cobertura:
 `PRCoreTests/WorkoutRecoveryTests.swift`, `WorkoutClosingTests.swift`,
-`PRDomainTests/WorkoutRecoveryPlannerTests.swift` y la prueba de UI de cierre forzado.
+`PRDomainTests/WorkoutRecoveryPlannerTests.swift` y la prueba de UI de cierre forzado (`WorkoutRecoveryJourney`).
 
 ## Persistencia local (EPIC-02)
 
@@ -181,7 +182,7 @@ Cobertura:
   sin decirlo";
 - `PRCoreTests/PlanPersistenceTests.swift`: un plan del generador 4 se regenera con el mismo
   bloque y avisa;
-- `ExperienceFlowTests`, `OnboardingTests` y la prueba de UI del principiante.
+- `ExperienceFlowTests`, `OnboardingTests` y la prueba de UI del principiante (`BeginnerQuestionnaireJourney`).
 
 ## Reportar el dolor en el entrenamiento (SCRUM-226, RF-024, RN-003, RN-015)
 
@@ -204,7 +205,7 @@ Cobertura:
   nivel sin duplicar series; sin dolor no lleva músculo; la recomendación es la del motor;
   saltar el que dolió y retomarlo; no se ofrece si ya terminó; reabrir conserva el reporte;
   aviso si falla el guardado; músculos del catálogo real; textos sin diagnóstico;
-- `PRUITests.testPainIsReportedDuringRestAndKeptAfterReopening`: moderado, músculo,
+- `PRUITests/WorkoutRecoveryJourney` (antes `testPainIsReportedDuringRestAndKeptAfterReopening`): moderado, músculo,
   reabrir y alto con saltar, en el simulador.
 
 ## Restricciones editables desde Perfil (SCRUM-36, RF-023, RN-004, RN-020)
@@ -243,9 +244,37 @@ Cobertura:
   - rehacer el cuestionario; la nota no llega a la IA;
   - lo que decide la pantalla.
 - `PRCoreTests/RestrictionListPresenterTests.swift`: en vigor e historial, revisión en VoiceOver.
-- `PRUITests.testRestrictionIsAddedAndResolvedFromProfile`: agregar codo desde Perfil → "Por
+- `PRUITests/ProfileJourney` (antes `testRestrictionIsAddedAndResolvedFromProfile`): agregar codo desde Perfil → "Por
   qué tu plan" lo cuida y Hoy sin curls ni tríceps → resolver con confirmación → historial y
   el plan deja de cuidarlo.
+
+## Pruebas E2E por recorrido (SCRUM-228, PR-T001)
+
+Las 32 pruebas de UI quedaron en 8 recorridos, una clase cada uno en `PRUITests/Journeys/`;
+ninguna comprobación se quitó ni se debilitó (tabla en `mvp-plan.md` › SCRUM-228). Qué cubre
+cada recorrido:
+
+| Recorrido | Requisitos e historias |
+|---|---|
+| `IntermediateQuestionnaireJourney` (smoke) | RF-003, SCRUM-198 (mayor de edad), 195, 196, 202 (consentimiento), 210, 215, 26 (reabrir) |
+| `BeginnerQuestionnaireJourney` | SCRUM-210 (principiante y avanzado), 215 |
+| `PendingPlanJourney` | SCRUM-193 (plan pendiente), 205 (por qué tu plan), 209 (zona en "Tu semana") |
+| `WorkoutRecoveryJourney` (smoke) | RF-007, SCRUM-24 (cierre forzado), 226 (dolor), 212 (saltar y retomar) |
+| `FirstWorkoutJourney` (smoke) | SCRUM-186 y 213 (Progreso), 23 y 190 (Exportar una sola vez) |
+| `ProfileJourney` | SCRUM-36 (restricciones editables), 208 (cerrar sesión), 26 (rehacer) |
+| `TodayJourney` | RF-005, SCRUM-195, 197, 203, 211, 222, 28 (volumen realista) |
+| `SundayJourney` | SCRUM-27 (descanso el domingo) |
+
+Los recorridos que no son del cuestionario arrancan con `-PRUITestProfile intermedio-lmv`
+(sólo Debug y con datos temporales): `UITestProfileSeeder` contesta el cuestionario con el
+mismo `OnboardingCoordinator` que la pantalla y el plan lo arma `planCompleted`, como al
+terminarlo. Cobertura en `make ci`:
+- `PRCoreTests/UITestProfileSeederTests.swift`: el perfil sembrado y el cuestionario contestado
+  como en las pruebas de UI dan el mismo perfil y el mismo plan (lunes y domingo), con
+  `LocalPersistence` real y el catálogo real; con un plan guardado no contesta nada; sin
+  sesión, tampoco;
+- `PRCoreTests/UITestLaunchOptionsTests.swift`: la opción sólo vale en Debug, sólo con
+  `-PRUITestReset`, y un perfil desconocido se ignora.
 
 ## Catálogo de ejercicios (EPIC-03)
 
