@@ -1046,3 +1046,36 @@ Evidencia: commits `0e12fb4` (lógica) y `c96d494` (pantalla), en `main` por el 
 - **Sigue:** SCRUM-227 (PR-B003), READY, con los criterios y las pruebas que se reescriben.
 - **Aparte:** los valores de los rangos (D1b) y si la fase baja el volumen.
 
+
+### SCRUM-227 · PR-B003 El volumen sale de la experiencia y el tiempo sólo pone el techo (Should, Fase B; en rama)
+
+- Va en la rama `SCRUM-227-volumen-por-experiencia`. Es la decisión D1 = B ([ADR-0004](docs/spec/docs/adr/ADR-0004-volumen-por-tiempo-y-experiencia.md)).
+- **Cómo queda:**
+  - el volumen semanal de cada músculo sale de la experiencia dentro del rango de su nivel: novato el mínimo, principiante un cuarto, intermedio la mitad, avanzado y competitivo el máximo (`VolumeDefaults` v2);
+  - el tiempo pone el techo: si no cabe en la semana, el volumen baja hacia el mínimo, nunca por debajo, y lo que ni así quepa lo recorta la composición de SCRUM-218;
+  - sin énfasis, son 72, 90 y 108 series por semana para novato, intermedio y avanzado, cuando el tiempo alcanza.
+- **Decisión al implementar (en el ADR):** el techo va antes de componer. Sin él, las sesiones cortas de fuerza perdían ejercicios (17, 11 y 4 bajo el mínimo con 30, 45 y 60 min, contra 13, 3 y 1).
+
+**Criterios:**
+- [x] Volumen por experiencia dentro del rango, con valores versionados en `VolumeDefaults` v2.
+- [x] Con cualquier tiempo (180 min incluido), ningún músculo pasa del máximo de su rango.
+- [x] El tiempo sólo recorta: techo hacia el mínimo y, después, la composición de SCRUM-218 (nunca 1 serie, anclas compuestas y prioritarios protegidos).
+- [x] Con 90 min, nunca menos series por semana que con 60 (y con 180, nunca menos que con 90).
+- [x] El novato sigue en el mínimo del rango.
+- [x] "Ajustar a mi tiempo" sigue sólo recortando (`extraTimeNeverAddsVolume` sin cambios).
+- [x] Los planes guardados se regeneran (7 → 8) con el mismo bloque, su lugar y el aviso.
+- [ ] El cuestionario ya no dice "Más tiempo no suma series". 👤 Jesús: verlo en el paso de minutos. No hay prueba automática del texto; la búsqueda en el código ya no lo encuentra.
+- [x] Medición contra la línea base del ADR-0004 y de SCRUM-214, y ninguna sesión pasa de su tiempo sin aviso.
+
+Evidencia: commit `2e571f6`.
+- `make ci` → `✔ Test run with 562 tests in 85 suites passed` + `✔ Test run with 589 tests in 102 suites passed` (2026-10-30). Los builds de iOS y watchOS pasaron, sin warnings nuevos.
+- Pruebas por criterio:
+  1. `VolumeAllocatorTests` `positionByExperience`, `positionIsClamped` y `defaultRuleIsV2`;
+  2. `moreTimeNeverExceedsTierMax` (2, 3, 4 y 6 días con 90 y 180 min, cada nivel) y `alwaysWithinRange`;
+  3. `timeCeilingLowersTowardMinimum`, `emphasisStaysAbove`, `tightTimeDropsIsolationsKeepsCompoundAnchors` y `strengthAnchorsKeepThreeSets`;
+  4. `ninetyNeverGivesLessThanSixty` (hipertrofia y fuerza, 2 a 6 días, cada nivel) y `moreTimeNeverExceedsTierMax`;
+  5. `noviceUnchangedOthersMore` (72, 90 y 108);
+  6. `SessionTimeFitTests.extraTimeNeverAddsVolume`, sin cambios en el commit;
+  7. `PlanPersistenceTests.planFromGenerator7GetsVolumeByExperience`;
+  9. la matriz de SCRUM-214 en `make ci`: 906 sesiones, 24 sobre el tope con aviso, 167 bajo el mínimo (antes 224), 165 rutinas distintas y 0 ejercicios con 1 serie. La tabla del ADR-0004 se midió con el motor real.
+- `make test-ui` → 32 de 32 en verde, en una sola corrida (`Executed 32 tests, with 0 failures`, 1,521 s, 2026-10-30).

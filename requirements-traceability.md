@@ -293,6 +293,18 @@ Cobertura:
   regenerarse conserva su lugar;
 - SCRUM-214: "cambia por objetivo" y "cambia por experiencia" salen de `withKnownIssue`.
 
+**Volumen por experiencia; el tiempo pone el techo (SCRUM-227, PR-B003, RF-005, RN-002, ADR-0004).**
+- `VolumeDefaults` v2 elige el punto del rango por experiencia.
+- `VolumeAllocator` lo acota al rango y, con `maxWeeklySets` (lo que cabe en la semana), lo baja hacia el mínimo; nunca por debajo.
+- `BlockPlanner` pasa la experiencia y el techo.
+
+Cobertura:
+- `PRDomainTests/VolumeAllocatorTests.swift`, suite "Volumen por experiencia" (6): posición por experiencia, siempre dentro del rango, el énfasis sigue arriba, posición acotada, techo hacia el mínimo y regla v2;
+- `BlockPlannerRealCatalogTests`:
+  - `moreTimeNeverExceedsTierMax` (reemplaza a `moreTimeDoesNotAddSets`), `ninetyNeverGivesLessThanSixty` y `noviceUnchangedOthersMore`;
+  - las dos pruebas de recorte de SCRUM-218 fijan el volumen para comparar planes con el mismo volumen;
+- `PlanPersistenceTests.planFromGenerator7GetsVolumeByExperience`.
+
 ## Evidence Registry (EPIC-03)
 
 Implementado en PR-0303 en `Packages/PRCore/Sources/PRDomain/Evidence.swift`
