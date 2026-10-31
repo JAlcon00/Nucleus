@@ -196,3 +196,89 @@ struct VolumeAllocatorTimeBudgetTests {
         #expect(allocation.timeCheck?.estimatedMinutes == 62)
     }
 }
+/// SCRUM-227 (PR-B003, ADR-0004): la experiencia elige el punto dentro del rango de cada
+/// nivel de prioridad; nunca sale del rango.
+@Suite("SCRUM-227 · Volumen por experiencia dentro del rango")
+struct VolumeByExperienceTests {
+    private let tiers: [PriorityTier] = [.maintain, .normal, .emphasize, .specialize]
+
+    private func sets(_ tier: PriorityTier, _ experience: ExperienceLevel?, config: VolumeConfig? = nil) throws -> Int? {
+        let allocator = VolumeAllocator(config: try config ?? makeConfig(version: 2))
+        return try allocator.allocate(priorities: [MusclePriority(muscleGroupID: .chest, priority: tier)], experience: experience)
+            .target(for: .chest)
+    }
+
+    @Test("Novato el mínimo, principiante un cuarto, intermedio la mitad, avanzado y competitivo el máximo")
+    func positionByExperience() throws {
+        let expected: [PriorityTier: [ExperienceLevel: Int]] = [
+            .maintain: [.novice: 4, .beginner: 4, .intermediate: 5, .advanced: 6, .competitive: 6],
+            .normal: [.novice: 8, .beginner: 9, .intermediate: 10, .advanced: 12, .competitive: 12],
+            .emphasize: [.novice: 12, .beginner: 13, .intermediate: 14, .advanced: 16, .competitive: 16],
+            .specialize: [.novice: 16, .beginner: 17, .intermediate: 18, .advanced: 20, .competitive: 20],
+        ]
+        for tier in tiers {
+            for experience in ExperienceLevel.allCases {
+                #expect(try sets(tier, experience) == expected[tier]?[experience], "\(tier), \(experience)")
+            }
+        }
+    }
+
+    @Test("Sin experiencia, el mínimo (como antes); con cualquiera, nunca fuera del rango")
+    func alwaysWithinRange() throws {
+        let config = try makeConfig(version: 2)
+        for tier in tiers {
+            let range = config.range(for: tier)
+            #expect(try sets(tier, nil) == range.lowerBound)
+            for experience in ExperienceLevel.allCases {
+                let value = try #require(try sets(tier, experience))
+                #expect(range.contains(value), "\(tier), \(experience): \(value) fuera de \(range)")
+            }
+        }
+    }
+
+    @Test("El énfasis sigue recibiendo más que lo normal en cada nivel de experiencia (SCRUM-215)")
+    func emphasisStaysAbove() throws {
+        for experience in ExperienceLevel.allCases {
+            #expect(try #require(try sets(.emphasize, experience)) > (try #require(try sets(.normal, experience))), "\(experience)")
+        }
+    }
+
+    @Test("Una posición fuera de [0, 1] en la regla se acota al rango")
+    func positionIsClamped() throws {
+        var parameters = try VolumeDefaults.makeRule().parameters
+        parameters[VolumeConfigKeys.positionAdvanced] = 3
+        parameters[VolumeConfigKeys.positionNovice] = -1
+        let config = try VolumeConfig(rule: EvidenceRule(
+            id: VolumeDefaults.ruleID, name: "Fuera de rango", category: .volume, confidence: .emerging,
+            version: 99, parameters: parameters
+        ))
+        #expect(try sets(.normal, .advanced, config: config) == 12)
+        #expect(try sets(.normal, .novice, config: config) == 8)
+    }
+
+    @Test("El tiempo pone el techo: si no cabe, baja hacia el mínimo del rango y nunca por debajo")
+    func timeCeilingLowersTowardMinimum() throws {
+        let allocator = VolumeAllocator(config: try makeConfig(version: 2))
+        let priorities = [MusclePriority(muscleGroupID: .chest, priority: .normal), MusclePriority(muscleGroupID: .back, priority: .normal)]
+        let free = try allocator.allocate(priorities: priorities, experience: .advanced)
+        #expect(free.totalWeeklySets == 24, "Sin techo: el máximo de los dos (12 + 12)")
+        let fitted = try allocator.allocate(priorities: priorities, experience: .advanced, maxWeeklySets: 20)
+        #expect(fitted.target(for: .chest) == 10)
+        #expect(fitted.target(for: .back) == 10, "Baja parejo, una serie a la vez")
+        let tight = try allocator.allocate(priorities: priorities, experience: .advanced, maxWeeklySets: 10)
+        #expect(tight.target(for: .chest) == 8)
+        #expect(tight.target(for: .back) == 8, "Nunca por debajo del mínimo: lo que no quepa lo recorta la sesión")
+        let novice = try allocator.allocate(priorities: priorities, experience: .novice, maxWeeklySets: 10)
+        #expect(novice.totalWeeklySets == 16, "El novato ya está en el mínimo")
+        #expect(try allocator.allocate(priorities: priorities, experience: .advanced, maxWeeklySets: 20) == fitted)
+    }
+
+    @Test("La regla por defecto es la v2 y trae la posición de cada experiencia")
+    func defaultRuleIsV2() throws {
+        let rule = try VolumeDefaults.makeRule()
+        #expect(rule.version == 2)
+        for experience in ExperienceLevel.allCases {
+            #expect(rule.parameters[VolumeConfigKeys.positionKey(for: experience)] != nil, "\(experience)")
+        }
+    }
+}

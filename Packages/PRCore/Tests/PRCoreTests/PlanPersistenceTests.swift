@@ -376,6 +376,29 @@ struct PlanPersistenceTests {
         #expect(migrated.sessions.map { $0.plannedSets.map(\.exerciseID) } == asSecond)
         #expect(app.todayPlan.notice == .planUpdated)
     }
+
+    /// SCRUM-227: el plan de un intermedio guardado con el generador 7 (todos en el mínimo del
+    /// rango) se regenera con el volumen de su nivel, en el mismo bloque y con el aviso.
+    @Test("SCRUM-227: un plan del generador 7 se regenera con el volumen del nivel, mismo bloque y aviso")
+    func planFromGenerator7GetsVolumeByExperience() async throws {
+        let root = try makeRoot()
+        let first = try AppInstance(root: root)
+        let intermediate = profile(days: 4, minutes: 120)
+        await first.todayPlan.activate(profile: intermediate, userID: "u1")
+        guard case .loaded(var stored, let block) = await first.planStore.loadPlan(userID: "u1") else {
+            Issue.record("no hay plan"); return
+        }
+        stored.generatorVersion = 7
+        try await first.planStore.save(plan: stored, block: block)
+
+        let app = try AppInstance(root: root)
+        #expect(await app.todayPlan.restore(userID: "u1") == .restored(intermediate))
+        let migrated = try #require(app.todayPlan.plan?.block)
+        #expect(migrated.id == block.id)
+        #expect(app.todayPlan.notice == .planUpdated)
+        let chest = try #require(migrated.muscleTargets.first { $0.muscleGroupID == .chest })
+        #expect(chest.targetSetsPerWeek == 10, "Intermedio: la mitad del rango normal (8–12)")
+    }
 }
 
 @MainActor

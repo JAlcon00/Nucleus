@@ -190,8 +190,16 @@ public struct BlockPlanner: Sendable {
             phase: input.phase
         ).split
 
-        // Volumen semanal por músculo.
-        let allocation = try volumeAllocator.allocate(priorities: input.priorities)
+        // Volumen semanal por músculo: la experiencia elige el punto del rango y el tiempo pone
+        // el techo (SCRUM-227, ADR-0004). Si el volumen del nivel no cabe en la semana, baja
+        // hacia el mínimo del rango; lo que ni así quepa lo recorta la composición (SCRUM-218).
+        let allocation = try volumeAllocator.allocate(
+            priorities: input.priorities,
+            experience: input.experience,
+            maxWeeklySets: input.sessionMinutes.map {
+                weeklySetCapacity(minutes: $0, days: input.trainingDaysPerWeek, goal: input.goal)
+            }
+        )
 
         // Asignación de ejercicios por músculo (anchor + rotatables).
         var assignmentsByMuscle: [MuscleGroup.ID: MuscleExerciseAssignment] = [:]
@@ -589,6 +597,16 @@ public struct BlockPlanner: Sendable {
             let title = timesInWeek > 1 ? "\(names[classIndex]) \(letter)" : names[classIndex]
             return DayPlan(title: title, muscles: classes[classIndex])
         }
+    }
+
+    /// Series de trabajo que caben en la semana (SCRUM-227): días × ⌊minutos ÷ (serie +
+    /// descanso + transición)⌋, con los mismos tiempos con los que el estimador mide la sesión.
+    private func weeklySetCapacity(minutes: Int, days: Int, goal: TrainingGoal) -> Int {
+        let defaults = durationEstimator.defaults
+        let secondsPerSet = defaults.defaultSetSeconds + Double(Self.defaultRest(for: goal).lowerBound)
+            + defaults.defaultTransitionSeconds
+        guard secondsPerSet > 0 else { return Int.max }
+        return max(0, days) * Int((Double(minutes * 60) / secondsPerSet).rounded(.down))
     }
 
     private func prescription(for goal: TrainingGoal, isAnchor: Bool) throws -> SetPrescription {

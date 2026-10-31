@@ -26,8 +26,10 @@ public struct StoredPlan: Codable, Sendable, Equatable {
     /// 6 = catálogo bien clasificado (SCRUM-37): las restricciones ya no dejan pasar
     ///     ejercicios mal clasificados (p. ej. tríceps con cuerda con restricción de codo);
     /// 7 = selección por slots, objetivo, experiencia y fase (SCRUM-219), con rotables que
-    ///     cambian de un bloque al siguiente.
-    public static let currentGeneratorVersion = 7
+    ///     cambian de un bloque al siguiente;
+    /// 8 = volumen por experiencia dentro del rango de evidencia (SCRUM-227, ADR-0004): el
+    ///     tiempo sólo lo recorta.
+    public static let currentGeneratorVersion = 8
 
     public let userID: String
     public var profile: OnboardingProfile

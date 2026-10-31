@@ -4,8 +4,12 @@
 //
 //  SCRUM-28 / SCRUM-29 sobre el catálogo REAL (678 ejercicios): N días ⇒ N sesiones,
 //  el objetivo semanal por músculo se reparte (no se multiplica por ejercicio), cada
-//  día tiene su propia plantilla, una sesión cabe en el tiempo del usuario, más
-//  tiempo no agrega series y ningún aislamiento precede a un compuesto de su músculo.
+//  día tiene su propia plantilla, una sesión cabe en el tiempo del usuario y ningún
+//  aislamiento precede a un compuesto de su músculo.
+//  SCRUM-227 (ADR-0004) cambió a propósito `moreTimeDoesNotAddSets`: el volumen lo marca la
+//  experiencia dentro del rango y el tiempo sólo lo limita. Ahora es
+//  `moreTimeNeverExceedsTierMax` (nunca se pasa del máximo), más "con 90 min, al menos lo de
+//  60" y "el novato sigue en el mínimo".
 //
 
 import Foundation
@@ -19,15 +23,32 @@ struct BlockPlannerRealCatalogTests {
     private let builder = TodayPlanBuilder()
 
     private func plan(days: Int, minutes: Int? = 60, goal: TrainingGoal = .hypertrophy,
-                      variety: VarietyPreference = .balanced) throws -> (BlockPlanningResult, ExerciseCatalog) {
+                      variety: VarietyPreference = .balanced,
+                      experience: ExperienceLevel = .intermediate,
+                      planner: BlockPlanner = TodayPlanBuilder.defaultPlanner()) throws -> (BlockPlanningResult, ExerciseCatalog) {
         let catalog = try ExerciseCatalogLoader.loadBundled()
         let input = BlockPlanningInput(
-            goal: goal, phase: .maintenance, experience: .intermediate,
+            goal: goal, phase: .maintenance, experience: experience,
             trainingDaysPerWeek: days, priorities: builder.defaultPriorities(), plannedWeeks: 6,
             varietyPreference: variety, catalog: catalog.exercises, restrictions: [],
             equipmentKnownness: builder.defaultEquipmentKnownness(), sessionMinutes: minutes
         )
-        return (try TodayPlanBuilder.defaultPlanner().plan(input: input), catalog)
+        return (try planner.plan(input: input), catalog)
+    }
+
+    /// Volumen fijo en el mínimo del rango para cualquier experiencia (como antes de
+    /// SCRUM-227). Las pruebas del recorte de SCRUM-218 comparan un plan sin límite de tiempo
+    /// con otro con poco tiempo: para medir sólo lo que recorta la sesión, los dos deben tener
+    /// el mismo volumen. Con SCRUM-227 el volumen ya depende del tiempo (el techo), así que se
+    /// fija aquí; la elección del volumen se prueba aparte (`noviceUnchangedOthersMore`, techo).
+    private func fixedVolumePlanner() throws -> BlockPlanner {
+        var parameters = try VolumeDefaults.makeRule().parameters
+        for experience in ExperienceLevel.allCases { parameters[VolumeConfigKeys.positionKey(for: experience)] = 0 }
+        let rule = try EvidenceRule(
+            id: VolumeDefaults.ruleID, name: "Volumen fijo en el mínimo", category: .volume,
+            confidence: .emerging, version: 2, parameters: parameters
+        )
+        return BlockPlanner(volumeAllocator: VolumeAllocator(config: try VolumeConfig(rule: rule)))
     }
 
     @Test("N días ⇒ exactamente N sesiones, con título propio", arguments: Array(2...7))
@@ -55,13 +76,60 @@ struct BlockPlannerRealCatalogTests {
         }
     }
 
-    @Test("Con 180 minutos no hay más series que con 90")
-    func moreTimeDoesNotAddSets() throws {
-        let (ninety, _) = try plan(days: 3, minutes: 90)
-        let (long, _) = try plan(days: 3, minutes: 180)
-        let count = { (r: BlockPlanningResult) in r.block.sessions.map { $0.plannedSets.count }.reduce(0, +) }
-        #expect(count(long) <= count(ninety))
-        #expect(count(long) == count(ninety))
+    /// Series de trabajo de la semana.
+    private func weeklySets(_ result: BlockPlanningResult) -> Int {
+        result.block.sessions.map { $0.plannedSets.filter { !$0.prescription.isWarmup }.count }.reduce(0, +)
+    }
+
+    @Test("SCRUM-227: con cualquier tiempo, ningún músculo pasa del máximo de su rango ni la semana del objetivo",
+          arguments: ExperienceLevel.allCases)
+    func moreTimeNeverExceedsTierMax(experience: ExperienceLevel) throws {
+        let config = try VolumeConfig(rule: VolumeDefaults.makeRule())
+        let tiers = Dictionary(builder.defaultPriorities().map { ($0.muscleGroupID, $0.priority) }, uniquingKeysWith: { first, _ in first })
+        for days in [2, 3, 4, 6] {
+            for minutes in [90, 180] {
+                let (result, _) = try plan(days: days, minutes: minutes, experience: experience)
+                for target in result.block.muscleTargets {
+                    let tier = try #require(tiers[target.muscleGroupID])
+                    #expect(target.targetSetsPerWeek <= config.range(for: tier).upperBound,
+                            "\(experience), \(days) días, \(minutes) min, \(target.muscleGroupID)")
+                }
+                let target = result.block.muscleTargets.map(\.targetSetsPerWeek).reduce(0, +)
+                #expect(weeklySets(result) <= target, "\(experience), \(days) días, \(minutes) min")
+            }
+            // Más tiempo nunca da menos; lo que sube lo frena el máximo del rango (arriba).
+            let ninety = weeklySets(try plan(days: days, minutes: 90, experience: experience).0)
+            let long = weeklySets(try plan(days: days, minutes: 180, experience: experience).0)
+            #expect(long >= ninety, "\(experience), \(days) días: 180 min dio \(long) < 90 min \(ninety)")
+        }
+    }
+
+    @Test("SCRUM-227: con 90 min nunca hay menos series por semana que con 60",
+          arguments: ExperienceLevel.allCases)
+    func ninetyNeverGivesLessThanSixty(experience: ExperienceLevel) throws {
+        for goal in [TrainingGoal.hypertrophy, .strength] {
+            for days in 2...6 {
+                let sixty = weeklySets(try plan(days: days, minutes: 60, goal: goal, experience: experience).0)
+                let ninety = weeklySets(try plan(days: days, minutes: 90, goal: goal, experience: experience).0)
+                #expect(ninety >= sixty, "\(goal), \(experience), \(days) días: 90 min \(ninety) < 60 min \(sixty)")
+            }
+        }
+    }
+
+    @Test("SCRUM-227: el novato sigue en el mínimo del rango; intermedio y avanzado reciben más si el tiempo alcanza")
+    func noviceUnchangedOthersMore() throws {
+        let config = try VolumeConfig(rule: VolumeDefaults.makeRule())
+        let (novice, _) = try plan(days: 4, minutes: nil, experience: .novice)
+        let tiers = Dictionary(builder.defaultPriorities().map { ($0.muscleGroupID, $0.priority) }, uniquingKeysWith: { first, _ in first })
+        for target in novice.block.muscleTargets {
+            let tier = try #require(tiers[target.muscleGroupID])
+            #expect(target.targetSetsPerWeek == config.range(for: tier).lowerBound, "\(target.muscleGroupID)")
+        }
+        let (intermediate, _) = try plan(days: 4, minutes: nil, experience: .intermediate)
+        let (advanced, _) = try plan(days: 4, minutes: nil, experience: .advanced)
+        #expect(weeklySets(novice) == 72)
+        #expect(weeklySets(intermediate) == 90)
+        #expect(weeklySets(advanced) == 108)
     }
 
     /// SCRUM-218 cambió esta prueba a propósito. Antes decía "recortar no quita ejercicios,
@@ -70,8 +138,9 @@ struct BlockPlannerRealCatalogTests {
     /// series y las anclas compuestas nunca se quitan.
     @Test("Con poco tiempo salen primero los aislamientos, nunca queda 1 serie y las anclas compuestas se quedan")
     func tightTimeDropsIsolationsKeepsCompoundAnchors() throws {
-        let (roomy, catalog) = try plan(days: 3, minutes: nil)
-        let (tight, _) = try plan(days: 3, minutes: TrainingWeek.allowedSessionMinutes.lowerBound)
+        let planner = try fixedVolumePlanner()
+        let (roomy, catalog) = try plan(days: 3, minutes: nil, planner: planner)
+        let (tight, _) = try plan(days: 3, minutes: TrainingWeek.allowedSessionMinutes.lowerBound, planner: planner)
         let byID = Dictionary(catalog.exercises.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let anchors = try anchorExercises(days: 3)
         let roomySets = roomy.block.sessions.map { $0.plannedSets.count }.reduce(0, +)
@@ -102,8 +171,9 @@ struct BlockPlannerRealCatalogTests {
 
     @Test("SCRUM-218: con objetivo fuerza y 60 min, las anclas compuestas conservan al menos 3 series y se recortan accesorios")
     func strengthAnchorsKeepThreeSets() throws {
-        let (roomy, catalog) = try plan(days: 3, minutes: nil, goal: .strength)
-        let (sixty, _) = try plan(days: 3, minutes: 60, goal: .strength)
+        let planner = try fixedVolumePlanner()
+        let (roomy, catalog) = try plan(days: 3, minutes: nil, goal: .strength, planner: planner)
+        let (sixty, _) = try plan(days: 3, minutes: 60, goal: .strength, planner: planner)
         let byID = Dictionary(catalog.exercises.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let anchors = try anchorExercises(days: 3, goal: .strength)
         for (a, b) in zip(roomy.block.sessions, sixty.block.sessions) {

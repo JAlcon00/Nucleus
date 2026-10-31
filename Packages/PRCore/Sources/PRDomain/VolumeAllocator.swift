@@ -97,6 +97,13 @@ public struct VolumeConfig: Sendable {
         let max = Int(rule.parameters[maxKey] ?? 0)
         return min...max
     }
+
+    /// Dónde cae la experiencia dentro del rango (0 = mínimo, 1 = máximo), acotado a [0, 1]
+    /// (SCRUM-227, ADR-0004).
+    public func position(for experience: ExperienceLevel) -> Double {
+        let value = rule.parameters[VolumeConfigKeys.positionKey(for: experience)] ?? 0
+        return min(1, max(0, value))
+    }
 }
 
 /// Claves canónicas de parámetros de la regla de volumen.
@@ -109,13 +116,30 @@ public enum VolumeConfigKeys {
     public static let emphasizeMax = "emphasizeMax"
     public static let specializeMin = "specializeMin"
     public static let specializeMax = "specializeMax"
+    /// Posición dentro del rango por experiencia (SCRUM-227, ADR-0004).
+    public static let positionNovice = "positionNovice"
+    public static let positionBeginner = "positionBeginner"
+    public static let positionIntermediate = "positionIntermediate"
+    public static let positionAdvanced = "positionAdvanced"
+    public static let positionCompetitive = "positionCompetitive"
 
     public static let allRequired: Set<String> = [
         maintainMin, maintainMax,
         normalMin, normalMax,
         emphasizeMin, emphasizeMax,
         specializeMin, specializeMax,
+        positionNovice, positionBeginner, positionIntermediate, positionAdvanced, positionCompetitive,
     ]
+
+    public static func positionKey(for experience: ExperienceLevel) -> String {
+        switch experience {
+        case .novice: return positionNovice
+        case .beginner: return positionBeginner
+        case .intermediate: return positionIntermediate
+        case .advanced: return positionAdvanced
+        case .competitive: return positionCompetitive
+        }
+    }
 
     public static func keys(for tier: PriorityTier) -> (min: String, max: String) {
         switch tier {
@@ -129,10 +153,12 @@ public enum VolumeConfigKeys {
 
 /// Regla de evidencia por defecto que modela el rango de sets semanales por tier.
 /// (Valores orientativos de producto; la UI/Evidence Registry los versiona.)
+/// v2 (SCRUM-227, ADR-0004): la experiencia elige el punto dentro del rango: novato el
+/// mínimo, principiante un cuarto, intermedio la mitad, avanzado y competitivo el máximo.
 public enum VolumeDefaults {
     public static let ruleID = EvidenceRuleID(rawValue: "volume.weeklySetsPerMuscle")
 
-    public static func makeRule(version: Int = 1) throws -> EvidenceRule {
+    public static func makeRule(version: Int = 2) throws -> EvidenceRule {
         try EvidenceRule(
             id: ruleID,
             name: "Weekly sets per muscle group",
@@ -148,6 +174,11 @@ public enum VolumeDefaults {
                 VolumeConfigKeys.emphasizeMax: 16,
                 VolumeConfigKeys.specializeMin: 16,
                 VolumeConfigKeys.specializeMax: 20,
+                VolumeConfigKeys.positionNovice: 0,
+                VolumeConfigKeys.positionBeginner: 0.25,
+                VolumeConfigKeys.positionIntermediate: 0.5,
+                VolumeConfigKeys.positionAdvanced: 1,
+                VolumeConfigKeys.positionCompetitive: 1,
             ]
         )
     }
@@ -157,7 +188,9 @@ public enum VolumeDefaults {
 ///
 /// Reglas deterministas y versionadas via `VolumeConfig` (EvidenceRule):
 /// - Volumen según `PriorityTier`: el rango menor para mantiene, el mayor para
-///   especializa.
+///   especializa. Dentro del rango, la experiencia elige el punto (SCRUM-227, ADR-0004):
+///   novato el mínimo, avanzado el máximo. Sin experiencia, el mínimo. El tiempo no sube el
+///   volumen: sólo lo recorta después la composición de la sesión (SCRUM-218).
 /// - Sin prioridades declaradas, no se inventan músculos: la asignación queda
 ///   vacía y el llamador (BlockPlanner) decide qué grupos incluir.
 /// - Nunca se generan volúmenes negativos.
@@ -168,14 +201,24 @@ public struct VolumeAllocator: Sendable {
         self.config = config
     }
 
-    public func allocate(priorities: [MusclePriority]) throws -> VolumeAllocation {
-        try allocate(priorities: priorities, weeklyTimeBudgetMinutes: nil, minutesPerWorkingSet: nil)
+    /// `maxWeeklySets`: las series que caben en la semana con el tiempo del usuario. Si el
+    /// volumen del nivel no cabe, baja hacia el mínimo del rango (nunca por debajo), una serie a
+    /// la vez del músculo que más tiene sobre su mínimo (SCRUM-227: el tiempo pone el techo).
+    public func allocate(
+        priorities: [MusclePriority],
+        experience: ExperienceLevel? = nil,
+        maxWeeklySets: Int? = nil
+    ) throws -> VolumeAllocation {
+        try allocate(
+            priorities: priorities, weeklyTimeBudgetMinutes: nil, minutesPerWorkingSet: nil,
+            experience: experience, maxWeeklySets: maxWeeklySets
+        )
     }
 
     /// Distribuye volumen respetando (aproximadamente) un presupuesto de tiempo semanal.
     ///
     /// El presupuesto se respeta sin romper los rangos versionados de evidencia: el volumen
-    /// asigna el representativo (mínimo) de cada tier y se estiman los minutos
+    /// asigna el punto del rango que marca la experiencia (el mínimo sin ella) y se estiman los minutos
     /// (`totalWeeklySets × minutesPerWorkingSet`). Si el volumen cabe en el presupuesto se
     /// reporta `fitsBudget == true`; si el presupuesto es más ajustado que el suelo de
     /// evidencia, se reporta `fitsBudget == false` en lugar de bajar volumen por debajo del
@@ -184,25 +227,33 @@ public struct VolumeAllocator: Sendable {
     public func allocate(
         priorities: [MusclePriority],
         weeklyTimeBudgetMinutes: Int?,
-        minutesPerWorkingSet: Double?
+        minutesPerWorkingSet: Double?,
+        experience: ExperienceLevel? = nil,
+        maxWeeklySets: Int? = nil
     ) throws -> VolumeAllocation {
         let reference = try config.reference()
+        let ranges = priorities.map { config.range(for: $0.priority) }
+        var sets = ranges.map { representativeSets(for: $0, experience: experience) }
+        if let maxWeeklySets {
+            // El tiempo pone el techo: se baja hacia el mínimo, nunca por debajo.
+            while sets.reduce(0, +) > maxWeeklySets,
+                  let index = sets.indices
+                      .filter({ sets[$0] > ranges[$0].lowerBound })
+                      .max(by: { (sets[$0] - ranges[$0].lowerBound, $0) < (sets[$1] - ranges[$1].lowerBound, $1) }) {
+                sets[index] -= 1
+            }
+        }
         var targets: [MuscleVolumeAssignment] = []
-        var minTotal = 0
-        var maxTotal = 0
-
-        for priority in priorities {
-            let range = config.range(for: priority.priority)
-            let sets = self.representativeSets(for: range)
+        for (index, priority) in priorities.enumerated() {
             targets.append(try MuscleVolumeAssignment(
                 muscleGroupID: priority.muscleGroupID,
-                weeklySets: sets,
+                weeklySets: sets[index],
                 priority: priority.priority,
                 ruleReference: reference
             ))
-            minTotal += range.lowerBound
-            maxTotal += range.upperBound
         }
+        let minTotal = ranges.map(\.lowerBound).reduce(0, +)
+        let maxTotal = ranges.map(\.upperBound).reduce(0, +)
 
         let allocation = VolumeAllocation(
             targets: targets,
@@ -229,10 +280,12 @@ public struct VolumeAllocator: Sendable {
         )
     }
 
-    /// Valor representativo estable del rango. Para mantener un target constante
-    /// y determinista usamos el mínimo del rango; el block planner puede subirlo
-    /// dentro del máximo según experiencia/tiempo.
-    private func representativeSets(for range: ClosedRange<Int>) -> Int {
-        range.lowerBound
+    /// Punto del rango para la experiencia: mínimo + ⌊posición × ancho del rango⌋. Nunca
+    /// sale del rango. Sin experiencia, el mínimo (como antes de SCRUM-227).
+    private func representativeSets(for range: ClosedRange<Int>, experience: ExperienceLevel?) -> Int {
+        guard let experience else { return range.lowerBound }
+        let width = Double(range.upperBound - range.lowerBound)
+        let offset = Int((config.position(for: experience) * width).rounded(.down))
+        return min(range.upperBound, range.lowerBound + offset)
     }
 }
