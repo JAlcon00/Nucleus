@@ -132,3 +132,26 @@ Consecuencias:
 - **PR-B003:** se creó como SCRUM-227 con los criterios de la opción B. Ahí se reescriben las pruebas que se listan arriba y el generador sube de 7 a 8.
 - **"Ajustar a mi tiempo"** (SCRUM-30) sigue sólo recortando.
 - **Los valores de los rangos** (D1b) y **la fase** quedan para decisiones aparte.
+
+## Implementación (SCRUM-227, 2026-10-30)
+
+- **El techo de tiempo se aplica antes de componer.** Al implementar, el volumen del nivel en sesiones cortas de fuerza empeoraba la composición: con 30, 45 y 60 min quedaban 17, 11 y 4 sesiones bajo el mínimo, contra 13, 3 y 1 antes. Por eso el techo va en `VolumeAllocator` (`maxWeeklySets`):
+  - si el volumen del nivel no cabe en la semana, baja hacia el mínimo del rango, nunca por debajo, una serie a la vez del músculo que más tiene sobre su mínimo;
+  - lo que ni así quepa lo recorta la composición de SCRUM-218, igual que antes;
+  - la capacidad es días × ⌊minutos ÷ (serie + descanso + transición)⌋, con los mismos tiempos del estimador.
+- **Medición después del cambio** (motor real, mismos 15 perfiles por fila que arriba):
+
+  | Objetivo y minutos | Uso del tiempo (antes → ahora) | Sesiones bajo el mínimo (antes → ahora) |
+  |---|---|---|
+  | Hipertrofia 60 | 65 % → 72 % | 0 → 0 |
+  | Hipertrofia 90 | 46 % → 55 % | 24 → 16 |
+  | Hipertrofia 120 | 35 % → 43 % | 24 → 16 |
+  | Fuerza 30 / 45 / 60 | 115 / 97 / 88 % → 115 / 97 / 91 % | 13 / 3 / 1 → 13 / 3 / 1 |
+  | Fuerza 90 | 69 % → 76 % | 24 → 16 |
+  | Fuerza 120 | 56 % → 65 % | 24 → 16 |
+
+  Ninguna sesión pasa de su tiempo sin aviso, en ninguna fila.
+- **Matriz de SCRUM-214:**
+  - sesiones bajo el mínimo de ejercicios: 224 → 167 de 906;
+  - rutinas distintas: 149 → 165;
+  - 0 ejercicios con 1 serie, y pantorrilla y core sin cambio.

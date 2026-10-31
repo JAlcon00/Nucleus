@@ -198,7 +198,7 @@ struct OnboardingStepView: View {
     }
 
     private var minutesStepper: some View {
-        OnboardingField(title: "Duración de cada sesión", icon: "timer", purpose: "Ajustamos cuántos ejercicios caben. Más tiempo no suma series.") {
+        OnboardingField(title: "Duración de cada sesión", icon: "timer", purpose: "Ajustamos las series y los ejercicios que caben, sin pasar lo que tu nivel aguanta.") {
             Stepper(value: minutes, in: TrainingWeek.allowedSessionMinutes, step: 5) {
                 Text("\(minutes.wrappedValue) min")
                     .font(.title3.bold())
