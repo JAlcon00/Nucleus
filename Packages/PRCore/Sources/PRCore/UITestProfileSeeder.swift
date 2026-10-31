@@ -22,12 +22,15 @@ public enum UITestSeededProfile: String, CaseIterable, Sendable {
     /// 30 años, hombre y 72 kg; intermedio, hipertrofia y mantenimiento; lunes, miércoles y
     /// viernes; 60 min; variedad balanceada; sin prioritarios ni restricciones; IA "Ahora no".
     case intermediateMondayWednesdayFriday = "intermedio-lmv"
+    /// El mismo, con 30 min por sesión y bíceps y tríceps como prioritarios (SCRUM-224): lo
+    /// protegido no cabe y el lunes lleva supersets.
+    case intermediateArmsThirtyMinutes = "intermedio-lmv-brazos-30"
 
     /// "Sobre ti" como lo llena la prueba (rueda de edad, sexo y peso). El nombre no va
     /// aquí: lo pone el inicio de sesión, igual que en la pantalla.
     var aboutYou: AboutYouAnswer {
         switch self {
-        case .intermediateMondayWednesdayFriday:
+        case .intermediateMondayWednesdayFriday, .intermediateArmsThirtyMinutes:
             return AboutYouAnswer(age: 30, sex: .male, weight: 72, weightUnit: .kilograms)
         }
     }
@@ -35,23 +38,29 @@ public enum UITestSeededProfile: String, CaseIterable, Sendable {
     /// La respuesta de cada paso. Un paso sin respuesta se pasa con "Siguiente" sin elegir
     /// nada (prioritarios y restricciones son opcionales), como en la prueba.
     var answers: [OnboardingStep: OnboardingAnswer] {
+        let base: [OnboardingStep: OnboardingAnswer] = [
+            .experience: .experience(.intermediate),
+            .goal: .goal(.hypertrophy),
+            .phase: .phase(.maintenance),
+            .daysPerWeek: .trainingDays([.monday, .wednesday, .friday]),
+            .sessionMinutes: .sessionMinutes(60),
+            .variety: .variety(.balanced),
+        ]
         switch self {
         case .intermediateMondayWednesdayFriday:
-            return [
-                .experience: .experience(.intermediate),
-                .goal: .goal(.hypertrophy),
-                .phase: .phase(.maintenance),
-                .daysPerWeek: .trainingDays([.monday, .wednesday, .friday]),
-                .sessionMinutes: .sessionMinutes(60),
-                .variety: .variety(.balanced),
-            ]
+            return base
+        case .intermediateArmsThirtyMinutes:
+            return base.merging([
+                .sessionMinutes: .sessionMinutes(30),
+                .priorityMuscles: .priorityMuscles([.biceps, .triceps]),
+            ]) { _, new in new }
         }
     }
 
     /// El botón que toca en el consentimiento de la IA.
     var aiConsent: UITestAIConsentChoice {
         switch self {
-        case .intermediateMondayWednesdayFriday: return .decline
+        case .intermediateMondayWednesdayFriday, .intermediateArmsThirtyMinutes: return .decline
         }
     }
 }

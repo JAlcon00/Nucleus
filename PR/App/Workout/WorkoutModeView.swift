@@ -309,6 +309,10 @@ struct WorkoutModeView: View {
                     .eyebrowStyle()
                     .foregroundStyle(Color.warning)
             }
+            // SCRUM-224: en superset, de qué lado del par va y con quién se alterna.
+            if let superset = set.superset {
+                SupersetTag(superset: superset)
+            }
             Text(set.exerciseName)
                 .font(.title2.bold())
                 .multilineTextAlignment(.center)

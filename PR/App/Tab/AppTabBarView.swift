@@ -125,6 +125,7 @@ struct AppTabBarView: View {
                 timeNote: environment.timeNote,
                 timeFits: environment.todayPlan.plan?.timeAdjustment?.fitsBudget ?? true,
                 timeRemovedExercises: !(environment.todayPlan.plan?.timeAdjustment?.removed.isEmpty ?? true),
+                supersetNote: environment.supersetNote,
                 onChooseTime: { minutes in Task { await environment.setTimeBudget(minutes) } }
             )
             .navigationTitle(AppTab.today.title)
