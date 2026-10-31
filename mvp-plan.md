@@ -44,7 +44,7 @@ Cada funcionalidad se cierra cuando todas sus casillas están en `[x]`.
 
 ### F-01 · Iniciar sesión y cuestionario — SCRUM-181 (era de Gael) · finalizada el 2026-10-27
 - [x] Inicio sesión con Apple y respondo el cuestionario.
-- [x] El cuestionario se responde **una sola vez**; al cerrar y reabrir entro directo a Hoy con el mismo plan → SCRUM-26 (`PlanPersistenceTests`, UI `testReopeningTheAppGoesStraightToToday`).
+- [x] El cuestionario se responde **una sola vez**; al cerrar y reabrir entro directo a Hoy con el mismo plan → SCRUM-26 (`PlanPersistenceTests`, UI `IntermediateQuestionnaireJourney` (antes `testReopeningTheAppGoesStraightToToday`)).
 - [x] Funciona sin internet después del primer inicio → SCRUM-26 (`PlanPersistenceTests`: credencial `.unavailable` entra a Hoy).
 
 ### F-02 · Plan semanal correcto — SCRUM-182 (era de Joss) · finalizada el 2026-10-27
@@ -63,7 +63,7 @@ Cada funcionalidad se cierra cuando todas sus casillas están en `[x]`.
 - 👤 Verificación pendiente: todo funciona en modo avión → SCRUM-24 (el registro no usa red, sólo disco local; no hay prueba automática de modo avión).
 
 ### F-05 · Retomar el entrenamiento tras cerrar la app — SCRUM-185 (era de Gael) · finalizada el 2026-10-27
-- [x] Al reabrir aparece "Tienes un entrenamiento en curso" → SCRUM-24 (UI `testForceQuitMidWorkoutOffersToContinue`).
+- [x] Al reabrir aparece "Tienes un entrenamiento en curso" → SCRUM-24 (UI `WorkoutRecoveryJourney` (antes `testForceQuitMidWorkoutOffersToContinue`)).
 - [x] Las series hechas siguen ahí y sigue la siguiente → SCRUM-24 (`WorkoutRecoveryTests`: 5 series → sigue la 6).
 - [x] El descanso muestra el tiempo que realmente queda → SCRUM-24 (`WorkoutRecoveryTests`: descanso guardado como hora de fin).
 
@@ -71,7 +71,7 @@ Cada funcionalidad se cierra cuando todas sus casillas están en `[x]`.
 - [x] Al completar la última serie aparece un resumen.
 - [x] El resumen muestra duración, series, volumen y récords calculados desde los datos guardados → SCRUM-25 (`WorkoutClosingTests`).
 - [x] El entrenamiento queda guardado una sola vez como completado → SCRUM-25 (`WorkoutClosingTests`: Export lo cuenta una vez).
-- [x] Progreso muestra el registro desde el primer entrenamiento → SCRUM-186 (`ProgressHistoryTests` (9), UI `testProgressLogsTheFirstWorkout`; `make ci` PRDomain 484, PRCore 387, XCTest 151; `make test-ui` 20/20).
+- [x] Progreso muestra el registro desde el primer entrenamiento → SCRUM-186 (`ProgressHistoryTests` (9), UI `FirstWorkoutJourney` (antes `testProgressLogsTheFirstWorkout`); `make ci` PRDomain 484, PRCore 387, XCTest 151; `make test-ui` 20/20).
 - [x] Exportar muestra el número real de entrenamientos y todas sus series → SCRUM-23.
 
 ### F-07 · Ajustar la sesión a mi tiempo (opcional) — SCRUM-187 (era de Joss) · finalizada el 2026-10-27
@@ -125,13 +125,13 @@ Definition of Done para todos los bloques:
 
 Origen: la primera prueba manual de Jesús (2026-10-21). Herramienta: target `PRUITests` (XCUIAutomation, equivalente a Cypress), `make test-ui`. Modos de arranque solo en Debug: `-PRFakeSignIn`, `-PRUITestReset` (datos temporales aparte), `-PRFixedDate yyyy-MM-dd`.
 
-- [x] Pantalla negra al tocar Empezar (la cubierta se presentaba con el workout `nil`) → `fullScreenCover(item:)`. Prueba: `testStartShowsTheFirstSetNotABlackScreen`.
-- [x] Cuestionario en español (no "Generalhealth"/"Hypertrophy"). Prueba: `testOnboardingOptionsAreInSpanish`.
-- [x] La opción elegida se ve marcada (icono + borde + trait). Prueba: `testSelectedOptionIsMarked`.
-- [x] Días y minutos por defecto se registran sin mover el selector. Prueba: `testDefaultDaysAndMinutesCanAdvance...`.
-- [x] Hoy lista los ejercicios de la sesión. Prueba: `testTodayListsTheExercisesOfTheSession`.
+- [x] Pantalla negra al tocar Empezar (la cubierta se presentaba con el workout `nil`) → `fullScreenCover(item:)`. Prueba: `WorkoutRecoveryJourney` (antes `testStartShowsTheFirstSetNotABlackScreen`).
+- [x] Cuestionario en español (no "Generalhealth"/"Hypertrophy"). Prueba: `IntermediateQuestionnaireJourney` (antes `testOnboardingOptionsAreInSpanish`).
+- [x] La opción elegida se ve marcada (icono + borde + trait). Prueba: `IntermediateQuestionnaireJourney` (antes `testSelectedOptionIsMarked`).
+- [x] Días y minutos por defecto se registran sin mover el selector. Prueba: `IntermediateQuestionnaireJourney` (antes `testDefaultDaysAndMinutesCanAdvance...`).
+- [x] Hoy lista los ejercicios de la sesión. Prueba: `TodayJourney` (antes `testTodayListsTheExercisesOfTheSession`).
 - [x] Lunes con sesión, domingo "Día de descanso"; Export vacío explícito; llegar a Hoy desde el cuestionario.
-- [x] Sesión de 60 min con volumen realista → SCRUM-28. Prueba: `testTodaySessionHasRealisticVolume` (ya verde; `make test-ui` sigue aparte de `make ci` por tardar ~4 min).
+- [x] Sesión de 60 min con volumen realista → SCRUM-28. Prueba: `TodayJourney` (antes `testTodaySessionHasRealisticVolume`) (ya verde; `make test-ui` sigue aparte de `make ci` por tardar ~4 min).
 - [x] Nombres de ejercicios en español: los 678 nombres se tradujeron (`exercise-names-es.json`); el inglés queda como alias de búsqueda. 👤 Jesús: revisar la calidad de los nombres en la app.
 - [x] Mínimos de entrenamiento: 2 días y 30 minutos por sesión (antes 20), en una sola constante (`TrainingWeek.allowedSessionMinutes`).
 
@@ -248,7 +248,7 @@ Evidencia: commit `64c95d9`; `make ci` → `✔ Test run with 439 tests in 69 su
   - crear otra instancia sobre el mismo directorio y verificar que la restauración es exacta;
   - repetir con la cola llena.
 
-Evidencia: `make ci` → `✔ Test run with 451 tests in 71 suites passed` + `✔ Test run with 332 tests in 62 suites passed` (2026-10-21); `PRCoreTests/WorkoutRecoveryTests.swift` (14), `PRDomainTests/WorkoutRecoveryPlannerTests.swift` (7); UI en Xcode, simulador: `testForceQuitMidWorkoutOffersToContinue` (cierre forzado real tras 3 series ⇒ "Tienes un entrenamiento en curso" ⇒ continúa en la serie 4). Diseño: `persistSession` síncrono en `WorkoutSessionCoordinator`, descanso como `RestSnapshot` (hora de fin) dentro del `WorkoutSessionRecord`, `WorkoutRecoveryPlanner` (puro) + `LocalPersistence.recoverWorkout`. "Modo avión idéntico": todo es disco local, sin red (la cobertura es la misma suite; 👤 lo confirma en dispositivo). Los `try?` que quedaban sobre datos de workout se reemplazaron por manejo explícito (`persistenceFailed` + aviso en pantalla).
+Evidencia: `make ci` → `✔ Test run with 451 tests in 71 suites passed` + `✔ Test run with 332 tests in 62 suites passed` (2026-10-21); `PRCoreTests/WorkoutRecoveryTests.swift` (14), `PRDomainTests/WorkoutRecoveryPlannerTests.swift` (7); UI en Xcode, simulador: `WorkoutRecoveryJourney` (antes `testForceQuitMidWorkoutOffersToContinue`) (cierre forzado real tras 3 series ⇒ "Tienes un entrenamiento en curso" ⇒ continúa en la serie 4). Diseño: `persistSession` síncrono en `WorkoutSessionCoordinator`, descanso como `RestSnapshot` (hora de fin) dentro del `WorkoutSessionRecord`, `WorkoutRecoveryPlanner` (puro) + `LocalPersistence.recoverWorkout`. "Modo avión idéntico": todo es disco local, sin red (la cobertura es la misma suite; 👤 lo confirma en dispositivo). Los `try?` que quedaban sobre datos de workout se reemplazaron por manejo explícito (`persistenceFailed` + aviso en pantalla).
 
 **👤 Manual (Jesús):** cierre forzado desde el selector de apps, en simulador y en iPhone, también en modo avión.
 
@@ -297,7 +297,7 @@ Evidencia: misma corrida de `make ci` que el bloque 4; `PRCoreTests/WorkoutClosi
 - Unitarios: guardar y leer perfil y bloque, cambio de plan, perfil corrupto.
 - Integración: onboarding con `AppEnvironment` real; una segunda instancia sobre el mismo directorio llega a Hoy con el mismo `blockID`.
 
-Evidencia: `make ci` → `✔ Test run with 444 tests in 70 suites passed` + `✔ Test run with 304 tests in 59 suites passed` (2026-10-21); `PRCoreTests/PlanPersistenceTests.swift` (plan, migración, dos cuentas, perfil corrupto, revocación, rehacer) sobre `LocalPersistence` real; UI (Xcode, simulador): 12 de 12, incluidas `testReopeningTheAppGoesStraightToToday` y `testRedoQuestionnaireFromTodayOpensTheQuestionnaire`. Diseño: `StoredPlan`/`StoredSession` (PRDomain), `PlanStore`, `AppSessionCoordinator` (PRCore); la sesión guarda sólo `userID` + versión de formato, las claves de archivo se derivan del ID. Historial y cola de pendientes ahora son por usuario (`users/<clave>/…`, `UserScopedHistoryTests`); el historial anterior a las cuentas lo adopta el primer usuario una sola vez. **Límite:** la revocación se comprueba al arrancar y al volver a primer plano, no en tiempo real. **Pendiente:** 👤 Jesús (instalar, reabrir, modo avión, cuenta revocada real).
+Evidencia: `make ci` → `✔ Test run with 444 tests in 70 suites passed` + `✔ Test run with 304 tests in 59 suites passed` (2026-10-21); `PRCoreTests/PlanPersistenceTests.swift` (plan, migración, dos cuentas, perfil corrupto, revocación, rehacer) sobre `LocalPersistence` real; UI (Xcode, simulador): 12 de 12, incluidas `IntermediateQuestionnaireJourney` (antes `testReopeningTheAppGoesStraightToToday`) y `ProfileJourney` (antes `testRedoQuestionnaireFromTodayOpensTheQuestionnaire`). Diseño: `StoredPlan`/`StoredSession` (PRDomain), `PlanStore`, `AppSessionCoordinator` (PRCore); la sesión guarda sólo `userID` + versión de formato, las claves de archivo se derivan del ID. Historial y cola de pendientes ahora son por usuario (`users/<clave>/…`, `UserScopedHistoryTests`); el historial anterior a las cuentas lo adopta el primer usuario una sola vez. **Límite:** la revocación se comprueba al arrancar y al volver a primer plano, no en tiempo real. **Pendiente:** 👤 Jesús (instalar, reabrir, modo avión, cuenta revocada real).
 
 **👤 Manual (Jesús):** instalar, completar onboarding, cerrar y reabrir, también en modo avión.
 
@@ -388,7 +388,7 @@ Evidencia: commit `1c50415`; `make ci` → `✔ Test run with 513 tests in 77 su
   4. Exportar.
 - [x] Ejecutar las pruebas automatizables y anotar resultado y fecha.
 
-Evidencia: commits `fd7074c` (lista de pruebas y `testExportCountsTheFirstWorkout`) y `e3de2e7` (resultados), rama al día con `main` (`787144e`).
+Evidencia: commits `fd7074c` (lista de pruebas y `FirstWorkoutJourney` (antes `testExportCountsTheFirstWorkout`)) y `e3de2e7` (resultados), rama al día con `main` (`787144e`).
 - `make test-ui` → `Executed 30 tests, with 0 failures (0 unexpected) in 1306.026 seconds` (2026-10-26, simulador "PR UI Tests").
 - `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 496 tests in 90 suites passed … with 5 known issues` (2026-10-26). Los 5 *known issues* son los de la caracterización de SCRUM-214.
 - Unidad e integración por flujo: 91, 74, 18 y 7 en verde (2026-10-23).
@@ -494,13 +494,13 @@ Evidencia: commit `da984cf` (solo documento; `make guards` en verde).
 - Evidencia UI: `make test-ui` (iPad A16, iOS 27.1) → 18 de 18 pruebas de `PRUITests` en verde, con las nuevas de pestañas en español, chips de días, "Tu semana", tira semanal y "Sobre ti" con el mínimo de 18.
 - 👤 Pendiente en dispositivo (Jesús): VoiceOver real, sol directo, Liquid Glass del tab bar sobre carbón con Reduce Transparency e Increase Contrast y la transparencia de iOS 27 en ambos extremos; layout en iPhone pequeño (las pruebas de UI corren en iPad).
 - **Cierre de huecos frente a los criterios de Jira (2026-10-22, rama `scrum-193-198-cierre-huecos`):**
-  - U2: prueba de UI `testPendingPlanNeverShowsRestDay` (plan demorado a propósito con `-PRUITestPlanDelay`, sólo Debug: se ve la carga y nunca "Día de descanso"). El skeleton de Hoy sólo aparece al reintentar tras un error; al arrancar, el plan pendiente se muestra con "Armando tu semana".
+  - U2: prueba de UI `PendingPlanJourney` (antes `testPendingPlanNeverShowsRestDay`) (plan demorado a propósito con `-PRUITestPlanDelay`, sólo Debug: se ve la carga y nunca "Día de descanso"). El skeleton de Hoy sólo aparece al reintentar tras un error; al arrancar, el plan pendiente se muestra con "Armando tu semana".
   - U1: guard de colores en `make ci` (`scripts/check_color_tokens.sh`) y previews de Onboarding con `.accessibility3`.
   - U3: cambiar qué días se entrena crea bloque nuevo (como pide el criterio); chips con palomita además del color; integración de punta a punta L/Mi/V → Hoy correcto los 7 días (`WeekEndToEndTests`).
   - U4: músculos como chips (`MuscleChips`, bajan de línea con Dynamic Type); integración plan real de 3 días → "Tu semana" = Hoy los 7 días.
   - U5: cada dato inválido se explica junto a su campo (`AboutYouAnswer.issues`); estatura en cm o ft/in (se guarda en cm); el nombre de Apple prellena "Sobre ti"; el export incluye "Sobre ti" sólo si la persona lo activa; guard de logs en `make ci` (`scripts/check_privacy_logs.sh`).
   - Evidencia: `make ci` → "Test run with 484 tests in 73 suites passed" (PRDomain), "Test run with 378 tests in 70 suites passed" (PRCore), XCTest 151 sin fallos, build iOS y watchOS OK, guards de documentación, colores y privacidad OK, sin warnings nuevos (sólo el aviso de metadatos de AppIntents de Xcode, que ya existía).
-  - Evidencia UI: `make test-ui` (iPad A16, iOS 27.1) → 19 de 19 pruebas de `PRUITests` en verde, incluida la nueva `testPendingPlanNeverShowsRestDay`.
+  - Evidencia UI: `make test-ui` (iPad A16, iOS 27.1) → 19 de 19 pruebas de `PRUITests` en verde, incluida la nueva `PendingPlanJourney` (antes `testPendingPlanNeverShowsRestDay`).
 
 **Reglas que no se negocian en estos bloques:**
 - **Contraste:** nunca texto blanco sobre `#FF3D2E` (3.22:1) ni sobre `#FF7A1A` (2.39:1). Sobre el acento se usa `onAccent` (negro carbón).
@@ -647,7 +647,7 @@ Evidencia: commit `a4aacd4`; `make ci` → `✔ Test run with 520 tests in 78 su
 ### SCRUM-217 · Entorno de pruebas de UI estable (Should, demo; finalizada el 2026-10-27)
 
 **Criterios:**
-- [x] Con el simulador recién arrancado, `make test-ui` corre todas las pruebas de UI de principio a fin dos veces seguidas, sin colgarse, y deja el resultado por prueba. Hoy son 28 en `main`; la 29.ª, `testExportCountsTheFirstWorkout`, llega con SCRUM-190.
+- [x] Con el simulador recién arrancado, `make test-ui` corre todas las pruebas de UI de principio a fin dos veces seguidas, sin colgarse, y deja el resultado por prueba. Hoy son 28 en `main`; la 29.ª, `FirstWorkoutJourney` (antes `testExportCountsTheFirstWorkout`), llega con SCRUM-190.
 - [x] El README documenta cómo preparar el simulador (teclado físico, destino, cómo recuperarlo si se cuelga).
 - [x] Los cambios a las pruebas dicen por qué, y el bug real encontrado se reporta (ver abajo).
 
@@ -672,7 +672,7 @@ Evidencia: commit `024cc33`.
 
 Evidencia: commit `42ffa7b`.
 - `make ci` → `✔ Test run with 520 tests in 78 suites passed` + `Test run with 496 tests in 90 suites passed … with 5 known issues`.
-- `make test-ui` (simulador "PR UI Tests", iPhone 18 Pro) → `Executed 29 tests, with 0 failures`. Incluye la nueva `testTodayExercisesStayReachableWithSleepCheckIn`, y `testReorderTodayExercisesAndReset` ya no esquiva el bug (2026-10-26).
+- `make test-ui` (simulador "PR UI Tests", iPhone 18 Pro) → `Executed 29 tests, with 0 failures`. Incluye la nueva `TodayJourney` (antes `testTodayExercisesStayReachableWithSleepCheckIn`), y `TodayJourney` (antes `testReorderTodayExercisesAndReset`) ya no esquiva el bug (2026-10-26).
 - Capturas en simulador: Hoy con la tarjeta y tras deslizar, con la tira de la semana limpia.
 
 ## 4. Después del POC (no empezar todavía)
@@ -837,7 +837,7 @@ Evidencia: commit `e1e9a6e`, en `main` por el PR #9 (`883336b`).
 
 Evidencia: commit `d78c0f9`, en `main` por el PR #11 (`e528029`).
 - `make ci` → `✔ Test run with 539 tests in 81 suites passed` + `Test run with 547 tests in 95 suites passed … with 2 known issues` (2026-10-27; línea base 536 + 540 con 4). Los 2 *known issues* que quedan son de SCRUM-219. El build de iOS y el de watchOS pasaron.
-- `make test-ui` → 30 de 30 pruebas OK (incluye `testBeginnerFlowIsSimplerAndExplainsRIR` y `testAdvancedFlowAsksPriorityMuscles` con el paso de prioritarios).
+- `make test-ui` → 30 de 30 pruebas OK (incluye `BeginnerQuestionnaireJourney` (antes `testBeginnerFlowIsSimplerAndExplainsRIR`) y `BeginnerQuestionnaireJourney` (antes `testAdvancedFlowAsksPriorityMuscles`) con el paso de prioritarios).
 - **Matriz de 200 perfiles** (SCRUM-214):
   - planes con pantorrilla: **145/200** (antes 0); con core: **178/200** (antes 0). Los que no la tienen lo dicen en "Por qué tu plan";
   - con 90 min o más casi todos los tienen; con 30–60 min dependen del tiempo (gana el tiempo);
@@ -876,7 +876,7 @@ Evidencia: commit `72c5385`, en `main` por el PR #12 (`44fed74`).
 - `make test-ui` → 31 de 31 pruebas OK, incluida la nueva (1 min 9 s). Capturas revisadas en el simulador: descanso, hoja a media altura, moderado, al reabrir y alto con saltar.
 - **Tests:**
   - `PRCoreTests/PainReportFlowTests.swift` (10), con `LocalPersistence` real;
-  - `PRUITests.testPainIsReportedDuringRestAndKeptAfterReopening`: moderado con recomendación y músculo; al reabrir sigue "Moderado"; alto con saltar, y queda para retomar.
+  - `PRUITests/WorkoutRecoveryJourney` (antes `testPainIsReportedDuringRestAndKeptAfterReopening`): moderado con recomendación y músculo; al reabrir sigue "Moderado"; alto con saltar, y queda para retomar.
 - **Previews:** la hoja sin reportar, leve, moderado (oscuro), alto con y sin saltar, y `.accessibility3`; el descanso con y sin dolor reportado.
 - **Pendiente:**
   - la última serie de la sesión va directo al resumen, sin descanso: su dolor no se puede reportar desde esta pantalla;
@@ -1013,14 +1013,14 @@ Evidencia: commits `3b51dd0` y `a005f57`, en `main` por el PR #14 (`2505f8c`).
 
 Evidencia: commits `0e12fb4` (lógica) y `c96d494` (pantalla), en `main` por el PR #15 (`05ada17`).
 - `make ci` → `✔ Test run with 556 tests in 84 suites passed` + `✔ Test run with 586 tests in 102 suites passed` (2026-10-29; línea base 545 + 574). Los builds de iOS y watchOS pasaron, sin warnings nuevos, y el guard de logs pasó.
-- `make test-ui`: no salió todo verde en una sola corrida. La prueba nueva `testRestrictionIsAddedAndResolvedFromProfile` pasó en las dos corridas completas. En cada corrida fallaron pruebas distintas, ninguna de lo que toca esta historia:
-  - corrida 1: 31 de 32; `testPainIsReportedDuringRestAndKeptAfterReopening` se quedó en "Timed out while evaluating UI query". Sola pasó 4 de 4;
-  - corrida 2 (51 min, el doble de lo normal): 30 de 32; `testBeginnerFlowIsSimplerAndExplainsRIR` falló con `kAXErrorServerNotFound` (se cayó el servidor de accesibilidad del simulador) y `testTodayWeekStripOpensTheDay` no vio el detalle en 10 s. Solas, las dos pasaron.
+- `make test-ui`: no salió todo verde en una sola corrida. La prueba nueva `ProfileJourney` (antes `testRestrictionIsAddedAndResolvedFromProfile`) pasó en las dos corridas completas. En cada corrida fallaron pruebas distintas, ninguna de lo que toca esta historia:
+  - corrida 1: 31 de 32; `WorkoutRecoveryJourney` (antes `testPainIsReportedDuringRestAndKeptAfterReopening`) se quedó en "Timed out while evaluating UI query". Sola pasó 4 de 4;
+  - corrida 2 (51 min, el doble de lo normal): 30 de 32; `BeginnerQuestionnaireJourney` (antes `testBeginnerFlowIsSimplerAndExplainsRIR`) falló con `kAXErrorServerNotFound` (se cayó el servidor de accesibilidad del simulador) y `TodayJourney` (antes `testTodayWeekStripOpensTheDay`) no vio el detalle en 10 s. Solas, las dos pasaron.
 - **Tests:**
   - `PRDomainTests/RestrictionEditorTests.swift` (11);
   - `PRCoreTests/RestrictionEditingFlowTests.swift` (12, con `LocalPersistence` real);
   - `RestrictionListPresenterTests` (6, adaptadas al historial);
-  - `PRUITests.testRestrictionIsAddedAndResolvedFromProfile`.
+  - `PRUITests/ProfileJourney` (antes `testRestrictionIsAddedAndResolvedFromProfile`).
 - **Cambios a propósito en pruebas existentes:**
   - `RestrictionManagerTests`: resolver desde activa, siempre con confirmación (decisión 1);
   - `RestrictionListPresenterTests`: las resueltas van al historial, y VoiceOver lee la fecha de revisión.
@@ -1079,3 +1079,105 @@ Evidencia: commit `2e571f6`.
   7. `PlanPersistenceTests.planFromGenerator7GetsVolumeByExperience`;
   9. la matriz de SCRUM-214 en `make ci`: 906 sesiones, 24 sobre el tope con aviso, 167 bajo el mínimo (antes 224), 165 rutinas distintas y 0 ejercicios con 1 serie. La tabla del ADR-0004 se midió con el motor real.
 - `make test-ui` → 32 de 32 en verde, en una sola corrida (`Executed 32 tests, with 0 failures`, 1,521 s, 2026-10-30).
+
+
+### SCRUM-228 · PR-T001 Pruebas E2E por recorrido: rápidas y sistemáticas (Should, deuda; en rama)
+
+- Va en la rama `SCRUM-228-e2e-por-recorrido`, sobre `main` con SCRUM-227.
+- **Esquema de Jesús (2026-10-30), en `AGENTS.md` §4.1 y el README:** mientras se programa, `make test` (todas las unitarias); al cerrar cada historia, `make ci`, `make test-ui-smoke` y los recorridos que toca (`make test-ui-journey RECORRIDO="…"`); la E2E completa (`make test-ui`), al cerrar una fase o antes de una entrega.
+- **Cómo queda:**
+  - las 32 pruebas de `PRUITests` van en 8 recorridos, una clase cada uno en `PRUITests/Journeys/`; cada paso es una actividad con nombre que cita la prueba de antes;
+  - sólo los recorridos del cuestionario lo contestan a mano; los demás arrancan con `-PRUITestProfile intermedio-lmv` (sólo Debug y con `-PRUITestReset`): `UITestProfileSeeder` contesta con el mismo `OnboardingCoordinator` que la pantalla y el plan lo arma `planCompleted`, como al terminar;
+  - `scripts/ci.sh` compila con el simulador apagado (`build-for-testing`), lo arranca, en la E2E completa espera a que iOS termine de levantar sus servicios, corre (`test-without-building`, nunca en paralelo) y lo apaga al terminar, también si falla; lo borra sólo si iOS lo marcó con teclado físico;
+  - `PR_BUILD_JOBS=N` limita las tareas de compilación de `make ci` y de las pruebas de UI; por defecto, sin límite (medido: ningún límite mejoró);
+  - `scripts/measure_resources.sh <comando>` mide duración, carga, memoria comprimida y swap.
+
+**Criterios:**
+- [x] **1. Recorridos.** Las 32 pruebas quedan en 8 recorridos, una clase cada uno (`PRUITests/Journeys/`): cuestionario intermedio, cuestionario por experiencia (principiante y avanzado), plan pendiente, entrenamiento con cierre forzado y dolor, primer entrenamiento → Progreso → Exportar, Perfil, Hoy y domingo. La tabla de abajo dice a qué recorrido y a qué línea pasó cada comprobación; ninguna se quitó ni se debilitó.
+- [x] **2. Perfil sembrado.** `-PRUITestProfile intermedio-lmv` sólo en Debug y sólo con `-PRUITestReset`; el cuestionario lo contesta `UITestProfileSeeder` con el mismo `OnboardingCoordinator` que la pantalla y el plan lo arma `planCompleted`. Release lo ignora. Sólo los recorridos del cuestionario (y el del plan pendiente, porque "Armando tu semana" sólo sale al terminarlo) lo contestan a mano.
+- [x] **3. Equivalencia.** `UITestProfileSeederTests`: el perfil sembrado y el cuestionario contestado como en las pruebas de UI dan el mismo perfil y el mismo plan, lunes y domingo, con `LocalPersistence` real y el catálogo real.
+- [x] **4. Comandos.** `make test-ui-smoke`, `make test-ui-journey RECORRIDO="…"` (sin recompilar), `make test-ui`, `make test-ui-build` y `make test-ui-erase`.
+- [x] **5. Recursos de la Mac de desarrollo (16 GB).**
+  - Compila antes de arrancar: `build-for-testing` con el simulador apagado (verificado: sigue apagado durante la compilación); después lo arranca y corre con `test-without-building`.
+  - Borra sólo cuando hace falta. La marca es `HardwareKeyboardLastSeen = true` en `Library/Preferences/com.apple.keyboard.preferences.plist` del simulador. Se verificó antes de depender de ella:
+    - está en los dos simuladores de uso diario y no en uno limpio;
+    - puesta a mano en "PR UI Tests", el recorrido del cuestionario falla igual que SCRUM-217 (el peso no llega: "No aparece 'onboarding.option.intermediate'");
+    - con la marca, `make test-ui-journey` lo borra y el recorrido pasa;
+    - `AutomaticMinimizationEnabled` no sirve: aparece en un simulador limpio tras una corrida normal.
+  - `make test-ui-erase` lo borra a propósito.
+  - Lo apaga al terminar, también cuando una prueba falla (la corrida con la marca) y con Ctrl+C (probado).
+  - Tareas de compilación: `PR_BUILD_JOBS=N`. Medido con `make ci` desde cero: sin límite, 65 y 66 s, sin que crezca el swap; con 6, 81 s; con 4, 109 s. Ningún límite tarda igual o menos con menos swap, así que se deja sin límite, con esta medición.
+  - Un solo simulador: `-parallel-testing-enabled NO`.
+  - Además: tras arrancar, iOS tiene la CPU al 100% unos 110 s (PosterBoard, intelligenceflowd, ScreenTimeAgent…). La E2E completa espera a que se calme; el smoke y los recorridos sueltos no (`PR_UI_SETTLE` lo fuerza).
+- [x] **6. Tiempos y memoria** (MacBook Air M5, 16 GB, 2026-10-30):
+  - smoke: 2 min 48 s (≤ 4 min);
+  - completa: 7 min 8 s y 7 min 59 s, dos seguidas en verde (≤ 12 min);
+  - la carga y el swap bajan contra la línea base (tabla):
+    - carga de 1 min máxima: de 225 a 74–131;
+    - swap al terminar: de 6.2 GB a 2.8–3.7 GB, sin crecer durante la corrida;
+    - memoria comprimida máxima: de 7.1 a 6.6–6.9 GB (es el simulador mismo).
+
+| Corrida | Duración | Carga 1 min máx. | Carga 15 min máx.¹ | Comprimida máx. | Swap al empezar → al terminar |
+|---|---|---|---|---|---|
+| **Antes:** `make test-ui` (32 pruebas en una clase) | 28 min 43 s (31 de 32²) | 225 | ≈ 46 | 7.1 GB | 1.6 → 6.2 GB (máx. 6.4) |
+| `make test-ui`, corrida A | 7 min 8 s (8 de 8) | 74 | ≈ 14 | 6.6 GB | 3.2 → 2.8 GB |
+| `make test-ui`, corrida B | 7 min 59 s (8 de 8) | 117 | ≈ 21 | 6.9 GB | 2.8 → 3.7 GB |
+| `make test-ui-smoke` | 2 min 48 s (3 de 3) | 131 | ≈ 20 | 6.7 GB | 3.1 → 3.1 GB |
+| `make test-ui-erase` y el smoke | 6 min 13 s (3 de 3) | 252 | ≈ 46 | 7.0 GB | 3.6 → 3.7 GB (máx. 5.4) |
+
+¹ Reconstruida desde la de 1 min partiendo de 6 (la del antes), para comparar corridas que empezaron con distinta carga; la línea base de la historia era 24.8. ² `testPendingPlanNeverShowsRestDay` falló por su ventana de tiempo (ver Evidencia).
+Otras corridas: la E2E completa sin la espera de calma tardó 7 min 11 s con carga máxima de 337; el smoke justo después de dos arranques del simulador, 3 min 57 s con 253.
+- [x] **7. La regla** en `AGENTS.md` §4.1 y en el README (con "Cuidar la memoria al correr pruebas").
+- [x] **8. Trazabilidad.** Las referencias a pruebas de UI de este archivo y de `requirements-traceability.md` apuntan al recorrido (`Recorrido` (antes `testX`)); la trazabilidad suma la sección "Pruebas E2E por recorrido".
+
+**Prueba de antes → recorrido y línea nueva** (ninguna comprobación se quitó ni se debilitó):
+
+| Prueba de antes | Recorrido | Paso y línea nueva |
+|---|---|---|
+| `testAboutYouComesFirstAndNeedsAnAdult` | `IntermediateQuestionnaireJourney` (smoke) | Sobre ti va primero y pide un adulto — `IntermediateQuestionnaireJourney.swift:20` |
+| `testOnboardingOptionsAreInSpanish` | `IntermediateQuestionnaireJourney` (smoke) | Las opciones del objetivo están en español — `IntermediateQuestionnaireJourney.swift:48` |
+| `testSelectedOptionIsMarked` | `IntermediateQuestionnaireJourney` (smoke) | La opción elegida se ve marcada — `IntermediateQuestionnaireJourney.swift:56` |
+| `testOneTapOnAnOptionDoesNotSkipSteps` | `IntermediateQuestionnaireJourney` (smoke) | Un toque en una opción no cambia de paso — `IntermediateQuestionnaireJourney.swift:41` |
+| `testDefaultDaysAndMinutesCanAdvanceWithoutTouchingTheSteppers` | `IntermediateQuestionnaireJourney` (smoke) | Con los días por defecto se puede avanzar — `IntermediateQuestionnaireJourney.swift:65` |
+| `testChoosingDaysNeedsAtLeastTwo` | `IntermediateQuestionnaireJourney` (smoke) | Elegir días pide al menos dos — `IntermediateQuestionnaireJourney.swift:71` |
+| `testOnboardingReachesToday` | `IntermediateQuestionnaireJourney` (smoke) | El cuestionario llega a Hoy — `IntermediateQuestionnaireJourney.swift:84` |
+| `testAIConsentIsAskedAfterTheFormAndCanBeRevokedInProfile` | `IntermediateQuestionnaireJourney` (smoke) | El consentimiento de la IA se ve en Perfil y se retira — `IntermediateQuestionnaireJourney.swift:96` |
+| `testReopeningTheAppGoesStraightToToday` | `IntermediateQuestionnaireJourney` (smoke) | Al reabrir se entra directo a Hoy con el mismo plan — `IntermediateQuestionnaireJourney.swift:106` |
+| `testBeginnerFlowIsSimplerAndExplainsRIR` | `BeginnerQuestionnaireJourney` | Principiante: 7 pasos, lenguaje simple y el RIR en palabras — `BeginnerQuestionnaireJourney.swift:18` |
+| `testAdvancedFlowAsksPriorityMuscles` | `BeginnerQuestionnaireJourney` | Avanzado: el plan se arma con dos músculos prioritarios — `BeginnerQuestionnaireJourney.swift:34` |
+| `testPendingPlanNeverShowsRestDay` | `PendingPlanJourney` | Con el plan pendiente se ve la carga y nunca 'Día de descanso'; Tu semana explica el plan y que cuida el hombro; Con el plan listo, el lunes toca entrenar — `PendingPlanJourney.swift:28, 38, 45` |
+| `testRestrictionZoneIsExplainedInYourWeek` | `PendingPlanJourney` | Cuestionario con el hombro y una nota en restricciones; Tu semana explica el plan y que cuida el hombro; Con el plan listo, el lunes toca entrenar — `PendingPlanJourney.swift:24, 38, 45` |
+| `testStartShowsTheFirstSetNotABlackScreen` | `WorkoutRecoveryJourney` (smoke) | Empezar muestra la primera serie, no una pantalla negra — `WorkoutRecoveryJourney.swift:20` |
+| `testForceQuitMidWorkoutOffersToContinue` | `WorkoutRecoveryJourney` (smoke) | Un cierre forzado a la mitad ofrece continuar en la serie 4 — `WorkoutRecoveryJourney.swift:36` |
+| `testPainIsReportedDuringRestAndKeptAfterReopening` | `WorkoutRecoveryJourney` (smoke) | El dolor se reporta en el descanso y sigue al reabrir — `WorkoutRecoveryJourney.swift:61` |
+| `testDeferSkipAndResumeInWorkout` | `WorkoutRecoveryJourney` (smoke) | Dejar para después, saltar y retomar; el resumen dice qué se saltó — `WorkoutRecoveryJourney.swift:108` |
+| `testExportShowsEmptyStateBeforeAnyWorkout` | `FirstWorkoutJourney` (smoke) | Antes de entrenar, Exportar muestra el estado vacío — `FirstWorkoutJourney.swift:20` |
+| `testProgressLogsTheFirstWorkout` | `FirstWorkoutJourney` (smoke) | Progreso registra el primer entrenamiento — `FirstWorkoutJourney.swift:31` |
+| `testExportCountsTheFirstWorkout` | `FirstWorkoutJourney` (smoke) | Exportar cuenta ese entrenamiento una sola vez y ofrece JSON y CSV — `FirstWorkoutJourney.swift:55` |
+| `testRestrictionIsAddedAndResolvedFromProfile` | `ProfileJourney` | Una restricción se agrega y se resuelve desde Perfil — `ProfileJourney.swift:20` |
+| `testSignOutAsksAndKeepsThePlan` | `ProfileJourney` | Cerrar sesión pide confirmación y la misma cuenta recupera su plan — `ProfileJourney.swift:63` |
+| `testRedoQuestionnaireFromProfileOpensTheQuestionnaire` | `ProfileJourney` | Rehacer el cuestionario desde Perfil lo abre — `ProfileJourney.swift:78` |
+| `testTodayExercisesStayReachableWithSleepCheckIn` | `TodayJourney` | Con '¿Cómo dormiste?' a la vista, los ejercicios quedan a un deslizamiento — `TodayJourney.swift:22` |
+| `testTodayHasASingleActionAndSpanishTabs` | `TodayJourney` | Hoy tiene una sola acción y pestañas en español — `TodayJourney.swift:59` |
+| `testTodayListsTheExercisesOfTheSession` | `TodayJourney` | Hoy lista los ejercicios de la sesión — `TodayJourney.swift:69` |
+| `testTodaySessionHasRealisticVolume` | `TodayJourney` | La sesión de 60 min tiene volumen realista — `TodayJourney.swift:76` |
+| `testReorderTodayExercisesAndReset` | `TodayJourney` | Reordenar cambia el orden, dice que es tuyo y se restablece — `TodayJourney.swift:86` |
+| `testTodayWeekStripOpensTheDay` | `TodayJourney` | La tira de la semana abre el día tocado — `TodayJourney.swift:118` |
+| `testPlanShowsTheWeekWithRestBetweenSessions` | `TodayJourney` | Plan muestra la semana con descanso entre sesiones; sólo se empieza hoy — `TodayJourney.swift:129` |
+| `testSleepCheckInMakesTheDayLighter` | `TodayJourney` | 'Dormí mal' aligera el día, lo explica y no se vuelve a preguntar — `TodayJourney.swift:145` |
+| `testSundayIsRestDayWithoutStartButton` | `SundayJourney` | El domingo es día de descanso, sin Empezar — `SundayJourney.swift:14` |
+
+Cambios de forma, no de lo que se comprueba:
+- el recorrido intermedio acepta la IA (antes "Ahora no" en llegar a Hoy y en reabrir), porque el consentimiento se revisa ahí mismo en Perfil; en pruebas no hay IA, el plan es el mismo;
+- `testExportCountsTheFirstWorkout` cuenta después de relanzar (el entrenamiento sigue guardado; Perfil vuelve a su pantalla principal);
+- donde un paso deja la pantalla desplazada, en otra vista o con un entrenamiento a medias, el recorrido relanza (con el perfil sembrado cuesta segundos), para que cada paso empiece como empezaba su prueba.
+
+Evidencia: rama `SCRUM-228-e2e-por-recorrido`, commit `328ebc5`.
+- Línea base, antes de tocar nada: `make test` → 562 + 589 de Swift Testing y 151 de XCTest en verde.
+- `make ci` → `✔ Test run with 562 tests in 85 suites passed` + `✔ Test run with 598 tests in 103 suites passed`, y 151 de XCTest (2026-10-30). Los builds de iOS y watchOS pasaron sin warnings nuevos; el de aislamiento que traía `PRUITests.swift:29` quedó resuelto.
+- Pruebas nuevas: `UITestLaunchOptionsTests` (+5, Release incluido) y `UITestProfileSeederTests` (4; la de equivalencia corre lunes y domingo).
+- `make test-ui` dos veces seguidas: 8 de 8 y 8 de 8. `make test-ui-smoke`: 3 de 3. Después de `make test-ui-erase`, el smoke: 3 de 3.
+- Hallazgos al medir:
+  - `testPendingPlanNeverShowsRestDay` falló en la corrida de antes sin que la app hiciera nada mal: sus 3 comprobaciones tardaron 6.1 s y el plan llegaba a los 4 s. En el recorrido la demora es de 10 s, con las mismas comprobaciones.
+  - `waitForExistence` evalúa la primera vez a ~1 s aunque el elemento ya esté: en el smoke eran 114 esperas y 118 s de 248. `appears(within:)` mira primero; "no aparece en N s" sigue con `waitForExistence`.
+  - El resumen de las pruebas de UI dice el paso donde falló cada recorrido.

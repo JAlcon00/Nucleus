@@ -79,4 +79,47 @@ struct UITestLaunchOptionsTests {
         let options = UITestLaunchOptions.resolve(arguments: ["-PRFixedDate"], isDebugBuild: true)
         #expect(options.fixedDay == nil)
     }
+
+    // MARK: - Perfil sembrado (SCRUM-228)
+
+    @Test("Debug con -PRUITestReset y -PRUITestProfile intermedio-lmv arranca con ese perfil")
+    func seededProfile() {
+        let options = UITestLaunchOptions.resolve(
+            arguments: ["PR", "-PRUITestReset", "-PRUITestProfile", "intermedio-lmv"], isDebugBuild: true
+        )
+        #expect(options.seededProfile == .intermediateMondayWednesdayFriday)
+        #expect(options.isolatedPersistence)
+    }
+
+    @Test("Release ignora el perfil sembrado aunque vengan todos los argumentos")
+    func releaseIgnoresSeededProfile() {
+        let options = UITestLaunchOptions.resolve(
+            arguments: ["PR", "-PRFakeSignIn", "-PRUITestReset", "-PRUITestProfile", "intermedio-lmv"], isDebugBuild: false
+        )
+        #expect(options.seededProfile == nil)
+        #expect(options == .none)
+    }
+
+    @Test("Sin -PRUITestReset el perfil se ignora: nunca se contesta sobre los datos reales")
+    func seededProfileNeedsIsolatedPersistence() {
+        let options = UITestLaunchOptions.resolve(arguments: ["PR", "-PRUITestProfile", "intermedio-lmv"], isDebugBuild: true)
+        #expect(options.seededProfile == nil)
+        #expect(options == .none)
+    }
+
+    @Test("Un perfil desconocido o sin valor se ignora",
+          arguments: [["-PRUITestProfile", "avanzado"], ["-PRUITestProfile", ""], ["-PRUITestProfile", "INTERMEDIO-LMV"], ["-PRUITestProfile"]])
+    func unknownSeededProfileIsIgnored(profileArguments: [String]) {
+        let options = UITestLaunchOptions.resolve(arguments: ["PR", "-PRUITestReset"] + profileArguments, isDebugBuild: true)
+        #expect(options.seededProfile == nil)
+        #expect(options.isolatedPersistence)
+    }
+
+    @Test("Cada perfil sembrado se puede pedir por su nombre", arguments: UITestSeededProfile.allCases)
+    func everySeededProfileResolves(profile: UITestSeededProfile) {
+        let options = UITestLaunchOptions.resolve(
+            arguments: ["-PRUITestReset", "-PRUITestProfile", profile.rawValue], isDebugBuild: true
+        )
+        #expect(options.seededProfile == profile)
+    }
 }

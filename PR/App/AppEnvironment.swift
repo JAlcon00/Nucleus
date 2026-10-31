@@ -50,6 +50,11 @@ public final class AppEnvironment {
     public func startIfNeeded() async {
         if demoData { await seedDemoDataIfNeeded() }
         await session.start(autoSignIn: authMode.signsInAutomatically)
+        // SCRUM-228: con `-PRUITestProfile` el cuestionario se contesta solo; el plan lo arma
+        // la activación de siempre, como al terminarlo. Con un plan guardado no toca nada.
+        if let uiTestSeededProfile {
+            UITestProfileSeeder(profile: uiTestSeededProfile).answer(onboarding: onboarding, aiConsent: aiConsent)
+        }
     }
 
     /// SCRUM-188: ¿arrancó en modo demo? Sólo Debug con `-PRDemoData`; usa su propio
@@ -173,6 +178,10 @@ public final class AppEnvironment {
 
     /// Demora de la activación del plan para las pruebas de UI (sólo Debug, SCRUM-193).
     public let uiTestPlanDelay: Duration?
+
+    /// Perfil con el que se contesta solo el cuestionario en las pruebas de UI (sólo Debug y
+    /// con datos temporales, SCRUM-228); `nil` = a mano.
+    private let uiTestSeededProfile: UITestSeededProfile?
 
     /// Entrenamiento vivo (retomado tras un cierre o empezado ahora). `nil` si no hay ninguno.
     /// Hoy muestra "Continuar" mientras exista y no haya terminado (SCRUM-24).
@@ -333,6 +342,7 @@ public final class AppEnvironment {
         let fixedDate = testOptions.fixedDate(timeZone: .current)
         self.fixedDate = fixedDate
         self.uiTestPlanDelay = testOptions.planDelay
+        self.uiTestSeededProfile = testOptions.seededProfile
         let aiConnection: AIConnection
         if testOptions.isolatedPersistence {
             aiConnection = AIConnection(status: .offline(.uiTesting), provider: OfflineLLMProvider())

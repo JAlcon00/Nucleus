@@ -14,6 +14,10 @@
 //    REUTILIZA al relanzar la app (para probar que cierra y reabre recordando el plan).
 //  - `-PRUITestPlanDelay <segundos>` (1…10): demora la activación del plan para probar que,
 //    mientras está pendiente, nunca se muestra "Día de descanso" (SCRUM-193).
+//  - `-PRUITestProfile <perfil>` (SCRUM-228; p. ej. `intermedio-lmv`): arranca con el
+//    cuestionario ya contestado con ese perfil (`UITestProfileSeeder`), para que sólo los
+//    recorridos del cuestionario lo contesten a mano. Sólo junto con `-PRUITestReset`: nunca
+//    sobre los datos reales. Un perfil desconocido se ignora.
 //  La decisión es pura y testeable; la app sólo pasa sus argumentos y si es Debug.
 //
 
@@ -24,6 +28,7 @@ public struct UITestLaunchOptions: Equatable, Sendable {
     public static let fixedDateArgument = "-PRFixedDate"
     public static let storeIDArgument = "-PRUITestStoreID"
     public static let planDelayArgument = "-PRUITestPlanDelay"
+    public static let profileArgument = "-PRUITestProfile"
     /// Demoras aceptadas, en segundos (fuera de este rango se ignora).
     public static let allowedPlanDelaySeconds: ClosedRange<Int> = 1...10
 
@@ -36,17 +41,21 @@ public struct UITestLaunchOptions: Equatable, Sendable {
     public let storeID: String?
     /// Demora artificial de la activación del plan (sólo pruebas de UI); `nil` = ninguna.
     public let planDelay: Duration?
+    /// Perfil con el que el cuestionario se contesta solo; `nil` = se contesta a mano.
+    public let seededProfile: UITestSeededProfile?
 
     public init(
         isolatedPersistence: Bool = false,
         fixedDay: DateComponents? = nil,
         storeID: String? = nil,
-        planDelay: Duration? = nil
+        planDelay: Duration? = nil,
+        seededProfile: UITestSeededProfile? = nil
     ) {
         self.isolatedPersistence = isolatedPersistence
         self.fixedDay = fixedDay
         self.storeID = storeID
         self.planDelay = planDelay
+        self.seededProfile = seededProfile
     }
 
     /// Nombre del directorio temporal aislado: estable con `storeID`, nuevo si no hay.
@@ -61,11 +70,14 @@ public struct UITestLaunchOptions: Equatable, Sendable {
     /// inexistente (p. ej. 2026-02-30) se ignora: nunca se inventa un día.
     public static func resolve(arguments: [String], isDebugBuild: Bool) -> UITestLaunchOptions {
         guard isDebugBuild else { return .none }
+        let isolated = arguments.contains(resetArgument)
         return UITestLaunchOptions(
-            isolatedPersistence: arguments.contains(resetArgument),
+            isolatedPersistence: isolated,
             fixedDay: fixedDay(in: arguments),
             storeID: storeID(in: arguments),
-            planDelay: planDelay(in: arguments)
+            planDelay: planDelay(in: arguments),
+            // Sin datos temporales el perfil se ignora: nunca se contesta sobre los reales.
+            seededProfile: isolated ? seededProfile(in: arguments) : nil
         )
     }
 
@@ -92,6 +104,13 @@ public struct UITestLaunchOptions: Equatable, Sendable {
               let seconds = Int(arguments[index + 1]),
               allowedPlanDelaySeconds.contains(seconds) else { return nil }
         return .seconds(seconds)
+    }
+
+    /// Uno de los perfiles conocidos; cualquier otro valor se ignora.
+    private static func seededProfile(in arguments: [String]) -> UITestSeededProfile? {
+        guard let index = arguments.firstIndex(of: profileArgument),
+              arguments.indices.contains(index + 1) else { return nil }
+        return UITestSeededProfile(rawValue: arguments[index + 1])
     }
 
     /// Sólo letras, números y guiones: nunca una ruta.
