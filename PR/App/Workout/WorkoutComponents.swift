@@ -6,11 +6,13 @@
 //
 //  Componentes reutilizables del modo entrenamiento (SKILL §73): `PrimaryActionButton`
 //  (botón primario grande), `SetInputControl` (peso/reps con [−] [+] y edición táctil,
-//  SKILL §11/§12) y `RestTimerView` (descanso con skip/+30, SKILL §41). Vistas puras:
-//  renderizan estado y envían intents; no contienen reglas de negocio.
+//  SKILL §11/§12), `RestTimerView` (descanso con skip/+30, SKILL §41) y `SupersetTag`
+//  (la serie va en superset, SCRUM-224). Vistas puras: renderizan estado y envían
+//  intents; no contienen reglas de negocio.
 //
 
 import SwiftUI
+import PRCore
 
 // MARK: - PrimaryActionButton (SKILL §73)
 
@@ -209,6 +211,30 @@ struct RestTimerView: View {
     }
 }
 
+// MARK: - SupersetTag (SCRUM-224)
+
+/// La serie va en superset: de qué lado del par (A1/A2) y con quién se alterna. El ícono y
+/// el texto dicen lo mismo, así el color nunca va solo (primaryAction mide 5.51:1 sobre el
+/// fondo oscuro y 5.09:1 sobre el claro).
+struct SupersetTag: View {
+    let superset: ActiveSupersetUI
+
+    var body: some View {
+        VStack(spacing: DSpace.xs) {
+            Label(superset.isFirst ? "SUPERSET · A1" : "SUPERSET · A2", systemImage: "arrow.left.arrow.right")
+                .eyebrowStyle()
+                .foregroundStyle(Color.primaryAction)
+            Text("Alterna con \(superset.partnerName); descansas después de los dos.")
+                .font(.subheadline)
+                .foregroundStyle(Color.textSecondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("workout.superset")
+    }
+}
+
 // MARK: - Previews
 
 #Preview("Botón primario") {
@@ -238,4 +264,20 @@ struct RestTimerView: View {
         .padding()
         .screenBackground()
         .ironEnergyTheme()
+}
+
+#Preview("Superset · A1") {
+    SupersetTag(superset: ActiveSupersetUI(isFirst: true, partnerName: "Extensión de tríceps en polea"))
+        .padding()
+        .screenBackground()
+        .ironEnergyTheme()
+}
+
+#Preview("Superset · A2 · oscuro · accessibility3") {
+    SupersetTag(superset: ActiveSupersetUI(isFirst: false, partnerName: "Curl con barra"))
+        .padding()
+        .screenBackground()
+        .dynamicTypeSize(.accessibility3)
+        .ironEnergyTheme()
+        .preferredColorScheme(.dark)
 }

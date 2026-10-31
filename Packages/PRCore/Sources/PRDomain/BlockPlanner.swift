@@ -289,6 +289,16 @@ public struct BlockPlanner: Sendable {
         var maintenanceLeftOut: [MuscleGroup.ID] = []
         var overRange: [String] = []
         var overTime: [String] = []
+        /// Pares que van en superset para caber en el tiempo (SCRUM-224), como "A + B" con
+        /// los nombres del catálogo, sin repetir.
+        var supersets: [String] = []
+    }
+
+    /// Cómo quedó una sesión al componerla (SCRUM-218, SCRUM-224).
+    private struct CompositionOutcome {
+        var overRange = false
+        var overTime = false
+        var supersets: [SupersetPair] = []
     }
 
     /// Construye UNA plantilla por día de entrenamiento (N días ⇒ N sesiones):
@@ -369,6 +379,7 @@ public struct BlockPlanner: Sendable {
             )
             var exercises = ordered
             let rx = try prescription(for: input.goal, isAnchor: false)
+            var supersets: [SupersetPair] = []
             if let minutes = input.sessionMinutes {
                 let outcome = compose(
                     &exercises, minutes: minutes, goal: input.goal,
@@ -376,6 +387,12 @@ public struct BlockPlanner: Sendable {
                 )
                 if outcome.overRange { notes.overRange.append(day.title) }
                 if outcome.overTime { notes.overTime.append(day.title) }
+                supersets = outcome.supersets
+                for pair in supersets {
+                    let names = [pair.first, pair.second].map { catalog[$0]?.canonicalName ?? $0.rawValue.uuidString }
+                    let fact = names.joined(separator: " + ")
+                    if !notes.supersets.contains(fact) { notes.supersets.append(fact) }
+                }
             }
             // "¿Por qué este orden?" sólo con lo que quedó, en su posición final.
             let explanation = keeping(exercises, in: fullOrder)
@@ -388,7 +405,9 @@ public struct BlockPlanner: Sendable {
                     plannedSets.append(PlannedSet(exerciseID: item.exercise.id, prescription: exerciseRx))
                 }
             }
-            sessions.append(SessionTemplate(title: day.title, plannedSets: plannedSets))
+            sessions.append(SessionTemplate(
+                title: day.title, plannedSets: plannedSets, supersets: supersets.isEmpty ? nil : supersets
+            ))
             orderExplanations.append(explanation)
             for item in exercises { programmed.formUnion(item.muscles) }
         }
@@ -511,11 +530,11 @@ public struct BlockPlanner: Sendable {
     ///    protegido y, al final, lo de mantenimiento; sus series pasan a otro ejercicio de la
     ///    sesión del mismo músculo.
     /// 2. Tiempo, en este orden: quitar aislamientos no protegidos que no son de
-    ///    mantenimiento; bajar series hasta el mínimo (3 en un ancla compuesta con objetivo
-    ///    fuerza, 2 en lo demás); quitar los aislamientos de mantenimiento; sólo entonces
-    ///    quitar otro ejercicio no protegido.
-    /// Los supersets (`CompatibleSuperset`) no se aplican aquí: la sesión guardada todavía no
-    /// tiene cómo representarlos.
+    ///    mantenimiento; juntar pares compatibles en superset (SCRUM-224); bajar series hasta
+    ///    el mínimo (3 en un ancla compuesta con objetivo fuerza, 2 en lo demás); quitar los
+    ///    aislamientos de mantenimiento; sólo entonces quitar otro ejercicio no protegido.
+    /// Un superset junta dos ejercicios sin músculos en común (`SupersetPairing`), nunca un
+    /// ancla compuesta, y sólo si hace falta para caber; el segundo pasa a ir junto al primero.
     private func compose(
         _ exercises: inout [DayExercise],
         minutes: Int,
@@ -523,7 +542,7 @@ public struct BlockPlanner: Sendable {
         priorityMuscles: Set<MuscleGroup.ID>,
         maintenanceMuscles: Set<MuscleGroup.ID>,
         prescription: SetPrescription
-    ) -> (overRange: Bool, overTime: Bool) {
+    ) -> CompositionOutcome {
         func isProtected(_ item: DayExercise) -> Bool {
             (item.isAnchor && item.isCompound) || !item.muscles.isDisjoint(with: priorityMuscles)
         }
@@ -535,11 +554,37 @@ public struct BlockPlanner: Sendable {
                 ? compositionRule.strengthAnchorMinimumSets
                 : compositionRule.minimumWorkSets
         }
+        var pairs: [SupersetPair] = []
+        /// Los pares cuyos dos ejercicios siguen en la sesión.
+        func livePairs() -> [SupersetPair] {
+            let present = Set(exercises.map(\.exercise.id))
+            return pairs.filter { present.contains($0.first) && present.contains($0.second) }
+        }
         func fits() -> Bool {
             let sets = exercises.flatMap { item in
                 Array(repeating: PlannedSet(exerciseID: item.exercise.id, prescription: prescription), count: item.sets)
             }
-            return durationEstimator.estimate(plannedSets: sets) <= minutes * 60
+            return durationEstimator.estimate(plannedSets: sets, supersets: livePairs()) <= minutes * 60
+        }
+        /// Junta el siguiente par compatible (ni anclas compuestas ni ejercicios ya en un par)
+        /// y pone al segundo justo después del primero. `false` si ya no hay ninguno.
+        func joinNextSuperset() -> Bool {
+            let paired = Set(pairs.flatMap { [$0.first, $0.second] })
+            let candidates = exercises.indices.filter { index in
+                let item = exercises[index]
+                return !(item.isAnchor && item.isCompound) && !paired.contains(item.exercise.id)
+            }
+            guard let match = SupersetPairing.firstPair(among: candidates, compatible: { first, second in
+                SupersetPairing.areCompatible(exercises[first].exercise, exercises[second].exercise)
+            }) else { return false }
+            let firstIndex = candidates[match.first]
+            let second = exercises.remove(at: candidates[match.second])
+            exercises.insert(second, at: firstIndex + 1)
+            guard let pair = SupersetPair(first: exercises[firstIndex].exercise.id, second: second.exercise.id) else {
+                return false
+            }
+            pairs.append(pair)
+            return true
         }
         /// El último ejercicio no protegido que se puede quitar; con `sparingMaintenance`,
         /// sin contar lo de mantenimiento.
@@ -571,6 +616,7 @@ public struct BlockPlanner: Sendable {
         while !fits(), let index = lastRemovable(isolationOnly: true, sparingMaintenance: true) {
             exercises.remove(at: index)
         }
+        while !fits(), joinNextSuperset() {}
         while !fits(), let index = exercises.lastIndex(where: { $0.sets > minimumSets($0) }) {
             exercises[index].sets -= 1
         }
@@ -580,7 +626,15 @@ public struct BlockPlanner: Sendable {
         while !fits(), let index = lastRemovable(isolationOnly: false) {
             exercises.remove(at: index)
         }
-        return (overRange, !fits())
+        // Un par que con lo que quedó ya no hace falta (bajar una serie pudo dejar holgura) se
+        // deshace, del último al primero: superset sólo cuando hace falta.
+        if fits() {
+            for pair in pairs.reversed() {
+                pairs.removeAll { $0 == pair }
+                if !fits() { pairs.append(pair) }
+            }
+        }
+        return CompositionOutcome(overRange: overRange, overTime: !fits(), supersets: livePairs())
     }
 
     /// Los días de entrenamiento de la semana: N sesiones, cada una con su título y músculos.
@@ -748,6 +802,10 @@ public struct BlockPlanner: Sendable {
         }
         if !composition.overTime.isEmpty {
             facts.append(DecisionFact(key: "sessionsOverTime", value: composition.overTime.joined(separator: ", ")))
+        }
+        // SCRUM-224: un hecho por par que va en superset para caber en el tiempo ("A + B").
+        for pair in composition.supersets {
+            facts.append(DecisionFact(key: "superset", value: pair))
         }
         // SCRUM-215: pantorrilla o core que no cupieron en la semana con los minutos del usuario.
         if !composition.maintenanceLeftOut.isEmpty {

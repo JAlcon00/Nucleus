@@ -166,7 +166,9 @@ public struct BlockTransitionEngine: Sendable {
                 keptSets.append(planned)
             }
             guard !keptSets.isEmpty else { continue }
-            sessions.append(SessionTemplate(title: session.title, plannedSets: keptSets))
+            // SCRUM-224: los supersets viajan con la sesión; uno con un ejercicio que no se
+            // lleva queda fuera solo (`supersetPairs`).
+            sessions.append(SessionTemplate(title: session.title, plannedSets: keptSets, supersets: session.supersets))
         }
 
         let muscleTargets = try priorityMuscles.map { muscle in

@@ -225,6 +225,19 @@ struct UITestProfileSeederTests {
         #expect(!app.aiConsent.needsDecision, "Ya contestó la IA: no se vuelve a preguntar")
     }
 
+    @Test("SCRUM-224: el perfil con brazos y 30 min trae supersets el lunes (lo usa el recorrido del superset)")
+    func armsProfileHasSupersetsOnMonday() async throws {
+        let app = try AppInstance(root: try makeRoot(), day: .monday)
+        await app.session.start(autoSignIn: true)
+        let outcome = UITestProfileSeeder(profile: .intermediateArmsThirtyMinutes).answer(onboarding: app.onboarding, aiConsent: app.aiConsent)
+        let profile = try #require(app.completedProfile, "\(outcome)")
+        #expect(profile.usualSessionMinutes == 30)
+        #expect(Set(profile.priorityMuscles) == [.biceps, .triceps])
+        #expect(await app.session.planCompleted(profile: profile))
+        let today = try #require(app.todayPlan.plan?.todayTemplate, "El lunes toca entrenar")
+        #expect(!today.supersetPairs.isEmpty, "El lunes debe llevar al menos un superset")
+    }
+
     @Test("Al reabrir con un plan guardado no contesta nada: se respeta lo guardado")
     func savedPlanIsNotAnsweredAgain() async throws {
         let root = try makeRoot()

@@ -291,6 +291,43 @@ public struct PlannedSet: Codable, Sendable, Hashable {
     }
 }
 
+/// Dos ejercicios que se hacen alternados en superset (SCRUM-224): una serie de `first`, una
+/// de `second` y el descanso después de la ronda. Siempre son dos ejercicios distintos.
+public struct SupersetPair: Codable, Sendable, Hashable {
+    public let first: ExerciseID
+    public let second: ExerciseID
+
+    /// `nil` si es el mismo ejercicio: no hay superset de uno solo.
+    public init?(first: ExerciseID, second: ExerciseID) {
+        guard first != second else { return nil }
+        self.first = first
+        self.second = second
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let first = try container.decode(ExerciseID.self, forKey: .first)
+        let second = try container.decode(ExerciseID.self, forKey: .second)
+        guard let pair = SupersetPair(first: first, second: second) else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .second, in: container, debugDescription: "Un superset necesita dos ejercicios distintos."
+            )
+        }
+        self = pair
+    }
+
+    public func contains(_ exercise: ExerciseID) -> Bool {
+        first == exercise || second == exercise
+    }
+
+    /// El otro ejercicio del par; `nil` si `exercise` no está en él.
+    public func partner(of exercise: ExerciseID) -> ExerciseID? {
+        if exercise == first { return second }
+        if exercise == second { return first }
+        return nil
+    }
+}
+
 /// Template de sesión: lo planeado. Inmutable respecto a lo realizado.
 public struct SessionTemplate: Identifiable, Codable, Sendable, Hashable {
     public typealias ID = UUID
@@ -299,17 +336,42 @@ public struct SessionTemplate: Identifiable, Codable, Sendable, Hashable {
     public var title: String
     public var plannedSets: [PlannedSet]
     public var estimatedMinutes: ClosedRange<Int>?
+    /// Pares en superset (SCRUM-224). Campo opcional (ADR-0003): una plantilla guardada sin
+    /// él se lee sin supersets. Para usarlos, `supersetPairs`, que descarta los inválidos.
+    public var supersets: [SupersetPair]?
 
     public init(
         id: UUID = UUID(),
         title: String,
         plannedSets: [PlannedSet],
-        estimatedMinutes: ClosedRange<Int>? = nil
+        estimatedMinutes: ClosedRange<Int>? = nil,
+        supersets: [SupersetPair]? = nil
     ) {
         self.id = id
         self.title = title
         self.plannedSets = plannedSets
         self.estimatedMinutes = estimatedMinutes
+        self.supersets = supersets
+    }
+
+    /// Los pares que valen: sus dos ejercicios están en la sesión y ninguno se repite en
+    /// otro par. Un par que no cumple (p. ej. tras quitar un ejercicio) se ignora: esos
+    /// ejercicios se hacen solos, sin perder series.
+    public var supersetPairs: [SupersetPair] {
+        guard let supersets, !supersets.isEmpty else { return [] }
+        let exercises = Set(plannedSets.map(\.exerciseID))
+        var used: Set<ExerciseID> = []
+        return supersets.filter { pair in
+            guard exercises.contains(pair.first), exercises.contains(pair.second),
+                  !used.contains(pair.first), !used.contains(pair.second) else { return false }
+            used.formUnion([pair.first, pair.second])
+            return true
+        }
+    }
+
+    /// El par en el que va el ejercicio, si va en superset.
+    public func superset(containing exercise: ExerciseID) -> SupersetPair? {
+        supersetPairs.first { $0.contains(exercise) }
     }
 }
 

@@ -55,9 +55,19 @@ public struct SessionTimePresenter: Sendable {
                     "Ajuste de tiempo: se redujeron series de accesorios"
                 )
             case (true, true):
+                // SCRUM-224: sólo se juntaron ejercicios en superset.
+                let pairs = adjustment.joined.map { pair in
+                    resource("\(displayName(pair.first, name)) con \(displayName(pair.second, name))", "Superset: un ejercicio con su pareja")
+                }
+                guard !pairs.isEmpty else {
+                    return resource(
+                        "Ajustamos la sesión para caber en \(budget) min; los ejercicios principales se quedan.",
+                        "Ajuste de tiempo: cambio sin ejercicios quitados ni reducidos"
+                    )
+                }
                 return resource(
-                    "Ajustamos la sesión para caber en \(budget) min; los ejercicios principales se quedan.",
-                    "Ajuste de tiempo: cambio sin ejercicios quitados ni reducidos"
+                    "Para caber en \(budget) min haces \(list(pairs)) en superset; no quitamos nada.",
+                    "Ajuste de tiempo: sólo se juntaron ejercicios en superset"
                 )
             }
         case .doesNotFit(let needed, _, _):

@@ -16,6 +16,19 @@ import Foundation
 import Observation
 import PRDomain
 
+/// La serie actual va en superset (SCRUM-224): con quién y en qué lado del par.
+public struct ActiveSupersetUI: Equatable, Sendable {
+    /// ¿Es el primero del par (A1)? Si no, el segundo (A2).
+    public let isFirst: Bool
+    /// Nombre de la pareja.
+    public let partnerName: String
+
+    public init(isFirst: Bool, partnerName: String) {
+        self.isFirst = isFirst
+        self.partnerName = partnerName
+    }
+}
+
 /// Modelo de presentación del set actual que la UI renderiza (sin reglas de negocio).
 public struct ActiveWorkoutSetUI: Equatable, Sendable {
     /// Índice del set dentro de `plannedSets` de la plantilla (0-based).
@@ -35,6 +48,8 @@ public struct ActiveWorkoutSetUI: Equatable, Sendable {
     /// Número de esta serie entre las de la sesión ("Serie X de Y"): hechas + 1. Con
     /// ejercicios en espera no coincide con `index` (SCRUM-212).
     public let position: Int
+    /// Si va en superset con su pareja todavía junta (SCRUM-224); `nil` si va solo.
+    public let superset: ActiveSupersetUI?
 
     public init(
         index: Int,
@@ -44,7 +59,8 @@ public struct ActiveWorkoutSetUI: Equatable, Sendable {
         draft: SetCompletionDraft,
         targetRIR: ClosedRange<Int>? = nil,
         dropset: DropsetAdvice? = nil,
-        position: Int? = nil
+        position: Int? = nil,
+        superset: ActiveSupersetUI? = nil
     ) {
         self.index = index
         self.total = total
@@ -54,6 +70,7 @@ public struct ActiveWorkoutSetUI: Equatable, Sendable {
         self.targetRIR = targetRIR
         self.dropset = dropset
         self.position = position ?? index + 1
+        self.superset = superset
     }
 }
 
@@ -311,6 +328,15 @@ extension WorkoutSessionCoordinator {
             let done = session.sets.filter { $0.exerciseID == exercise }.count
             return total + max(0, planned - done)
         }
+        // SCRUM-224: el par sólo se muestra mientras los dos sigan juntos en la cola.
+        let superset: ActiveSupersetUI? = template.superset(containing: planned.exerciseID).flatMap { pair in
+            guard WorkoutQueue.isTogether(pair, state: session.queue ?? .empty),
+                  let partner = pair.partner(of: planned.exerciseID) else { return nil }
+            return ActiveSupersetUI(
+                isFirst: pair.first == planned.exerciseID,
+                partnerName: exerciseNames[partner] ?? exerciseFallbackName(partner)
+            )
+        }
         return ActiveWorkoutSetUI(
             index: index,
             total: template.plannedSets.count - skippedPending,
@@ -319,7 +345,8 @@ extension WorkoutSessionCoordinator {
             draft: draft,
             targetRIR: isWarmup ? nil : planned.prescription.targetRIR,
             dropset: isLastWorkSet ? dropsetAdvice[planned.exerciseID] : nil,
-            position: session.sets.count + 1
+            position: session.sets.count + 1,
+            superset: superset
         )
     }
 
@@ -450,7 +477,11 @@ extension WorkoutSessionCoordinator {
         let hasNext = WorkoutQueue.nextPlannedIndex(
             template: template, sets: updated.sets, state: updated.queue ?? .empty
         ) != nil
-        let nextRest = hasNext
+        // SCRUM-224: a mitad de la ronda del superset (A → B) no hay descanso.
+        let midRound = WorkoutQueue.continuesSupersetRound(
+            after: planned.exerciseID, template: template, sets: updated.sets, state: updated.queue ?? .empty
+        )
+        let nextRest = hasNext && !midRound
             ? restTimer.autoStart(
                 afterCompletedWarmup: planned.prescription.isWarmup,
                 prescription: planned.prescription,

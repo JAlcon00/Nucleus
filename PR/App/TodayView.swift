@@ -60,6 +60,8 @@ struct TodayView: View {
     var timeNote: String?
     var timeFits = true
     var timeRemovedExercises = false
+    /// SCRUM-224: qué va hoy en superset y por qué (ya traducido); `nil` si nada.
+    var supersetNote: String?
     /// Intento: ajustar la sesión a esos minutos (`nil` = quitar el ajuste).
     var onChooseTime: (Int?) -> Void = { _ in }
     @Environment(\.sessionOrderActions) private var orderActions
@@ -354,6 +356,9 @@ struct TodayView: View {
             if let timeNote {
                 timeNoteCard(timeNote)
             }
+            if let supersetNote {
+                supersetNoteCard(supersetNote)
+            }
             exerciseList
         }
     }
@@ -485,6 +490,23 @@ struct TodayView: View {
         .cardSurface(cornerRadius: DRadius.medium)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("today.timeNote")
+    }
+
+    /// SCRUM-224: qué ejercicios van hoy alternados (superset) y por qué. Informativa: el
+    /// ícono acompaña al texto.
+    private func supersetNoteCard(_ note: String) -> some View {
+        Label {
+            Text(note).fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: "arrow.left.arrow.right")
+                .foregroundStyle(Color.primaryAction)
+        }
+        .font(.callout)
+        .padding(DSpace.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardSurface(cornerRadius: DRadius.medium)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("today.superset")
     }
 
     private func sessionSummary(_ presentation: SessionPresentation) -> some View {
@@ -712,6 +734,30 @@ private struct TodayWeekPreview: View {
         timeRemovedExercises: true
     )
     .ironEnergyTheme()
+}
+
+#Preview("Con superset · claro y accessibility3") {
+    TodayView(
+        screen: .ready(.readyToStart(previewPresentation)),
+        onStart: {},
+        onResume: {},
+        timeBudget: 30,
+        timeNote: "Para caber en 30 min haces Curl martillo con Extensión de tríceps en superset; no quitamos nada.",
+        supersetNote: "Hoy va en superset Curl martillo con Extensión de tríceps: una serie de cada uno y luego descansas, para que tu sesión quepa en tu tiempo."
+    )
+    .ironEnergyTheme()
+    .dynamicTypeSize(.accessibility3)
+}
+
+#Preview("Con superset · oscuro") {
+    TodayView(
+        screen: .ready(.readyToStart(previewPresentation)),
+        onStart: {},
+        onResume: {},
+        supersetNote: "Hoy va en superset Curl martillo con Extensión de tríceps: una serie de cada uno y luego descansas, para que tu sesión quepa en tu tiempo."
+    )
+    .ironEnergyTheme()
+    .preferredColorScheme(.dark)
 }
 
 #Preview("No cabe en 30 min · oscuro") {

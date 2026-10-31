@@ -367,7 +367,8 @@ public struct DeloadEngine: Sendable {
             id: session.id,
             title: session.title,
             plannedSets: mutated,
-            estimatedMinutes: session.estimatedMinutes
+            estimatedMinutes: session.estimatedMinutes,
+            supersets: session.supersets
         )
     }
 }

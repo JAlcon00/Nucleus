@@ -457,7 +457,7 @@ cada fase quedan en `.ci/` (ignorados por git).
 
 ```bash
 make test-ui-smoke   # 3 recorridos, ~3 min: al cerrar cada historia
-make test-ui         # los 8 recorridos, ~7–8 min: al cerrar una fase o antes de una entrega
+make test-ui         # los 9 recorridos, ~8 min: al cerrar una fase o antes de una entrega
 make test-ui-journey RECORRIDO="TodayJourney ProfileJourney"   # los elegidos, sin recompilar
 make test-ui-build   # sólo compila las pruebas de UI (con el simulador apagado)
 make test-ui-erase   # borra el simulador de pruebas a propósito
@@ -480,6 +480,7 @@ la E2E completa, al cerrar una fase o antes de una entrega.
   | `ProfileJourney` | Restricción agregada y resuelta, cerrar sesión, rehacer el cuestionario | |
   | `TodayJourney` | Hoy con "¿Cómo dormiste?", pestañas, volumen, reordenar, la semana, "Dormí mal" | |
   | `SundayJourney` | El domingo es descanso | |
+  | `SupersetJourney` | Superset en Hoy y en "Por qué tu plan"; una ronda A1 → A2 → descanso (SCRUM-224) | |
 
 - **Perfil sembrado.** Sólo los recorridos del cuestionario lo contestan a mano. Los demás
   arrancan con `-PRUITestProfile intermedio-lmv` (sólo Debug y sólo con `-PRUITestReset`): la
