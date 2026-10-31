@@ -440,6 +440,9 @@ Notas de entorno:
   `swift test --scratch-path "$TMPDIR/prcore-build"` para evitar el error de codesign
   *"resource fork, Finder information, or similar detritus not allowed"*.
 - Sin runtime de Simulator instalado, los builds usan `generic/platform=... Simulator`.
+- Tareas de compilación a la vez (SCRUM-228): `PR_BUILD_JOBS=N make ci` las limita. Por
+  defecto no hay límite: se midió y ningún límite mejoró (ver "Cuidar la memoria al correr
+  pruebas").
 
 También se puede invocar el script directamente (misma función, logs en `.ci/`):
 
@@ -450,29 +453,105 @@ También se puede invocar el script directamente (misma función, logs en `.ci/`
 Cualquier gate que falle hace fallar el pipeline (exit != 0). Los logs reproducibles de
 cada fase quedan en `.ci/` (ignorados por git).
 
-## Pruebas de UI (SCRUM-217)
+## Pruebas de UI por recorrido (SCRUM-217, SCRUM-228)
 
 ```bash
-make test-ui     # las pruebas de PRUITests en el simulador (~20 min; fuera de make ci)
+make test-ui-smoke   # 3 recorridos, ~3 min: al cerrar cada historia
+make test-ui         # los 8 recorridos, ~7–8 min: al cerrar una fase o antes de una entrega
+make test-ui-journey RECORRIDO="TodayJourney ProfileJourney"   # los elegidos, sin recompilar
+make test-ui-build   # sólo compila las pruebas de UI (con el simulador apagado)
+make test-ui-erase   # borra el simulador de pruebas a propósito
 ```
 
-- **Simulador propio.** Corren en un simulador llamado `PR UI Tests`, un iPhone que el
-  script crea la primera vez y que **borra y arranca limpio en cada corrida**. No lo uses
-  para otra cosa: sus datos se pierden en cada corrida.
-- **Teclado físico.** Un simulador que alguna vez "vio" un teclado físico minimiza el
-  teclado en pantalla, y el texto que escriben las pruebas no llega. Así fallaban todas
-  en "Sobre ti": el peso no llegaba y "Continuar" seguía deshabilitado. El simulador
-  propio y limpio lo evita. Si usas otro con `PR_UI_SIMULATOR=<udid> make test-ui`, en
-  Simulator.app desactiva *I/O › Keyboard › Connect Hardware Keyboard*.
-- **Resultado.** Al terminar se imprime cada prueba con OK/FAIL y su duración. El detalle
-  queda en `.ci/test-ui.log` y en `.ci/test-ui.xcresult`, que se abre con Xcode.
-- **Si se cuelga.** `make test-ui` pasa `-collect-test-diagnostics never`: antes, cuando
-  una prueba fallaba, `xcodebuild` se quedaba esperando a `simctl diagnose` y no
-  terminaba. Si aun así se queda colgado, detén `xcodebuild` (Ctrl+C), apaga el simulador
-  con `xcrun simctl shutdown "PR UI Tests"` y vuelve a correr `make test-ui`, que lo
-  arranca limpio.
-- **Desde Xcode.** *Product › Test* sobre `PRUITests` sigue funcionando con cualquier
-  simulador. Si las pruebas fallan en "Sobre ti", revisa el teclado físico como arriba.
+Qué correr y cuándo está en [`AGENTS.md`](./AGENTS.md) §4.1: mientras programas, `make test`
+(todas las unitarias); al cerrar cada historia, `make ci`, el smoke y los recorridos que toca;
+la E2E completa, al cerrar una fase o antes de una entrega.
+
+- **Recorridos.** Cada uno es una clase de `PRUITests/Journeys/` y se puede correr solo. Cada
+  paso es una actividad con nombre: si algo falla, el resultado dice en qué paso.
+
+  | Recorrido | Qué recorre | Smoke |
+  |---|---|---|
+  | `IntermediateQuestionnaireJourney` | Sobre ti, cuestionario intermedio a mano, consentimiento de la IA en Perfil, reabrir | ✔ |
+  | `BeginnerQuestionnaireJourney` | Cuestionario de principiante (RIR en palabras) y de avanzado (prioritarios) | |
+  | `PendingPlanJourney` | "Armando tu semana" sin "Día de descanso"; "Tu semana" explica el hombro | |
+  | `WorkoutRecoveryJourney` | Primera serie, cierre forzado y continuar, dolor que sigue al reabrir, saltar y retomar | ✔ |
+  | `FirstWorkoutJourney` | Exportar y Progreso vacíos, primer entrenamiento, Progreso y Exportar con esa sesión | ✔ |
+  | `ProfileJourney` | Restricción agregada y resuelta, cerrar sesión, rehacer el cuestionario | |
+  | `TodayJourney` | Hoy con "¿Cómo dormiste?", pestañas, volumen, reordenar, la semana, "Dormí mal" | |
+  | `SundayJourney` | El domingo es descanso | |
+
+- **Perfil sembrado.** Sólo los recorridos del cuestionario lo contestan a mano. Los demás
+  arrancan con `-PRUITestProfile intermedio-lmv` (sólo Debug y sólo con `-PRUITestReset`): la
+  app contesta sola el cuestionario con el mismo coordinador que la pantalla y arma el plan
+  igual que al terminarlo. `UITestProfileSeederTests` (en `make ci`) comprueba que da el mismo
+  perfil y el mismo plan que contestarlo a mano.
+- **Simulador propio.** Corren en `PR UI Tests`, un iPhone que el script crea la primera vez.
+  No lo uses para otra cosa. `PR_UI_SIMULATOR=<udid> make test-ui` usa otro tal cual (nunca lo
+  borra; si ya estaba arrancado, lo deja arrancado).
+- **Teclado físico.** Un simulador que alguna vez "vio" un teclado físico minimiza el teclado
+  en pantalla y el texto que escriben las pruebas no llega (así fallaban todas en "Sobre ti").
+  iOS lo marca con `HardwareKeyboardLastSeen = true` en
+  `Library/Preferences/com.apple.keyboard.preferences.plist` de los datos del simulador. El
+  script lo borra sólo si tiene esa marca; si no, lo reutiliza (arranca mucho más rápido que
+  uno recién borrado). Verificado: con la marca puesta a mano, el recorrido del cuestionario
+  falla igual que en SCRUM-217, y el script la detecta, lo borra y pasa.
+  (`AutomaticMinimizationEnabled` no sirve de marca: aparece también en uno limpio.) En
+  Simulator.app, con otro simulador, desactiva
+  *I/O › Keyboard › Connect Hardware Keyboard*.
+- **Compilar antes de arrancar y apagar al terminar.** El script compila con el simulador
+  apagado (`build-for-testing`), lo arranca y corre lo ya compilado (`test-without-building`).
+  En la E2E completa, antes de correr espera a que iOS termine de levantar sus servicios (la
+  CPU de la Mac libre en dos lecturas, como mucho 2 min; ver abajo). Al terminar lo apaga,
+  también si una prueba falla o lo detienes con Ctrl+C. Nunca corre pruebas en paralelo.
+- **Tareas de compilación.** `PR_BUILD_JOBS=N` limita las tareas a la vez de `make ci` y de
+  las pruebas de UI. Por defecto no hay límite: medido, ningún límite mejoró (abajo).
+- **Resultado.** Al terminar se imprime cada recorrido con OK/FAIL, su duración y, si falló,
+  el paso donde falló y el mensaje. El detalle queda en `.ci/test-ui*.log` y en `.ci/test-ui.xcresult`,
+  que se abre con Xcode (ahí se ven los pasos).
+- **Si se cuelga.** El script pasa `-collect-test-diagnostics never`: antes, cuando una
+  prueba fallaba, `xcodebuild` se quedaba esperando a `simctl diagnose`. Si aun así se queda
+  colgado, detenlo con Ctrl+C (el simulador se apaga solo) y vuelve a correrlo.
+- **Desde Xcode.** *Product › Test* sobre `PRUITests` (o sobre una clase) sigue funcionando
+  con cualquier simulador. Si las pruebas fallan en "Sobre ti", revisa el teclado físico.
+
+### Cuidar la memoria al correr pruebas (Mac de 16 GB)
+
+Antes, `make test-ui` borraba y arrancaba el simulador mientras compilaba: la MacBook Air
+(16 GB) llegaba a 15 GB usados, 6.6 GB comprimidos, 4.9 GB de swap y carga 24.8.
+
+- Una sola sesión de agente por historia; nada de varias corriendo pruebas a la vez.
+- Cierra el panel del navegador y lo pesado (otros simuladores, Xcode con previews, videos)
+  durante `make test-ui`.
+- Para medir lo que cuesta un comando: `./scripts/measure_resources.sh make test-ui` imprime
+  la duración, la carga máxima de 1 minuto, la memoria comprimida y usada máximas y el swap al
+  empezar y al terminar (muestras en `.ci/resources-*.csv`).
+
+Medido el 2026-10-30 en la MacBook Air M5 de 16 GB (`scripts/measure_resources.sh`):
+
+| Corrida | Duración | Carga 1 min máx. | Carga 15 min máx.¹ | Comprimida máx. | Swap al empezar → al terminar |
+|---|---|---|---|---|---|
+| **Antes:** `make test-ui` (32 pruebas en una clase; borraba y arrancaba el simulador mientras compilaba) | 28 min 43 s | 225 | ≈ 46 | 7.1 GB | 1.6 → 6.2 GB (máx. 6.4) |
+| `make test-ui`, corrida A | 7 min 8 s | 74 | ≈ 14 | 6.6 GB | 3.2 → 2.8 GB (máx. 3.2) |
+| `make test-ui`, corrida B | 7 min 59 s | 117 | ≈ 21 | 6.9 GB | 2.8 → 3.7 GB (máx. 3.7) |
+| `make test-ui-smoke` | 2 min 48 s | 131 | ≈ 20 | 6.7 GB | 3.1 → 3.1 GB |
+| `make test-ui-erase` y después el smoke (primer arranque tras borrar) | 6 min 13 s | 252 | ≈ 46 | 7.0 GB | 3.6 → 3.7 GB (máx. 5.4) |
+
+¹ Reconstruida desde la de 1 minuto partiendo de 6, la carga con la que empezó la corrida de
+antes, para comparar corridas que empezaron con distinta carga. La línea base de SCRUM-228
+era 24.8.
+
+- **Arrancar el simulador es lo caro, no compilar.** `make ci` desde cero tarda 65–66 s, con
+  carga máxima de 10–21, y el swap no crece. Por eso no se limitan las tareas de compilación:
+  con 6 tarda 81 s y con 4, 109 s, sin menos swap.
+- **Después de arrancar, iOS tiene la CPU al 100% unos 110 s** (PosterBoard,
+  intelligenceflowd, ScreenTimeAgent, remindd…), aun con el simulador reutilizado. La E2E
+  completa espera a que se calme: sin la espera, el primer recorrido tardó el doble y la carga
+  llegó a 337 (7 min 11 s en total; con la espera, 7 min 8 s). El smoke y los recorridos
+  sueltos no esperan, para no duplicar su duración. `PR_UI_SETTLE=1` (o `0`) lo fuerza.
+- **Con la Mac cargada, el smoke se alarga.** Justo después de otros dos arranques del
+  simulador tardó 3 min 57 s, con carga máxima de 253. Recién borrado, el primer arranque es
+  el más pesado.
 
 ## IA en desarrollo (SCRUM-204)
 

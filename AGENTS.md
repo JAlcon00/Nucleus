@@ -105,7 +105,7 @@ Reglas de código UI:
 |---|---|
 | Tokens tipo `Spacing.m`, `Radius.card` | Usar los existentes en `PR/App/DesignTokens.swift`: `DSpace.xs…xl`, `DRadius.small/medium/large`, `Color.primaryAction/secondaryAction/success/warning`. Si falta un token, **agregarlo ahí**, no crear otro sistema paralelo. |
 | Swift Testing o XCTest | Tests nuevos en **Swift Testing** (`import Testing`). Los archivos existentes en XCTest se quedan en XCTest. |
-| Comandos genéricos de build | `make test` (iterar), `make ci` (cierre), `swift test --filter <Suite>` dentro de `Packages/PRCore`. Scheme iOS: `PR`; confirmar con `xcodebuild -list`. |
+| Comandos genéricos de build | `make test` (iterar, todas las unitarias), `make ci` + smoke + recorridos que toca (cierre). Ver §4.1. Scheme iOS: `PR`; confirmar con `xcodebuild -list`. |
 | Estructura libre de módulos | `PRDomain` no importa SwiftUI, HealthKit, SwiftData ni networking. Infraestructura implementa contratos de `PRCore`. |
 | Reporte final de la skill | Usar el formato unificado de la sección 7. |
 
@@ -118,6 +118,17 @@ make test
 ```
 
 Inspeccionar el repo real antes de asumir paths o schemes. No pisar cambios sin commitear de otra persona.
+
+### 4.1 Qué pruebas correr y cuándo (decisión de Jesús, 2026-10-30; SCRUM-228)
+
+| Momento | Qué se corre |
+|---|---|
+| **Mientras se programa** | `make test`: **todas** las unitarias y de integración (unos 13 s). No se filtran: atrapan regresiones en suites "no relacionadas". |
+| **Al cerrar cada historia** | `make ci` completo, `make test-ui-smoke` y los recorridos E2E que la historia toca: `make test-ui-journey RECORRIDO="TodayJourney ProfileJourney"` (corre sin recompilar, con lo que compiló el smoke). |
+| **Al cerrar una fase o antes de una entrega** | La E2E completa: `make test-ui`. |
+
+- Los recorridos son las clases de `PRUITests/Journeys/` (una por recorrido). Una historia que cambia un flujo agrega o ajusta su paso en el recorrido que corresponde, y lo dice en el reporte.
+- Una sola corrida de pruebas de UI a la vez, nunca en paralelo: con 16 GB, un solo simulador ya llena la memoria. Cómo cuidarla: README › "Cuidar la memoria al correr pruebas".
 
 ## 5. Backlog selection
 
@@ -158,6 +169,7 @@ Al final:
 - Línea base: <comando> → <resultado>
 - Iteraciones: N (qué falló y cómo se resolvió, una línea c/u)
 - Final: `make ci` → <línea resumen real, p. ej. "Test run with 412 tests passed">
+- E2E: `make test-ui-smoke` y los recorridos que toca → <resultado por recorrido> (la completa sólo al cerrar fase)
 - Warnings nuevos: ninguno / lista
 - UI (si aplica): estados cubiertos, accesibilidad verificada, pendientes en dispositivo, APIs sin confirmar
 - Riesgos y pendientes: …
