@@ -4,7 +4,7 @@
 > **Actualizado:** 2026-10-30 (tablero sincronizado con Jira y con el código).
 > **Ejecuta:** el agente de IA de Xcode. Hace todo el trabajo asignado en Jira a Gael Durán y Joss Amador, en el orden de este archivo.
 > **Regla:** mientras quede un `[ ]` en las secciones 2 y 3, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
-> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 y SCRUM-37 el 2026-10-28; SCRUM-219 el 2026-10-29; SCRUM-36 el 2026-10-30) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
+> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 y SCRUM-37 el 2026-10-28; SCRUM-219 el 2026-10-29; SCRUM-36 y SCRUM-228 el 2026-10-30) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
 
 ---
 
@@ -677,7 +677,7 @@ Evidencia: commit `42ffa7b`.
 
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; ~~D1, SCRUM-220~~, decidida el 2026-10-30: opción B, ADR-0004; quedan el volumen por experiencia, SCRUM-227 · PR-B003, y los supersets, SCRUM-224) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27 y ~~SCRUM-37~~, el catálogo, el 2026-10-28) → HealthKit, Watch, pestañas.
+En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; ~~D1, SCRUM-220~~, decidida el 2026-10-30: opción B, ADR-0004; ~~SCRUM-227~~, el volumen por experiencia, en `main` desde el 2026-10-30; quedan los supersets, SCRUM-224) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27, ~~SCRUM-37~~, el catálogo, el 2026-10-28 y ~~SCRUM-228~~, las E2E por recorrido, el 2026-10-30) → HealthKit, Watch, pestañas.
 
 ### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada; finalizada el 2026-10-27)
 
@@ -1047,9 +1047,9 @@ Evidencia: commits `0e12fb4` (lógica) y `c96d494` (pantalla), en `main` por el 
 - **Aparte:** los valores de los rangos (D1b) y si la fase baja el volumen.
 
 
-### SCRUM-227 · PR-B003 El volumen sale de la experiencia y el tiempo sólo pone el techo (Should, Fase B; en rama)
+### SCRUM-227 · PR-B003 El volumen sale de la experiencia y el tiempo sólo pone el techo (Should, Fase B; en `main` desde el 2026-10-30)
 
-- Va en la rama `SCRUM-227-volumen-por-experiencia`. Es la decisión D1 = B ([ADR-0004](docs/spec/docs/adr/ADR-0004-volumen-por-tiempo-y-experiencia.md)).
+- **En `main` desde el 2026-10-30:** Jesús fusionó el PR #16 (`c73af83`). En Jira sigue en Revisar. Es la decisión D1 = B ([ADR-0004](docs/spec/docs/adr/ADR-0004-volumen-por-tiempo-y-experiencia.md)).
 - **Cómo queda:**
   - el volumen semanal de cada músculo sale de la experiencia dentro del rango de su nivel: novato el mínimo, principiante un cuarto, intermedio la mitad, avanzado y competitivo el máximo (`VolumeDefaults` v2);
   - el tiempo pone el techo: si no cabe en la semana, el volumen baja hacia el mínimo, nunca por debajo, y lo que ni así quepa lo recorta la composición de SCRUM-218;
@@ -1081,9 +1081,9 @@ Evidencia: commit `2e571f6`.
 - `make test-ui` → 32 de 32 en verde, en una sola corrida (`Executed 32 tests, with 0 failures`, 1,521 s, 2026-10-30).
 
 
-### SCRUM-228 · PR-T001 Pruebas E2E por recorrido: rápidas y sistemáticas (Should, deuda; en rama)
+### SCRUM-228 · PR-T001 Pruebas E2E por recorrido: rápidas y sistemáticas (Should, deuda; finalizada el 2026-10-30)
 
-- Va en la rama `SCRUM-228-e2e-por-recorrido`, sobre `main` con SCRUM-227.
+- **En `main` desde el 2026-10-30:** Jesús fusionó el PR #17 (`66b036f`). El CI de GitHub (`make ci`) pasó en el PR.
 - **Esquema de Jesús (2026-10-30), en `AGENTS.md` §4.1 y el README:** mientras se programa, `make test` (todas las unitarias); al cerrar cada historia, `make ci`, `make test-ui-smoke` y los recorridos que toca (`make test-ui-journey RECORRIDO="…"`); la E2E completa (`make test-ui`), al cerrar una fase o antes de una entrega.
 - **Cómo queda:**
   - las 32 pruebas de `PRUITests` van en 8 recorridos, una clase cada uno en `PRUITests/Journeys/`; cada paso es una actividad con nombre que cita la prueba de antes;
