@@ -250,7 +250,7 @@ Cobertura:
 
 ## Pruebas E2E por recorrido (SCRUM-228, PR-T001)
 
-Las 32 pruebas de UI quedaron en 8 recorridos, una clase cada uno en `PRUITests/Journeys/`;
+Las 32 pruebas de UI quedaron en 8 recorridos, una clase cada uno en `PRUITests/Journeys/` (SCRUM-224 agregó el noveno);
 ninguna comprobación se quitó ni se debilitó (tabla en `mvp-plan.md` › SCRUM-228). Qué cubre
 cada recorrido:
 
@@ -264,6 +264,7 @@ cada recorrido:
 | `ProfileJourney` | SCRUM-36 (restricciones editables), 208 (cerrar sesión), 26 (rehacer) |
 | `TodayJourney` | RF-005, SCRUM-195, 197, 203, 211, 222, 28 (volumen realista) |
 | `SundayJourney` | SCRUM-27 (descanso el domingo) |
+| `SupersetJourney` | SCRUM-224 (superset en Hoy, en "Por qué tu plan" y en el entrenamiento) |
 
 Los recorridos que no son del cuestionario arrancan con `-PRUITestProfile intermedio-lmv`
 (sólo Debug y con datos temporales): `UITestProfileSeeder` contesta el cuestionario con el
@@ -275,6 +276,35 @@ terminarlo. Cobertura en `make ci`:
   sesión, tampoco;
 - `PRCoreTests/UITestLaunchOptionsTests.swift`: la opción sólo vale en Debug, sólo con
   `-PRUITestReset`, y un perfil desconocido se ignora.
+
+## Supersets compatibles (SCRUM-224, RF-006, PR-B004b)
+
+Dos ejercicios sin músculos en común se hacen alternados (A1 → A2 → descanso) para caber en
+el tiempo sin bajar series ni recortar lo básico. Las piezas:
+- `PRDomain/Training.swift`: `SupersetPair` y `SessionTemplate.supersets` (opcional, ADR-0003:
+  sin subir versión); `supersetPairs` ignora pares inválidos.
+- `PRDomain/SupersetPairing.swift`: compatibles = sin músculos en común, ni secundarios.
+- `PRDomain/BlockPlanner.swift` (`compose`): paso 2b del recorte de SCRUM-218, antes de bajar
+  series; nunca un ancla compuesta; un par que al final no hace falta se deshace. Generador 9.
+- `PRDomain/DurationEstimator.swift`: un descanso por ronda.
+- `PRDomain/WorkoutQueue.swift` y `PRCore/WorkoutSessionCoordinator.swift`: alternar, descanso
+  tras la ronda; dejar para después o saltar uno separa el par (la pareja sigue sola).
+- `PRDomain/HardTimeOptimizer.swift` y `SessionTimeFit.swift`: "Ajustar a mi tiempo" junta
+  pares antes de bajar series con los músculos del catálogo.
+- Textos: `PlanRationalePresenter` (hecho `superset`, también para la IA), `SessionTimePresenter`
+  y `SupersetPresenter` (Hoy).
+
+Cobertura:
+- `PRDomainTests/SupersetTests.swift`: modelo, lectura sin el campo, estimador, compatibilidad,
+  cola (alternar, calentamiento, separados, para después, saltar), optimizador y ajuste;
+- `PRCoreTests/SupersetCompositionTests.swift`: catálogo real (compatibles, nunca ancla
+  compuesta, nunca 1 serie, sólo cuando hace falta, nada con tiempo de sobra);
+- `PRCoreTests/SupersetWorkoutTests.swift`: coordinador con `LocalPersistence` real (alternar,
+  para después, saltar, cierre forzado a mitad de la ronda, Exportar y Progreso iguales);
+- `PRCoreTests/SupersetPresentationTests.swift`: textos en español e inglés y el ajuste con el
+  plan real;
+- `PRCoreTests/PlanPersistenceTests.swift`: un plan del generador 8 se regenera con supersets;
+- `PRUITests/SupersetJourney`: Hoy, "Por qué tu plan" y una ronda A1 → A2 → descanso.
 
 ## Catálogo de ejercicios (EPIC-03)
 

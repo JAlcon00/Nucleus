@@ -677,7 +677,7 @@ Evidencia: commit `42ffa7b`.
 
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; ~~D1, SCRUM-220~~, decidida el 2026-10-30: opción B, ADR-0004; ~~SCRUM-227~~, el volumen por experiencia, en `main` desde el 2026-10-30; quedan los supersets, SCRUM-224) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27, ~~SCRUM-37~~, el catálogo, el 2026-10-28 y ~~SCRUM-228~~, las E2E por recorrido, el 2026-10-30) → HealthKit, Watch, pestañas.
+En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; ~~D1, SCRUM-220~~, decidida el 2026-10-30: opción B, ADR-0004; ~~SCRUM-227~~, el volumen por experiencia, en `main` desde el 2026-10-30; queda SCRUM-224, los supersets, en rama) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27, ~~SCRUM-37~~, el catálogo, el 2026-10-28 y ~~SCRUM-228~~, las E2E por recorrido, el 2026-10-30) → HealthKit, Watch, pestañas.
 
 ### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada; finalizada el 2026-10-27)
 
@@ -1181,3 +1181,41 @@ Evidencia: rama `SCRUM-228-e2e-por-recorrido`, commit `328ebc5`.
   - `testPendingPlanNeverShowsRestDay` falló en la corrida de antes sin que la app hiciera nada mal: sus 3 comprobaciones tardaron 6.1 s y el plan llegaba a los 4 s. En el recorrido la demora es de 10 s, con las mismas comprobaciones.
   - `waitForExistence` evalúa la primera vez a ~1 s aunque el elemento ya esté: en el smoke eran 114 esperas y 118 s de 248. `appears(within:)` mira primero; "no aparece en N s" sigue con `waitForExistence`.
   - El resumen de las pruebas de UI dice el paso donde falló cada recorrido.
+
+### SCRUM-224 · PR-B004b Supersets compatibles en la sesión: modelo, migración y modo entrenamiento (Should, Fase B; en rama)
+
+- Va en la rama `SCRUM-224-supersets`, sobre `main` con SCRUM-228. Jesús la dio por lista (no tenía la etiqueta READY) el 2026-10-31.
+- **Decisiones de Jesús (2026-10-31):**
+  1. "Para después" y "Saltar" afectan sólo al ejercicio que se ve; su pareja sigue sola, con su descanso normal (como el dolor alto).
+  2. Pueden ir en superset todos menos las anclas compuestas (un músculo prioritario sí).
+  3. Los planes guardados se regeneran: generador 8 → 9, mismo bloque, su lugar y el aviso.
+  4. El estimador sigue sumando un descanso tras la última serie (su comentario dice lo contrario): se anota aparte, no se corrige aquí.
+- **Cómo queda:**
+  - `SessionTemplate.supersets` (opcional) con `SupersetPair` (dos ejercicios distintos); `supersetPairs` ignora un par inválido (un ejercicio que ya no está o repetido) y esos ejercicios se hacen solos;
+  - compatibles = sin músculos en común, ni secundarios (`SupersetPairing`): un remo y un curl no; sin músculos conocidos, nunca;
+  - en el entrenamiento se alterna el par (A1/A2) y el descanso va tras la ronda; al llegar al primero de los dos, el par va completo aunque en la plantilla estén separados.
+
+**Criterios:**
+- [x] **1. Modelo.** Una sesión marca pares en superset; lo guardado sin superset se lee igual. Es un campo opcional (ADR-0003): no sube la versión; la muestra vigente `v1/blocks.json` ya lo trae y `PersistenceFormatTests` pasa.
+- [x] **2. Motor.** `BlockPlanner.compose`: si no cabe, tras quitar aislamientos no protegidos y antes de bajar series, junta pares compatibles (nunca un ancla compuesta), con el ahorro del estimador; al final deshace un par que ya no hace falta. Nunca 1 serie.
+- [x] **3. Estimador.** `DurationEstimator.estimate(…, supersets:)` cuenta un solo descanso por ronda (A → B → descanso).
+- [x] **4. Modo entrenamiento.** Muestra "SUPERSET · A1/A2" y con quién se alterna, completar serie de un toque y el descanso tras la ronda. "Para después", "Saltar" y retomar tras un cierre forzado funcionan con el par, sin perder ni duplicar series.
+- [x] **5. Historial.** Exportar y Progreso cuentan las series igual que sin superset.
+- [x] **6. Ajuste del día.** "Ajustar a mi tiempo" junta pares con los músculos del catálogo antes de bajar series, en el mismo orden de recorte; la frase lo dice si sólo se juntaron.
+- [x] **7. Explicación.** "Por qué tu plan es así" (hecho `superset` con los nombres, también para la IA) y Hoy (`today.superset`) dicen en palabras simples qué va en superset y por qué.
+
+Evidencia: commits `f9647a2` (lógica) y `b4a0329` (pantalla y recorrido), en la rama `SCRUM-224-supersets`.
+- Línea base: `make test` → 562 + 598 de Swift Testing y 151 de XCTest, en verde.
+- `make ci` → `✔ Test run with 577 tests in 86 suites passed` + `✔ Test run with 615 tests in 106 suites passed`, y 151 de XCTest (2026-10-31); builds de iOS y watchOS sin warnings nuevos.
+- Pruebas por criterio:
+  1. `SupersetTests` (modelo, lectura sin el campo, pares inválidos) y `PersistenceFormatTests` con la muestra vigente;
+  2. `SupersetCompositionTests` (catálogo real: compatibles, nunca ancla compuesta, nunca 1 serie, sólo cuando hace falta, con 120 min ninguno) y `PlanPersistenceTests.planFromGenerator8GetsSupersets`;
+  3. `SupersetTests.estimatorOneRestPerRound` y `estimatorRoundsAreTheSmallerCount`;
+  4. `SupersetWorkoutTests` (`LocalPersistence` real: alternar, para después, saltar, cierre forzado a mitad de la ronda) y la cola en `SupersetTests`;
+  5. `SupersetWorkoutTests.exportAndProgressCountTheSame`;
+  6. `SupersetTests.optimizerJoinsBeforeReducing`, `timeFitJoinsPairs` y `SupersetPresentationTests.realPlanTimeBudgetJoinsCompatiblePairs`;
+  7. `SupersetPresentationTests` (es/en) y el recorrido.
+- E2E: `SupersetJourney` (nuevo, 21 s), `TodayJourney` y `WorkoutRecoveryJourney` en verde; `make test-ui-smoke` → 3 de 3 (3 min 28 s).
+- **Hallazgo:** desde SCRUM-227 el techo de tiempo baja el volumen antes de componer, así que casi todas las sesiones ya caben y el superset del motor sólo aparece cuando lo protegido (anclas compuestas y músculos con énfasis) no cabe; por ejemplo, 3 días de 30 min con brazos prioritarios. En "Ajustar a mi tiempo" sí aparece seguido. Si el techo debiera contar el ahorro del superset (más volumen con el mismo tiempo), es otra historia: toca ADR-0004.
+- **Aparte:** el estimador suma un descanso tras la última serie (decisión 4).
+- **Pendiente:** 👤 Jesús, hacer un entrenamiento con superset en el iPhone (con letra grande y con Reduce Transparency).
