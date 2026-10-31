@@ -399,6 +399,39 @@ struct PlanPersistenceTests {
         let chest = try #require(migrated.muscleTargets.first { $0.muscleGroupID == .chest })
         #expect(chest.targetSetsPerWeek == 10, "Intermedio: la mitad del rango normal (8–12)")
     }
+
+    /// SCRUM-224 (decisión de Jesús, 2026-10-30): un plan del generador 8, sin supersets, se
+    /// regenera en el mismo bloque y con el aviso; si lo protegido no cabe, ahora trae pares.
+    @Test("SCRUM-224: un plan del generador 8 se regenera con supersets, mismo bloque y aviso")
+    func planFromGenerator8GetsSupersets() async throws {
+        let root = try makeRoot()
+        let first = try AppInstance(root: root)
+        var armsFirst = profile(days: 3, minutes: 30)
+        armsFirst.priorityMuscles = [.biceps, .triceps]
+        await first.todayPlan.activate(profile: armsFirst, userID: "u1")
+        guard case .loaded(var stored, var block) = await first.planStore.loadPlan(userID: "u1") else {
+            Issue.record("no hay plan"); return
+        }
+        // Como lo guardó el generador 8: sin supersets.
+        block.sessions = block.sessions.map { session in
+            var old = session
+            old.supersets = nil
+            return old
+        }
+        stored.generatorVersion = 8
+        try await first.planStore.save(plan: stored, block: block)
+
+        let app = try AppInstance(root: root)
+        #expect(await app.todayPlan.restore(userID: "u1") == .restored(armsFirst))
+        let migrated = try #require(app.todayPlan.plan?.block)
+        #expect(migrated.id == block.id)
+        #expect(app.todayPlan.notice == .planUpdated)
+        #expect(migrated.sessions.contains { !$0.supersetPairs.isEmpty }, "Con 30 min y brazos con énfasis, lo protegido no cabe: hay pares")
+        guard case .loaded(let saved, _) = await app.planStore.loadPlan(userID: "u1") else {
+            Issue.record("no se guardó"); return
+        }
+        #expect(saved.generatorVersion == 9)
+    }
 }
 
 @MainActor

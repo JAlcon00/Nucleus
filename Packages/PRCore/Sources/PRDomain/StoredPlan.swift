@@ -29,7 +29,8 @@ public struct StoredPlan: Codable, Sendable, Equatable {
     ///     cambian de un bloque al siguiente;
     /// 8 = volumen por experiencia dentro del rango de evidencia (SCRUM-227, ADR-0004): el
     ///     tiempo sólo lo recorta.
-    public static let currentGeneratorVersion = 8
+    /// 9 = supersets compatibles cuando la sesión no cabe, antes de bajar series (SCRUM-224).
+    public static let currentGeneratorVersion = 9
 
     public let userID: String
     public var profile: OnboardingProfile

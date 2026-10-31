@@ -91,9 +91,13 @@ public struct DurationEstimator: Sendable {
 
     /// Estima la duración de una sesión a partir de sus sets planeados.
     /// Devuelve segundos (enteros, mín. 0).
+    /// Con `supersets` (SCRUM-224) hay un solo descanso por ronda del par (A → B →
+    /// descanso): la serie de trabajo de `first` de cada ronda no suma su descanso. Las
+    /// rondas son tantas como series de trabajo tenga el que menos tiene.
     public func estimate(
         plannedSets: [PlannedSet],
-        profiles: [ExerciseID: ExerciseDurationProfile] = [:]
+        profiles: [ExerciseID: ExerciseDurationProfile] = [:],
+        supersets: [SupersetPair] = []
     ) -> Int {
         var total = 0.0
         for (index, planned) in plannedSets.enumerated() {
@@ -109,7 +113,19 @@ public struct DurationEstimator: Sendable {
                 total += defaults.defaultTransitionSeconds
             }
         }
-        return Int(total.rounded())
+        return Int((total - supersetRestSaved(plannedSets: plannedSets, supersets: supersets)).rounded())
+    }
+
+    /// Descanso que se ahorra con los supersets: el de las series de trabajo de `first`
+    /// que van en ronda con una de `second`.
+    private func supersetRestSaved(plannedSets: [PlannedSet], supersets: [SupersetPair]) -> Double {
+        supersets.reduce(0) { saved, pair in
+            let firstRests = plannedSets
+                .filter { $0.exerciseID == pair.first && !$0.prescription.isWarmup }
+                .map { Double($0.prescription.restSeconds.lowerBound) }
+            let secondWorkSets = plannedSets.filter { $0.exerciseID == pair.second && !$0.prescription.isWarmup }.count
+            return saved + firstRests.prefix(secondWorkSets).reduce(0, +)
+        }
     }
 
     /// Aprende EWMA a partir de una observación real (segundos por set de un

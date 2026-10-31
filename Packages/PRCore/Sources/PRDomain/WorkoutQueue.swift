@@ -53,19 +53,92 @@ public enum WorkoutQueue {
 
     /// Índice en `plannedSets` de la siguiente serie a hacer, o `nil` si no queda ninguna
     /// (todo hecho o lo que falta está saltado).
+    /// SCRUM-224: al llegar a un ejercicio en superset se alterna con su pareja (ver
+    /// `supersetTurn`) mientras los dos sigan juntos en la cola.
     public static func nextPlannedIndex(
         template: SessionTemplate,
         sets: [SetRecord],
         state: ExerciseQueueState
     ) -> Int? {
         for exercise in effectiveOrder(of: template, state: state) where !state.skipped.contains(exercise) {
-            let plannedIndices = template.plannedSets.indices.filter { template.plannedSets[$0].exerciseID == exercise }
-            let done = sets.filter { $0.exerciseID == exercise }.count
-            if done < plannedIndices.count {
-                return plannedIndices[done]
+            let turn = supersetTurn(for: exercise, template: template, sets: sets, state: state)
+            if let index = nextIndex(of: turn, template: template, sets: sets) {
+                return index
+            }
+            if turn != exercise, let index = nextIndex(of: exercise, template: template, sets: sets) {
+                return index
+            }
+            // El par va completo en el lugar del primero de los dos que aparece: si éste ya
+            // terminó, sigue su pareja aunque en la plantilla vaya más adelante.
+            if let pair = template.superset(containing: exercise), isTogether(pair, state: state),
+               let partner = pair.partner(of: exercise),
+               let index = nextIndex(of: partner, template: template, sets: sets) {
+                return index
             }
         }
         return nil
+    }
+
+    /// Índice de la siguiente serie de `exercise`, por cuántas suyas se hicieron.
+    private static func nextIndex(of exercise: ExerciseID, template: SessionTemplate, sets: [SetRecord]) -> Int? {
+        let plannedIndices = template.plannedSets.indices.filter { template.plannedSets[$0].exerciseID == exercise }
+        let done = sets.filter { $0.exerciseID == exercise }.count
+        return done < plannedIndices.count ? plannedIndices[done] : nil
+    }
+
+    /// ¿Los dos ejercicios del par siguen juntos en la cola? Ninguno saltado y los dos
+    /// diferidos o ninguno: dejar uno para después o saltarlo lo separa y su pareja sigue
+    /// sola (decisión de Jesús, 2026-10-30).
+    public static func isTogether(_ pair: SupersetPair, state: ExerciseQueueState) -> Bool {
+        !state.skipped.contains(pair.first) && !state.skipped.contains(pair.second)
+            && state.deferred.contains(pair.first) == state.deferred.contains(pair.second)
+    }
+
+    /// A quién le toca dentro del superset de `exercise`: el que tenga calentamiento
+    /// pendiente; si no, el que lleve menos series de trabajo; empatados, el primero del par.
+    /// Sin superset (o con la pareja separada o sin series pendientes), `exercise`.
+    public static func supersetTurn(
+        for exercise: ExerciseID,
+        template: SessionTemplate,
+        sets: [SetRecord],
+        state: ExerciseQueueState
+    ) -> ExerciseID {
+        guard let pair = template.superset(containing: exercise), isTogether(pair, state: state),
+              hasPendingSets(pair.first, template: template, sets: sets),
+              hasPendingSets(pair.second, template: template, sets: sets) else { return exercise }
+        let members = [pair.first, pair.second]
+        if let warmingUp = members.first(where: { member in
+            nextIndex(of: member, template: template, sets: sets).map { template.plannedSets[$0].prescription.isWarmup } ?? false
+        }) {
+            return warmingUp
+        }
+        let firstDone = workSetsDone(pair.first, template: template, sets: sets)
+        let secondDone = workSetsDone(pair.second, template: template, sets: sets)
+        return secondDone < firstDone ? pair.second : pair.first
+    }
+
+    /// ¿Después de la serie que se acaba de completar (de `completed`) se sigue con la
+    /// pareja sin descansar? Sí cuando la siguiente es una serie de trabajo de la pareja y
+    /// la pareja va una ronda atrás: A → B → descanso (SCRUM-224).
+    public static func continuesSupersetRound(
+        after completed: ExerciseID,
+        template: SessionTemplate,
+        sets: [SetRecord],
+        state: ExerciseQueueState
+    ) -> Bool {
+        guard let pair = template.superset(containing: completed), isTogether(pair, state: state),
+              let partner = pair.partner(of: completed),
+              let next = nextPlannedIndex(template: template, sets: sets, state: state),
+              template.plannedSets[next].exerciseID == partner,
+              !template.plannedSets[next].prescription.isWarmup else { return false }
+        return workSetsDone(partner, template: template, sets: sets) < workSetsDone(completed, template: template, sets: sets)
+    }
+
+    /// Series de trabajo (sin calentamiento) ya hechas del ejercicio, por el orden de la plantilla.
+    private static func workSetsDone(_ exercise: ExerciseID, template: SessionTemplate, sets: [SetRecord]) -> Int {
+        let planned = template.plannedSets.filter { $0.exerciseID == exercise }
+        let done = min(sets.filter { $0.exerciseID == exercise }.count, planned.count)
+        return planned.prefix(done).filter { !$0.prescription.isWarmup }.count
     }
 
     /// ¿Al ejercicio le faltan series?

@@ -1153,6 +1153,30 @@
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "That change couldn't be made. Nothing was changed." } }
       }
+    },
+    "%@ con %@" : {
+      "comment" : "Superset: un ejercicio con su pareja",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ with %2$@" } }
+      }
+    },
+    "Para que quepan en tu tiempo, haces en superset %@: una serie de cada uno y después descansas. No comparten músculos." : {
+      "comment" : "Por qué tu plan: ejercicios en superset",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "To fit your time, you do %@ as supersets: one set of each, then rest. They don't share muscles." } }
+      }
+    },
+    "Para caber en %lld min haces %@ en superset; no quitamos nada." : {
+      "comment" : "Ajuste de tiempo: sólo se juntaron ejercicios en superset",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "To fit in %1$lld min you do %2$@ as a superset; nothing was removed." } }
+      }
+    },
+    "Hoy va en superset %@: una serie de cada uno y luego descansas, para que tu sesión quepa en tu tiempo." : {
+      "comment" : "Hoy: ejercicios en superset y por qué",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Today %@ go as a superset: one set of each, then rest, so your session fits your time." } }
+      }
     }
   },
   "version" : "1.0"

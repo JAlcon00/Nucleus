@@ -72,7 +72,8 @@ struct BlockPlannerRealCatalogTests {
         let (result, _) = try plan(days: days, minutes: 60)
         let estimator = DurationEstimator()
         for session in result.block.sessions {
-            #expect(estimator.estimate(plannedSets: session.plannedSets) <= 60 * 60, "\(session.title)")
+            // SCRUM-224: medida como la mide el motor, con sus supersets (sin pares, igual que antes).
+            #expect(estimator.estimate(plannedSets: session.plannedSets, supersets: session.supersetPairs) <= 60 * 60, "\(session.title)")
         }
     }
 

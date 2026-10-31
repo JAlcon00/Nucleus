@@ -137,6 +137,11 @@ public final class AppEnvironment {
         if await todayPlan.setTimeBudget(minutes) { refreshTodayState() }
     }
 
+    /// SCRUM-224: qué va hoy en superset y por qué, ya traducido; `nil` si nada.
+    public var supersetNote: String? {
+        SupersetPresenter(locale: Self.presentationLocale).todayNote(for: todayPlan.plan?.todayTemplate) { exerciseNames[$0] }
+    }
+
     /// SCRUM-30: la frase del ajuste de hoy, ya traducida; `nil` sin tiempo elegido.
     public var timeNote: String? {
         todayPlan.plan?.timeAdjustment.map { adjustment in

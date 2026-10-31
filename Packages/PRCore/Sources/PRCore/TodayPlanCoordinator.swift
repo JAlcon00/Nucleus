@@ -234,7 +234,14 @@ public struct TodayPlanBuilder: Sendable {
             let roles = try timeRoles(
                 for: lightened, profile: profile, block: block, catalog: catalog, planner: planner ?? Self.defaultPlanner()
             )
-            let fitted = timeFitter.fit(lightened, budgetMinutes: timeBudget, roles: roles, goal: profile.goal, phase: profile.phase)
+            // SCRUM-224: con los músculos del catálogo, el ajuste puede juntar pares compatibles.
+            let exercises = Dictionary(catalog.exercises.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            let muscles = Dictionary(uniqueKeysWithValues: Set(lightened.plannedSets.map(\.exerciseID)).compactMap { id in
+                exercises[id].map { (id, SupersetPairing.muscles(of: $0)) }
+            })
+            let fitted = timeFitter.fit(
+                lightened, budgetMinutes: timeBudget, roles: roles, goal: profile.goal, phase: profile.phase, muscles: muscles
+            )
             todayTemplate = fitted.template
             timeAdjustment = fitted.adjustment
         }

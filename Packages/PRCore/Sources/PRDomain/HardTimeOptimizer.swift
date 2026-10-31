@@ -78,6 +78,9 @@ public struct TimeOptimizerResult: Equatable, Sendable {
     public let withinLimit: Bool
     /// Notas explicativas de lo eliminado/reducido.
     public let notes: [String]
+    /// Pares que la sesión hace en superset al terminar (los que traía y los que se
+    /// juntaron para caber, SCRUM-224), con sus dos ejercicios en `kept`.
+    public let appliedSupersets: [SupersetPair]
 
     public init(
         kept: [SessionItem],
@@ -86,10 +89,12 @@ public struct TimeOptimizerResult: Equatable, Sendable {
         limitSeconds: Int,
         toleranceSeconds: Int,
         withinLimit: Bool,
-        notes: [String]
+        notes: [String],
+        appliedSupersets: [SupersetPair] = []
     ) {
         self.kept = kept
         self.supersets = supersets
+        self.appliedSupersets = appliedSupersets
         self.estimatedSeconds = estimatedSeconds
         self.limitSeconds = limitSeconds
         self.toleranceSeconds = toleranceSeconds
@@ -129,12 +134,38 @@ public struct HardTimeOptimizer: Sendable {
         return Int((total + transitions).rounded())
     }
 
+    /// Duración con supersets (SCRUM-224): en cada ronda del par se ahorra el descanso de
+    /// `first`, como mucho los descansos que `itemSeconds` le cuenta. Las rondas son tantas
+    /// como series de trabajo tenga el que menos tiene.
+    public func sessionSeconds(_ items: [SessionItem], supersets: [SupersetPair]) -> Int {
+        let base = sessionSeconds(items)
+        guard !supersets.isEmpty else { return base }
+        let byID = Dictionary(items.map { ($0.exerciseID, $0) }, uniquingKeysWith: { first, _ in first })
+        let saved = supersets.reduce(0.0) { total, pair in
+            guard let first = byID[pair.first], let second = byID[pair.second] else { return total }
+            return total + first.restSeconds * Double(roundsSavingRest(first: first, second: second))
+        }
+        return max(0, Int((Double(base) - saved).rounded()))
+    }
+
+    /// Rondas del par en las que `first` no descansa.
+    private func roundsSavingRest(first: SessionItem, second: SessionItem) -> Int {
+        let rounds = min(first.setCount - first.warmupSets, second.setCount - second.warmupSets)
+        return max(0, min(rounds, first.setCount - 1))
+    }
+
     /// Optimiza respetando el límite duro.
     /// - `toleranceSeconds`: holgura documentada aceptada (>= 0).
+    /// - `existingSupersets`: pares que la sesión ya trae (cuentan en el tiempo).
+    /// - `joinSupersets` (SCRUM-224): tras quitar los opcionales y antes de bajar series,
+    ///   junta pares compatibles (sin músculos en común, nunca un ancla) mientras no quepa.
+    ///   Sin pedirlo, el recorte es el de siempre.
     public func optimize(
         items: [SessionItem],
         limitSeconds: Int,
-        toleranceSeconds: Int = 0
+        toleranceSeconds: Int = 0,
+        existingSupersets: [SupersetPair] = [],
+        joinSupersets: Bool = false
     ) -> TimeOptimizerResult {
         var notes: [String] = []
 
@@ -147,10 +178,36 @@ public struct HardTimeOptimizer: Sendable {
             notes.append("Eliminados \(optionals.count) ejercicio(s) opcional(es).")
         }
 
-        // 3) Reducir accesorios repetidamente hasta caber, luego descartarlos. Lo que queda
-        //    conserva el orden de la sesión (SCRUM-30): la persona no ve ejercicios saltar.
+        // Lo que queda conserva el orden de la sesión (SCRUM-30): la persona no ve
+        // ejercicios saltar.
         var kept = items.filter { isProtected($0) || $0.role != .optional }
-        while sessionSeconds(kept) > limitSeconds + toleranceSeconds, hasAccessory(kept) {
+        var applied = existingSupersets
+        /// Los pares con sus dos ejercicios todavía en la sesión.
+        func livePairs() -> [SupersetPair] {
+            let present = Set(kept.map(\.exerciseID))
+            return applied.filter { present.contains($0.first) && present.contains($0.second) }
+        }
+        func seconds() -> Int { sessionSeconds(kept, supersets: livePairs()) }
+
+        // 3) SCRUM-224 (si se pide): juntar pares compatibles antes de bajar series. Sólo
+        //    pares que ahorran algo; cada ejercicio, en un par como mucho.
+        if joinSupersets {
+            while seconds() > limitSeconds + toleranceSeconds {
+                let paired = Set(applied.flatMap { [$0.first, $0.second] })
+                let candidates = kept.filter { $0.role != .anchor && !paired.contains($0.exerciseID) }
+                guard let match = SupersetPairing.firstPair(among: candidates, compatible: { first, second in
+                    SupersetPairing.areCompatible(first.muscleGroups, second.muscleGroups)
+                        && roundsSavingRest(first: first, second: second) > 0
+                }), let pair = SupersetPair(
+                    first: candidates[match.first].exerciseID, second: candidates[match.second].exerciseID
+                ) else { break }
+                applied.append(pair)
+                notes.append("Juntados en superset: \(candidates[match.first].name) y \(candidates[match.second].name).")
+            }
+        }
+
+        // 4) Reducir accesorios repetidamente hasta caber, luego descartarlos.
+        while seconds() > limitSeconds + toleranceSeconds, hasAccessory(kept) {
             if reduceAccessory(&kept) {
                 notes.append("Reducido el set-count de un ejercicio accesorio.")
             } else if let dropped = dropAccessory(&kept) {
@@ -160,8 +217,8 @@ public struct HardTimeOptimizer: Sendable {
             }
         }
 
-        // 4) Supersets compatibles (sólo disjuntos). Se ofrecen como ahorro, no se
-        //    fuerza ninguno incompatible.
+        // 5) Supersets compatibles (sólo disjuntos). Se ofrecen como ahorro, no se
+        //    fuerza ninguno incompatible. Los que sí se hacen van en `appliedSupersets`.
         let supersetSource = kept.filter { $0.role != .anchor }
         var supersets: [CompatibleSuperset] = []
         for i in supersetSource.indices {
@@ -172,7 +229,7 @@ public struct HardTimeOptimizer: Sendable {
             }
         }
 
-        let estimated = sessionSeconds(kept)
+        let estimated = seconds()
         let within = estimated <= limitSeconds + toleranceSeconds
         if !within {
             notes.append("Límite no alcanzado aun conservando todos los anchors/prioridades.")
@@ -185,7 +242,8 @@ public struct HardTimeOptimizer: Sendable {
             limitSeconds: limitSeconds,
             toleranceSeconds: toleranceSeconds,
             withinLimit: within,
-            notes: notes
+            notes: notes,
+            appliedSupersets: livePairs()
         )
     }
 

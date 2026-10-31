@@ -77,11 +77,15 @@ public struct SessionTimeAdjustment: Equatable, Sendable {
     /// Duración de la sesión antes de ajustar.
     public let originalMinutes: Int
     public let fit: SessionTimeFit
+    /// Pares que el ajuste juntó en superset para caber (SCRUM-224); los que la sesión ya
+    /// traía no cuentan aquí.
+    public let joined: [SupersetPair]
 
-    public init(budgetMinutes: Int, originalMinutes: Int, fit: SessionTimeFit) {
+    public init(budgetMinutes: Int, originalMinutes: Int, fit: SessionTimeFit, joined: [SupersetPair] = []) {
         self.budgetMinutes = budgetMinutes
         self.originalMinutes = originalMinutes
         self.fit = fit
+        self.joined = joined
     }
 
     /// ¿La sesión resultante cabe en el tiempo elegido?
@@ -131,9 +135,10 @@ public struct SessionTimeFitter: Sendable {
         self.extraTime = extraTime
     }
 
-    /// Segundos de la sesión: series, descansos entre series y transiciones.
+    /// Segundos de la sesión: series, descansos entre series y transiciones; con supersets,
+    /// un solo descanso por ronda del par (SCRUM-224).
     public func seconds(of template: SessionTemplate) -> Int {
-        optimizer.sessionSeconds(items(of: template, roles: SessionTimeRoles()))
+        optimizer.sessionSeconds(items(of: template, roles: SessionTimeRoles()), supersets: template.supersetPairs)
     }
 
     /// Minutos de la sesión, redondeados hacia arriba.
@@ -143,12 +148,16 @@ public struct SessionTimeFitter: Sendable {
 
     /// La sesión ajustada a `budgetMinutes` y qué cambió. Con el mismo ID de plantilla:
     /// el entrenamiento que se empiece con ella se retoma igual tras un cierre.
+    /// `muscles` (SCRUM-224): los músculos de cada ejercicio, para juntar pares compatibles
+    /// antes de bajar series, en el mismo orden de recorte que el plan. Un ejercicio sin
+    /// músculos conocidos nunca se junta.
     public func fit(
         _ template: SessionTemplate,
         budgetMinutes: Int,
         roles: SessionTimeRoles,
         goal: TrainingGoal,
-        phase: BodyCompositionPhase
+        phase: BodyCompositionPhase,
+        muscles: [ExerciseID: Set<MuscleGroup.ID>] = [:]
     ) -> (template: SessionTemplate, adjustment: SessionTimeAdjustment) {
         let originalSeconds = seconds(of: template)
         let original = Self.minutes(fromSeconds: originalSeconds)
@@ -160,9 +169,15 @@ public struct SessionTimeFitter: Sendable {
             return (template, SessionTimeAdjustment(budgetMinutes: budgetMinutes, originalMinutes: original, fit: fit))
         }
 
-        let result = optimizer.optimize(items: items(of: template, roles: roles), limitSeconds: limit)
+        let existing = template.supersetPairs
+        let result = optimizer.optimize(
+            items: items(of: template, roles: roles, muscles: muscles), limitSeconds: limit,
+            existingSupersets: existing, joinSupersets: true
+        )
         let keptCounts = Dictionary(result.kept.map { ($0.exerciseID, $0.setCount) }, uniquingKeysWith: { first, _ in first })
-        let trimmed = rebuild(template, keeping: keptCounts)
+        var trimmed = rebuild(template, keeping: keptCounts)
+        trimmed.supersets = result.appliedSupersets.isEmpty ? nil : result.appliedSupersets
+        let joined = result.appliedSupersets.filter { !existing.contains($0) }
 
         let removed = exerciseOrder(of: template).filter { keptCounts[$0] == nil }
         let reduced = exerciseOrder(of: trimmed).compactMap { id -> SetReduction? in
@@ -174,7 +189,7 @@ public struct SessionTimeFitter: Sendable {
         let fit: SessionTimeFit = trimmedSeconds <= limit
             ? .trimmed(removed: removed, reduced: reduced)
             : .doesNotFit(neededMinutes: Self.minutes(fromSeconds: trimmedSeconds), removed: removed, reduced: reduced)
-        return (trimmed, SessionTimeAdjustment(budgetMinutes: budgetMinutes, originalMinutes: original, fit: fit))
+        return (trimmed, SessionTimeAdjustment(budgetMinutes: budgetMinutes, originalMinutes: original, fit: fit, joined: joined))
     }
 
     // MARK: - Privado
@@ -195,7 +210,9 @@ public struct SessionTimeFitter: Sendable {
 
     /// Un `SessionItem` por ejercicio. El calentamiento cuenta como serie completa (sobra
     /// tiempo antes que faltar) y el descanso es el más largo del rango prescrito.
-    private func items(of template: SessionTemplate, roles: SessionTimeRoles) -> [SessionItem] {
+    private func items(
+        of template: SessionTemplate, roles: SessionTimeRoles, muscles: [ExerciseID: Set<MuscleGroup.ID>] = [:]
+    ) -> [SessionItem] {
         let grouped = Dictionary(grouping: template.plannedSets, by: \.exerciseID)
         return exerciseOrder(of: template).compactMap { id in
             guard let sets = grouped[id], let first = sets.first else { return nil }
@@ -212,7 +229,7 @@ public struct SessionTimeFitter: Sendable {
                 exerciseID: id,
                 name: "",
                 role: role,
-                muscleGroups: [],
+                muscleGroups: muscles[id] ?? [],
                 isPriorityMuscle: roles.priority.contains(id),
                 setCount: sets.count,
                 secondsPerSet: estimator.setDuration(for: id, profile: nil),

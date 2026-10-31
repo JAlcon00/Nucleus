@@ -303,6 +303,16 @@ public struct PlanRationalePresenter: Sendable {
         if value["sessionsOverTime"] != nil {
             lines.append(resource("Algunas sesiones pasan de tu tiempo: no quitamos los ejercicios básicos ni les dejamos menos series de su mínimo.", "Por qué tu plan: sesiones que no caben en el tiempo"))
         }
+        // SCRUM-224: pares en superset ("A + B") para caber en el tiempo antes de bajar series.
+        let pairs = facts.filter { $0.key == "superset" }.compactMap { fact -> String? in
+            let names = fact.value.components(separatedBy: " + ")
+            guard names.count == 2 else { return nil }
+            return resource("\(names[0]) con \(names[1])", "Superset: un ejercicio con su pareja")
+        }
+        if !pairs.isEmpty {
+            let list = pairs.formatted(.list(type: .and).locale(locale))
+            lines.append(resource("Para que quepan en tu tiempo, haces en superset \(list): una serie de cada uno y después descansas. No comparten músculos.", "Por qué tu plan: ejercicios en superset"))
+        }
         // SCRUM-215: pantorrilla o core que no cupieron en los minutos de la sesión.
         let leftOut = Self.list(value["maintenanceLeftOut"], MuscleGroup.init(rawValue:)).map(vocabulary.muscleName)
         if !leftOut.isEmpty {
