@@ -1817,6 +1817,47 @@ el optimizador lo usa. Cobertura: `PRDomainTests/DurationEstimatorTests.swift`.
 
 ---
 
+## SCRUM-229 · PR-H001 — Mapa muscular de la sesión y de la semana
+**Priority:** P2 (propuesta)  
+**Size:** L  
+**Dependencies:** PR-0605, catálogo clasificado (Jira SCRUM-37), Progreso (Jira SCRUM-213)
+**Status:** TODO (borrador del 2026-11-01; Jesús aprueba los criterios en Jira)
+
+Idea de openGym (AGPL-3.0: no se copia su código). El mapa es MuscleMap (MIT, SwiftUI, iOS 17+), sólo en el target de la app.
+
+### Criterios
+- tabla probada de los 12 `MuscleGroup` a las regiones de MuscleMap;
+- Hoy y el detalle del día: principales en tono fuerte, secundarios en tono suave y su lista en texto;
+- Progreso: series de la semana por músculo contra el rango del objetivo, contadas con la regla del motor (PRDomain, pura y probada);
+- color nunca solo; VoiceOver, accessibility3, claro y oscuro;
+- nada de mapa en el entrenamiento activo ni en el Watch;
+- aviso MIT en Perfil.
+
+---
+
+## SCRUM-230 · PR-K001 — Importar historial de Strong, Hevy y FitNotes (CSV)
+**Priority:** P2 (propuesta; después de 1.0)  
+**Size:** L (si crece, dividir por formato)  
+**Dependencies:** PR-0204, catálogo clasificado (Jira SCRUM-37), Progreso (Jira SCRUM-213)
+**Status:** TODO (borrador del 2026-11-01; Jesús aprueba los criterios y tres decisiones en Jira)
+
+Idea de openGym (AGPL-3.0: no se copia su código). Los lectores se escriben desde cero con exportaciones reales.
+
+### Criterios
+- vista previa antes de guardar;
+- unidad del archivo o pregunta kg/lb, nunca adivinar;
+- formatos regionales (`,`/`;`, decimal con coma, BOM, comillas multilínea);
+- ejercicio sin alias se guarda "sin enlazar", nunca se pierde ni se inventa un equivalente;
+- calentamientos y cardio no cuentan como series de trabajo;
+- reimportar no duplica (huella estable por serie);
+- todo o nada, sin `try?`;
+- deshacer por lote, sin tocar lo registrado en Nucleus;
+- no escribe en HealthKit, no celebra récords viejos, no fija la carga de la próxima sesión;
+- proceso local, sin copia del archivo ni logs con contenido;
+- 50 000 series medidas sin congelar la UI.
+
+---
+
 # EPIC-20 — Privacy, Security & Quality Gates
 
 ## PR-2001 — Health privacy audit
@@ -1892,10 +1933,10 @@ Sign in with Apple, HealthKit, watchOS, reconciliation.
 Recovery, restrictions, explainability, agent intent/explanation, weekly adherence.
 
 ## V1
-Achievements, richer analytics, advanced controls, sync/backend hardening, accessibility/performance release gates.
+Achievements, richer analytics (mapa muscular, SCRUM-229), advanced controls, sync/backend hardening, accessibility/performance release gates.
 
 ## V2
-Bodybuilding specialization, body measurements, progress photos, posing, personal response insights.
+Bodybuilding specialization, body measurements, progress photos, posing, personal response insights, importar historial de otras apps (SCRUM-230).
 
 ---
 
