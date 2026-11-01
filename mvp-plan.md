@@ -1,10 +1,10 @@
 # mvp-plan.md — Plan activo: MVP / POC de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica POC: SCRUM-180).
-> **Actualizado:** 2026-11-01 (SCRUM-224 en `main`; SCRUM-229 y SCRUM-230, borradores en Jira; SCRUM-34 en rama).
+> **Actualizado:** 2026-11-01 (SCRUM-224, 227 y 34 finalizadas; SCRUM-229 y SCRUM-230, borradores en Jira; SCRUM-33 en rama).
 > **Ejecuta:** el agente de IA de Xcode. Hace todo el trabajo asignado en Jira a Gael Durán y Joss Amador, en el orden de este archivo.
 > **Regla:** mientras quede un `[ ]` en las secciones 2 y 3, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
-> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 y SCRUM-37 el 2026-10-28; SCRUM-219 el 2026-10-29; SCRUM-36 y SCRUM-228 el 2026-10-30) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
+> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 y SCRUM-37 el 2026-10-28; SCRUM-219 el 2026-10-29; SCRUM-36 y SCRUM-228 el 2026-10-30; SCRUM-224, 227 y 34 el 2026-11-01) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
 
 ---
 
@@ -677,7 +677,7 @@ Evidencia: commit `42ffa7b`.
 
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; ~~D1, SCRUM-220~~, decidida el 2026-10-30: opción B, ADR-0004; ~~SCRUM-227~~, el volumen por experiencia, en `main` desde el 2026-10-30; ~~SCRUM-224~~, los supersets, en `main` desde el 2026-10-31: la Fase B queda completa en código) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (agente SCRUM-33; SCRUM-34, el UTF-8 de los mensajes, en rama) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27, ~~SCRUM-37~~, el catálogo, el 2026-10-28 y ~~SCRUM-228~~, las E2E por recorrido, el 2026-10-30) → HealthKit, Watch, pestañas (Fase H, con SCRUM-229, el mapa muscular, en borrador) → después de 1.0 (Fase K, con SCRUM-230, importar historial, en borrador).
+En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; ~~D1, SCRUM-220~~, decidida el 2026-10-30: opción B, ADR-0004; ~~SCRUM-227~~, el volumen por experiencia, y ~~SCRUM-224~~, los supersets, finalizadas el 2026-11-01: la Fase B queda completa) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (SCRUM-33, el agente entiende o pregunta, en rama; ~~SCRUM-34~~, el UTF-8 de los mensajes, finalizada el 2026-11-01) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27, ~~SCRUM-37~~, el catálogo, el 2026-10-28 y ~~SCRUM-228~~, las E2E por recorrido, el 2026-10-30) → HealthKit, Watch, pestañas (Fase H, con SCRUM-229, el mapa muscular, en borrador) → después de 1.0 (Fase K, con SCRUM-230, importar historial, en borrador).
 
 ### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada; finalizada el 2026-10-27)
 
@@ -1047,9 +1047,9 @@ Evidencia: commits `0e12fb4` (lógica) y `c96d494` (pantalla), en `main` por el 
 - **Aparte:** los valores de los rangos (D1b) y si la fase baja el volumen.
 
 
-### SCRUM-227 · PR-B003 El volumen sale de la experiencia y el tiempo sólo pone el techo (Should, Fase B; en `main` desde el 2026-10-30)
+### SCRUM-227 · PR-B003 El volumen sale de la experiencia y el tiempo sólo pone el techo (Should, Fase B; finalizada el 2026-11-01)
 
-- **En `main` desde el 2026-10-30:** Jesús fusionó el PR #16 (`c73af83`). En Jira sigue en Revisar. Es la decisión D1 = B ([ADR-0004](docs/spec/docs/adr/ADR-0004-volumen-por-tiempo-y-experiencia.md)).
+- **En `main` desde el 2026-10-30:** Jesús fusionó el PR #16 (`c73af83`). Finalizada en Jira el 2026-11-01. Es la decisión D1 = B ([ADR-0004](docs/spec/docs/adr/ADR-0004-volumen-por-tiempo-y-experiencia.md)).
 - **Cómo queda:**
   - el volumen semanal de cada músculo sale de la experiencia dentro del rango de su nivel: novato el mínimo, principiante un cuarto, intermedio la mitad, avanzado y competitivo el máximo (`VolumeDefaults` v2);
   - el tiempo pone el techo: si no cabe en la semana, el volumen baja hacia el mínimo, nunca por debajo, y lo que ni así quepa lo recorta la composición de SCRUM-218;
@@ -1182,9 +1182,9 @@ Evidencia: rama `SCRUM-228-e2e-por-recorrido`, commit `328ebc5`.
   - `waitForExistence` evalúa la primera vez a ~1 s aunque el elemento ya esté: en el smoke eran 114 esperas y 118 s de 248. `appears(within:)` mira primero; "no aparece en N s" sigue con `waitForExistence`.
   - El resumen de las pruebas de UI dice el paso donde falló cada recorrido.
 
-### SCRUM-224 · PR-B004b Supersets compatibles en la sesión: modelo, migración y modo entrenamiento (Should, Fase B; en `main` desde el 2026-10-31)
+### SCRUM-224 · PR-B004b Supersets compatibles en la sesión: modelo, migración y modo entrenamiento (Should, Fase B; finalizada el 2026-11-01)
 
-- **En `main` desde el 2026-10-31:** Jesús fusionó el PR #18 (`76b5893`). En Jira sigue en Revisar.
+- **En `main` desde el 2026-10-31:** Jesús fusionó el PR #18 (`76b5893`). Finalizada en Jira el 2026-11-01.
 - Se trabajó en la rama `SCRUM-224-supersets`, sobre `main` con SCRUM-228. Jesús la dio por lista (no tenía la etiqueta READY) el 2026-10-31.
 - **Decisiones de Jesús (2026-10-31):**
   1. "Para después" y "Saltar" afectan sólo al ejercicio que se ve; su pareja sigue sola, con su descanso normal (como el dolor alto).
@@ -1221,9 +1221,9 @@ Evidencia: commits `f9647a2` (lógica) y `b4a0329` (pantalla y recorrido), en la
 - **Aparte:** el estimador suma un descanso tras la última serie (decisión 4).
 - **Pendiente:** 👤 Jesús, hacer un entrenamiento con superset en el iPhone (con letra grande y con Reduce Transparency).
 
-### SCRUM-34 · PR-0112 Que los mensajes del entrenador se lean bien (UTF-8) (Could, Fase D; en rama)
+### SCRUM-34 · PR-0112 Que los mensajes del entrenador se lean bien (UTF-8) (Could, Fase D; finalizada el 2026-11-01)
 
-- Va en la rama `SCRUM-34-utf8-streaming`, sobre `main` con SCRUM-224. Era la primera historia READY de la Fase D (hito 1.0, sin dependencias).
+- **En `main` desde el 2026-11-01:** Jesús fusionó el PR #20 (`f112d86`). Se trabajó en la rama `SCRUM-34-utf8-streaming`; era la primera historia READY de la Fase D (hito 1.0, sin dependencias).
 - **Bug:** el streaming de la IA decodificaba byte por byte (`String(decoding: [byte], …)`):
   - á, ñ, ¿ y los emojis llegaban como "�";
   - el buffer se re-escaneaba completo en cada byte: una línea de 13 000 bytes tardaba 1.3 s;
