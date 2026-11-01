@@ -20,58 +20,83 @@ import Foundation
 
 // MARK: - SSE decoder (puro)
 
-/// Parseador incremental de Server-Sent Events. Consume bytes/strings por fragmentos y
-/// entrega eventos `data:` como string (p. ej. un JSON, o `[DONE]`). Maneja líneas
-/// parciales (buffer) y separadores `\n`/`\r\n`.
+/// Parseador incremental de Server-Sent Events. Consume bytes por fragmentos y entrega
+/// eventos `data:` como string (p. ej. un JSON, o `[DONE]`). Maneja líneas parciales y
+/// separadores `\n`/`\r\n`.
+///
+/// SCRUM-34: junta los bytes de cada línea y decodifica UTF-8 sólo con la línea completa.
+/// El byte `\n` nunca aparece dentro de un carácter multibyte, así que un carácter partido
+/// entre fragmentos (á, ñ, ¿, emoji) llega entero. Cada byte se procesa una vez: el costo
+/// es lineal aunque la línea sea muy larga.
 public struct SSEEventDecoder: Sendable {
-    private var buffer: String = ""
+    private static let lineFeed: UInt8 = 0x0A
+    private static let carriageReturn: UInt8 = 0x0D
+
+    private var lineBytes: [UInt8] = []
     private var pendingLines: [String] = []
 
     public init() {}
 
-    /// Alimenta un fragmento y devuelve los eventos `data:` completos encontrados.
+    /// Alimenta un fragmento de bytes y devuelve los eventos `data:` completos encontrados.
     /// Un evento SSE es uno o más campos `data:` separados por una línea en blanco;
     /// los acumula y los entrega como un único string (las líneas `data:` se concatenan).
-    public mutating func append(_ fragment: String) -> [String] {
-        buffer += fragment
-        return drainEvents()
-    }
-
-    private mutating func drainEvents() -> [String] {
+    public mutating func append(bytes fragment: some Sequence<UInt8>) -> [String] {
         var events: [String] = []
-        // Normaliza CRLF a LF para simplificar el split de líneas.
-        buffer = buffer.replacingOccurrences(of: "\r\n", with: "\n")
-        var lines = buffer.components(separatedBy: "\n")
-        // Conserva la última línea incompleta (sin \n) para el siguiente fragmento.
-        if buffer.hasSuffix("\n") {
-            buffer = ""
-        } else if let partial = lines.popLast() {
-            buffer = partial
-        }
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            // Línea en blanco → cierra el evento acumulado.
-            if trimmed.isEmpty {
-                if !pendingLines.isEmpty {
-                    events.append(pendingLines.joined(separator: ""))
-                    pendingLines = []
-                }
+        for byte in fragment {
+            guard byte == Self.lineFeed else {
+                lineBytes.append(byte)
                 continue
             }
-            // Sólo interesan las líneas `data:`; el resto se descarta.
-            if trimmed.hasPrefix("data:") {
-                let cleaned = trimmed.dropFirst("data:".count).trimmingCharacters(in: .whitespaces)
-                if !cleaned.isEmpty {
-                    pendingLines.append(cleaned)
-                }
+            if lineBytes.last == Self.carriageReturn {
+                lineBytes.removeLast()
             }
+            consumeLine(String(decoding: lineBytes, as: UTF8.self), into: &events)
+            lineBytes.removeAll(keepingCapacity: true)
         }
         // Un evento final puede carecer de línea en blanco al terminar la entrada.
-        if buffer.isEmpty, !pendingLines.isEmpty {
-            events.append(pendingLines.joined(separator: ""))
-            pendingLines = []
+        if lineBytes.isEmpty {
+            flushPending(into: &events)
         }
         return events
+    }
+
+    /// Igual que `append(bytes:)` con el texto en UTF-8.
+    public mutating func append(_ fragment: String) -> [String] {
+        append(bytes: fragment.utf8)
+    }
+
+    /// Fin de la entrada: procesa la última línea aunque no traiga salto final y entrega el
+    /// evento pendiente. Llamarlo otra vez no repite nada.
+    public mutating func finish() -> [String] {
+        var events: [String] = []
+        if !lineBytes.isEmpty {
+            consumeLine(String(decoding: lineBytes, as: UTF8.self), into: &events)
+            lineBytes.removeAll()
+        }
+        flushPending(into: &events)
+        return events
+    }
+
+    private mutating func consumeLine(_ line: String, into events: inout [String]) {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        // Línea en blanco → cierra el evento acumulado.
+        if trimmed.isEmpty {
+            flushPending(into: &events)
+            return
+        }
+        // Sólo interesan las líneas `data:`; el resto se descarta.
+        if trimmed.hasPrefix("data:") {
+            let cleaned = trimmed.dropFirst("data:".count).trimmingCharacters(in: .whitespaces)
+            if !cleaned.isEmpty {
+                pendingLines.append(cleaned)
+            }
+        }
+    }
+
+    private mutating func flushPending(into events: inout [String]) {
+        guard !pendingLines.isEmpty else { return }
+        events.append(pendingLines.joined(separator: ""))
+        pendingLines = []
     }
 }
 
@@ -165,8 +190,51 @@ public enum NVIDIAStreamEventParser {
         decoder: inout SSEEventDecoder,
         fragment: String
     ) -> [AgentStreamEvent] {
+        events(from: decoder.append(fragment))
+    }
+
+    /// Fragmento de bytes tal como llega de la red (SCRUM-34): no se decodifica aquí.
+    public static func parse(
+        decoder: inout SSEEventDecoder,
+        bytes: some Sequence<UInt8>
+    ) -> [AgentStreamEvent] {
+        events(from: decoder.append(bytes: bytes))
+    }
+
+    /// Fin del stream: entrega el último evento aunque no traiga salto final.
+    public static func finish(decoder: inout SSEEventDecoder) -> [AgentStreamEvent] {
+        events(from: decoder.finish())
+    }
+
+    /// Lee los bytes de la red y entrega cada evento en cuanto se completa (SCRUM-34).
+    /// Si la conexión se corta, lo que llegó ya se entregó, la línea a medias se descarta y
+    /// lanza `.interrupted`; si la tarea se canceló, `.cancelled`. Está separado de
+    /// `URLSession` para probarlo sin red.
+    static func relay<Bytes: AsyncSequence>(
+        _ bytes: Bytes,
+        yield: (AgentStreamEvent) -> Void
+    ) async throws where Bytes.Element == UInt8 {
+        var decoder = SSEEventDecoder()
+        do {
+            for try await byte in bytes {
+                if Task.isCancelled { throw NVIDIAProviderError.cancelled }
+                for event in parse(decoder: &decoder, bytes: CollectionOfOne(byte)) {
+                    yield(event)
+                }
+            }
+        } catch let error as NVIDIAProviderError {
+            throw error
+        } catch {
+            let cancelled = (error as? URLError)?.code == .cancelled || error is CancellationError
+            throw (cancelled || Task.isCancelled) ? NVIDIAProviderError.cancelled : NVIDIAProviderError.interrupted
+        }
+        for event in finish(decoder: &decoder) {
+            yield(event)
+        }
+    }
+
+    private static func events(from rawEvents: [String]) -> [AgentStreamEvent] {
         var out: [AgentStreamEvent] = []
-        let rawEvents = decoder.append(fragment)
         for event in rawEvents {
             if event == NVIDIAStreamChunk.DoneMarker.value {
                 continue
