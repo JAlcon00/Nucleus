@@ -330,6 +330,36 @@ Cobertura en `make ci`, en `PRCoreTests/AgentStreamingUTF8Tests.swift`:
 
 Las pruebas que ya estaban (`AgentStreamingTests` y `NIMProviderTests`) siguen igual.
 
+## El agente entiende o pregunta (SCRUM-33, RF-025, RF-027, PR-0111)
+
+La IA interpreta, el motor decide y la política protege. Las piezas:
+- `PRDomain/AgentActionWriter.swift`:
+  - `AgentWriteCommand` lleva los datos tipados de cada intención; antes se perdían, y "cambiar objetivo" salía como ajuste de carga;
+  - "¿por qué?" usa el DecisionRecord de esa decisión (`knownDecisions`) o pide aclarar (`.clarify`).
+- `PRDomain/ActionPolicyValidator.swift`: `validate(_:as:context:)` deriva el pain gate de `recentPain` y el posible aumento del comando (`mayIncreaseLoadOrVolume`); los booleanos de quien llama sólo endurecen. Los cambios importantes (`isImportantChange`) piden confirmación.
+- `PRDomain/AgentGateway.swift`:
+  - tiempo límite por intento (`AgentGatewayTiming.standard`: 10 s interpretar, 18 s explicar);
+  - aviso del respaldo (`AgentGatewayReply.fallback`);
+  - "30 o 45 minutos" pide aclarar;
+  - "cambiar de gym" ya no inventa un id.
+- `PRDomain/AgentInputSafety.swift`:
+  - `AgentIntentValidator`: datos imposibles piden aclarar y las notas tienen que ser literales;
+  - `MedicalBoundary`: las preguntas de diagnóstico se declinan sin llamar al modelo.
+- `PRCore/LLMBackendTransport.swift`: el texto del usuario va delimitado como dato y el prompt lo dice.
+
+Cobertura en `make ci`:
+- `PRDomainTests/AgentUnderstandsTests.swift` (20):
+  - datos del comando;
+  - confirmación;
+  - dolor derivado;
+  - datos inválidos y notas;
+  - diagnóstico;
+  - tiempo límite y aviso;
+  - suite fija de 12 frases.
+- `PRCoreTests/AgentUnderstandsIntegrationTests.swift` (5): transporte real con un proveedor falso, `ProgressionEngine` y la política reales (inyección, DecisionRecord del motor, dolor de la serie, diagnóstico).
+
+Las pruebas que ya estaban del agente siguen igual.
+
 ## Catálogo de ejercicios (EPIC-03)
 
 Implementado en PR-0301 con el dataset público *free-exercise-db* (Unlicense)

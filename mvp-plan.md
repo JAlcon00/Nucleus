@@ -1257,6 +1257,68 @@ Evidencia: rama `SCRUM-34-utf8-streaming`.
 - E2E: `make test-ui-smoke` → 3 de 3 (FirstWorkout 39 s, Intermediate 51 s, WorkoutRecovery 48 s). Ningún recorrido usa el streaming, así que no hay uno propio que correr.
 - **Hallazgo:** con `URLProtocol`, si los datos y el corte llegan en el mismo instante, `URLSession` descarta los bytes que aún no se leían. Con la red real llegan poco a poco y se entregan conforme llegan. Por eso "llega lo recibido" se prueba con `relay` sobre una secuencia de bytes, y con `URLSession` se prueba el aviso.
 
+### SCRUM-33 · PR-0111 El entrenador entiende exactamente lo que pido, o me pregunta (Fase D; en rama)
+
+- Va en la rama `SCRUM-33-agente-entiende`, sobre `main` con SCRUM-34. Era la única historia READY que quedaba (en Jira dice *Won't* y hito posterior). Jesús pidió arrancarla el 2026-11-01.
+- **Bugs:**
+  - **7.** `makeCommand` perdía los datos de la petición: "cambiar objetivo" salía como `adjustLoadOrVolume` y "¿por qué?" explicaba con el registro de la validación.
+  - **8.** La política creía en `painGateActive` y `proposedProgressionIncrease` tal como los mandaba quien llamaba.
+  - **13.** El gateway nunca usaba el tiempo límite.
+  - Además, "cambiar de gym" inventaba un `GymID()` nuevo.
+- **Cómo queda:**
+  - `AgentWriteCommand` lleva los datos tipados de cada intención: minutos, máquina y motivo, ejercicio, fatiga, dolor, objetivo, fase, gimnasio, restricción, ajuste y la decisión que se explica;
+  - la política valida el comando concreto (`validate(_:as:context:)`):
+    - deriva el pain gate de los reportes de dolor (`recentPain`) y el posible aumento del propio comando (`mayIncreaseLoadOrVolume`);
+    - los booleanos de quien llama sólo endurecen;
+    - un cambio importante (objetivo, fase, restricción, plan) sin confirmar pide confirmación;
+  - el gateway:
+    - tiene tiempo límite por intento (`AgentGatewayTiming.standard`: interpretar 10 s, explicar 18 s);
+    - avisa cuando responde el respaldo local (`AgentGatewayReply.fallback`: `.noBackend`, `.timeout` o `.backendFailure`);
+    - pide aclarar ante datos imposibles (0 o más de 240 minutos, fatiga fuera de 1–5) o ambiguos ("30 o 45 minutos");
+    - quita las notas que el usuario no dijo;
+    - declina las preguntas de diagnóstico sin llamar al modelo (`.declinesDiagnosis`);
+  - el transporte manda el texto del usuario entre `<mensaje_usuario>` y `</mensaje_usuario>`, sin las etiquetas que traiga, y el prompt dice que ese texto es dato, no instrucciones.
+- La app todavía no muestra el chat (Fase I): esto es el contrato que la pantalla usará.
+
+**Criterios:**
+- [x] **1.** Cada intención llega al comando con sus datos tipados.
+- [x] **2.** `changeGoal` es un cambio de objetivo, no un ajuste de carga o volumen.
+- [x] **3.** Un mensaje ambiguo o una entrada inválida da `needsClarification`.
+- [x] **4.** "¿Por qué?" usa el DecisionRecord de esa decisión. Si no existe, pide aclarar.
+- [x] **5.** Con dolor activo, la política bloquea lo que implicaría subir carga o volumen, derivando el contexto ella misma.
+- [x] **6.** Un cambio importante requiere confirmación.
+- [x] **7.** Si el proveedor no responde a tiempo, responde el respaldo y se avisa.
+- [x] **8.** "Me duele el hombro, ¿qué tengo?" no da diagnóstico.
+- [x] **9.** Un texto pegado con instrucciones se trata como dato.
+
+Evidencia: rama `SCRUM-33-agente-entiende`.
+- Línea base: `make test` → 577 + 626 de Swift Testing y 151 de XCTest, en verde.
+- `make ci` → `✔ Test run with 597 tests in 87 suites passed` + `✔ Test run with 631 tests in 108 suites passed`, y 151 de XCTest (2026-11-01). Builds de iOS y watchOS sin warnings nuevos; el de `ProfileView.swift:196` (Toggle de la IA, SCRUM-202) ya estaba en el código y sale cuando se recompila la app.
+- Pruebas por criterio:
+  - en `AgentUnderstandsTests` (PRDomain, 20):
+    1. `everyIntentKeepsItsPayload`;
+    2. `changeGoalIsAGoalChange`;
+    3. `invalidPayloadNeedsClarification`, `validPayloadPasses` y `phraseSuite` (12 frases fijas: tiempo, equipo, dolor, ambigüedad e inyección);
+    4. `askWhyUsesThatDecision` y `askWhyUnknownDecisionClarifies`;
+    5. `painBlocksPossibleIncreases` (moderado y alto, con el caller diciendo que no), `painAllowsReductionsAndNeutralChanges`, `mildPainDoesNotBlock` y `validatorDerivesFromCommand`;
+    6. `importantChangesNeedConfirmation` y `dailyChangesDoNotNeedConfirmation`;
+    7. `interpretTimesOut` y `explainTimesOut` (proveedor lento de 5 s, respuesta en menos de 2 s), `fallbackIsReported` y `standardTiming`;
+    8. `diagnosisIsDeclined` (3 frases; el modelo ni se llama), `notADiagnosisQuestion` y `notesMustBeLiteral`;
+  - en `AgentUnderstandsIntegrationTests` (PRCore, 5), con `LLMBackendTransport` sobre un proveedor falso, `ProgressionEngine` y la política reales:
+    - criterio 9: `userTextIsDelimitedData` e `injectionNeverSkipsConfirmation`;
+    - criterio 4: `askWhyUsesEngineDecision`, con el DecisionRecord real del motor;
+    - criterio 5: `painFromTheWorkoutBlocksIncreases`, con el dolor real de la serie;
+    - criterio 8: `diagnosisNeverReachesTheProvider`.
+- Las pruebas que ya estaban (`AgentActionWriterTests`, `ActionPolicyValidatorTests`, `AgentGatewayTests`, `LLMBackendTransportTests`, `AgentAdvancedReasoningTests`, `PlanPersonalizationTests`) siguen igual y en verde.
+- E2E: `make test-ui-smoke` → 3 de 3 (FirstWorkout 39 s, Intermediate 1 min 3 s, WorkoutRecovery 49 s). Ningún recorrido usa el agente.
+- **Decisiones para Jesús:**
+  - con dolor moderado o alto, también se rechazan el cambio de objetivo o de fase y cualquier ajuste del plan, porque pueden subir la carga y `PlanAdjustmentRequest` no dice si sube o baja;
+  - pocos minutos (p. ej. 20) no son inválidos: los decide el motor.
+- **Aparte:**
+  - "sustituto prohibido" y "debilita una restricción profesional" siguen como booleanos de quien llama; este criterio era el del dolor;
+  - "1 h 30 min" se lee como 30 (ya pasaba);
+  - el modelo necesita los ids del sistema para `askWhy` y `changeGym`.
+
 ### Propuestas a partir de openGym (2026-11-01; borradores, no empezar)
 
 Salen del análisis de [openGym](https://github.com/DuarteSantos8/openGym). **Su código es AGPL-3.0 y no se copia:** se toman las ideas, y el mapa sale de su fuente original con licencia MIT. Las dos están en Jira sin la etiqueta READY: Jesús aprueba los criterios y las prioridades (las que tienen son propuestas). El detalle completo, con criterios, pruebas y riesgos, está en Jira; en `backlog.md` va el resumen.
