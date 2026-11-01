@@ -1,7 +1,7 @@
 # mvp-plan.md — Plan activo: MVP / POC de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica POC: SCRUM-180).
-> **Actualizado:** 2026-10-30 (tablero sincronizado con Jira y con el código).
+> **Actualizado:** 2026-11-01 (SCRUM-224 en `main`; SCRUM-229 y SCRUM-230, borradores en Jira).
 > **Ejecuta:** el agente de IA de Xcode. Hace todo el trabajo asignado en Jira a Gael Durán y Joss Amador, en el orden de este archivo.
 > **Regla:** mientras quede un `[ ]` en las secciones 2 y 3, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
 > **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 y SCRUM-37 el 2026-10-28; SCRUM-219 el 2026-10-29; SCRUM-36 y SCRUM-228 el 2026-10-30) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
@@ -677,7 +677,7 @@ Evidencia: commit `42ffa7b`.
 
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; ~~D1, SCRUM-220~~, decidida el 2026-10-30: opción B, ADR-0004; ~~SCRUM-227~~, el volumen por experiencia, en `main` desde el 2026-10-30; queda SCRUM-224, los supersets, en rama) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27, ~~SCRUM-37~~, el catálogo, el 2026-10-28 y ~~SCRUM-228~~, las E2E por recorrido, el 2026-10-30) → HealthKit, Watch, pestañas.
+En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; ~~D1, SCRUM-220~~, decidida el 2026-10-30: opción B, ADR-0004; ~~SCRUM-227~~, el volumen por experiencia, en `main` desde el 2026-10-30; ~~SCRUM-224~~, los supersets, en `main` desde el 2026-10-31: la Fase B queda completa en código) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27, ~~SCRUM-37~~, el catálogo, el 2026-10-28 y ~~SCRUM-228~~, las E2E por recorrido, el 2026-10-30) → HealthKit, Watch, pestañas (Fase H, con SCRUM-229, el mapa muscular, en borrador) → después de 1.0 (Fase K, con SCRUM-230, importar historial, en borrador).
 
 ### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada; finalizada el 2026-10-27)
 
@@ -1182,9 +1182,10 @@ Evidencia: rama `SCRUM-228-e2e-por-recorrido`, commit `328ebc5`.
   - `waitForExistence` evalúa la primera vez a ~1 s aunque el elemento ya esté: en el smoke eran 114 esperas y 118 s de 248. `appears(within:)` mira primero; "no aparece en N s" sigue con `waitForExistence`.
   - El resumen de las pruebas de UI dice el paso donde falló cada recorrido.
 
-### SCRUM-224 · PR-B004b Supersets compatibles en la sesión: modelo, migración y modo entrenamiento (Should, Fase B; en rama)
+### SCRUM-224 · PR-B004b Supersets compatibles en la sesión: modelo, migración y modo entrenamiento (Should, Fase B; en `main` desde el 2026-10-31)
 
-- Va en la rama `SCRUM-224-supersets`, sobre `main` con SCRUM-228. Jesús la dio por lista (no tenía la etiqueta READY) el 2026-10-31.
+- **En `main` desde el 2026-10-31:** Jesús fusionó el PR #18 (`76b5893`). En Jira sigue en Revisar.
+- Se trabajó en la rama `SCRUM-224-supersets`, sobre `main` con SCRUM-228. Jesús la dio por lista (no tenía la etiqueta READY) el 2026-10-31.
 - **Decisiones de Jesús (2026-10-31):**
   1. "Para después" y "Saltar" afectan sólo al ejercicio que se ve; su pareja sigue sola, con su descanso normal (como el dolor alto).
   2. Pueden ir en superset todos menos las anclas compuestas (un músculo prioritario sí).
@@ -1219,3 +1220,43 @@ Evidencia: commits `f9647a2` (lógica) y `b4a0329` (pantalla y recorrido), en la
 - **Hallazgo:** desde SCRUM-227 el techo de tiempo baja el volumen antes de componer, así que casi todas las sesiones ya caben y el superset del motor sólo aparece cuando lo protegido (anclas compuestas y músculos con énfasis) no cabe; por ejemplo, 3 días de 30 min con brazos prioritarios. En "Ajustar a mi tiempo" sí aparece seguido. Si el techo debiera contar el ahorro del superset (más volumen con el mismo tiempo), es otra historia: toca ADR-0004.
 - **Aparte:** el estimador suma un descanso tras la última serie (decisión 4).
 - **Pendiente:** 👤 Jesús, hacer un entrenamiento con superset en el iPhone (con letra grande y con Reduce Transparency).
+
+### Propuestas a partir de openGym (2026-11-01; borradores, no empezar)
+
+Salen del análisis de [openGym](https://github.com/DuarteSantos8/openGym). **Su código es AGPL-3.0 y no se copia:** se toman las ideas, y el mapa sale de su fuente original con licencia MIT. Las dos están en Jira sin la etiqueta READY: Jesús aprueba los criterios y las prioridades (las que tienen son propuestas). El detalle completo, con criterios, pruebas y riesgos, está en Jira; en `backlog.md` va el resumen.
+
+#### SCRUM-229 · PR-H001 Mapa muscular: qué trabaja cada sesión y a dónde va tu volumen (Should propuesto, Fase H; borrador)
+
+- **Qué es:** un mapa del cuerpo con [MuscleMap](https://github.com/melihcolpan/MuscleMap) (MIT, SwiftUI, iOS 17+), sólo en el target de la app.
+  - En Hoy y en el detalle del día muestra los músculos de la sesión: principales en tono fuerte, secundarios en tono suave.
+  - En Progreso muestra las series de la semana por músculo contra el rango de su objetivo.
+- **Reglas:**
+  - el conteo por músculo y el nivel van en PRDomain, con la misma regla con la que el motor reparte el objetivo semanal;
+  - una tabla con prueba lleva los 12 `MuscleGroup` a las regiones de MuscleMap;
+  - siempre hay una lista en texto junto al mapa y VoiceOver lee cada músculo con su estado;
+  - el mapa no entra en el entrenamiento activo.
+- **Fuera:**
+  - Apple Watch, porque MuscleMap no lo soporta;
+  - elegir dónde dolió tocando el mapa (SCRUM-226 sigue con sus chips), que queda para otra historia si se pide.
+- **Depende de:** ~~SCRUM-37~~ y SCRUM-213.
+
+#### SCRUM-230 · PR-K001 Importar historial de Strong, Hevy y FitNotes (CSV) (Could propuesto, Fase K, después de 1.0; borrador)
+
+- **Qué es:** traer el historial de otra app desde su CSV.
+  - Hay vista previa antes de guardar y se pregunta kg o lb si el archivo no lo dice.
+  - Un ejercicio que no se reconoce se guarda "sin enlazar", sin perderse.
+  - Cada importación es un lote que se puede deshacer.
+- **Integridad:**
+  - reimportar no duplica nada: cada serie lleva una huella estable;
+  - es todo o nada: nunca queda medio archivo guardado;
+  - una fila ilegible se omite y el resumen la cuenta.
+- **Lo que no hace:**
+  - no escribe en HealthKit ni calcula calorías;
+  - no celebra récords viejos;
+  - no fija la carga de la próxima sesión, porque la carga es por máquina específica.
+- **Decisiones de Jesús pendientes:**
+  1. si un día ya tiene un entrenamiento de Nucleus, se omite lo importado de ese día;
+  2. lo importado no cuenta para la racha;
+  3. el historial importado va en su propia colección del `RepositoryStore`, para no migrar el modelo del entrenamiento.
+- **👤 Hacen falta** exportaciones reales de las tres apps, anonimizadas por Jesús, para fijar las columnas y los fixtures.
+- **Depende de:** ~~SCRUM-37~~ y SCRUM-213.
