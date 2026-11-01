@@ -61,6 +61,9 @@ public enum NVIDIAProviderError: Error, Sendable, Equatable {
     case emptyChoices
     /// El streaming fue cancelado por el cliente/tarea (no es un fallo de red).
     case cancelled
+    /// La conexión se cortó a mitad del streaming (SCRUM-34): lo que llegó ya se entregó.
+    /// No se reintenta, porque repetiría el texto ya mostrado.
+    case interrupted
     /// El endpoint de salud de NIM no devolvió un estado esperado (Phase N7).
     case healthUnavailable(status: Int)
 }

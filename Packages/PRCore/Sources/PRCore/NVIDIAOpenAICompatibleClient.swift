@@ -206,17 +206,9 @@ struct NVIDIAOpenAICompatibleClient: Sendable {
                         throw self.mapStatus(http.statusCode)
                     }
 
-                    var decoder = SSEEventDecoder()
-                    for try await byte in bytes {
-                        if Task.isCancelled { throw NVIDIAProviderError.cancelled }
-                        let events = NVIDIAStreamEventParser.parse(
-                            decoder: &decoder,
-                            fragment: String(decoding: [byte], as: UTF8.self)
-                        )
-                        for event in events {
-                            continuation.yield(event)
-                        }
-                    }
+                    // SCRUM-34: los bytes van tal cual al decoder, que decodifica UTF-8 por
+                    // línea completa (antes, cada byte suelto rompía á, ñ, ¿ y los emojis).
+                    try await NVIDIAStreamEventParser.relay(bytes) { continuation.yield($0) }
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)
@@ -306,7 +298,7 @@ struct NVIDIAOpenAICompatibleClient: Sendable {
             return true
         case .authentication, .forbidden, .notFound, .validation,
              .missingAPIKey, .invalidResponse, .malformedResponse, .emptyChoices,
-             .cancelled, .healthUnavailable:
+             .cancelled, .interrupted, .healthUnavailable:
             return false
         }
     }

@@ -306,6 +306,30 @@ Cobertura:
 - `PRCoreTests/PlanPersistenceTests.swift`: un plan del generador 8 se regenera con supersets;
 - `PRUITests/SupersetJourney`: Hoy, "Por qué tu plan" y una ronda A1 → A2 → descanso.
 
+## Mensajes del entrenador en UTF-8 (SCRUM-34, RF-027, RNF-019, PR-0112)
+
+El streaming de la IA decodificaba byte por byte: á, ñ, ¿ y los emojis llegaban rotos y el
+buffer se re-escaneaba completo en cada byte. Las piezas:
+- `PRCore/AgentStreaming.swift`:
+  - `SSEEventDecoder` junta los bytes de cada línea y decodifica UTF-8 sólo con la línea
+    completa, en tiempo lineal; `finish()` entrega la última línea sin salto final;
+  - `NVIDIAStreamEventParser.relay` lee los bytes, entrega cada evento en cuanto se completa y
+    traduce un corte a `.interrupted` (una cancelación sigue siendo `.cancelled`).
+- `PRCore/NVIDIAHostedProvider.swift`: `NVIDIAProviderError.interrupted`, que no se reintenta,
+  porque repetiría el texto ya entregado.
+
+Cobertura en `make ci`, en `PRCoreTests/AgentStreamingUTF8Tests.swift`:
+- caracteres de 2, 3 y 4 bytes partidos en cada punto posible;
+- CRLF partido entre fragmentos y última línea sin salto final;
+- el mismo texto llegue de golpe, byte por byte o partido en cualquier punto;
+- una línea de más de 10 000 caracteres en milisegundos: el decodificador anterior tardaba
+  1.3 s y rompía el texto;
+- corte a mitad (llega lo recibido y avisa) y cancelación;
+- integración con `URLSession` y un `URLProtocol` que parte caracteres entre fragmentos de red,
+  cierra sin salto final o corta la conexión.
+
+Las pruebas que ya estaban (`AgentStreamingTests` y `NIMProviderTests`) siguen igual.
+
 ## Catálogo de ejercicios (EPIC-03)
 
 Implementado en PR-0301 con el dataset público *free-exercise-db* (Unlicense)

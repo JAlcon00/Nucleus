@@ -1,7 +1,7 @@
 # mvp-plan.md — Plan activo: MVP / POC de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica POC: SCRUM-180).
-> **Actualizado:** 2026-11-01 (SCRUM-224 en `main`; SCRUM-229 y SCRUM-230, borradores en Jira).
+> **Actualizado:** 2026-11-01 (SCRUM-224 en `main`; SCRUM-229 y SCRUM-230, borradores en Jira; SCRUM-34 en rama).
 > **Ejecuta:** el agente de IA de Xcode. Hace todo el trabajo asignado en Jira a Gael Durán y Joss Amador, en el orden de este archivo.
 > **Regla:** mientras quede un `[ ]` en las secciones 2 y 3, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
 > **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 y SCRUM-37 el 2026-10-28; SCRUM-219 el 2026-10-29; SCRUM-36 y SCRUM-228 el 2026-10-30) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
@@ -677,7 +677,7 @@ Evidencia: commit `42ffa7b`.
 
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; ~~D1, SCRUM-220~~, decidida el 2026-10-30: opción B, ADR-0004; ~~SCRUM-227~~, el volumen por experiencia, en `main` desde el 2026-10-30; ~~SCRUM-224~~, los supersets, en `main` desde el 2026-10-31: la Fase B queda completa en código) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (agente SCRUM-33, 34) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27, ~~SCRUM-37~~, el catálogo, el 2026-10-28 y ~~SCRUM-228~~, las E2E por recorrido, el 2026-10-30) → HealthKit, Watch, pestañas (Fase H, con SCRUM-229, el mapa muscular, en borrador) → después de 1.0 (Fase K, con SCRUM-230, importar historial, en borrador).
+En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; ~~D1, SCRUM-220~~, decidida el 2026-10-30: opción B, ADR-0004; ~~SCRUM-227~~, el volumen por experiencia, en `main` desde el 2026-10-30; ~~SCRUM-224~~, los supersets, en `main` desde el 2026-10-31: la Fase B queda completa en código) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (agente SCRUM-33; SCRUM-34, el UTF-8 de los mensajes, en rama) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27, ~~SCRUM-37~~, el catálogo, el 2026-10-28 y ~~SCRUM-228~~, las E2E por recorrido, el 2026-10-30) → HealthKit, Watch, pestañas (Fase H, con SCRUM-229, el mapa muscular, en borrador) → después de 1.0 (Fase K, con SCRUM-230, importar historial, en borrador).
 
 ### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada; finalizada el 2026-10-27)
 
@@ -1220,6 +1220,42 @@ Evidencia: commits `f9647a2` (lógica) y `b4a0329` (pantalla y recorrido), en la
 - **Hallazgo:** desde SCRUM-227 el techo de tiempo baja el volumen antes de componer, así que casi todas las sesiones ya caben y el superset del motor sólo aparece cuando lo protegido (anclas compuestas y músculos con énfasis) no cabe; por ejemplo, 3 días de 30 min con brazos prioritarios. En "Ajustar a mi tiempo" sí aparece seguido. Si el techo debiera contar el ahorro del superset (más volumen con el mismo tiempo), es otra historia: toca ADR-0004.
 - **Aparte:** el estimador suma un descanso tras la última serie (decisión 4).
 - **Pendiente:** 👤 Jesús, hacer un entrenamiento con superset en el iPhone (con letra grande y con Reduce Transparency).
+
+### SCRUM-34 · PR-0112 Que los mensajes del entrenador se lean bien (UTF-8) (Could, Fase D; en rama)
+
+- Va en la rama `SCRUM-34-utf8-streaming`, sobre `main` con SCRUM-224. Era la primera historia READY de la Fase D (hito 1.0, sin dependencias).
+- **Bug:** el streaming de la IA decodificaba byte por byte (`String(decoding: [byte], …)`):
+  - á, ñ, ¿ y los emojis llegaban como "�";
+  - el buffer se re-escaneaba completo en cada byte: una línea de 13 000 bytes tardaba 1.3 s;
+  - además, si el servidor cerraba sin salto final, el último evento (p. ej. el `finish`) se perdía;
+  - un corte de la conexión salía como un `URLError` crudo.
+- **Cómo queda:**
+  - `SSEEventDecoder` junta los bytes de cada línea y decodifica UTF-8 sólo con la línea completa (el `\n` nunca está dentro de un carácter multibyte);
+  - `NVIDIAStreamEventParser.relay` entrega cada evento en cuanto se completa;
+  - `NVIDIAProviderError.interrupted` señala un corte, sin reintentar, porque repetiría el texto ya entregado.
+- La app todavía no usa el streaming: pide la respuesta completa. Mostrar el chat es de la Fase I. Lo arreglado es el contrato del proveedor, que la pantalla usará.
+
+**Criterios:**
+- [x] **1.** Una respuesta con ñ, ¿, ¡, acentos y un emoji se entrega idéntica.
+- [x] **2.** Un carácter de 2, 3 o 4 bytes partido entre dos fragmentos de red llega entero.
+- [x] **3.** La misma respuesta da el mismo texto de golpe, byte por byte o partida en cualquier punto.
+- [x] **4.** Si la conexión se corta a mitad, se entrega lo que llegó, se descarta la línea a medias y el stream termina con `.interrupted`. Una cancelación sigue siendo `.cancelled`.
+- [x] **5.** Una respuesta de 10 000 caracteres o más en una sola línea se procesa en tiempo lineal: 3 ms (antes, 1.3 s).
+
+Evidencia: rama `SCRUM-34-utf8-streaming`.
+- Línea base: `make test` → 577 + 615 de Swift Testing y 151 de XCTest, en verde.
+- `make ci` → `✔ Test run with 577 tests in 86 suites passed` + `✔ Test run with 626 tests in 107 suites passed`, y 151 de XCTest (2026-11-01). Builds de iOS y watchOS sin warnings nuevos.
+- Pruebas por criterio, todas en `AgentStreamingUTF8Tests` (11):
+  1. `providerStreamsSpanishText`, con `URLSession` y un `URLProtocol` que parte "¿", "ñ" y el emoji entre fragmentos;
+  2. `multibyteSplitAcrossFragments` (ñ, ¿, €, 💪, en cada corte posible) y `crlfSplitAcrossFragments`;
+  3. `sameTextHoweverItArrives`;
+  4. `relayDeliversWhatArrivedBeforeTheCut`, `relayReportsCancellation`, `providerReportsInterruption` e `interruptedDiagnosticCode`;
+  5. `longResponseIsLinear`.
+  
+  Además, `lastLineWithoutNewline` y `providerDeliversLastEventWithoutNewline` cubren el cierre sin salto final.
+- `AgentStreamingTests` y `NIMProviderTests` siguen igual y en verde.
+- E2E: `make test-ui-smoke` → 3 de 3 (FirstWorkout 39 s, Intermediate 51 s, WorkoutRecovery 48 s). Ningún recorrido usa el streaming, así que no hay uno propio que correr.
+- **Hallazgo:** con `URLProtocol`, si los datos y el corte llegan en el mismo instante, `URLSession` descarta los bytes que aún no se leían. Con la red real llegan poco a poco y se entregan conforme llegan. Por eso "llega lo recibido" se prueba con `relay` sobre una secuencia de bytes, y con `URLSession` se prueba el aviso.
 
 ### Propuestas a partir de openGym (2026-11-01; borradores, no empezar)
 

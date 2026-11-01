@@ -102,6 +102,7 @@ extension NVIDIAProviderError {
         case .malformedResponse: return "malformedResponse"
         case .emptyChoices: return "emptyChoices"
         case .cancelled: return "cancelled"
+        case .interrupted: return "interrupted"
         case .healthUnavailable: return "healthUnavailable"
         }
     }
