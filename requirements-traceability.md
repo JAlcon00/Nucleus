@@ -392,6 +392,25 @@ Cobertura:
   - el JSON roto sigue pidiendo aclaración.
 - `PRCoreTests/LLMBackendTransportTests.swift`: las pruebas de comas finales siguen igual y en verde sin la reparación propia.
 
+## Salud con permisos parciales (SCRUM-35, RF-002, RF-017, RNF-012, RN-018, PR-0113)
+
+El bug 12: `HealthWorkoutCoordinator.start` exigía todos los permisos. Las piezas:
+- `PRCore/HealthAuthorization.swift`:
+  - `HealthPermissionOutcome.isGranted(_:)`; un fallo de la solicitud no concede nada;
+  - el fake `InMemoryHealthKitProvider` acepta `.grantOnly(_:)` para probar permisos parciales.
+- `PRCore/HealthWorkout.swift`:
+  - `start` sólo exige `.workout`; sin él lanza `missingPermission` y la sesión local queda intacta;
+  - `finishWithSummary` devuelve la sesión y el resumen limitado a los permisos vigentes;
+  - `HealthWorkoutSummary.limited(to:)` deja el ritmo cardiaco y la energía "no disponible" cuando su permiso no está concedido, aunque vengan medidos o estimados;
+  - `heartRateOrigin` dice "no disponible" cuando no hay resumen de HR.
+
+Hoy ninguna app usa el coordinador: HealthKit real llega con EPIC-25.
+
+Cobertura:
+- `PRCoreTests/HealthPartialPermissionsTests.swift` (8): se registra con sólo el permiso de entrenamientos; sin él, no; con todo negado o Salud sin responder la sesión local queda intacta y se guarda completa con `LocalPersistence` real; el resumen limita cada dato por su permiso, también los estimados; un fallo al terminar no pierde la sesión.
+- `HealthWorkoutTests`, `HealthWorkoutSummaryTests` y `HealthAuthorizationTests` siguen igual y en verde.
+- Pendiente 👤: validación en dispositivo físico con HealthKit real (EPIC-25).
+
 ## Catálogo de ejercicios (EPIC-03)
 
 Implementado en PR-0301 con el dataset público *free-exercise-db* (Unlicense)

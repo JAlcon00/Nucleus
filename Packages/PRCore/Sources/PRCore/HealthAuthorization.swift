@@ -47,6 +47,12 @@ public enum HealthPermissionOutcome: Equatable, Sendable {
         return !map.isEmpty && map.values.allSatisfy { $0 == .granted }
     }
 
+    /// ¿Se concedió este permiso? Un fallo de la solicitud no concede nada (SCRUM-35).
+    public func isGranted(_ type: HealthPermissionType) -> Bool {
+        guard case .success(let map) = self else { return false }
+        return map[type] == .granted
+    }
+
     /// ¿Algún permiso fue denegado explícitamente (RF-002: no bloquea el core)?
     public var anyDeniedButCoreUsable: Bool {
         guard case .success(let map) = self else { return false }
@@ -126,8 +132,18 @@ public actor InMemoryHealthKitProvider: HealthKitProvider {
         case grantAll
         /// Deniega todos los tipos solicitados.
         case denyAll
+        /// Concede sólo estos tipos y deniega el resto (permisos parciales, SCRUM-35).
+        case grantOnly(Set<HealthPermissionType>)
         /// Devuelve un fallo del sistema (p.ej. HealthKit no disponible).
         case fail
+
+        func grants(_ type: HealthPermissionType) -> Bool {
+            switch self {
+            case .grantAll: return true
+            case .denyAll, .fail: return false
+            case .grantOnly(let granted): return granted.contains(type)
+            }
+        }
     }
 
     /// Crea un provider con estados iniciales y comportamiento de solicitud.
@@ -147,11 +163,10 @@ public actor InMemoryHealthKitProvider: HealthKitProvider {
         switch grantBehavior {
         case .fail:
             return .failed(message: "HealthKit no disponible")
-        case .grantAll, .denyAll:
-            let granted = grantBehavior == .grantAll
+        case .grantAll, .denyAll, .grantOnly:
             var next = statusByType
             for type in permissionTypes {
-                next[type] = granted ? .granted : .denied
+                next[type] = grantBehavior.grants(type) ? .granted : .denied
             }
             statusByType = next
             return .success(statusByType: permissionTypes.reduce(into: [:]) { $0[$1] = next[$1] ?? .notDetermined })

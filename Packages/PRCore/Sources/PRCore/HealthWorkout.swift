@@ -131,6 +131,32 @@ public struct HealthWorkoutSummary: Codable, Sendable, Hashable {
         self.energyOrigin = energyOrigin ?? (activeKilocalories == nil ? .unavailable : .measured)
         self.heartRate = heartRate
     }
+
+    /// Origen del ritmo cardiaco: sin resumen de HR es "no disponible" (SCRUM-35).
+    public var heartRateOrigin: MeasurementOrigin {
+        heartRate?.origin ?? .unavailable
+    }
+
+    /// El resumen sin los datos cuyo permiso no está concedido: quedan "no disponible",
+    /// nunca medidos ni estimados (RN-018, SCRUM-35). La duración no depende de permisos.
+    public func limited(to permissions: HealthPermissionOutcome) -> HealthWorkoutSummary {
+        var limited = self
+        if !permissions.isGranted(.activeEnergy) {
+            limited.activeKilocalories = nil
+            limited.energyOrigin = .unavailable
+        }
+        if !permissions.isGranted(.heartRate) {
+            limited.heartRate = nil
+        }
+        return limited
+    }
+}
+
+/// Resultado de terminar el workout en Salud: la sesión local intacta y el resumen ya
+/// limitado a los permisos concedidos (SCRUM-35).
+public struct HealthWorkoutFinish: Sendable, Hashable {
+    public let session: WorkoutSessionRecord
+    public let summary: HealthWorkoutSummary
 }
 
 /// Workout de HealthKit de terceros (para reconciliación / lectura externa, PR-1102/PR-1104).
@@ -311,12 +337,15 @@ public nonisolated struct HealthWorkoutCoordinator: Sendable {
 
     /// Inicia el workout de HealthKit y asocia el handle a la sesión local.
     /// Devuelve la sesión con la referencia asociada. No toca `sets` existentes.
+    /// Sólo exige el permiso de entrenamientos (SCRUM-35, bug 12): sin ritmo cardiaco ni
+    /// energía se registra igual. Sin él lanza `missingPermission` y la sesión local sigue
+    /// intacta: se entrena igual, sólo que sin registro en Salud.
     public func start(
         session: WorkoutSessionRecord,
         configuration: HealthWorkoutConfiguration = HealthWorkoutConfiguration()
     ) async throws -> WorkoutSessionRecord {
         let outcome = try await store.requestAuthorization()
-        guard outcome.allGranted else {
+        guard outcome.isGranted(.workout) else {
             throw HealthWorkoutError.missingPermission
         }
         guard session.healthWorkoutReferenceID == nil else {
@@ -334,12 +363,30 @@ public nonisolated struct HealthWorkoutCoordinator: Sendable {
         completedAt end: Date = Date(),
         activeKilocalories: Double? = nil
     ) async throws -> WorkoutSessionRecord {
+        try await finishWithSummary(session: session, completedAt: end, activeKilocalories: activeKilocalories).session
+    }
+
+    /// Finaliza el workout de HealthKit y devuelve el resumen limitado a los permisos
+    /// vigentes: lo no permitido queda "no disponible" (SCRUM-35). Si no se pueden leer
+    /// los permisos, nada se concede. Un fallo no elimina los sets locales.
+    public func finishWithSummary(
+        session: WorkoutSessionRecord,
+        completedAt end: Date = Date(),
+        activeKilocalories: Double? = nil
+    ) async throws -> HealthWorkoutFinish {
         guard let rawID = session.healthWorkoutReferenceID else {
             throw HealthWorkoutError.notStarted
         }
         let handle = HealthWorkoutHandle(id: HealthWorkoutHandle.ID(rawValue: rawID))
+        let permissions: HealthPermissionOutcome
         do {
-            _ = try await store.finishWorkout(
+            permissions = try await store.requestAuthorization()
+        } catch {
+            permissions = .failed(message: "\(error)")
+        }
+        let summary: HealthWorkoutSummary
+        do {
+            summary = try await store.finishWorkout(
                 handle,
                 with: HealthWorkoutFinishInput(
                     start: session.startedAt,
@@ -353,7 +400,7 @@ public nonisolated struct HealthWorkoutCoordinator: Sendable {
             throw HealthWorkoutError.completionFailed(reason: "\(error)")
         }
         // La sesión local permanece intacta (sets conservados).
-        return session
+        return HealthWorkoutFinish(session: session, summary: summary.limited(to: permissions))
     }
 }
 
