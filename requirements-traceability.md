@@ -376,6 +376,41 @@ Cobertura:
 - `PRUITests/ProfileJourney`: el paso "Con la IA apagada por flag no se pide el consentimiento ni hay Perfil › IA".
 - `IntermediateQuestionnaireJourney` sigue cubriendo la IA encendida (consentimiento y Perfil › IA).
 
+## Un solo cliente de IA, sin código sin efecto (SCRUM-38, RNF-007, RNF-008, RNF-022, PR-0116)
+
+- **Bug 15:** el `llmProvider` calculado de `AppEnvironment` ya no existía. Hoy la conexión se arma una vez (`let aiConnection`) y el proveedor crea su `URLSession` una vez, en `init`. Los `AICoach` que se crean después comparten esa conexión.
+- **Bug 10:** `LLMBackendTransport.stripTrailingCommas` nunca quitaba nada: escribía el `}` antes de buscar la coma. Se quitó, porque `JSONSerialization` y `JSONDecoder` ya aceptan comas finales.
+- **Llaves:** no cambia nada. El guard `check_secrets.sh` (SCRUM-204) sigue revisando en `make ci` que ninguna llave quede en el repo.
+
+Cobertura:
+- `PRCoreTests/AIClientReuseTests.swift` (6):
+  - el coach pedido varias veces comparte el cliente y la `URLSession`;
+  - la sesión inyectada es la que se usa;
+  - dos `resolve` crean sesiones distintas, así que la prueba sí distingue instancias;
+  - Foundation acepta comas finales en objetos y arreglos;
+  - una coma final no altera el texto del usuario dentro de un string;
+  - el JSON roto sigue pidiendo aclaración.
+- `PRCoreTests/LLMBackendTransportTests.swift`: las pruebas de comas finales siguen igual y en verde sin la reparación propia.
+
+## Salud con permisos parciales (SCRUM-35, RF-002, RF-017, RNF-012, RN-018, PR-0113)
+
+El bug 12: `HealthWorkoutCoordinator.start` exigía todos los permisos. Las piezas:
+- `PRCore/HealthAuthorization.swift`:
+  - `HealthPermissionOutcome.isGranted(_:)`; un fallo de la solicitud no concede nada;
+  - el fake `InMemoryHealthKitProvider` acepta `.grantOnly(_:)` para probar permisos parciales.
+- `PRCore/HealthWorkout.swift`:
+  - `start` sólo exige `.workout`; sin él lanza `missingPermission` y la sesión local queda intacta;
+  - `finishWithSummary` devuelve la sesión y el resumen limitado a los permisos vigentes;
+  - `HealthWorkoutSummary.limited(to:)` deja el ritmo cardiaco y la energía "no disponible" cuando su permiso no está concedido, aunque vengan medidos o estimados;
+  - `heartRateOrigin` dice "no disponible" cuando no hay resumen de HR.
+
+Hoy ninguna app usa el coordinador: HealthKit real llega con EPIC-25.
+
+Cobertura:
+- `PRCoreTests/HealthPartialPermissionsTests.swift` (8): se registra con sólo el permiso de entrenamientos; sin él, no; con todo negado o Salud sin responder la sesión local queda intacta y se guarda completa con `LocalPersistence` real; el resumen limita cada dato por su permiso, también los estimados; un fallo al terminar no pierde la sesión.
+- `HealthWorkoutTests`, `HealthWorkoutSummaryTests` y `HealthAuthorizationTests` siguen igual y en verde.
+- Pendiente 👤: validación en dispositivo físico con HealthKit real (EPIC-25).
+
 ## Catálogo de ejercicios (EPIC-03)
 
 Implementado en PR-0301 con el dataset público *free-exercise-db* (Unlicense)

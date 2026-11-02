@@ -29,7 +29,8 @@ struct NVIDIAOpenAICompatibleClient: Sendable {
     let apiKeyProvider: (@Sendable () -> String?)?
     let timeoutSeconds: TimeInterval
     let maxRetries: Int
-    private let session: URLSession
+    /// Una por cliente; las copias del cliente comparten la misma (SCRUM-38).
+    let session: URLSession
 
     init(
         baseURL: URL,
