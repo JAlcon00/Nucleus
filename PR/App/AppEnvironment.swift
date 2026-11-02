@@ -27,6 +27,10 @@ public final class AppEnvironment {
     /// En pruebas de UI queda apagada (deterministas y sin red).
     public let aiConnection: AIConnection
 
+    /// Feature flags de la app (SCRUM-39), armadas una vez al arrancar: IA y Salud
+    /// encendidas como hoy; en Debug, `-PRFeatureFlag clave=0|1` las cambia.
+    public let featureFlags: FeatureFlags
+
     /// Fachada de la IA: nunca lanza; una falla es "no disponible" y la app sigue local.
     public var aiCoach: AICoach { AICoach(connection: aiConnection) }
 
@@ -348,19 +352,22 @@ public final class AppEnvironment {
         self.fixedDate = fixedDate
         self.uiTestPlanDelay = testOptions.planDelay
         self.uiTestSeededProfile = testOptions.seededProfile
+        let featureFlags = FeatureFlags.forApp(arguments: ProcessInfo.processInfo.arguments, isDebugBuild: isDebugBuild)
+        self.featureFlags = featureFlags
         let aiConnection: AIConnection
         if testOptions.isolatedPersistence {
             aiConnection = AIConnection(status: .offline(.uiTesting), provider: OfflineLLMProvider())
         } else {
             #if DEBUG
-            aiConnection = AIConnection.resolve(build: .debug)
+            aiConnection = AIConnection.resolve(build: .debug, flags: featureFlags)
             #else
-            aiConnection = AIConnection.resolve(build: .release)
+            aiConnection = AIConnection.resolve(build: .release, flags: featureFlags)
             #endif
         }
         self.aiConnection = aiConnection
         self.healthPrefill = HealthPrefillCoordinator(
             reader: testOptions.isolatedPersistence ? nil : HealthKitProfileReader(),
+            isEnabled: featureFlags.isEnabled(.healthPrefillEnabled),
             clock: { fixedDate ?? Date() }
         )
         self.onboarding = OnboardingCoordinator(
@@ -404,7 +411,11 @@ public final class AppEnvironment {
                 persistence.log.saveFailed(.aiConsent)
             }
         }
-        let aiConsent = AIConsentCoordinator(store: consentStore, clock: { fixedDate ?? Date() })
+        let aiConsent = AIConsentCoordinator(
+            store: consentStore,
+            isOffered: featureFlags.isEnabled(.agentNvidiaEnabled),
+            clock: { fixedDate ?? Date() }
+        )
         self.aiConsent = aiConsent
         var checkInStore: SleepCheckInStore?
         if let persistence = self.basePersistence {

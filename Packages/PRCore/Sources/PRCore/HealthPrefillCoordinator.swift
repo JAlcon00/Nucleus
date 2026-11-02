@@ -45,27 +45,32 @@ public final class HealthPrefillCoordinator {
     public private(set) var state: HealthPrefillState = .idle
 
     private let reader: (any HealthProfileReading)?
+    private let isEnabled: Bool
     private let mapper = HealthPrefillMapper()
     private let clock: () -> Date
     private let timeZone: () -> TimeZone
 
+    /// `isEnabled`: la flag `health.prefill.enabled` (SCRUM-39). Apagada, no se ofrece el
+    /// botón ni se lee Salud.
     public init(
         reader: (any HealthProfileReading)?,
+        isEnabled: Bool = true,
         clock: @escaping () -> Date = { Date() },
         timeZone: @escaping () -> TimeZone = { .current }
     ) {
         self.reader = reader
+        self.isEnabled = isEnabled
         self.clock = clock
         self.timeZone = timeZone
     }
 
-    /// ¿Se ofrece el botón? (sin lector, p. ej. en pruebas de UI, no se muestra).
-    public var isOffered: Bool { reader != nil }
+    /// ¿Se ofrece el botón? Con la flag encendida y un lector (en pruebas de UI no hay).
+    public var isOffered: Bool { isEnabled && reader != nil }
 
     /// Lee Salud y devuelve el borrador con lo que se pudo llenar (o el mismo si nada).
     /// Un segundo toque mientras carga no lanza otra lectura.
     public func prefill(_ answer: AboutYouAnswer) async -> AboutYouAnswer {
-        guard let reader, state != .loading else { return answer }
+        guard isEnabled, let reader, state != .loading else { return answer }
         state = .loading
         switch await reader.readProfile() {
         case .denied:

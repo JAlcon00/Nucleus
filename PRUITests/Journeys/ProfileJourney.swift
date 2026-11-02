@@ -87,5 +87,20 @@ final class ProfileJourney: PRUITestCase {
             XCTAssertTrue(element(app, "onboarding.option.intermediate").appears(within: 10),
                           "Rehacer debe abrir el cuestionario")
         }
+
+        // SCRUM-39: con la flag de la IA apagada, la IA no aparece: no se pide el consentimiento
+        // tras el cuestionario, el plan se arma con el motor local y Perfil no tiene la sección.
+        step("Con la IA apagada por flag no se pide el consentimiento ni hay Perfil › IA (SCRUM-39)") {
+            let app = launch(extraArguments: ["-PRFeatureFlag", "agent.nvidia.enabled=0"])
+            answerQuestionnaire(app, aiConsent: nil)
+            XCTAssertTrue(element(app, "weekIntro.done").appears(within: 20), "El plan se arma sin preguntar por la IA")
+            XCTAssertFalse(element(app, "aiConsent.decline").exists, "Sin la IA no hay consentimiento")
+            tap(app, "weekIntro.done")
+            XCTAssertTrue(element(app, "today.start").appears(within: 15))
+            openTab(app, "Perfil")
+            XCTAssertTrue(element(app, "profile.redo").appears(within: 10))
+            XCTAssertFalse(app.switches["profile.aiConsent"].exists, "Perfil no muestra la IA")
+            XCTAssertFalse(element(app, "profile.aiStatus").exists)
+        }
     }
 }

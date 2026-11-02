@@ -25,6 +25,8 @@ struct ProfileView: View {
     var onRedoQuestionnaire: () -> Void = {}
     /// Perfil › Restricciones (SCRUM-36): ver, agregar, editar y resolver. `nil` en previews.
     var restrictionScreen: RestrictionScreenModel?
+    /// ¿La app ofrece la IA? Con la flag apagada no hay sección de la IA (SCRUM-39).
+    var showsAI = true
     /// ¿La IA puede usar los datos del perfil? (SCRUM-202)
     var aiConsentGranted = false
     /// Intento: dar o retirar el consentimiento (retirarlo aplica al instante).
@@ -46,7 +48,9 @@ struct ProfileView: View {
             List {
                 profileHeader
                 aboutYouSection
-                aiSection
+                if showsAI {
+                    aiSection
+                }
 
                 Section("Mi entrenamiento") {
                     if let restrictionScreen {
@@ -229,7 +233,7 @@ struct ProfileView: View {
         switch aiStatus {
         case .live: return String(localized: "Conectada (desarrollo)")
         case .offline(.missingKey): return String(localized: "Modo local (sin llave)")
-        case .offline(.releaseBuild): return String(localized: "Modo local")
+        case .offline(.releaseBuild), .offline(.disabledByFlag): return String(localized: "Modo local")
         case .offline(.uiTesting): return String(localized: "Modo local (pruebas)")
         }
     }
@@ -308,6 +312,11 @@ struct ProfileView: View {
 #Preview("accessibility3") {
     ProfileView()
         .dynamicTypeSize(.accessibility3)
+        .ironEnergyTheme()
+}
+
+#Preview("Sin IA (flag apagada)") {
+    ProfileView(showsAI: false, aiStatus: .offline(.disabledByFlag))
         .ironEnergyTheme()
 }
 

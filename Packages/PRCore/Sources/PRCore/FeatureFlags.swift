@@ -30,6 +30,8 @@ public enum FeatureFlagKey: String, Sendable, CaseIterable, Hashable {
     case agentHealthContextEnabled = "agent.health_context.enabled"
     case agentRecoveryAdjustmentEnabled = "agent.recovery_adjustment.enabled"
     case agentExerciseSubstitutionEnabled = "agent.exercise_substitution.enabled"
+    // Salud (SCRUM-39): botón "Usar datos de Salud" en "Sobre ti".
+    case healthPrefillEnabled = "health.prefill.enabled"
 }
 
 /// Estado de un flag: valor + origen (default o sobrescrito). Auditable.
@@ -116,6 +118,44 @@ public struct FeatureFlags: Sendable, Equatable {
         case .agentHealthContextEnabled: return false
         case .agentRecoveryAdjustmentEnabled: return false
         case .agentExerciseSubstitutionEnabled: return false
+        case .healthPrefillEnabled: return false
+        }
+    }
+}
+
+// MARK: - Flags de la app (SCRUM-39)
+
+extension FeatureFlags {
+    /// `-PRFeatureFlag clave=0|1`, sólo en Debug (se puede repetir).
+    public static let launchArgument = "-PRFeatureFlag"
+
+    /// Lo que la app ya trae encendido (decisión de Jesús, 2026-11-02: "como hoy"). La IA
+    /// sigue apagada en Release por el build (`AIConnection`); la flag sólo la puede apagar.
+    public static let shipped: [FeatureFlagKey] = [.agentNvidiaEnabled, .healthPrefillEnabled]
+
+    /// Las flags de la app, armadas una vez al arrancar: la base segura (todo apagado) con
+    /// lo que la app trae encendido y, sólo en Debug, los cambios de `-PRFeatureFlag`. Una
+    /// clave desconocida o un valor raro se ignoran.
+    public static func forApp(arguments: [String], isDebugBuild: Bool) -> FeatureFlags {
+        var flags = shipped.reduce(FeatureFlags()) { $0.setting($1, to: true) }
+        guard isDebugBuild else { return flags }
+        for (key, enabled) in launchOverrides(in: arguments) {
+            flags = flags.setting(key, to: enabled)
+        }
+        return flags
+    }
+
+    /// Los `-PRFeatureFlag clave=valor` válidos, en orden (el último gana).
+    private static func launchOverrides(in arguments: [String]) -> [(FeatureFlagKey, Bool)] {
+        zip(arguments, arguments.dropFirst()).compactMap { flag, value in
+            guard flag == launchArgument else { return nil }
+            let parts = value.split(separator: "=", maxSplits: 1).map(String.init)
+            guard parts.count == 2, let key = FeatureFlagKey(rawValue: parts[0]) else { return nil }
+            switch parts[1].lowercased() {
+            case "1", "true": return (key, true)
+            case "0", "false": return (key, false)
+            default: return nil
+            }
         }
     }
 }

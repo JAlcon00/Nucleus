@@ -63,6 +63,10 @@ public final class AIConsentCoordinator {
     /// La última decisión no se pudo guardar: se avisa y se puede reintentar.
     public private(set) var saveFailed = false
 
+    /// ¿La app ofrece la IA? Con la flag `agent.nvidia.enabled` apagada (SCRUM-39) no hay
+    /// nada que consentir: no se pregunta y Perfil no muestra la sección.
+    public let isOffered: Bool
+
     private let store: AIConsentStore?
     private let clock: () -> Date
     private let timeZone: () -> TimeZone
@@ -70,16 +74,18 @@ public final class AIConsentCoordinator {
 
     public init(
         store: AIConsentStore?,
+        isOffered: Bool = true,
         clock: @escaping () -> Date = { Date() },
         timeZone: @escaping () -> TimeZone = { .current }
     ) {
         self.store = store
+        self.isOffered = isOffered
         self.clock = clock
         self.timeZone = timeZone
     }
 
-    /// ¿Hay que preguntarle a la persona?
-    public var needsDecision: Bool { consent.needsDecision }
+    /// ¿Hay que preguntarle a la persona? Sólo si la app ofrece la IA.
+    public var needsDecision: Bool { isOffered && consent.needsDecision }
 
     /// Lee la decisión de este usuario (al iniciar sesión o retomarla). Si no se puede
     /// leer, queda "sin preguntar": no se comparte nada.
