@@ -69,19 +69,24 @@ public struct ActionPolicyContext: Sendable, Hashable {
     public var weakeningProfessionalRestriction: Bool
     /// ¿El usuario ya confirmó la acción (para los casos que lo requieren)?
     public var userConfirmed: Bool
+    /// Dolor reportado en las series recientes (SCRUM-33). Con uno moderado o alto, la
+    /// política activa el pain gate ella misma, diga lo que diga `painGateActive`.
+    public var recentPain: [PainFeedback]
 
     public init(
         painGateActive: Bool = false,
         proposedProgressionIncrease: Bool = false,
         proposedSubstituteIsForbidden: Bool = false,
         weakeningProfessionalRestriction: Bool = false,
-        userConfirmed: Bool = false
+        userConfirmed: Bool = false,
+        recentPain: [PainFeedback] = []
     ) {
         self.painGateActive = painGateActive
         self.proposedProgressionIncrease = proposedProgressionIncrease
         self.proposedSubstituteIsForbidden = proposedSubstituteIsForbidden
         self.weakeningProfessionalRestriction = weakeningProfessionalRestriction
         self.userConfirmed = userConfirmed
+        self.recentPain = recentPain
     }
 }
 
@@ -247,12 +252,13 @@ public struct ActionPolicyValidator: Sendable {
             }
 
         case .adjustVolume, .adjustLoadTarget:
-            if config.denyProgressionOnPainGate && context.painGateActive && context.proposedProgressionIncrease {
+            let painGateActive = context.painGateActive || context.recentPain.contains(where: \.blocksProgression)
+            if config.denyProgressionOnPainGate && painGateActive && context.proposedProgressionIncrease {
                 reasons.append("pain gate activo (moderate/high, PR-1403): no se puede aumentar la progresión de carga/volumen")
                 outcome = .rejected(reason: reasons.joined(separator: "; "))
             } else {
                 outcome = .allowed(command: "adjustLoadOrVolume")
-                reasons.append(context.painGateActive
+                reasons.append(painGateActive
                               ? "pain gate activo pero el cambio no aumenta la progresión (reducción/neutro permitido)"
                               : "sin pain gate: progresión permitida")
             }
@@ -300,13 +306,62 @@ public struct ActionPolicyValidator: Sendable {
         )
     }
 
+    // MARK: - Comando concreto del agente (SCRUM-33)
+
+    /// Valida el comando concreto del agente. El contexto de dolor y de progresión lo deriva
+    /// la política: el pain gate de los reportes de dolor (`recentPain`) y el posible aumento
+    /// del propio comando (`mayIncreaseLoadOrVolume`). Los booleanos del caller sólo pueden
+    /// endurecer, nunca relajar (bug 8). Un cambio importante sin confirmar pide confirmación.
+    public func validate(
+        _ command: AgentWriteCommand,
+        as action: AgentAction,
+        context: ActionPolicyContext
+    ) throws -> ActionPolicyVerdict {
+        var derived = context
+        derived.painGateActive = context.painGateActive || context.recentPain.contains(where: \.blocksProgression)
+        derived.proposedProgressionIncrease = context.proposedProgressionIncrease || command.mayIncreaseLoadOrVolume
+        let base = try validate(action, context: derived)
+
+        var outcome = base.outcome
+        var reasons = base.reasons
+        if !base.isRejected && config.denyProgressionOnPainGate && derived.painGateActive && derived.proposedProgressionIncrease {
+            // Cubre lo que la acción genérica no ve (p. ej. un cambio de objetivo recalcula
+            // la sesión y puede subir la carga).
+            reasons = ["pain gate activo (moderate/high, PR-1403): no se puede aumentar la progresión de carga/volumen"]
+            outcome = .rejected(reason: reasons.joined(separator: "; "))
+        } else if case .allowed(let name) = outcome, command.isImportantChange, !context.userConfirmed {
+            reasons.append("cambio importante (objetivo, fase, restricción o plan): requiere confirmación de la persona")
+            outcome = .requiresConfirmation(command: name)
+        }
+
+        reasons.sort()
+        let record = makeRecord(
+            action: action,
+            outcome: outcome,
+            reasons: reasons,
+            reference: base.ruleReference,
+            extraFacts: [
+                DecisionFact(key: "command", value: command.name),
+                DecisionFact(key: "painGate", value: derived.painGateActive ? "activo" : "inactivo"),
+            ]
+        )
+        return ActionPolicyVerdict(
+            action: action,
+            outcome: outcome,
+            reasons: reasons,
+            ruleReference: base.ruleReference,
+            decisionRecord: record
+        )
+    }
+
     // MARK: - Helpers
 
     private func makeRecord(
         action: AgentAction,
         outcome: ActionPolicyOutcome,
         reasons: [String],
-        reference: EvidenceRuleReference
+        reference: EvidenceRuleReference,
+        extraFacts: [DecisionFact] = []
     ) -> DecisionRecord {
         DecisionRecord(
             type: .policyValidation,
@@ -314,7 +369,7 @@ public struct ActionPolicyValidator: Sendable {
                 DecisionFact(key: "action", value: action.displayName),
                 DecisionFact(key: "outcome", value: outcomeDescription(outcome)),
                 DecisionFact(key: "reasons", value: reasons.joined(separator: "; ")),
-            ],
+            ] + extraFacts,
             action: DecisionActionSummary(title: "Policy \(outcomeDescription(outcome)): \(action.displayName)", detail: reasons.joined(separator: "; ")),
             ruleReferences: [reference],
             userOverrideAllowed: false

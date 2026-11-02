@@ -178,14 +178,23 @@ public enum AgentActionPreviewFactory {
 
 /// Comando ESTRECHO que la capa de app despacha a un manager/engine de dominio.
 /// Es la ÚNICA forma de materializar una decisión del agente (nunca acceso directo
-/// a DB). Lleva el payload estructurado mínimo; el auditoría conserva sólo etiquetas.
+/// a DB). Lleva todos los datos tipados de la petición (SCRUM-33): minutos, máquina,
+/// gimnasio, objetivo, ejercicio; la auditoría conserva sólo etiquetas.
 public enum AgentWriteCommand: Sendable, Hashable {
-    case recomputeSession(reason: String)
+    /// Ajustar la sesión de hoy al tiempo disponible (sólo recorta, SCRUM-227).
+    case recomputeSession(timeConstraint: TimeConstraint)
+    case markEquipmentUnavailable(reference: EquipmentReference, reason: UnavailabilityReason)
     case requestSubstitution(forExercise: ExerciseID)
-    case adjustLoadOrVolume(scope: PlanAdjustmentRequest.Scope, reduction: Bool)
+    /// Fatiga reportada: el engine sólo puede bajar la carga.
+    case recordFatigue(UserFatigueFeedback)
+    /// Dolor reportado: el engine sólo puede bajar la carga (pain gate, RN-003).
+    case recordPain(PainReport)
+    case changeGoal(TrainingGoal)
+    case changePhase(BodyCompositionPhase)
+    case changeGym(GymID)
+    case adjustPlan(PlanAdjustmentRequest)
     case recommendRest
     case rescheduleWorkout
-    case updateGymKnowledge(reason: String)
     case saveRestriction(draft: TrainingRestrictionDraft)
     case presentExplanation(decisionID: DecisionID, decisionRecord: DecisionRecord)
 
@@ -193,13 +202,44 @@ public enum AgentWriteCommand: Sendable, Hashable {
     public var name: String {
         switch self {
         case .recomputeSession: return "recomputeSession"
+        case .markEquipmentUnavailable: return "markEquipmentUnavailable"
         case .requestSubstitution: return "requestSubstitution"
-        case .adjustLoadOrVolume: return "adjustLoadOrVolume"
+        case .recordFatigue: return "recordFatigue"
+        case .recordPain: return "recordPain"
+        case .changeGoal: return "changeGoal"
+        case .changePhase: return "changePhase"
+        case .changeGym: return "changeGym"
+        case .adjustPlan: return "adjustPlan"
         case .recommendRest: return "recommendRest"
         case .rescheduleWorkout: return "rescheduleWorkout"
-        case .updateGymKnowledge: return "updateGymKnowledge"
         case .saveRestriction: return "saveRestriction"
         case .presentExplanation: return "presentExplanation"
+        }
+    }
+
+    /// ¿Puede terminar subiendo carga o volumen? La política lo deriva del comando, no de
+    /// un booleano del caller (SCRUM-33, bug 8). Un cambio de objetivo o de fase, o un
+    /// ajuste del plan sin dirección, puede subirlos; lo demás sólo baja o no cambia nada.
+    public var mayIncreaseLoadOrVolume: Bool {
+        switch self {
+        case .changeGoal, .changePhase, .adjustPlan:
+            return true
+        case .recomputeSession, .markEquipmentUnavailable, .requestSubstitution, .recordFatigue,
+             .recordPain, .changeGym, .recommendRest, .rescheduleWorkout, .saveRestriction,
+             .presentExplanation:
+            return false
+        }
+    }
+
+    /// Cambio importante que siempre pide confirmación de la persona: objetivo, fase,
+    /// restricción y plan (SCRUM-33). Lo del día (tiempo, equipo, sustitución) no.
+    public var isImportantChange: Bool {
+        switch self {
+        case .changeGoal, .changePhase, .saveRestriction, .adjustPlan:
+            return true
+        case .recomputeSession, .markEquipmentUnavailable, .requestSubstitution, .recordFatigue,
+             .recordPain, .changeGym, .recommendRest, .rescheduleWorkout, .presentExplanation:
+            return false
         }
     }
 }
@@ -214,6 +254,9 @@ public enum AgentWriteDecision: Sendable {
     case confirm(command: AgentWriteCommand, verdict: ActionPolicyVerdict, preview: AgentActionPreview)
     /// Rechazada por la política (p. ej. no evadir restricciones, no progresar con pain gate).
     case rejected(reason: String, verdict: ActionPolicyVerdict, preview: AgentActionPreview)
+    /// Falta un dato para actuar (p. ej. "¿por qué?" de una decisión que no existe): la app
+    /// pide aclarar. No se valida ni se escribe nada (SCRUM-33).
+    case clarify(reason: String, preview: AgentActionPreview)
 }
 
 /// Resultado completo del pipeline, incluido el audit trail redactado por etapa.
@@ -242,34 +285,44 @@ public struct AgentActionWriter: Sendable {
         self.validator = validator
     }
 
-    /// Procesa un `AgentIntent`: mapea a acción, genera preview, valida con política y
-    /// produce un comando estrecho (si procede) + audit trail redactado.
+    /// Procesa un `AgentIntent`: mapea a acción, genera preview, arma el comando con todos
+    /// sus datos, lo valida con la política y produce la decisión + audit trail redactado.
+    /// `knownDecisions`: las decisiones que "¿por qué?" puede explicar (SCRUM-33).
     public func execute(
         intent: AgentIntent,
         context: ActionPolicyContext,
         userConfirmed: Bool = false,
-        conversationID: UUID? = nil
+        conversationID: UUID? = nil,
+        knownDecisions: [DecisionRecord] = []
     ) throws -> AgentActionPipelineResult {
         let action = AgentIntentActionMapper.action(for: intent)
         let preview = AgentActionPreviewFactory.preview(for: intent, context: context)
+        var audit: [AgentAuditRecord] = [.intent(intent, conversationID: conversationID)]
+
+        guard let writeCommand = makeCommand(for: intent, knownDecisions: knownDecisions) else {
+            let reason = "No encuentro esa decisión; ¿cuál quieres que te explique?"
+            audit.append(.result(command: "clarify", conversationID: conversationID, notes: [reason]))
+            return AgentActionPipelineResult(
+                intent: intent,
+                action: action,
+                preview: preview,
+                decision: .clarify(reason: reason, preview: preview),
+                auditRecords: audit
+            )
+        }
+
         var effectiveContext = context
         effectiveContext.userConfirmed = userConfirmed
-        let verdict = try validator.validate(action, context: effectiveContext)
-
-        var audit: [AgentAuditRecord] = [
-            .intent(intent, conversationID: conversationID),
-            .validation(verdict, conversationID: conversationID),
-        ]
+        let verdict = try validator.validate(writeCommand, as: action, context: effectiveContext)
+        audit.append(.validation(verdict, conversationID: conversationID))
 
         let decision: AgentWriteDecision
         switch verdict.outcome {
         case .allowed:
-            let writeCommand = makeCommand(for: intent, action: action, verdict: verdict)
             decision = .execute(command: writeCommand, verdict: verdict, preview: preview)
             audit.append(.result(command: writeCommand.name, conversationID: conversationID, notes: verdict.reasons))
 
         case .requiresConfirmation:
-            let writeCommand = makeCommand(for: intent, action: action, verdict: verdict)
             decision = .confirm(command: writeCommand, verdict: verdict, preview: preview)
             audit.append(.result(command: "confirm:\(writeCommand.name)", conversationID: conversationID, notes: verdict.reasons))
 
@@ -287,59 +340,35 @@ public struct AgentActionWriter: Sendable {
         )
     }
 
-    /// Convierte la acción validada en el comando estrecho concreto para el intent.
-    private func makeCommand(
-        for intent: AgentIntent,
-        action: AgentAction,
-        verdict: ActionPolicyVerdict
-    ) -> AgentWriteCommand {
+    /// El comando concreto del intent, con todos sus datos tipados (SCRUM-33: antes se
+    /// perdían minutos, máquina y gimnasio, y "cambiar objetivo" salía como ajuste de
+    /// carga). `nil` sólo si "¿por qué?" pide una decisión que no está en `knownDecisions`.
+    private func makeCommand(for intent: AgentIntent, knownDecisions: [DecisionRecord]) -> AgentWriteCommand? {
         switch intent {
         case .setTimeConstraint(let constraint):
-            return .recomputeSession(reason: constraintSummary(constraint))
-
-        case .equipmentUnavailable:
-            return .updateGymKnowledge(reason: "equipamiento no disponible")
-
+            return .recomputeSession(timeConstraint: constraint)
+        case .equipmentUnavailable(let reference, let reason):
+            return .markEquipmentUnavailable(reference: reference, reason: reason)
         case .requestExerciseSwap(let exerciseID):
             return .requestSubstitution(forExercise: exerciseID)
-
-        case .reportFatigue:
-            return .adjustLoadOrVolume(scope: .loadTarget, reduction: true)
-
-        case .reportPain:
-            return .adjustLoadOrVolume(scope: .loadTarget, reduction: true)
-
-        case .changeGoal:
-            return .adjustLoadOrVolume(scope: .fullRebuild, reduction: false)
-
-        case .changePhase:
-            return .adjustLoadOrVolume(scope: .fullRebuild, reduction: false)
-
-        case .changeGym:
-            return .updateGymKnowledge(reason: "cambio de gym")
-
+        case .reportFatigue(let feedback):
+            return .recordFatigue(feedback)
+        case .reportPain(let report):
+            return .recordPain(report)
+        case .changeGoal(let goal):
+            return .changeGoal(goal)
+        case .changePhase(let phase):
+            return .changePhase(phase)
+        case .changeGym(let gymID):
+            return .changeGym(gymID)
         case .askWhy(let decisionID):
-            return .presentExplanation(
-                decisionID: decisionID,
-                decisionRecord: verdict.decisionRecord
-            )
-
+            // La explicación usa el registro de ESA decisión, nunca el de la validación.
+            guard let record = knownDecisions.first(where: { $0.id == decisionID }) else { return nil }
+            return .presentExplanation(decisionID: decisionID, decisionRecord: record)
         case .updateRestriction(let draft):
             return .saveRestriction(draft: draft)
-
         case .requestPlanAdjustment(let request):
-            return .adjustLoadOrVolume(scope: request.scope, reduction: false)
-        }
-    }
-
-    private func constraintSummary(_ constraint: TimeConstraint) -> String {
-        switch constraint {
-        case .hard(let minutes):
-            return "\(minutes) min"
-        case .flexible(let target, let tolerance):
-            return "flexible \(target) min ± \(tolerance)"
-        case .unconstrained:
-            return "sin límite"
+            return .adjustPlan(request)
         }
     }
 }

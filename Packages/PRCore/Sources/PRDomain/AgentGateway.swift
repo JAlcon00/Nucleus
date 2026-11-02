@@ -31,6 +31,32 @@ public enum AgentGatewayError: Error, Sendable, Equatable {
 public enum AgentInterpretation: Sendable, Equatable {
     case intent(AgentIntent)
     case needsClarification
+    /// Pide un diagnóstico ("me duele el hombro, ¿qué tengo?"): no se responde (SCRUM-33).
+    /// La app dice que eso lo valora un profesional y ofrece registrar el dolor.
+    case declinesDiagnosis
+}
+
+/// Por qué respondió el respaldo local en vez del backend (SCRUM-33): la app sigue
+/// funcionando y puede avisarlo.
+public enum AgentGatewayFallback: Sendable, Equatable {
+    /// No hay backend configurado (offline-first).
+    case noBackend
+    /// El backend no respondió dentro del tiempo límite.
+    case timeout
+    /// El backend falló o respondió vacío.
+    case backendFailure
+}
+
+/// Respuesta del gateway con el aviso de respaldo, si lo hubo.
+public struct AgentGatewayReply<Value: Sendable & Equatable>: Sendable, Equatable {
+    public let value: Value
+    /// `nil`: respondió el backend a tiempo.
+    public let fallback: AgentGatewayFallback?
+
+    public init(value: Value, fallback: AgentGatewayFallback?) {
+        self.value = value
+        self.fallback = fallback
+    }
 }
 
 // MARK: - Contexto de interpretación
@@ -98,20 +124,49 @@ public struct ExplainResponse: Sendable, Equatable {
 
 // MARK: - Timing policy (ACOTADA)
 
-/// Policy de timeout/retry con margen ACOTADO.
+/// Policy de timeout/retry con margen ACOTADO. El tiempo límite es por intento y distinto
+/// para interpretar y para explicar (SCRUM-33).
 public struct AgentGatewayTiming: Sendable, Equatable {
-    public var timeoutSeconds: TimeInterval
+    public var interpretTimeoutSeconds: TimeInterval
+    public var explainTimeoutSeconds: TimeInterval
     public var maxRetries: Int
     public var backoffSeconds: TimeInterval
 
+    /// El mismo tiempo límite para interpretar y para explicar.
     public init(timeoutSeconds: TimeInterval, maxRetries: Int, backoffSeconds: TimeInterval) throws {
-        guard timeoutSeconds > 0, maxRetries >= 0, backoffSeconds >= 0 else {
+        try self.init(
+            interpretTimeoutSeconds: timeoutSeconds,
+            explainTimeoutSeconds: timeoutSeconds,
+            maxRetries: maxRetries,
+            backoffSeconds: backoffSeconds
+        )
+    }
+
+    public init(
+        interpretTimeoutSeconds: TimeInterval,
+        explainTimeoutSeconds: TimeInterval,
+        maxRetries: Int,
+        backoffSeconds: TimeInterval
+    ) throws {
+        guard interpretTimeoutSeconds > 0, explainTimeoutSeconds > 0, maxRetries >= 0, backoffSeconds >= 0 else {
             throw DomainValidationError.invalidAgentGatewayTiming
         }
-        self.timeoutSeconds = timeoutSeconds
+        self.interpretTimeoutSeconds = interpretTimeoutSeconds
+        self.explainTimeoutSeconds = explainTimeoutSeconds
         self.maxRetries = maxRetries
         self.backoffSeconds = backoffSeconds
     }
+
+    private init(uncheckedInterpret interpret: TimeInterval, explain: TimeInterval) {
+        self.interpretTimeoutSeconds = interpret
+        self.explainTimeoutSeconds = explain
+        self.maxRetries = 0
+        self.backoffSeconds = 0
+    }
+
+    /// Lo estándar (SCRUM-33): interpretar en 10 s y explicar en 18 s, sin reintentos (el
+    /// cliente del proveedor ya reintenta lo reintentable). Pasado eso responde el respaldo.
+    public static let standard = AgentGatewayTiming(uncheckedInterpret: 10, explain: 18)
 
     /// Intentos totales (1 inicial + reintentos), siempre acotado.
     public var totalAttempts: Int { 1 + maxRetries }
@@ -137,9 +192,15 @@ public struct LocalFallbackInterpreter: Sendable {
     public func interpret(text: String, context: AgentContext) -> AgentInterpretation {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
-        // Restricción de tiempo: "solo 30 min", "tengo 30 minutos".
-        if let minutes = extractMinutes(from: trimmed) {
+        // Restricción de tiempo: "solo 30 min", "tengo 30 minutos". Dos cantidades distintas
+        // ("30 o 45 minutos") no se adivinan (SCRUM-33).
+        switch minutesMention(in: trimmed) {
+        case .one(let minutes):
             return .intent(.setTimeConstraint(.hard(minutes: minutes)))
+        case .ambiguous:
+            return .needsClarification
+        case .none:
+            break
         }
 
         // Equipo ocupado: "el bench está ocupado" / "la maquina esta ocupada".
@@ -158,7 +219,8 @@ public struct LocalFallbackInterpreter: Sendable {
             ))
         }
 
-        // Objetivo / fase / gym deterministas.
+        // Objetivo / fase deterministas. "Cambiar de gym" sin decir a cuál pide aclarar:
+        // antes inventaba un `GymID()` nuevo (SCRUM-33).
         switch trimmed {
         case "cambiar objetivo a hipertrofia", "objetivo hipertrofia":
             return .intent(.changeGoal(.hypertrophy))
@@ -166,11 +228,16 @@ public struct LocalFallbackInterpreter: Sendable {
             return .intent(.changeGoal(.strength))
         case "fase de definición", "deficit":
             return .intent(.changePhase(.deficit))
-        case "cambiar de gym":
-            return .intent(.changeGym(GymID()))
         default:
             return .needsClarification
         }
+    }
+
+    /// Cuántas cantidades de minutos distintas menciona el texto.
+    private enum MinutesMention {
+        case none
+        case one(Int)
+        case ambiguous
     }
 
     // MARK: - Equipamiento (PR-1605)
@@ -206,15 +273,19 @@ public struct LocalFallbackInterpreter: Sendable {
         return nil
     }
 
-    private func extractMinutes(from text: String) -> Int? {
-        // "solo X min", "X minutos", "tengo X minutos"
-        guard let range = text.range(of: #"(\d+)\s*(min|minutos|minuto)"#, options: .regularExpression) else {
-            return nil
+    private func minutesMention(in text: String) -> MinutesMention {
+        // "solo X min", "X minutos", "tengo X minutos"; "30 o 45 minutos" cuenta las dos.
+        let pattern = #"(\d+)\s*(o|y|a|-)?\s*(\d+)?\s*(min|minutos|minuto)"#
+        guard let range = text.range(of: pattern, options: .regularExpression) else { return .none }
+        let values = Set(
+            String(text[range])
+                .split(whereSeparator: { !$0.isNumber })
+                .compactMap { Int($0) }
+        )
+        guard values.count == 1, let value = values.first else {
+            return values.isEmpty ? .none : .ambiguous
         }
-        let token = String(text[range]).lowercased()
-        let digits = token.filter(\.isNumber)
-        guard !digits.isEmpty, let value = Int(digits), value > 0 else { return nil }
-        return value
+        return value > 0 ? .one(value) : .none
     }
 }
 
@@ -257,62 +328,101 @@ public struct AgentGateway: Sendable {
     }
 
     public func interpret(text: String, context: AgentContext) async -> AgentInterpretation {
+        await interpretReply(text: text, context: context).value
+    }
+
+    public func explain(facts: [DecisionFact]) async -> ExplainResponse {
+        await explainReply(facts: facts).value
+    }
+
+    /// Interpreta y dice si respondió el respaldo local y por qué (SCRUM-33). Antes de nada,
+    /// una pregunta de diagnóstico se declina sin llegar al modelo; después, una intención
+    /// con datos imposibles pide aclarar y una nota que el usuario no dijo se quita.
+    public func interpretReply(text: String, context: AgentContext) async -> AgentGatewayReply<AgentInterpretation> {
+        guard !MedicalBoundary.asksForDiagnosis(text) else {
+            return AgentGatewayReply(value: .declinesDiagnosis, fallback: nil)
+        }
         guard let transport else {
-            // Sin backend: fallback local directo.
-            return localInterpreter.interpret(text: text, context: context)
+            return AgentGatewayReply(value: checked(localInterpreter.interpret(text: text, context: context), text: text), fallback: .noBackend)
         }
 
         let request = InterpretRequest(text: text, context: context)
-        let totalAttempts = timing.totalAttempts
-        for attempt in 0..<totalAttempts {
+        var failure = AgentGatewayFallback.backendFailure
+        for attempt in 0..<timing.totalAttempts {
             if attempt > 0 {
                 // Backoff acotado (0 es instantáneo en tests).
                 try? await Task.sleep(nanoseconds: UInt64(timing.backoffSeconds * 1_000_000_000))
             }
             do {
-                let response = try await transport.interpret(request)
-                if response.needsClarification {
-                    return .needsClarification
+                let response = try await Self.withTimeout(timing.interpretTimeoutSeconds) {
+                    try await transport.interpret(request)
                 }
-                if let intent = response.intent {
-                    return .intent(intent)
+                guard !response.needsClarification, let intent = response.intent else {
+                    return AgentGatewayReply(value: .needsClarification, fallback: nil)
                 }
-                return .needsClarification
+                return AgentGatewayReply(value: checked(.intent(intent), text: text), fallback: nil)
             } catch {
-                // timeout/backendFailure → reintentar o caer a fallback en el último intento.
-                if attempt == totalAttempts - 1 {
-                    return localInterpreter.interpret(text: text, context: context)
-                }
+                // timeout/backendFailure → reintentar o caer al respaldo en el último intento.
+                failure = Self.fallbackReason(for: error)
             }
         }
-        return localInterpreter.interpret(text: text, context: context)
+        return AgentGatewayReply(value: checked(localInterpreter.interpret(text: text, context: context), text: text), fallback: failure)
     }
 
-    public func explain(facts: [DecisionFact]) async -> ExplainResponse {
+    /// Explica y dice si respondió el respaldo local y por qué (SCRUM-33).
+    public func explainReply(facts: [DecisionFact]) async -> AgentGatewayReply<ExplainResponse> {
         guard let transport else {
-            return localExplainer.explain(facts: facts)
+            return AgentGatewayReply(value: localExplainer.explain(facts: facts), fallback: .noBackend)
         }
         let request = ExplainRequest(facts: facts)
-        let totalAttempts = timing.totalAttempts
-        for attempt in 0..<totalAttempts {
+        var failure = AgentGatewayFallback.backendFailure
+        for attempt in 0..<timing.totalAttempts {
             if attempt > 0 {
                 try? await Task.sleep(nanoseconds: UInt64(timing.backoffSeconds * 1_000_000_000))
             }
             do {
-                let response = try await transport.explain(request)
+                let response = try await Self.withTimeout(timing.explainTimeoutSeconds) {
+                    try await transport.explain(request)
+                }
                 if response.text != nil {
-                    return response
+                    return AgentGatewayReply(value: response, fallback: nil)
                 }
-                // Respuesta vacía → tratar como fallo y caer a fallback local.
-                if attempt == totalAttempts - 1 {
-                    return localExplainer.explain(facts: facts)
-                }
+                // Respuesta vacía → tratar como fallo y caer al respaldo local.
+                failure = .backendFailure
             } catch {
-                if attempt == totalAttempts - 1 {
-                    return localExplainer.explain(facts: facts)
-                }
+                failure = Self.fallbackReason(for: error)
             }
         }
-        return localExplainer.explain(facts: facts)
+        return AgentGatewayReply(value: localExplainer.explain(facts: facts), fallback: failure)
+    }
+
+    /// Una intención con datos imposibles pide aclarar; sus notas quedan sólo si son literales.
+    private func checked(_ interpretation: AgentInterpretation, text: String) -> AgentInterpretation {
+        guard case .intent(let intent) = interpretation else { return interpretation }
+        guard AgentIntentValidator.problem(in: intent) == nil else { return .needsClarification }
+        return .intent(AgentIntentValidator.keepingOnlyLiteralNotes(intent, userText: text))
+    }
+
+    private static func fallbackReason(for error: any Error) -> AgentGatewayFallback {
+        (error as? AgentGatewayError) == .timeout ? .timeout : .backendFailure
+    }
+
+    /// Corre `operation` con tiempo límite (bug 13: antes no se usaba). Si se pasa, cancela
+    /// la operación y lanza `.timeout`; el transporte debe respetar la cancelación, como
+    /// `URLSession`.
+    private static func withTimeout<T: Sendable>(
+        _ seconds: TimeInterval,
+        _ operation: @escaping @Sendable () async throws -> T
+    ) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask { try await operation() }
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                throw AgentGatewayError.timeout
+            }
+            defer { group.cancelAll() }
+            guard let first = try await group.next() else { throw AgentGatewayError.timeout }
+            return first
+        }
     }
 }

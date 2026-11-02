@@ -1,10 +1,10 @@
 # mvp-plan.md — Plan activo: MVP / POC de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica POC: SCRUM-180).
-> **Actualizado:** 2026-11-01 (SCRUM-224 en `main`; SCRUM-229 y SCRUM-230, borradores en Jira; SCRUM-34 en rama).
+> **Actualizado:** 2026-11-01 (SCRUM-224, 227 y 34 finalizadas; SCRUM-229 y SCRUM-230, borradores en Jira; SCRUM-33 en rama).
 > **Ejecuta:** el agente de IA de Xcode. Hace todo el trabajo asignado en Jira a Gael Durán y Joss Amador, en el orden de este archivo.
 > **Regla:** mientras quede un `[ ]` en las secciones 2 y 3, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
-> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 y SCRUM-37 el 2026-10-28; SCRUM-219 el 2026-10-29; SCRUM-36 y SCRUM-228 el 2026-10-30) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
+> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 y SCRUM-37 el 2026-10-28; SCRUM-219 el 2026-10-29; SCRUM-36 y SCRUM-228 el 2026-10-30; SCRUM-224, 227 y 34 el 2026-11-01) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
 
 ---
 
@@ -677,7 +677,7 @@ Evidencia: commit `42ffa7b`.
 
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; ~~D1, SCRUM-220~~, decidida el 2026-10-30: opción B, ADR-0004; ~~SCRUM-227~~, el volumen por experiencia, en `main` desde el 2026-10-30; ~~SCRUM-224~~, los supersets, en `main` desde el 2026-10-31: la Fase B queda completa en código) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (agente SCRUM-33; SCRUM-34, el UTF-8 de los mensajes, en rama) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27, ~~SCRUM-37~~, el catálogo, el 2026-10-28 y ~~SCRUM-228~~, las E2E por recorrido, el 2026-10-30) → HealthKit, Watch, pestañas (Fase H, con SCRUM-229, el mapa muscular, en borrador) → después de 1.0 (Fase K, con SCRUM-230, importar historial, en borrador).
+En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; ~~D1, SCRUM-220~~, decidida el 2026-10-30: opción B, ADR-0004; ~~SCRUM-227~~, el volumen por experiencia, y ~~SCRUM-224~~, los supersets, finalizadas el 2026-11-01: la Fase B queda completa) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (SCRUM-33, el agente entiende o pregunta, en rama; ~~SCRUM-34~~, el UTF-8 de los mensajes, finalizada el 2026-11-01) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27, ~~SCRUM-37~~, el catálogo, el 2026-10-28 y ~~SCRUM-228~~, las E2E por recorrido, el 2026-10-30) → HealthKit, Watch, pestañas (Fase H, con SCRUM-229, el mapa muscular, en borrador) → después de 1.0 (Fase K, con SCRUM-230, importar historial, en borrador).
 
 ### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada; finalizada el 2026-10-27)
 
@@ -1047,9 +1047,9 @@ Evidencia: commits `0e12fb4` (lógica) y `c96d494` (pantalla), en `main` por el 
 - **Aparte:** los valores de los rangos (D1b) y si la fase baja el volumen.
 
 
-### SCRUM-227 · PR-B003 El volumen sale de la experiencia y el tiempo sólo pone el techo (Should, Fase B; en `main` desde el 2026-10-30)
+### SCRUM-227 · PR-B003 El volumen sale de la experiencia y el tiempo sólo pone el techo (Should, Fase B; finalizada el 2026-11-01)
 
-- **En `main` desde el 2026-10-30:** Jesús fusionó el PR #16 (`c73af83`). En Jira sigue en Revisar. Es la decisión D1 = B ([ADR-0004](docs/spec/docs/adr/ADR-0004-volumen-por-tiempo-y-experiencia.md)).
+- **En `main` desde el 2026-10-30:** Jesús fusionó el PR #16 (`c73af83`). Finalizada en Jira el 2026-11-01. Es la decisión D1 = B ([ADR-0004](docs/spec/docs/adr/ADR-0004-volumen-por-tiempo-y-experiencia.md)).
 - **Cómo queda:**
   - el volumen semanal de cada músculo sale de la experiencia dentro del rango de su nivel: novato el mínimo, principiante un cuarto, intermedio la mitad, avanzado y competitivo el máximo (`VolumeDefaults` v2);
   - el tiempo pone el techo: si no cabe en la semana, el volumen baja hacia el mínimo, nunca por debajo, y lo que ni así quepa lo recorta la composición de SCRUM-218;
@@ -1182,9 +1182,9 @@ Evidencia: rama `SCRUM-228-e2e-por-recorrido`, commit `328ebc5`.
   - `waitForExistence` evalúa la primera vez a ~1 s aunque el elemento ya esté: en el smoke eran 114 esperas y 118 s de 248. `appears(within:)` mira primero; "no aparece en N s" sigue con `waitForExistence`.
   - El resumen de las pruebas de UI dice el paso donde falló cada recorrido.
 
-### SCRUM-224 · PR-B004b Supersets compatibles en la sesión: modelo, migración y modo entrenamiento (Should, Fase B; en `main` desde el 2026-10-31)
+### SCRUM-224 · PR-B004b Supersets compatibles en la sesión: modelo, migración y modo entrenamiento (Should, Fase B; finalizada el 2026-11-01)
 
-- **En `main` desde el 2026-10-31:** Jesús fusionó el PR #18 (`76b5893`). En Jira sigue en Revisar.
+- **En `main` desde el 2026-10-31:** Jesús fusionó el PR #18 (`76b5893`). Finalizada en Jira el 2026-11-01.
 - Se trabajó en la rama `SCRUM-224-supersets`, sobre `main` con SCRUM-228. Jesús la dio por lista (no tenía la etiqueta READY) el 2026-10-31.
 - **Decisiones de Jesús (2026-10-31):**
   1. "Para después" y "Saltar" afectan sólo al ejercicio que se ve; su pareja sigue sola, con su descanso normal (como el dolor alto).
@@ -1221,9 +1221,9 @@ Evidencia: commits `f9647a2` (lógica) y `b4a0329` (pantalla y recorrido), en la
 - **Aparte:** el estimador suma un descanso tras la última serie (decisión 4).
 - **Pendiente:** 👤 Jesús, hacer un entrenamiento con superset en el iPhone (con letra grande y con Reduce Transparency).
 
-### SCRUM-34 · PR-0112 Que los mensajes del entrenador se lean bien (UTF-8) (Could, Fase D; en rama)
+### SCRUM-34 · PR-0112 Que los mensajes del entrenador se lean bien (UTF-8) (Could, Fase D; finalizada el 2026-11-01)
 
-- Va en la rama `SCRUM-34-utf8-streaming`, sobre `main` con SCRUM-224. Era la primera historia READY de la Fase D (hito 1.0, sin dependencias).
+- **En `main` desde el 2026-11-01:** Jesús fusionó el PR #20 (`f112d86`). Se trabajó en la rama `SCRUM-34-utf8-streaming`; era la primera historia READY de la Fase D (hito 1.0, sin dependencias).
 - **Bug:** el streaming de la IA decodificaba byte por byte (`String(decoding: [byte], …)`):
   - á, ñ, ¿ y los emojis llegaban como "�";
   - el buffer se re-escaneaba completo en cada byte: una línea de 13 000 bytes tardaba 1.3 s;
@@ -1256,6 +1256,68 @@ Evidencia: rama `SCRUM-34-utf8-streaming`.
 - `AgentStreamingTests` y `NIMProviderTests` siguen igual y en verde.
 - E2E: `make test-ui-smoke` → 3 de 3 (FirstWorkout 39 s, Intermediate 51 s, WorkoutRecovery 48 s). Ningún recorrido usa el streaming, así que no hay uno propio que correr.
 - **Hallazgo:** con `URLProtocol`, si los datos y el corte llegan en el mismo instante, `URLSession` descarta los bytes que aún no se leían. Con la red real llegan poco a poco y se entregan conforme llegan. Por eso "llega lo recibido" se prueba con `relay` sobre una secuencia de bytes, y con `URLSession` se prueba el aviso.
+
+### SCRUM-33 · PR-0111 El entrenador entiende exactamente lo que pido, o me pregunta (Fase D; en rama)
+
+- Va en la rama `SCRUM-33-agente-entiende`, sobre `main` con SCRUM-34. Era la única historia READY que quedaba (en Jira dice *Won't* y hito posterior). Jesús pidió arrancarla el 2026-11-01.
+- **Bugs:**
+  - **7.** `makeCommand` perdía los datos de la petición: "cambiar objetivo" salía como `adjustLoadOrVolume` y "¿por qué?" explicaba con el registro de la validación.
+  - **8.** La política creía en `painGateActive` y `proposedProgressionIncrease` tal como los mandaba quien llamaba.
+  - **13.** El gateway nunca usaba el tiempo límite.
+  - Además, "cambiar de gym" inventaba un `GymID()` nuevo.
+- **Cómo queda:**
+  - `AgentWriteCommand` lleva los datos tipados de cada intención: minutos, máquina y motivo, ejercicio, fatiga, dolor, objetivo, fase, gimnasio, restricción, ajuste y la decisión que se explica;
+  - la política valida el comando concreto (`validate(_:as:context:)`):
+    - deriva el pain gate de los reportes de dolor (`recentPain`) y el posible aumento del propio comando (`mayIncreaseLoadOrVolume`);
+    - los booleanos de quien llama sólo endurecen;
+    - un cambio importante (objetivo, fase, restricción, plan) sin confirmar pide confirmación;
+  - el gateway:
+    - tiene tiempo límite por intento (`AgentGatewayTiming.standard`: interpretar 10 s, explicar 18 s);
+    - avisa cuando responde el respaldo local (`AgentGatewayReply.fallback`: `.noBackend`, `.timeout` o `.backendFailure`);
+    - pide aclarar ante datos imposibles (0 o más de 240 minutos, fatiga fuera de 1–5) o ambiguos ("30 o 45 minutos");
+    - quita las notas que el usuario no dijo;
+    - declina las preguntas de diagnóstico sin llamar al modelo (`.declinesDiagnosis`);
+  - el transporte manda el texto del usuario entre `<mensaje_usuario>` y `</mensaje_usuario>`, sin las etiquetas que traiga, y el prompt dice que ese texto es dato, no instrucciones.
+- La app todavía no muestra el chat (Fase I): esto es el contrato que la pantalla usará.
+
+**Criterios:**
+- [x] **1.** Cada intención llega al comando con sus datos tipados.
+- [x] **2.** `changeGoal` es un cambio de objetivo, no un ajuste de carga o volumen.
+- [x] **3.** Un mensaje ambiguo o una entrada inválida da `needsClarification`.
+- [x] **4.** "¿Por qué?" usa el DecisionRecord de esa decisión. Si no existe, pide aclarar.
+- [x] **5.** Con dolor activo, la política bloquea lo que implicaría subir carga o volumen, derivando el contexto ella misma.
+- [x] **6.** Un cambio importante requiere confirmación.
+- [x] **7.** Si el proveedor no responde a tiempo, responde el respaldo y se avisa.
+- [x] **8.** "Me duele el hombro, ¿qué tengo?" no da diagnóstico.
+- [x] **9.** Un texto pegado con instrucciones se trata como dato.
+
+Evidencia: rama `SCRUM-33-agente-entiende`.
+- Línea base: `make test` → 577 + 626 de Swift Testing y 151 de XCTest, en verde.
+- `make ci` → `✔ Test run with 597 tests in 87 suites passed` + `✔ Test run with 631 tests in 108 suites passed`, y 151 de XCTest (2026-11-01). Builds de iOS y watchOS sin warnings nuevos; el de `ProfileView.swift:196` (Toggle de la IA, SCRUM-202) ya estaba en el código y sale cuando se recompila la app.
+- Pruebas por criterio:
+  - en `AgentUnderstandsTests` (PRDomain, 20):
+    1. `everyIntentKeepsItsPayload`;
+    2. `changeGoalIsAGoalChange`;
+    3. `invalidPayloadNeedsClarification`, `validPayloadPasses` y `phraseSuite` (12 frases fijas: tiempo, equipo, dolor, ambigüedad e inyección);
+    4. `askWhyUsesThatDecision` y `askWhyUnknownDecisionClarifies`;
+    5. `painBlocksPossibleIncreases` (moderado y alto, con el caller diciendo que no), `painAllowsReductionsAndNeutralChanges`, `mildPainDoesNotBlock` y `validatorDerivesFromCommand`;
+    6. `importantChangesNeedConfirmation` y `dailyChangesDoNotNeedConfirmation`;
+    7. `interpretTimesOut` y `explainTimesOut` (proveedor lento de 5 s, respuesta en menos de 2 s), `fallbackIsReported` y `standardTiming`;
+    8. `diagnosisIsDeclined` (3 frases; el modelo ni se llama), `notADiagnosisQuestion` y `notesMustBeLiteral`;
+  - en `AgentUnderstandsIntegrationTests` (PRCore, 5), con `LLMBackendTransport` sobre un proveedor falso, `ProgressionEngine` y la política reales:
+    - criterio 9: `userTextIsDelimitedData` e `injectionNeverSkipsConfirmation`;
+    - criterio 4: `askWhyUsesEngineDecision`, con el DecisionRecord real del motor;
+    - criterio 5: `painFromTheWorkoutBlocksIncreases`, con el dolor real de la serie;
+    - criterio 8: `diagnosisNeverReachesTheProvider`.
+- Las pruebas que ya estaban (`AgentActionWriterTests`, `ActionPolicyValidatorTests`, `AgentGatewayTests`, `LLMBackendTransportTests`, `AgentAdvancedReasoningTests`, `PlanPersonalizationTests`) siguen igual y en verde.
+- E2E: `make test-ui-smoke` → 3 de 3 (FirstWorkout 39 s, Intermediate 1 min 3 s, WorkoutRecovery 49 s). Ningún recorrido usa el agente.
+- **Decisiones para Jesús:**
+  - con dolor moderado o alto, también se rechazan el cambio de objetivo o de fase y cualquier ajuste del plan, porque pueden subir la carga y `PlanAdjustmentRequest` no dice si sube o baja;
+  - pocos minutos (p. ej. 20) no son inválidos: los decide el motor.
+- **Aparte:**
+  - "sustituto prohibido" y "debilita una restricción profesional" siguen como booleanos de quien llama; este criterio era el del dolor;
+  - "1 h 30 min" se lee como 30 (ya pasaba);
+  - el modelo necesita los ids del sistema para `askWhy` y `changeGym`.
 
 ### Propuestas a partir de openGym (2026-11-01; borradores, no empezar)
 
