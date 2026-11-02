@@ -82,7 +82,7 @@ Entra al demo solo si F-01 a F-06 están completos.
 
 ### Soporte
 - [ ] S-01 · Ambiente demo y deploy — SCRUM-188 (era de Gael). Ver bloque 11. Criterios del agente [x]; falta 👤 firma, iPhone y video.
-- [ ] S-02 · CI en GitHub — SCRUM-189 (era de Joss). Ver bloque 3. CI verde en `main` (`bb3c472`) y `main` protegida desde el 2026-11-02; falta comprobar con un PR que no se puede fusionar antes del verde.
+- [x] S-02 · CI en GitHub — SCRUM-189 (era de Joss). Ver bloque 3. CI verde en `main` (`bb3c472`) y `main` protegida desde el 2026-11-02; el PR #29 quedó bloqueado mientras su CI corría.
 - [ ] S-03 · Pruebas de los flujos — SCRUM-190 (era de Joss). Ver bloque 10. Criterios del agente [x]; falta 👤 pruebas manuales.
 - [ ] S-04 · Integración GitHub–Jira — SCRUM-191 (era de Joss). Ver bloque 12. Criterio del agente [x]; falta 👤 instalar "GitHub for Jira".
 - [ ] S-05 · Presentación con demo — SCRUM-192 (era de Gael). Ver bloque 13. Criterios del agente [x]; falta 👤 ensayo.
@@ -97,7 +97,7 @@ Diagnóstico verificado en el código el 2026-10-20: todos los bugs descritos ab
 |---|---|---|---|---|---|
 | 1 | SCRUM-23 | Historial y export correctos (colecciones separadas) | P0 | — | [x] finalizada el 2026-10-27; verificación 👤 manual pendiente |
 | 2 | SCRUM-27 | Días correctos de la semana | P0 | — (su test de integración final espera al #6) | [x] finalizada el 2026-10-27, con la integración con el plan persistido (`WeekEndToEndTests`); verificación 👤 manual pendiente |
-| 3 | SCRUM-189 | CI en GitHub | P0 soporte | — | [ ] criterios del agente [x]; `main` protegida el 2026-11-02; falta la prueba con un PR |
+| 3 | SCRUM-189 | CI en GitHub | P0 soporte | — | [x] `main` protegida el 2026-11-02 y comprobado en el PR #29 |
 | 4 | SCRUM-24 | No perder el workout si la app se cierra | P0 | 1 | [x] finalizada el 2026-10-27; verificación 👤 manual pendiente |
 | 5 | SCRUM-25 | Cerrar bien la sesión al terminar | P0 | 4 | [x] |
 | 6 | SCRUM-26 | Recordar perfil y plan | P0 | 1 | [x] finalizada el 2026-10-27; verificación 👤 manual pendiente |
@@ -207,7 +207,7 @@ Evidencia: commit `64c95d9`; `make ci` → `✔ Test run with 439 tests in 69 su
 - [x] `.github/workflows/ci.yml` corre `make ci` en cada pull request y en cada push a `main`, sobre un runner macOS. El workflow fija la versión de Xcode con una lista explícita (el runner sólo trae 26.5).
 - [x] Los logs de `.ci/` se suben como artifact cuando el job falla.
 - [x] El resultado se ve en el PR.
-- [ ] Un PR sin `make ci` en verde no se puede fusionar. La regla ya está activa; falta verlo en un PR.
+- [x] Un PR sin `make ci` en verde no se puede fusionar. Evidencia: PR #29. Con `make ci` en cola, `gh pr view 29 --json mergeStateStatus` → `BLOCKED` (2026-11-02).
 
 **👤 Humano (Jesús):** proteger `main` y exigir el check de CI. Hecho el 2026-11-02: lo pidió Jesús y lo aplicó el agente con `gh api`.
 
