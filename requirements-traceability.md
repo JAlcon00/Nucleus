@@ -360,6 +360,22 @@ Cobertura en `make ci`:
 
 Las pruebas que ya estaban del agente siguen igual.
 
+## Feature flags consultadas (SCRUM-39, RNF-024, RNF-026, PR-0117)
+
+Las flags de PR-0004 existían, pero nadie las consultaba. Las piezas:
+- `PRCore/FeatureFlags.swift`:
+  - `forApp(arguments:isDebugBuild:)`: la base segura (todo apagado) con lo que la app ya trae (`agent.nvidia.enabled` y `health.prefill.enabled`, nueva) y, sólo en Debug, `-PRFeatureFlag clave=0|1`;
+  - `AppEnvironment` las arma una vez.
+- `PRCore/AIConnection.swift`: con la IA apagada queda en `offline(.disabledByFlag)` sin buscar la llave.
+- `PRCore/AIConsent.swift`: `isOffered`; sin la IA no se pide el consentimiento.
+- `PRCore/HealthPrefillCoordinator.swift`: `isEnabled`; con Salud apagada no se ofrece el botón ni se lee.
+- `PR/App/Tab/ProfileView.swift`: `showsAI` oculta Perfil › IA. La vista sólo lo recibe.
+
+Cobertura:
+- `PRCoreTests/AppFeatureFlagsTests.swift` (10): `forApp` (valores de la app en los dos builds, base apagada, argumentos en Debug, Release los ignora, argumentos raros), y conexión, consentimiento (con `LocalPersistence` real) y Salud con cada flag encendida y apagada.
+- `PRUITests/ProfileJourney`: el paso "Con la IA apagada por flag no se pide el consentimiento ni hay Perfil › IA".
+- `IntermediateQuestionnaireJourney` sigue cubriendo la IA encendida (consentimiento y Perfil › IA).
+
 ## Catálogo de ejercicios (EPIC-03)
 
 Implementado en PR-0301 con el dataset público *free-exercise-db* (Unlicense)

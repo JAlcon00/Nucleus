@@ -151,11 +151,12 @@ class PRUITestCase: XCTestCase {
 
     /// Recorre el cuestionario sin cerrar la presentación final (para observar lo que pasa
     /// mientras el plan se genera). Días: los chips elegidos; por defecto L, Mi y V.
-    /// Al terminar responde el consentimiento de la IA (SCRUM-202): por defecto "Ahora no".
+    /// Al terminar responde el consentimiento de la IA (SCRUM-202): por defecto "Ahora no";
+    /// `nil` si la IA está apagada por flag (SCRUM-39).
     func answerQuestionnaire(
         _ app: XCUIApplication,
         days: Set<String> = ["monday", "wednesday", "friday"],
-        aiConsent: String = "decline",
+        aiConsent: String? = "decline",
         zones: [String] = [],
         note: String? = nil,
         experience: String = "intermediate",
@@ -175,7 +176,7 @@ class PRUITestCase: XCTestCase {
     func answerMinutesAndTheRest(
         _ app: XCUIApplication,
         experience: String = "intermediate",
-        aiConsent: String = "decline",
+        aiConsent: String? = "decline",
         zones: [String] = [],
         note: String? = nil,
         priority: [String] = []
@@ -205,7 +206,8 @@ class PRUITestCase: XCTestCase {
             tap(app, "onboarding.restrictionNote.done")
         }
         tap(app, "onboarding.next")
-        tap(app, "aiConsent.\(aiConsent)")
+        // `nil`: la app no ofrece la IA (SCRUM-39) y no hay consentimiento que contestar.
+        if let aiConsent { tap(app, "aiConsent.\(aiConsent)") }
     }
 
     /// Desde el paso de experiencia (con "Sobre ti" ya contestado) hasta Hoy.
@@ -231,7 +233,7 @@ class PRUITestCase: XCTestCase {
     func completeOnboarding(
         _ app: XCUIApplication,
         days: Set<String> = ["monday", "wednesday", "friday"],
-        aiConsent: String = "decline",
+        aiConsent: String? = "decline",
         zones: [String] = [],
         note: String? = nil,
         experience: String = "intermediate",

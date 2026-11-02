@@ -677,7 +677,7 @@ Evidencia: commit `42ffa7b`.
 
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; ~~D1, SCRUM-220~~, decidida el 2026-10-30: opción B, ADR-0004; ~~SCRUM-227~~, el volumen por experiencia, y ~~SCRUM-224~~, los supersets, finalizadas el 2026-11-01: la Fase B queda completa) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (~~SCRUM-34~~, el UTF-8 de los mensajes, finalizada el 2026-11-01, y ~~SCRUM-33~~, el agente entiende o pregunta, el 2026-11-02: la Fase D queda completa) → deuda (SCRUM-35, 38 y 39; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27, ~~SCRUM-37~~, el catálogo, el 2026-10-28 y ~~SCRUM-228~~, las E2E por recorrido, el 2026-10-30) → HealthKit, Watch, pestañas (Fase H, con SCRUM-229, el mapa muscular, en borrador) → después de 1.0 (Fase K, con SCRUM-230, importar historial, en borrador).
+En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; ~~D1, SCRUM-220~~, decidida el 2026-10-30: opción B, ADR-0004; ~~SCRUM-227~~, el volumen por experiencia, y ~~SCRUM-224~~, los supersets, finalizadas el 2026-11-01: la Fase B queda completa) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (~~SCRUM-34~~, el UTF-8 de los mensajes, finalizada el 2026-11-01, y ~~SCRUM-33~~, el agente entiende o pregunta, el 2026-11-02: la Fase D queda completa) → deuda (SCRUM-39, las feature flags, en rama; SCRUM-35 y 38 en borrador; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27, ~~SCRUM-37~~, el catálogo, el 2026-10-28 y ~~SCRUM-228~~, las E2E por recorrido, el 2026-10-30) → HealthKit, Watch, pestañas (Fase H, con SCRUM-229, el mapa muscular, en borrador) → después de 1.0 (Fase K, con SCRUM-230, importar historial, en borrador).
 
 ### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada; finalizada el 2026-10-27)
 
@@ -1318,6 +1318,43 @@ Evidencia: rama `SCRUM-33-agente-entiende`.
   - "sustituto prohibido" y "debilita una restricción profesional" siguen como booleanos de quien llama; este criterio era el del dolor;
   - "1 h 30 min" se lee como 30 (ya pasaba);
   - el modelo necesita los ids del sistema para `askWhy` y `changeGym`.
+
+### SCRUM-39 · PR-0117 Consultar realmente las feature flags (Should, deuda, hito 1.0; en rama)
+
+- Va en la rama `SCRUM-39-feature-flags`, sobre la anotación del cierre de SCRUM-33. Estaba en borrador; Jesús decidió los criterios el 2026-11-02 y quedó READY en Jira.
+- **Antes:** las flags (`FeatureFlags`, PR-0004) existían, pero nadie las consultaba; sólo había claves del agente.
+- **Decisiones de Jesús (2026-11-02):**
+  1. IA y Salud. El Watch queda fuera hasta que tenga algo que apagar.
+  2. Como hoy: IA y Salud encendidas en los dos builds. La IA sigue apagada en Release por el build (`AIConnection`).
+  3. `-PRFeatureFlag clave=0|1`, sólo en Debug.
+- **Cómo queda:**
+  - `FeatureFlags()` sigue con todo apagado: es la base segura y `FeatureFlagsTests` sigue igual;
+  - `FeatureFlags.forApp(arguments:isDebugBuild:)` enciende lo que la app ya trae (`agent.nvidia.enabled` y `health.prefill.enabled`, nueva) y, en Debug, aplica `-PRFeatureFlag`. `AppEnvironment` las arma una vez;
+  - IA apagada:
+    - `AIConnection` queda en `offline(.disabledByFlag)` sin buscar la llave;
+    - `AIConsentCoordinator(isOffered: false)` no pide el consentimiento;
+    - Perfil no muestra la sección (`showsAI`, que viene de `aiConsent.isOffered`);
+  - Salud apagada: `HealthPrefillCoordinator(isEnabled: false)` no ofrece el botón y no lee Salud.
+
+**Criterios:**
+- [x] **1. Un solo lugar.** `forApp` arma las flags una vez; las vistas sólo reciben si algo se muestra.
+- [x] **2. IA apagada.** Sin llave, sin consentimiento y sin Perfil › IA; el plan se arma con el motor local.
+- [x] **3. IA encendida.** Todo como hoy.
+- [x] **4. Salud.** Apagada, no se ofrece ni se lee; encendida, como hoy.
+- [x] **5. Argumentos.** Sólo en Debug, se pueden repetir; en Release se ignoran, y una clave o un valor raro se ignoran.
+
+Evidencia: rama `SCRUM-39-feature-flags`.
+- Línea base: `make test` → 597 + 631 de Swift Testing y 151 de XCTest, en verde.
+- `make ci` → `✔ Test run with 597 tests in 87 suites passed` + `✔ Test run with 641 tests in 109 suites passed`, y 151 de XCTest (2026-11-02). Builds de iOS y watchOS sin warnings nuevos (el de `ProfileView.swift` del Toggle de la IA ya estaba).
+- Pruebas por criterio, en `AppFeatureFlagsTests` (10):
+  1. `appDefaults` (los dos builds) y `baseStaysOff`;
+  2. `aiOffNeverReadsTheKey` y `consentFollowsTheFlag`;
+  3. `aiOnBehavesAsToday` y `consentFollowsTheFlag`;
+  4. `healthOffNeverReads` y `healthOnReads`;
+  5. `debugArgumentsApply`, `releaseIgnoresArguments` y `oddArgumentsAreIgnored`.
+  
+  `FeatureFlagsTests`, `AIConnectionTests`, `AIConsentTests` y `HealthPrefillCoordinatorTests` siguen igual y en verde.
+- E2E: `make test-ui-smoke` → 3 de 3 (FirstWorkout 36 s, Intermediate 43 s, que cubre la IA encendida, y WorkoutRecovery 47 s); `make test-ui-journey RECORRIDO="ProfileJourney"` → en verde (1 min 8 s), con el paso nuevo "Con la IA apagada por flag no se pide el consentimiento ni hay Perfil › IA".
 
 ### Propuestas a partir de openGym (2026-11-01; borradores, no empezar)
 

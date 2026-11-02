@@ -31,6 +31,8 @@ public enum AIOfflineReason: String, Sendable, Hashable, CaseIterable {
     case missingKey
     /// Pruebas de UI: siempre sin IA (deterministas y sin red).
     case uiTesting
+    /// La flag `agent.nvidia.enabled` está apagada (SCRUM-39).
+    case disabledByFlag
 }
 
 /// Estado de la conexión, para mostrarlo y decidir si se intenta la IA.
@@ -65,13 +67,19 @@ public struct AIConnection: Sendable {
         self.provider = provider
     }
 
-    /// Decide la conexión. En Release devuelve el proveedor apagado sin llamar a
-    /// `keyLoader`; en Debug sólo se conecta si hay una llave no vacía.
+    /// Decide la conexión. Con la flag `agent.nvidia.enabled` apagada (SCRUM-39), o en
+    /// Release, devuelve el proveedor apagado sin llamar a `keyLoader`; en Debug sólo se
+    /// conecta si hay una llave no vacía. Sin `flags`, las de la app sin cambios.
     public static func resolve(
         build: AIBuildKind,
+        flags: FeatureFlags? = nil,
         keyLoader: @Sendable () -> String? = { NVIDIAKeyLoader.load() },
         session: URLSession? = nil
     ) -> AIConnection {
+        let flags = flags ?? FeatureFlags.forApp(arguments: [], isDebugBuild: build == .debug)
+        guard flags.isEnabled(.agentNvidiaEnabled) else {
+            return AIConnection(status: .offline(.disabledByFlag), provider: OfflineLLMProvider())
+        }
         switch build {
         case .release:
             return AIConnection(status: .offline(.releaseBuild), provider: OfflineLLMProvider())
