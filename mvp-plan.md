@@ -1,10 +1,10 @@
 # mvp-plan.md — Plan activo: MVP / POC de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica POC: SCRUM-180).
-> **Actualizado:** 2026-11-02 (SCRUM-33 finalizada: la Fase D queda completa; SCRUM-39, las feature flags, finalizada; SCRUM-38 y SCRUM-35 en rama; SCRUM-229 y SCRUM-230, borradores en Jira).
+> **Actualizado:** 2026-11-02 (SCRUM-33 finalizada: la Fase D queda completa; SCRUM-39, 38 y 35 finalizadas: la deuda queda completa; SCRUM-229 y SCRUM-230, borradores en Jira).
 > **Ejecuta:** el agente de IA de Xcode. Hace todo el trabajo asignado en Jira a Gael Durán y Joss Amador, en el orden de este archivo.
 > **Regla:** mientras quede un `[ ]` en las secciones 2 y 3, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
-> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 y SCRUM-37 el 2026-10-28; SCRUM-219 el 2026-10-29; SCRUM-36 y SCRUM-228 el 2026-10-30; SCRUM-224, 227 y 34 el 2026-11-01; SCRUM-33 y 39 el 2026-11-02) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
+> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 y SCRUM-37 el 2026-10-28; SCRUM-219 el 2026-10-29; SCRUM-36 y SCRUM-228 el 2026-10-30; SCRUM-224, 227 y 34 el 2026-11-01; SCRUM-33, 39, 38 y 35 el 2026-11-02) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
 
 ---
 
@@ -677,7 +677,7 @@ Evidencia: commit `42ffa7b`.
 
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; ~~D1, SCRUM-220~~, decidida el 2026-10-30: opción B, ADR-0004; ~~SCRUM-227~~, el volumen por experiencia, y ~~SCRUM-224~~, los supersets, finalizadas el 2026-11-01: la Fase B queda completa) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (~~SCRUM-34~~, el UTF-8 de los mensajes, finalizada el 2026-11-01, y ~~SCRUM-33~~, el agente entiende o pregunta, el 2026-11-02: la Fase D queda completa) → deuda (~~SCRUM-39~~, las feature flags, finalizada el 2026-11-02; SCRUM-38, un solo cliente de IA, y SCRUM-35, Salud con permisos parciales, en rama; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27, ~~SCRUM-37~~, el catálogo, el 2026-10-28 y ~~SCRUM-228~~, las E2E por recorrido, el 2026-10-30) → HealthKit, Watch, pestañas (Fase H, con SCRUM-229, el mapa muscular, en borrador) → después de 1.0 (Fase K, con SCRUM-230, importar historial, en borrador).
+En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; ~~D1, SCRUM-220~~, decidida el 2026-10-30: opción B, ADR-0004; ~~SCRUM-227~~, el volumen por experiencia, y ~~SCRUM-224~~, los supersets, finalizadas el 2026-11-01: la Fase B queda completa) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (~~SCRUM-34~~, el UTF-8 de los mensajes, finalizada el 2026-11-01, y ~~SCRUM-33~~, el agente entiende o pregunta, el 2026-11-02: la Fase D queda completa) → deuda (~~SCRUM-39~~, las feature flags, ~~SCRUM-38~~, un solo cliente de IA, y ~~SCRUM-35~~, Salud con permisos parciales, finalizadas el 2026-11-02; ~~SCRUM-40~~ y ~~SCRUM-223~~ el 2026-10-27, ~~SCRUM-37~~, el catálogo, el 2026-10-28 y ~~SCRUM-228~~, las E2E por recorrido, el 2026-10-30: la deuda queda completa) → HealthKit, Watch, pestañas (Fase H, con SCRUM-229, el mapa muscular, en borrador) → después de 1.0 (Fase K, con SCRUM-230, importar historial, en borrador).
 
 ### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada; finalizada el 2026-10-27)
 
@@ -1356,9 +1356,9 @@ Evidencia: rama `SCRUM-39-feature-flags`.
   `FeatureFlagsTests`, `AIConnectionTests`, `AIConsentTests` y `HealthPrefillCoordinatorTests` siguen igual y en verde.
 - E2E: `make test-ui-smoke` → 3 de 3 (FirstWorkout 36 s, Intermediate 43 s, que cubre la IA encendida, y WorkoutRecovery 47 s); `make test-ui-journey RECORRIDO="ProfileJourney"` → en verde (1 min 8 s), con el paso nuevo "Con la IA apagada por flag no se pide el consentimiento ni hay Perfil › IA".
 
-### SCRUM-38 · PR-0116 Un solo cliente de IA reutilizado y quitar código sin efecto (deuda; en rama)
+### SCRUM-38 · PR-0116 Un solo cliente de IA reutilizado y quitar código sin efecto (deuda; finalizada el 2026-11-02)
 
-- Va en la rama `SCRUM-38-cliente-ia-unico`, sobre la anotación del cierre de SCRUM-39. Estaba en borrador (*Won't*, hito posterior); Jesús le dio el visto bueno el 2026-11-02.
+- **En `main` desde el 2026-11-02:** el commit `7d1091e` entró con el PR #26 (`8c21190`), que lo traía debajo del de SCRUM-35; GitHub marcó su PR #25 como fusionado. Finalizada en Jira el 2026-11-02. Se trabajó en la rama `SCRUM-38-cliente-ia-unico`; estaba en borrador (*Won't*, hito posterior) y Jesús le dio el visto bueno ese mismo día.
 - **Qué se encontró:**
   - Bug 15 ya no ocurre:
     - el `llmProvider` calculado de `AppEnvironment` ya no existe;
@@ -1385,9 +1385,9 @@ Evidencia: rama `SCRUM-38-cliente-ia-unico`.
   Las pruebas de comas finales de `LLMBackendTransportTests` siguen igual y en verde sin la reparación.
 - E2E: `make test-ui-smoke` → 3 de 3 (FirstWorkout 39 s, Intermediate 36 s y WorkoutRecovery 46 s). Ningún recorrido usa la IA en vivo (las pruebas de UI corren sin red), así que no hay recorrido que tocar.
 
-### SCRUM-35 · PR-0113 Negar el ritmo cardiaco no impide registrar el entrenamiento (deuda; en rama)
+### SCRUM-35 · PR-0113 Negar el ritmo cardiaco no impide registrar el entrenamiento (deuda; finalizada el 2026-11-02)
 
-- Va en la rama `SCRUM-35-permisos-parciales`, sobre la de SCRUM-38. Estaba en borrador (*Won't*, hito posterior, "P0 cuando entre HealthKit"); Jesús le dio el visto bueno el 2026-11-02.
+- **En `main` desde el 2026-11-02:** Jesús fusionó el PR #26 (`8c21190`). Finalizada en Jira el 2026-11-02. Se trabajó en la rama `SCRUM-35-permisos-parciales`, sobre la de SCRUM-38; estaba en borrador (*Won't*, hito posterior, "P0 cuando entre HealthKit") y Jesús le dio el visto bueno ese mismo día.
 - **Antes (bug 12):** `HealthWorkoutCoordinator.start` exigía los tres permisos (`allGranted`). Si la persona negaba el ritmo cardiaco, no se registraba el entrenamiento en Salud.
 - **Hoy no se alcanza:** ni la app del iPhone ni la del Watch usan el coordinador. HealthKit real es EPIC-25 (Fase F). El arreglo queda listo antes de conectarlo.
 - **Cómo queda:**
