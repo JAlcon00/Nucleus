@@ -376,6 +376,22 @@ Cobertura:
 - `PRUITests/ProfileJourney`: el paso "Con la IA apagada por flag no se pide el consentimiento ni hay Perfil › IA".
 - `IntermediateQuestionnaireJourney` sigue cubriendo la IA encendida (consentimiento y Perfil › IA).
 
+## Un solo cliente de IA, sin código sin efecto (SCRUM-38, RNF-007, RNF-008, RNF-022, PR-0116)
+
+- **Bug 15:** el `llmProvider` calculado de `AppEnvironment` ya no existía. Hoy la conexión se arma una vez (`let aiConnection`) y el proveedor crea su `URLSession` una vez, en `init`. Los `AICoach` que se crean después comparten esa conexión.
+- **Bug 10:** `LLMBackendTransport.stripTrailingCommas` nunca quitaba nada: escribía el `}` antes de buscar la coma. Se quitó, porque `JSONSerialization` y `JSONDecoder` ya aceptan comas finales.
+- **Llaves:** no cambia nada. El guard `check_secrets.sh` (SCRUM-204) sigue revisando en `make ci` que ninguna llave quede en el repo.
+
+Cobertura:
+- `PRCoreTests/AIClientReuseTests.swift` (6):
+  - el coach pedido varias veces comparte el cliente y la `URLSession`;
+  - la sesión inyectada es la que se usa;
+  - dos `resolve` crean sesiones distintas, así que la prueba sí distingue instancias;
+  - Foundation acepta comas finales en objetos y arreglos;
+  - una coma final no altera el texto del usuario dentro de un string;
+  - el JSON roto sigue pidiendo aclaración.
+- `PRCoreTests/LLMBackendTransportTests.swift`: las pruebas de comas finales siguen igual y en verde sin la reparación propia.
+
 ## Catálogo de ejercicios (EPIC-03)
 
 Implementado en PR-0301 con el dataset público *free-exercise-db* (Unlicense)

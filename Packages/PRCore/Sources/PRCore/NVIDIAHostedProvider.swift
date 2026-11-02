@@ -126,6 +126,9 @@ public struct NVIDIAHostedProvider: LLMProvider {
         )
     }
 
+    /// La sesión de red del cliente: se crea una vez, en `init` (SCRUM-38).
+    var session: URLSession { client.session }
+
     public func complete(_ request: AgentRequest) async throws -> AgentResponse {
         let apiKey = config.apiKeyProvider()
         guard let apiKey, !apiKey.isEmpty else {

@@ -117,71 +117,30 @@ public struct LLMBackendTransport: AgentBackendTransport, Sendable {
 
     // MARK: - Schema y parseo seguro
 
+    /// Las comas finales (`{"a":1,}`, artefacto común del LLM) no necesitan reparo propio:
+    /// `JSONSerialization` y `JSONDecoder` ya las aceptan (SCRUM-38, fijado en
+    /// `AIClientReuseTests`). Si un SDK deja de aceptarlas, esa prueba falla primero.
     private func parseInterpretation(from raw: String) throws -> InterpretResponse {
-        let candidates = candidateJSONStrings(from: raw)
-        for json in candidates {
-            guard let data = json.data(using: .utf8) else { continue }
-            // Si no parsea como JSON, prueba el siguiente candidato (p. ej. reparado).
-            guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
-                continue
-            }
-            let rawTag = object["intent"] as? String ?? "needsClarification"
-            guard rawTag != "needsClarification" else {
-                return InterpretResponse(intent: nil, needsClarification: true)
-            }
-            do {
-                let intent = try JSONDecoder().decode(AgentIntent.self, from: data)
-                return InterpretResponse(intent: intent, needsClarification: false)
-            } catch {
-                // payload inválido → probar el siguiente candidato (si lo hay).
-            }
+        let data = Data(jsonText(from: raw).utf8)
+        guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+            return InterpretResponse(intent: nil, needsClarification: true)
         }
-        return InterpretResponse(intent: nil, needsClarification: true)
+        let rawTag = object["intent"] as? String ?? "needsClarification"
+        guard rawTag != "needsClarification",
+              let intent = try? JSONDecoder().decode(AgentIntent.self, from: data) else {
+            return InterpretResponse(intent: nil, needsClarification: true)
+        }
+        return InterpretResponse(intent: intent, needsClarification: false)
     }
 
-    /// Devuelve versiones candidatas del JSON: la cruda y, si no parsea, una reparada
-    /// que elimina comas sobrantes antes de `}`/`]` (artefacto común de salida LLM).
-    private func candidateJSONStrings(from raw: String) -> [String] {
-        var trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.hasPrefix("```") {
-            trimmed = trimmed
-                .replacingOccurrences(of: "```json", with: "")
-                .replacingOccurrences(of: "```", with: "")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        var candidates = [trimmed]
-        // Reparo de comas finales: quita `,`/`}` y `,`/`]` fuera de strings.
-        let repaired = stripTrailingCommas(in: trimmed)
-        if repaired != trimmed {
-            candidates.append(repaired)
-        }
-        return candidates
-    }
-
-    private func stripTrailingCommas(in json: String) -> String {
-        var output = ""
-        var inString = false
-        var i = json.startIndex
-        while i < json.endIndex {
-            let c = json[i]
-            output.append(c)
-            if c == "\"" {
-                // simple toggle burdo, suficiente para el artefacto de comas finales
-                if i > json.startIndex {
-                    let prev = json.index(before: i)
-                    if json[prev] != "\\" { inString.toggle() }
-                } else {
-                    inString.toggle()
-                }
-            } else if !inString && (c == "}" || c == "]") {
-                // elimina la última coma antes de este cierre
-                while let last = output.last, last == "," || last == " " {
-                    output.removeLast()
-                }
-            }
-            i = json.index(after: i)
-        }
-        return output
+    /// El JSON sin espacios alrededor ni el code fence (```json … ```) que a veces agrega el LLM.
+    private func jsonText(from raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("```") else { return trimmed }
+        return trimmed
+            .replacingOccurrences(of: "```json", with: "")
+            .replacingOccurrences(of: "```", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Mensaje del usuario como dato (SCRUM-33)
