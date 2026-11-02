@@ -1,10 +1,10 @@
 # mvp-plan.md — Plan activo: MVP / POC de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica POC: SCRUM-180).
-> **Actualizado:** 2026-11-02 (SCRUM-33 finalizada: la Fase D queda completa; SCRUM-229 y SCRUM-230, borradores en Jira).
+> **Actualizado:** 2026-11-02 (SCRUM-33 finalizada: la Fase D queda completa; SCRUM-39, las feature flags, finalizada; SCRUM-229 y SCRUM-230, borradores en Jira).
 > **Ejecuta:** el agente de IA de Xcode. Hace todo el trabajo asignado en Jira a Gael Durán y Joss Amador, en el orden de este archivo.
 > **Regla:** mientras quede un `[ ]` en las secciones 2 y 3, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
-> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 y SCRUM-37 el 2026-10-28; SCRUM-219 el 2026-10-29; SCRUM-36 y SCRUM-228 el 2026-10-30; SCRUM-224, 227 y 34 el 2026-11-01; SCRUM-33 el 2026-11-02) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
+> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 y SCRUM-37 el 2026-10-28; SCRUM-219 el 2026-10-29; SCRUM-36 y SCRUM-228 el 2026-10-30; SCRUM-224, 227 y 34 el 2026-11-01; SCRUM-33 y 39 el 2026-11-02) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
 
 ---
 
@@ -677,7 +677,7 @@ Evidencia: commit `42ffa7b`.
 
 ## 4. Después del POC (no empezar todavía)
 
-En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; ~~D1, SCRUM-220~~, decidida el 2026-10-30: opción B, ADR-0004; ~~SCRUM-227~~, el volumen por experiencia, y ~~SCRUM-224~~, los supersets, finalizadas el 2026-11-01: la Fase B queda completa) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (~~SCRUM-34~~, el UTF-8 de los mensajes, finalizada el 2026-11-01, y ~~SCRUM-33~~, el agente entiende o pregunta, el 2026-11-02: la Fase D queda completa) → deuda (SCRUM-39, las feature flags, en rama; SCRUM-35 y 38 en borrador; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27, ~~SCRUM-37~~, el catálogo, el 2026-10-28 y ~~SCRUM-228~~, las E2E por recorrido, el 2026-10-30) → HealthKit, Watch, pestañas (Fase H, con SCRUM-229, el mapa muscular, en borrador) → después de 1.0 (Fase K, con SCRUM-230, importar historial, en borrador).
+En orden: Fase B (~~SCRUM-219~~, la selección de ejercicios, finalizada el 2026-10-29; ~~D1, SCRUM-220~~, decidida el 2026-10-30: opción B, ADR-0004; ~~SCRUM-227~~, el volumen por experiencia, y ~~SCRUM-224~~, los supersets, finalizadas el 2026-11-01: la Fase B queda completa) → Fase C (restricciones ~~SCRUM-31~~ y ~~SCRUM-32~~ finalizadas el 2026-10-27 y ~~SCRUM-226~~, la pantalla del dolor, el 2026-10-28; ~~SCRUM-36~~, restricciones editables, el 2026-10-30: la Fase C queda completa) → Fase D (~~SCRUM-34~~, el UTF-8 de los mensajes, finalizada el 2026-11-01, y ~~SCRUM-33~~, el agente entiende o pregunta, el 2026-11-02: la Fase D queda completa) → deuda (~~SCRUM-39~~, las feature flags, finalizada el 2026-11-02; SCRUM-35 y 38 en borrador; ~~SCRUM-40~~ y ~~SCRUM-223~~ finalizadas el 2026-10-27, ~~SCRUM-37~~, el catálogo, el 2026-10-28 y ~~SCRUM-228~~, las E2E por recorrido, el 2026-10-30) → HealthKit, Watch, pestañas (Fase H, con SCRUM-229, el mapa muscular, en borrador) → después de 1.0 (Fase K, con SCRUM-230, importar historial, en borrador).
 
 ### SCRUM-40 · PR-0118 Migraciones seguras de datos guardados (Must 1.0, adelantada; finalizada el 2026-10-27)
 
@@ -1319,9 +1319,9 @@ Evidencia: rama `SCRUM-33-agente-entiende`.
   - "1 h 30 min" se lee como 30 (ya pasaba);
   - el modelo necesita los ids del sistema para `askWhy` y `changeGym`.
 
-### SCRUM-39 · PR-0117 Consultar realmente las feature flags (Should, deuda, hito 1.0; en rama)
+### SCRUM-39 · PR-0117 Consultar realmente las feature flags (Should, deuda, hito 1.0; finalizada el 2026-11-02)
 
-- Va en la rama `SCRUM-39-feature-flags`, sobre la anotación del cierre de SCRUM-33. Estaba en borrador; Jesús decidió los criterios el 2026-11-02 y quedó READY en Jira.
+- **En `main` desde el 2026-11-02:** Jesús fusionó el PR #23 (`8fbcc54`). Finalizada en Jira el 2026-11-02. Se trabajó en la rama `SCRUM-39-feature-flags`; estaba en borrador, y Jesús decidió los criterios ese mismo día.
 - **Antes:** las flags (`FeatureFlags`, PR-0004) existían, pero nadie las consultaba; sólo había claves del agente.
 - **Decisiones de Jesús (2026-11-02):**
   1. IA y Salud. El Watch queda fuera hasta que tenga algo que apagar.
