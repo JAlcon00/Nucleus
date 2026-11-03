@@ -67,7 +67,9 @@ Resumen de lo que se espera (detalle en la skill):
 - **Persistencia compartida:** cada repositorio en su propia colección o prefijo; probar con el `RepositoryStore` real en directorio temporal.
 - **Cambio de modelo persistido = versión + migración + muestra + test** (ADR-0003). Agregar un campo opcional no lo requiere. Renombrar, quitar o cambiar el tipo o el significado de un campo sí: subir `current` en `PersistenceSchemas`, agregar el `SchemaMigrationStep`, guardar la muestra nueva y que `PersistenceFormatTests` pase en `make ci`.
 - **Límite de atasco:** 3 intentos sin avance sobre la misma falla → detenerse, replantear y, si sigue, reportar el bloqueo con evidencia.
-- **Nunca** borrar, desactivar ni debilitar un test para ponerlo en verde.
+- **Nunca** borrar, desactivar ni debilitar un test para ponerlo en verde. `make guards` y `make ci` lo revisan contra `main` (`scripts/guard_agente.py`).
+  - Fallan si baja el número de pruebas, si se borra un archivo de pruebas, si una línea nueva usa `.disabled(`, `.enabled(if: false)`, `withKnownIssue` o `XCTSkip`, o si cambia una muestra de `Fixtures/Persistence/`.
+  - Sólo Jesús pone las etiquetas de excepción en el PR: `test-retirado` para retirar pruebas y `muestra-cambiada` para muestras. Desactivar una prueba no tiene excepción.
 
 ### 3.2 Modo UI (`swiftui-design-expert`)
 

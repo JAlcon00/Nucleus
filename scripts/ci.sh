@@ -9,7 +9,9 @@
 #
 # Gates obligatorios (fail-fast, exit != 0 ante fallo):
 #   1. Guards: empaquetado (no hay documentación dentro de PR/ ni PRWatch/), colores sólo
-#      desde DesignTokens.swift y ningún log con datos personales de "Sobre ti".
+#      desde DesignTokens.swift, ningún log con datos personales de "Sobre ti", ninguna
+#      llave de la IA y el guard del agente: contra `main`, ninguna prueba se borra,
+#      desactiva ni reduce, y ninguna muestra de persistencia cambia (`guard_agente.py`).
 #   2. `swift build` del paquete PRCore.
 #   3. `swift test` del paquete PRCore (tests de dominio/app-core).
 #
@@ -117,6 +119,15 @@ run_pbxproj_guard() {
   "$REPO_ROOT/scripts/check_privacy_logs.sh" "$REPO_ROOT"
   log "[ci] 1/5 guard: ninguna llave de la IA en el repo (SCRUM-204)"
   "$REPO_ROOT/scripts/check_secrets.sh" "$REPO_ROOT"
+  # Primero sus propias pruebas: un guard roto no puede dar verde.
+  log "[ci] 1/5 guard: el guard del agente pasa sus pruebas (PR-X002)"
+  if ! python3 -I -B -m unittest discover -s "$REPO_ROOT/scripts/tests" >"$CI_LOG_DIR/guard-agente-tests.log" 2>&1; then
+    log "ERROR: las pruebas del guard del agente fallaron; log: $CI_LOG_DIR/guard-agente-tests.log"
+    exit 1
+  fi
+  log "OK: las pruebas del guard del agente pasan."
+  log "[ci] 1/5 guard: ninguna prueba se borra, desactiva ni reduce (PR-X002)"
+  python3 -I -B "$REPO_ROOT/scripts/guard_agente.py" "$REPO_ROOT"
 }
 
 # `${arr[@]+…}`: con bash 3.2 (el de macOS) y `set -u`, un arreglo vacío no se puede expandir.

@@ -428,8 +428,15 @@ make ci          # pipeline completo: guard + swift build + swift test + builds 
 make test        # solo unit tests del paquete PRCore
 make test-ios    # solo build Debug del scheme iOS
 make test-watch  # solo build Debug del scheme watchOS
-make guards      # solo guard del pbxproj (spec excluida del target)
+make guards      # solo los guards: pbxproj, colores, logs, llaves y el guard del agente
 ```
+
+El guard del agente (`scripts/guard_agente.py`, con sus pruebas en `scripts/tests/`) compara contra `main`.
+- Falla si baja el número de pruebas o se borra un archivo de pruebas.
+- Falla si una línea nueva desactiva o salta una prueba.
+- Falla si cambia una muestra de `Fixtures/Persistence/`.
+
+Las excepciones van con etiquetas del PR que sólo pone Jesús (ver AGENTS.md §3.1).
 
 Notas de entorno:
 

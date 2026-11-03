@@ -275,6 +275,9 @@ Hace: Jesús (fase 0; no es delegable porque es un cambio de permisos). Cierra S
 **PR-X002 — Job `guard-agente` en el CI** · EPIC-00 · P0 · READY · Dep.: PR-X001
 Criterios: un PR que baja el número de tests falla · un PR que agrega `.disabled`/`XCTSkip` falla · un PR que borra un archivo de `Tests/` sin la etiqueta `test-retirado` falla · un PR que cambia un `Codable` persistido sin un test con fixture falla · el job tiene tests de sus propias reglas con diffs de ejemplo.
 Carril: amarillo. Riesgo: falsos positivos que frenen el flujo; se ajustan las reglas en la primera semana.
+**Estado (2026-11-02): en rama `guard-agente`.**
+- **Dónde corre:** dentro de `make ci`, que ya es el check obligatorio, así que no hace falta otro check en la regla de `main`; y también en la Mac antes del push.
+- **Ajuste a la regla del `Codable`:** `PersistenceFormatTests` ya falla si un modelo guardado cambia de forma incompatible. Lo que el guard protege es la muestra: falla si se edita, renombra o borra una muestra existente (etiqueta `muestra-cambiada`), porque eso escondería el cambio.
 
 **PR-X003 — CODEOWNERS, plantilla de PR, permisos del agente y AGENTS.md §6** · EPIC-00 · P0 · READY · Dep.: PR-X001
 Criterios: un PR que toca `scripts/` queda esperando la aprobación del CODEOWNER · la plantilla aparece al crear un PR · el agente puede hacer push a `SCRUM-*` y no a `main`.

@@ -13,10 +13,16 @@
 #
 # Las pruebas de UI (`make test-ui`) quedan fuera: necesitan un simulador con sesión gráfica y
 # hoy sólo corren de forma fiable desde Xcode.
+#
+# Guard del agente (PR-X002, `scripts/guard_agente.py`, dentro de `make ci`): en un PR compara
+# contra `HEAD^1`, el `main` del commit de merge que arma GitHub (por eso `fetch-depth: 2`), y
+# lee las etiquetas del PR (`test-retirado`, `muestra-cambiada`). Poner o quitar una etiqueta
+# vuelve a correr el CI para que cuente.
 name: CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   push:
     branches: [main]
 
@@ -40,6 +46,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - name: Seleccionar Xcode (${{ env.XCODE_CANDIDATES }})
         run: |
@@ -67,6 +75,9 @@ jobs:
         run: xcrun simctl list runtimes
 
       - name: make ci
+        env:
+          GUARD_BASE: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+          GUARD_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
         run: make ci
 
       # Los logs de cada gate viven en `.ci/` (están en .gitignore, no en el repo). Se vuelcan
