@@ -133,39 +133,44 @@ Si a las 3 semanas las fallas de cambio pasan del 10 %, se reduce el carril verd
    - `scripts/check_secrets.sh` encuentra algo (ese guard ya existe; aquí se vuelve obligatorio en el PR).
 3. **UI en CI:** probar `make test-ui-smoke` en el runner de GitHub como check **no obligatorio**. Cuando lleve 10 corridas estables, pasa a obligatorio. Mientras tanto, el cierre de epic corre la E2E completa en tu Mac.
 4. **Plantilla de PR** con: historia de Jira, carril, criterios de aceptación con su test, comandos corridos y su resultado real, invariantes tocados y riesgos. El agente nunca escribe "los tests pasan" sin pegar la línea real del resultado.
-5. **Permisos del agente en tu Mac** (`.claude/settings.json`, en carril amarillo). Verificar la sintaxis con la versión de Claude Code instalada:
+5. **Permisos del agente en tu Mac** (`.claude/settings.json`, carril amarillo). **Lo crea Jesús, no el agente:** al escribirlo, el agente estaría cambiando sus propios permisos, y el modo automático de Claude Code lo bloquea (PR-X003, 2026-11-02). La sintaxis sigue la versión vigente de Claude Code: `Bash(git status *)` con espacio y asterisco. La forma `:*` es la anterior.
 
 ```json
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "allow": [
-      "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)",
-      "Bash(git switch:*)", "Bash(git checkout -b:*)", "Bash(git add:*)",
-      "Bash(git commit:*)", "Bash(git push -u origin:*)", "Bash(git push origin:*)",
-      "Bash(git fetch:*)", "Bash(git pull --rebase:*)", "Bash(git revert:*)",
-      "Bash(make test)", "Bash(make ci)", "Bash(make test-ui-smoke)",
-      "Bash(make test-ui-journey:*)", "Bash(make test-ui)",
-      "Bash(gh pr create:*)", "Bash(gh pr view:*)", "Bash(gh pr checks:*)",
-      "Bash(gh pr merge:*)", "Bash(gh pr update-branch:*)", "Bash(gh run view:*)",
-      "Bash(gh run list:*)", "Bash(gh pr list:*)"
+      "Bash(git status *)", "Bash(git diff *)", "Bash(git log *)", "Bash(git show *)",
+      "Bash(git fetch *)", "Bash(git switch *)", "Bash(git checkout -b *)",
+      "Bash(git add *)", "Bash(git commit *)", "Bash(git pull --rebase *)", "Bash(git revert *)",
+      "Bash(git push -u origin SCRUM-*)", "Bash(git push origin SCRUM-*)",
+      "Bash(git push -u origin PR-X*)", "Bash(git push origin PR-X*)",
+      "Bash(make test)", "Bash(make ci)", "Bash(make guards)", "Bash(make test-ui-smoke)",
+      "Bash(make test-ui-journey *)", "Bash(make test-ui)",
+      "Bash(gh pr create *)", "Bash(gh pr view *)", "Bash(gh pr checks *)", "Bash(gh pr list *)",
+      "Bash(gh pr merge *)", "Bash(gh pr update-branch *)",
+      "Bash(gh run view *)", "Bash(gh run list *)"
+    ],
+    "ask": [
+      "Bash(git reset --hard *)", "Bash(rm *)", "Bash(curl *)", "Bash(wget *)",
+      "Bash(gh api *)", "Bash(gh label *)", "Bash(gh pr edit *)"
     ],
     "deny": [
-      "Bash(git push --force:*)", "Bash(git push -f:*)", "Bash(git reset --hard:*)",
-      "Bash(git push origin main:*)", "Bash(git push origin --delete:*)",
-      "Bash(gh api:*)", "Bash(gh repo edit:*)", "Bash(gh secret:*)",
-      "Bash(gh pr review:*)", "Bash(gh label:*)", "Bash(gh pr edit:*)",
-      "Bash(rm -rf:*)", "Bash(sudo:*)", "Bash(curl:*)", "Bash(wget:*)",
+      "Bash(git push --force *)", "Bash(git push -f *)", "Bash(git push --force-with-lease *)",
+      "Bash(git push origin main *)", "Bash(git push -u origin main *)",
+      "Bash(git push origin --delete *)",
+      "Bash(gh repo edit *)", "Bash(gh secret *)", "Bash(gh pr review *)", "Bash(sudo *)",
       "Read(./.env)", "Read(./.env.*)"
     ]
   }
 }
 ```
 
-   Las reglas de `deny` son defensa en profundidad, no la garantía: la garantía es la protección de rama y que el agente firme con su propia identidad (D-3). Con tu cuenta, el agente técnicamente podría hacer lo mismo que tú. Hoy la sesión de desarrollo firma como `JAlcon00` (verificado con `gh api user`).
+   - **Push sólo a ramas de historia.** Antes el `allow` permitía `git push origin` a cualquier rama.
+   - **`ask` en vez de `deny`** para lo que AGENTS.md §6 manda confirmar (`rm`, `curl`, `wget`, `git reset --hard`, `gh api`, `gh label`, `gh pr edit`). Con `deny` ni Jesús podría aprobarlo desde el chat, y se perderían las lecturas con `gh api` que sirvieron para verificar este plan (protección de rama, check-runs por commit, errores del CODEOWNERS). En `deny` queda el carril rojo.
+   - Estas reglas son defensa en profundidad, no la garantía. La garantía es la protección de rama, más que el agente firme con su propia identidad (D-3). Con la cuenta de Jesús, el agente técnicamente podría hacer lo mismo que él. Hoy la sesión de desarrollo firma como `JAlcon00` (verificado con `gh api user`).
 
-   `deny gh api:*` también bloquea las lecturas que sirvieron para verificar este plan (protección de rama, check-runs por commit). El agente vigila su CI con `gh pr checks`, `gh run list` y `gh run view`, que sí están permitidos. Las auditorías con `gh api` las corre Jesús o una sesión que él autorice.
-
-6. **AGENTS.md §6:** se cambia "pedir confirmación antes de `git push`" por "push permitido a ramas `SCRUM-*`; nunca a `main`".
+6. **AGENTS.md §6:** se cambia "pedir confirmación antes de `git push`" por "push permitido a ramas `SCRUM-*` (y `PR-X*`); nunca a `main`".
 
 ---
 
@@ -275,13 +280,19 @@ Hace: Jesús (fase 0; no es delegable porque es un cambio de permisos). Cierra S
 **PR-X002 — Job `guard-agente` en el CI** · EPIC-00 · P0 · READY · Dep.: PR-X001
 Criterios: un PR que baja el número de tests falla · un PR que agrega `.disabled`/`XCTSkip` falla · un PR que borra un archivo de `Tests/` sin la etiqueta `test-retirado` falla · un PR que cambia un `Codable` persistido sin un test con fixture falla · el job tiene tests de sus propias reglas con diffs de ejemplo.
 Carril: amarillo. Riesgo: falsos positivos que frenen el flujo; se ajustan las reglas en la primera semana.
-**Estado (2026-11-02): en rama `guard-agente`.**
+**Estado (2026-11-02): en `main` (PR #30).** En GitHub comparó contra `main` (base `d4e7654`) y contó 1412 → 1412 pruebas. Faltan las etiquetas `test-retirado` y `muestra-cambiada` (Jesús).
 - **Dónde corre:** dentro de `make ci`, que ya es el check obligatorio, así que no hace falta otro check en la regla de `main`; y también en la Mac antes del push.
 - **Ajuste a la regla del `Codable`:** `PersistenceFormatTests` ya falla si un modelo guardado cambia de forma incompatible. Lo que el guard protege es la muestra: falla si se edita, renombra o borra una muestra existente (etiqueta `muestra-cambiada`), porque eso escondería el cambio.
 
 **PR-X003 — CODEOWNERS, plantilla de PR, permisos del agente y AGENTS.md §6** · EPIC-00 · P0 · READY · Dep.: PR-X001
 Criterios: un PR que toca `scripts/` queda esperando la aprobación del CODEOWNER · la plantilla aparece al crear un PR · el agente puede hacer push a `SCRUM-*` y no a `main`.
 Carril: amarillo.
+**Estado (2026-11-02): en rama `PR-X003-codeowners`.**
+- **Hecho:** `.github/CODEOWNERS`, `.github/pull_request_template.md` y AGENTS.md §6 (push a ramas de historia, carriles, confirmar y nunca).
+- **CODEOWNERS:** agrega a la lista de §3 `Persistence*.swift` (esquemas y contratos), las muestras de `Fixtures/Persistence/`, `ActionPolicyValidator.swift` (el Policy Validator) y `PR/PR.entitlements` (HealthKit).
+- **Falta (Jesús):**
+  - crear `.claude/settings.json` con el bloque de §4.5;
+  - con `nucleus-bot` (D-3), activar "Require review from Code Owners" en el ruleset. Sin el bot la regla bloquearía todo, porque GitHub no deja aprobar un PR propio. El primer criterio se prueba entonces.
 
 **PR-X004 — Runbook `/siguiente-historia`** · EPIC-00 · P1 · READY · Dep.: PR-X002, PR-X003
 Como agente, quiero un procedimiento único (tomar historia → rama → TDD → `make test` → `make ci` → PR → `--auto` → vigilar el CI → reporte) para que cada historia siga el mismo ciclo verificable.

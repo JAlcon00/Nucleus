@@ -1,0 +1,42 @@
+# CODEOWNERS de Nucleus (PR-X003, plan de aceleración §3).
+#
+# Estas rutas son el carril amarillo: un PR que toca alguna no usa auto-merge
+# y lo aprueba Jesús (AGENTS.md §6).
+#
+# Pendiente: la regla "Require review from Code Owners" de `main` se activa
+# cuando exista `nucleus-bot` (D-3). Hoy el agente firma como JAlcon00 y GitHub
+# no deja aprobar un PR propio, así que con la regla activa nada podría entrar.
+#
+# Si una ruta se renombra, actualizarla aquí: un patrón que no coincide con
+# ningún archivo deja de proteger sin avisar.
+
+# Gates del propio agente: no puede cambiarlos solo
+/.github/      @JAlcon00
+/Makefile      @JAlcon00
+/scripts/      @JAlcon00
+/AGENTS.md     @JAlcon00
+/.claude/      @JAlcon00
+/.agents/      @JAlcon00
+
+# Integridad de datos (prioridad 1)
+/Packages/PRCore/Sources/PRCore/LocalPersistence.swift       @JAlcon00
+/Packages/PRCore/Sources/PRCore/CodableRepositories.swift    @JAlcon00
+/Packages/PRCore/Sources/PRCore/Persistence*.swift           @JAlcon00
+/Packages/PRCore/Sources/PRCore/PendingOperationStore.swift  @JAlcon00
+/Packages/PRCore/Sources/PRDomain/StoredPlan.swift           @JAlcon00
+/Packages/PRCore/Tests/PRCoreTests/Fixtures/Persistence/     @JAlcon00
+
+# Seguridad del usuario (prioridad 2)
+/Packages/PRCore/Sources/PRDomain/Restriction*.swift         @JAlcon00
+/Packages/PRCore/Sources/PRDomain/PainFeedbackEngine.swift   @JAlcon00
+/Packages/PRCore/Sources/PRDomain/ActionPolicyValidator.swift @JAlcon00
+
+# Salud, IA y secretos
+/Packages/PRCore/Sources/PRCore/Health*.swift                @JAlcon00
+/Packages/PRCore/Sources/PRCore/NVIDIA*.swift                @JAlcon00
+/Packages/PRCore/Sources/PRCore/LLMBackendTransport.swift    @JAlcon00
+/PR/PR.entitlements                                          @JAlcon00
+
+# Proyecto y dependencias
+/Packages/PRCore/Package.swift  @JAlcon00
+*.pbxproj                       @JAlcon00

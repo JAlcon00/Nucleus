@@ -438,6 +438,9 @@ El guard del agente (`scripts/guard_agente.py`, con sus pruebas en `scripts/test
 
 Las excepciones van con etiquetas del PR que sólo pone Jesús (ver AGENTS.md §3.1).
 
+Las rutas sensibles están en `.github/CODEOWNERS`: un PR que toca alguna es carril amarillo
+y lo aprueba Jesús (AGENTS.md §6). Cada PR sigue `.github/pull_request_template.md`.
+
 Notas de entorno:
 
 - Si `xcode-select -p` apunta a CommandLineTools, el script usa `/Applications/Xcode.app`

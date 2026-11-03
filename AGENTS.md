@@ -143,10 +143,17 @@ Inspeccionar el repo real antes de asumir paths o schemes. No pisar cambios sin 
 - Un bug que pierde datos, duplica energía, ignora una restricción o recomienda una carga inválida es P0 y bloquea lo demás.
 - Sin refactors oportunistas fuera del alcance de la historia: se mencionan aparte.
 
-## 6. Uso de la terminal (autonomía en Xcode)
+## 6. Uso de la terminal y de GitHub (autonomía del agente)
 
 - **Un comando por llamada.** No encadenar con `;`, `&&` ni `|` salvo que sea indispensable; así coinciden con los comandos permitidos y no se piden permisos de más.
-- **Pedir confirmación antes de:** `git push`, `git reset --hard`, `rm`, `curl`/`wget`, `sudo`, cambios en `project.pbxproj` fuera de lo que pide la historia.
+- **Push sin preguntar** sólo a ramas de historia: `SCRUM-*`, o `PR-X*` para las historias del plan de aceleración que no tienen tarjeta. Nunca a `main`: el ruleset `main protegido` exige PR y `make ci` en verde.
+- **Carriles** (plan de aceleración §3):
+  - 🟢 **Verde:** el PR no toca ninguna ruta de `.github/CODEOWNERS` y la historia es de un epic que Jesús autorizó en Jira → `gh pr merge --auto`.
+  - 🟡 **Amarillo:** el PR toca alguna ruta de `.github/CODEOWNERS` → sin `--auto`; lo deja listo con el riesgo explicado y lo aprueba Jesús.
+  - 🔴 **Rojo:** force push, reescribir historial, protección de rama, permisos, secretos, releases o una decisión de producto abierta → detenerse y preguntar.
+- **Pedir confirmación antes de:** `git reset --hard`, `rm`, `curl`/`wget`, `gh api`, `gh label`, `gh pr edit` y cambios en `project.pbxproj` fuera de lo que pide la historia.
+- **Nunca:** `sudo`, force push, push a `main`, borrar ramas remotas, `gh repo edit`, `gh secret`, `gh pr review`.
+- Los permisos de Claude Code del repo (`.claude/settings.json`) aplican estas reglas. Los escribe Jesús, nunca el agente. Son defensa en profundidad: lo que protege `main` es el ruleset.
 - No leer ni imprimir `.env` ni claves (NVIDIA u otras).
 
 ## 7. Reporte de trabajo
