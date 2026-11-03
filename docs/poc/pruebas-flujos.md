@@ -33,7 +33,7 @@ Suites por flujo (para `--filter`):
 
 La columna de UI cuenta las pruebas de UI citadas en las filas de cada flujo. `make test-ui` completo el 2026-10-26 en la rama SCRUM-190 (al día con `main`): `Executed 30 tests, with 0 failures (0 unexpected) in 1306.026 seconds`, simulador "PR UI Tests". Las 12 pruebas restantes cubren detalles del cuestionario, Hoy, Plan y Perfil.
 
-`make ci` completo en verde el 2026-10-23: `✔ Test run with 513 tests in 77 suites passed` + `✔ Test run with 478 tests in 86 suites passed`. Corrida de cierre del 2026-10-26 en `mvp-plan.md` (Bloque 10).
+`make ci` completo en verde el 2026-10-23: `✔ Test run with 513 tests in 77 suites passed` + `✔ Test run with 478 tests in 86 suites passed`. Corrida de cierre del 2026-10-26 en `docs/archivo/mvp-plan-2026-10.md` (Bloque 10).
 
 ## Bloqueo de las pruebas de UI (2026-10-23, resuelto en SCRUM-217)
 

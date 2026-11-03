@@ -15,12 +15,12 @@ No empezar, y avisar a Jesús con el dato, si pasa cualquiera de estas cosas:
 
 - **`main` está en rojo:** `gh run list --branch main --limit 1`. No se construye sobre rojo.
 - **Ya hay 2 PRs abiertos del agente:** `gh pr list --state open`. Es el límite de WIP.
-- **La cola 👤 llegó a 5 pendientes** en `mvp-plan.md`: se termina lo que hay y no se abre un epic nuevo.
+- **La cola 👤 llegó a 5 pendientes** (secciones 1 y 2 de `mvp-plan.md`): se termina lo que hay y no se abre un epic nuevo.
 - **No hay historia READY** que cumpla el paso 1.
 
 ## 1. Elegir la historia
 
-1. **Qué tomar:** el primer bloque abierto de `mvp-plan.md` con sus dependencias en `[x]` (AGENTS.md §5). Si Jesús autorizó un epic, la primera historia READY de ese epic en orden de dependencias.
+1. **Qué tomar:** la primera historia READY de la sección 3 de `mvp-plan.md` con sus dependencias en `main` (AGENTS.md §5). Si Jesús autorizó un epic, la primera historia READY de ese epic en orden de dependencias.
 2. **Leer la tarjeta de Jira completa** (proyecto SCRUM). Si el chat no tiene acceso a Jira, pedir el texto.
 3. **Revisar la Definition of Ready** (plan §6). Si falta algo, no se empieza: se reporta qué falta.
    - criterios "Dado/cuando/entonces" que se comprueban con una prueba;
@@ -58,9 +58,9 @@ No empezar, y avisar a Jesús con el dato, si pasa cualquiera de estas cosas:
    - El script apaga el simulador al terminar; confirmarlo en el log.
 3. **Recalcular el carril** con lo que de verdad cambió: `git diff --name-only origin/main...HEAD` contra `.github/CODEOWNERS`.
 4. **Estado en el mismo PR** (plan §5): no hay PR de cierre.
-   - En `mvp-plan.md`, marcar `[x]` sólo los criterios cuya prueba pasó en `make ci`.
-   - Agregar la línea `Evidencia:` y la de "finalizada el <fecha>".
-   - Lo 👤 queda abierto para Jesús.
+   - Marcar `[x]` sólo los criterios cuya prueba pasó en `make ci`.
+   - El detalle, con su `Evidencia:` y "finalizada el <fecha>", va al archivo del mes en `docs/archivo/`. En `mvp-plan.md` §4 queda una línea.
+   - Lo 👤 pasa a la sección 2 de `mvp-plan.md` para Jesús.
 
 ## 5. Commit, push y PR
 

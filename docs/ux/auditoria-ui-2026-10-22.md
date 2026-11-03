@@ -3,7 +3,7 @@
 > **Fecha:** 2026-10-22 · **Autor:** PM/PO con la skill `swiftui-design-expert`.
 > **Alcance:** `PR/App` (iOS) y `PRWatch/App` (solo revisión rápida).
 > **Base:** código en `main` (último commit `af7923f`), referencias de Hevy, Alpha Progression y Fitbod, y el contraste medido con `scripts/contrast_check.py`.
-> **Quién la ejecuta:** el agente de Xcode, como bloques U1–U6 de `mvp-plan.md` (sección 3.1).
+> **Quién la ejecuta:** el agente de Xcode, como bloques U1–U6 de `mvp-plan.md` (sección 3.1; hoy en `docs/archivo/mvp-plan-2026-10.md`).
 
 ---
 

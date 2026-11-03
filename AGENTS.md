@@ -8,7 +8,7 @@ Este archivo es la autoridad máxima del repo: si una skill o una guía general 
 Antes de cualquier cambio, leer en este orden:
 
 1. `promptMaster.md`: visión e invariantes del producto.
-2. **`mvp-plan.md`: plan activo (MVP/POC, fuente Jira SCRUM). Manda sobre `backlog.md` mientras tenga casillas abiertas.**
+2. **`mvp-plan.md`: tablero activo (fuente Jira SCRUM), con lo abierto, la cola 👤 y lo que sigue. Manda sobre `backlog.md` mientras su sección 1 tenga casillas abiertas.**
 3. `.agents/skills/swift-elite-coach/SKILL.md`: reglas de ingeniería propias de PR (dominio, HealthKit, watchOS, agente, seguridad).
 4. La skill de estilo que corresponda a la tarea (sección 3).
 5. `backlog.md`: historias de dominio ya implementadas y futuras.
@@ -135,10 +135,15 @@ Inspeccionar el repo real antes de asumir paths o schemes. No pisar cambios sin 
 ## 5. Backlog selection
 
 - **Ciclo de cada historia:** `.agents/skills/siguiente-historia/SKILL.md`, que en Claude Code es `/siguiente-historia`. Ordena estos pasos: elegir, rama, pruebas primero, `make ci`, PR, merge según el carril, vigilar el CI y reportar.
-- **Primero `mvp-plan.md`:** tomar el primer bloque de su sección 3 que no esté en `[x]` y tenga sus dependencias en `[x]`. Trabajar ahí todo lo asignado en Jira a Gael y Joss.
-- **Congelado:** mientras `mvp-plan.md` tenga casillas abiertas, no se trabaja ninguna historia P1/P2 de `backlog.md`.
+- **Primero `mvp-plan.md`,** el tablero activo: tomar la primera historia READY de su sección 3 con sus dependencias en `main`. Trabajar ahí todo lo asignado en Jira a Gael y Joss. Lo terminado hasta el 2026-11-02 está en `docs/archivo/mvp-plan-2026-10.md`, que no se edita.
+- **Congelado:** mientras la sección 1 de `mvp-plan.md` tenga casillas abiertas, no se trabaja ninguna historia P1/P2 de `backlog.md`.
 - **IDs:** usar siempre la clave de Jira (`SCRUM-XX`) en commits y ramas, por ejemplo `SCRUM-23 (P0): ...`. Los `PR-01xx` de Jira **no** son los `PR-01xx` de `backlog.md`.
-- **Al cerrar un bloque:** marcar `[x]` solo los criterios cuyo test pasó en `make ci` y agregar la línea `Evidencia:`. Las pruebas 👤 las marca Jesús.
+- **Al cerrar una historia, en su mismo PR:**
+  - marcar `[x]` sólo los criterios cuya prueba pasó en `make ci`;
+  - su detalle va con la línea `Evidencia:` al archivo del mes en `docs/archivo/`;
+  - en `mvp-plan.md` §4 queda una línea.
+
+  Las pruebas 👤 las marca Jesús.
 - Fuera del plan MVP: elegir la primera historia `READY` de mayor prioridad con dependencias `DONE`.
 - No empezar una P2 si hay una dependencia P0 incompleta.
 - Un bug que pierde datos, duplica energía, ignora una restricción o recomienda una carga inválida es P0 y bloquea lo demás.

@@ -6,12 +6,14 @@
 
 # 0. Plan activo: MVP / POC (2026-10-20)
 
-El trabajo vigente está en **`mvp-plan.md`**. Contiene:
-- las funcionalidades del POC con casillas `[x]` / `[ ]`;
-- el orden de ejecución (SCRUM-23 → SCRUM-27 → SCRUM-189 → SCRUM-24 → SCRUM-25 → SCRUM-26 → SCRUM-28 → SCRUM-29 → soporte);
-- los criterios de aceptación tomados de Jira.
+El trabajo vigente está en **`mvp-plan.md`**, el tablero activo. Contiene:
+- lo abierto del POC;
+- la cola 👤;
+- lo que sigue: las fases de 1.0 y los borradores.
 
-Mientras tenga casillas abiertas, manda sobre las fases de abajo y se congela todo P1/P2.
+Lo terminado hasta el 2026-11-02 está en `docs/archivo/mvp-plan-2026-10.md`: las funcionalidades del POC, el orden de ejecución y los criterios de cada historia.
+
+Mientras la sección 1 del tablero tenga casillas abiertas, manda sobre las fases de abajo y se congela todo P1/P2.
 
 ---
 

@@ -297,13 +297,17 @@ Carril: amarillo.
 **PR-X004 — Runbook `/siguiente-historia`** · EPIC-00 · P1 · READY · Dep.: PR-X002, PR-X003
 Como agente, quiero un procedimiento único (tomar historia → rama → TDD → `make test` → `make ci` → PR → `--auto` → vigilar el CI → reporte) para que cada historia siga el mismo ciclo verificable.
 Criterios: en el piloto, 3 historias seguidas pasan de READY a `main` sin intervención humana y con la evidencia completa en el PR.
-**Estado (2026-11-02): en rama `PR-X004-runbook`.**
+**Estado (2026-11-02): en `main` (PR #32).**
 - **Runbook:** `.agents/skills/siguiente-historia/SKILL.md`, para cualquier agente; AGENTS.md §5 lo enlaza.
 - **Comando:** `/siguiente-historia` en Claude Code, en `.claude/commands/siguiente-historia.md`, que sólo apunta al runbook.
 - **Criterio:** se prueba en el piloto (fase 3). Antes hacen falta `.claude/settings.json` y un epic autorizado.
 
 **PR-X005 — Dieta de `mvp-plan.md`** · EPIC-00 · P1 · READY · Dep.: PR-X003
 Criterios: tablero activo de menos de 150 líneas · bloques terminados en `docs/archivo/` sin perder contenido (diff de líneas conservadas) · AGENTS.md §5 apunta al tablero nuevo.
+**Estado (2026-11-02): en rama `PR-X005-dieta-mvp-plan`.**
+- **Tablero:** `mvp-plan.md` pasa de 1 465 a 104 líneas, con lo abierto del POC, la cola 👤 (6 casillas y 20 verificaciones), lo que sigue y una línea por historia terminada.
+- **Archivo:** `docs/archivo/mvp-plan-2026-10.md` es el plan anterior completo. Una comprobación línea por línea contra `main` encontró sólo dos diferencias, los enlaces a ADR-0004, que se ajustaron a la carpeta nueva.
+- **Referencias:** AGENTS.md §1 y §5, el runbook y `plan.md` apuntan al tablero nuevo; tres docs que citaban secciones del plan viejo apuntan al archivo.
 
 **PR-X006 — UI smoke en el CI (opcional al inicio)** · EPIC-00 · P1 · READY · Dep.: PR-X001
 Criterios: `make test-ui-smoke` corre en el runner de GitHub · 10 corridas seguidas estables antes de hacerlo obligatorio · si no es estable en el runner hospedado, se documenta y se evalúa el runner propio (D-5).
