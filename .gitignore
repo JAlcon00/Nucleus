@@ -17,3 +17,7 @@ DerivedData/
 
 # CI logs reproducibles (PR-0002)
 .ci/
+
+# Claude Code: overrides personales y worktrees de sesiones (PR-X003)
+.claude/settings.local.json
+.claude/worktrees/
