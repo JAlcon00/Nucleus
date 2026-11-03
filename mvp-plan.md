@@ -1,7 +1,7 @@
 # mvp-plan.md — Plan activo: MVP / POC de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica POC: SCRUM-180).
-> **Actualizado:** 2026-11-02 (SCRUM-33 finalizada: la Fase D queda completa; SCRUM-39, 38 y 35 finalizadas: la deuda queda completa; SCRUM-229 y SCRUM-230, borradores en Jira).
+> **Actualizado:** 2026-11-02 (SCRUM-33 finalizada: la Fase D queda completa; SCRUM-39, 38 y 35 finalizadas: la deuda queda completa; `main` protegida, SCRUM-189; SCRUM-229 y SCRUM-230, borradores en Jira).
 > **Ejecuta:** el agente de IA de Xcode. Hace todo el trabajo asignado en Jira a Gael Durán y Joss Amador, en el orden de este archivo.
 > **Regla:** mientras quede un `[ ]` en las secciones 2 y 3, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
 > **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 y SCRUM-37 el 2026-10-28; SCRUM-219 el 2026-10-29; SCRUM-36 y SCRUM-228 el 2026-10-30; SCRUM-224, 227 y 34 el 2026-11-01; SCRUM-33, 39, 38 y 35 el 2026-11-02) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
@@ -82,7 +82,7 @@ Entra al demo solo si F-01 a F-06 están completos.
 
 ### Soporte
 - [ ] S-01 · Ambiente demo y deploy — SCRUM-188 (era de Gael). Ver bloque 11. Criterios del agente [x]; falta 👤 firma, iPhone y video.
-- [ ] S-02 · CI en GitHub — SCRUM-189 (era de Joss). Ver bloque 3. CI verde en `main` (`bb3c472`); falta 👤 proteger `main`.
+- [x] S-02 · CI en GitHub — SCRUM-189 (era de Joss). Ver bloque 3. CI verde en `main` (`bb3c472`) y `main` protegida desde el 2026-11-02; el PR #29 quedó bloqueado mientras su CI corría.
 - [ ] S-03 · Pruebas de los flujos — SCRUM-190 (era de Joss). Ver bloque 10. Criterios del agente [x]; falta 👤 pruebas manuales.
 - [ ] S-04 · Integración GitHub–Jira — SCRUM-191 (era de Joss). Ver bloque 12. Criterio del agente [x]; falta 👤 instalar "GitHub for Jira".
 - [ ] S-05 · Presentación con demo — SCRUM-192 (era de Gael). Ver bloque 13. Criterios del agente [x]; falta 👤 ensayo.
@@ -97,7 +97,7 @@ Diagnóstico verificado en el código el 2026-10-20: todos los bugs descritos ab
 |---|---|---|---|---|---|
 | 1 | SCRUM-23 | Historial y export correctos (colecciones separadas) | P0 | — | [x] finalizada el 2026-10-27; verificación 👤 manual pendiente |
 | 2 | SCRUM-27 | Días correctos de la semana | P0 | — (su test de integración final espera al #6) | [x] finalizada el 2026-10-27, con la integración con el plan persistido (`WeekEndToEndTests`); verificación 👤 manual pendiente |
-| 3 | SCRUM-189 | CI en GitHub | P0 soporte | — | [ ] criterios del agente [x]; falta 👤 proteger `main` |
+| 3 | SCRUM-189 | CI en GitHub | P0 soporte | — | [x] `main` protegida el 2026-11-02 y comprobado en el PR #29 |
 | 4 | SCRUM-24 | No perder el workout si la app se cierra | P0 | 1 | [x] finalizada el 2026-10-27; verificación 👤 manual pendiente |
 | 5 | SCRUM-25 | Cerrar bien la sesión al terminar | P0 | 4 | [x] |
 | 6 | SCRUM-26 | Recordar perfil y plan | P0 | 1 | [x] finalizada el 2026-10-27; verificación 👤 manual pendiente |
@@ -207,8 +207,17 @@ Evidencia: commit `64c95d9`; `make ci` → `✔ Test run with 439 tests in 69 su
 - [x] `.github/workflows/ci.yml` corre `make ci` en cada pull request y en cada push a `main`, sobre un runner macOS. El workflow fija la versión de Xcode con una lista explícita (el runner sólo trae 26.5).
 - [x] Los logs de `.ci/` se suben como artifact cuando el job falla.
 - [x] El resultado se ve en el PR.
+- [x] Un PR sin `make ci` en verde no se puede fusionar. Evidencia: PR #29. Con `make ci` en cola, `gh pr view 29 --json mergeStateStatus` → `BLOCKED` (2026-11-02).
 
-**👤 Humano (Jesús):** en GitHub › Settings › Branches, proteger `main` y exigir el check de CI, para que un PR en rojo no se pueda fusionar.
+**👤 Humano (Jesús):** proteger `main` y exigir el check de CI. Hecho el 2026-11-02: lo pidió Jesús y lo aplicó el agente con `gh api`.
+
+**Estado (2026-11-02):** `main` protegida con el ruleset `main protegido` (id 26409710, activo sobre la rama por defecto).
+- No se puede borrar `main` ni hacerle force push.
+- Todo entra por PR, con 0 aprobaciones: hoy los PRs del agente salen a nombre de Jesús y él no puede aprobarlos. Se sube a 1 con `nucleus-bot` y `CODEOWNERS`.
+- El check `make ci` de GitHub Actions es obligatorio y la rama tiene que estar al día con `main`.
+- Nadie puede saltarse la regla, tampoco el admin (`current_user_can_bypass: never`).
+- En el repo quedaron activos el auto-merge, el borrado de la rama al fusionar y la sugerencia de actualizar la rama.
+- Verificado con `gh api repos/JAlcon00/Nucleus/rules/branches/main`. Antes de proteger, 3 de 26 PRs se habían fusionado sin el CI en verde (#1, #6 y #9; ver `docs/product/plan-aceleracion-desarrollo-2026-11-02.md`).
 
 **Estado (2026-10-22):** verde. PR #2 (SCRUM-189) dejó `make ci` en verde con el Xcode 26.5 del runner: el build system `native` de SwiftPM no compilaba el String Catalog (se fija `swiftbuild`), un test dependía del día real y el artifact de `.ci/` salía vacío (carpeta oculta). Corrida verde en `main`: `bb3c472`, run 39731930158. Queda sólo lo 👤: proteger `main`.
 

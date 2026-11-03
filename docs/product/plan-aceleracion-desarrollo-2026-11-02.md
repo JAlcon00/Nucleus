@@ -2,6 +2,8 @@
 
 **Fecha:** 2026-11-02 · **Base:** `origin/main` @ `aa48151` (PR #27) · **Autor:** PM/PO de Nucleus con Claude (skills senior-fullstack y senior-pm) · **Estado:** propuesta, pendiente de que Jesús la apruebe
 
+> **Avance de la fase 0 (2026-11-02):** `main` quedó protegida con el ruleset `main protegido`: PR obligatorio, `make ci` obligatorio con la rama al día, sin force push, sin borrado y sin bypass. También se activaron el auto-merge y el borrado de la rama al fusionar. Falta `nucleus-bot` (D-3) y GitHub for Jira (S-04). Los datos de las secciones 1 y 12 son de antes de este cambio.
+
 ---
 
 ## 0. Decisiones que necesito de Jesús (antes de empezar)
