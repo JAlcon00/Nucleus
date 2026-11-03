@@ -14,7 +14,7 @@
 2. **Cómo trabajar:** cada bloque se trabaja como una historia completa (AGENTS.md: modo lógica primero, después UI).
 3. **Cuándo marcar `[x]`:** un criterio se marca solo cuando su test pasó en `make ci`. Una prueba manual se marca solo cuando Jesús la confirmó.
 4. **Evidencia al cerrar:** al cerrar un bloque, agregar debajo de él una línea `Evidencia:` con el commit y la línea real de `make ci`.
-5. **Commits y ramas:** la clave de Jira va al inicio del mensaje, por ejemplo `SCRUM-23 (P0): ...`. Así aparecen en Jira cuando se conecte GitHub for Jira (S-04). En las ramas igual: `scrum-23-export-historial`.
+5. **Commits y ramas:** la clave de Jira va al inicio del mensaje, por ejemplo `SCRUM-23 (P0): ...`. Así aparecen en Jira cuando se conecte GitHub for Jira (S-04). En las ramas igual y en mayúsculas, para que coincida con el permiso de push de AGENTS.md §6: `SCRUM-23-export-historial`.
 6. **IDs de Jira vs. `backlog.md`:** los IDs `PR-01xx` de Jira **no son** los `PR-01xx` de `backlog.md`; son historias distintas. En este plan y en los commits se usa siempre `SCRUM-XX`.
 7. **Partes humanas:** lo marcado 👤 lo hace una persona. El agente prepara todo lo demás y deja indicado qué falta.
 

@@ -134,6 +134,7 @@ Inspeccionar el repo real antes de asumir paths o schemes. No pisar cambios sin 
 
 ## 5. Backlog selection
 
+- **Ciclo de cada historia:** `.agents/skills/siguiente-historia/SKILL.md`, que en Claude Code es `/siguiente-historia`. Ordena estos pasos: elegir, rama, pruebas primero, `make ci`, PR, merge según el carril, vigilar el CI y reportar.
 - **Primero `mvp-plan.md`:** tomar el primer bloque de su sección 3 que no esté en `[x]` y tenga sus dependencias en `[x]`. Trabajar ahí todo lo asignado en Jira a Gael y Joss.
 - **Congelado:** mientras `mvp-plan.md` tenga casillas abiertas, no se trabaja ninguna historia P1/P2 de `backlog.md`.
 - **IDs:** usar siempre la clave de Jira (`SCRUM-XX`) en commits y ramas, por ejemplo `SCRUM-23 (P0): ...`. Los `PR-01xx` de Jira **no** son los `PR-01xx` de `backlog.md`.

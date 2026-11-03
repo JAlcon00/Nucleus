@@ -280,14 +280,14 @@ Hace: Jesús (fase 0; no es delegable porque es un cambio de permisos). Cierra S
 **PR-X002 — Job `guard-agente` en el CI** · EPIC-00 · P0 · READY · Dep.: PR-X001
 Criterios: un PR que baja el número de tests falla · un PR que agrega `.disabled`/`XCTSkip` falla · un PR que borra un archivo de `Tests/` sin la etiqueta `test-retirado` falla · un PR que cambia un `Codable` persistido sin un test con fixture falla · el job tiene tests de sus propias reglas con diffs de ejemplo.
 Carril: amarillo. Riesgo: falsos positivos que frenen el flujo; se ajustan las reglas en la primera semana.
-**Estado (2026-11-02): en `main` (PR #30).** En GitHub comparó contra `main` (base `d4e7654`) y contó 1412 → 1412 pruebas. Faltan las etiquetas `test-retirado` y `muestra-cambiada` (Jesús).
+**Estado (2026-11-02): en `main` (PR #30).** En GitHub comparó contra `main` (base `d4e7654`) y contó 1412 → 1412 pruebas. Las etiquetas `test-retirado` y `muestra-cambiada` existen desde el 2026-11-02.
 - **Dónde corre:** dentro de `make ci`, que ya es el check obligatorio, así que no hace falta otro check en la regla de `main`; y también en la Mac antes del push.
 - **Ajuste a la regla del `Codable`:** `PersistenceFormatTests` ya falla si un modelo guardado cambia de forma incompatible. Lo que el guard protege es la muestra: falla si se edita, renombra o borra una muestra existente (etiqueta `muestra-cambiada`), porque eso escondería el cambio.
 
 **PR-X003 — CODEOWNERS, plantilla de PR, permisos del agente y AGENTS.md §6** · EPIC-00 · P0 · READY · Dep.: PR-X001
 Criterios: un PR que toca `scripts/` queda esperando la aprobación del CODEOWNER · la plantilla aparece al crear un PR · el agente puede hacer push a `SCRUM-*` y no a `main`.
 Carril: amarillo.
-**Estado (2026-11-02): en rama `PR-X003-codeowners`.**
+**Estado (2026-11-02): en `main` (PR #31).** GitHub no encontró errores en el CODEOWNERS.
 - **Hecho:** `.github/CODEOWNERS`, `.github/pull_request_template.md` y AGENTS.md §6 (push a ramas de historia, carriles, confirmar y nunca).
 - **CODEOWNERS:** agrega a la lista de §3 `Persistence*.swift` (esquemas y contratos), las muestras de `Fixtures/Persistence/`, `ActionPolicyValidator.swift` (el Policy Validator) y `PR/PR.entitlements` (HealthKit).
 - **Falta (Jesús):**
@@ -297,6 +297,10 @@ Carril: amarillo.
 **PR-X004 — Runbook `/siguiente-historia`** · EPIC-00 · P1 · READY · Dep.: PR-X002, PR-X003
 Como agente, quiero un procedimiento único (tomar historia → rama → TDD → `make test` → `make ci` → PR → `--auto` → vigilar el CI → reporte) para que cada historia siga el mismo ciclo verificable.
 Criterios: en el piloto, 3 historias seguidas pasan de READY a `main` sin intervención humana y con la evidencia completa en el PR.
+**Estado (2026-11-02): en rama `PR-X004-runbook`.**
+- **Runbook:** `.agents/skills/siguiente-historia/SKILL.md`, para cualquier agente; AGENTS.md §5 lo enlaza.
+- **Comando:** `/siguiente-historia` en Claude Code, en `.claude/commands/siguiente-historia.md`, que sólo apunta al runbook.
+- **Criterio:** se prueba en el piloto (fase 3). Antes hacen falta `.claude/settings.json` y un epic autorizado.
 
 **PR-X005 — Dieta de `mvp-plan.md`** · EPIC-00 · P1 · READY · Dep.: PR-X003
 Criterios: tablero activo de menos de 150 líneas · bloques terminados en `docs/archivo/` sin perder contenido (diff de líneas conservadas) · AGENTS.md §5 apunta al tablero nuevo.
