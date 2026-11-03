@@ -4,7 +4,7 @@
 > **Actualizado:** 2026-11-02 (SCRUM-33 finalizada: la Fase D queda completa; SCRUM-39, 38 y 35 finalizadas: la deuda queda completa; `main` protegida, SCRUM-189; SCRUM-229 y SCRUM-230, borradores en Jira).
 > **Ejecuta:** el agente de IA de Xcode. Hace todo el trabajo asignado en Jira a Gael Durán y Joss Amador, en el orden de este archivo.
 > **Regla:** mientras quede un `[ ]` en las secciones 2 y 3, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
-> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 y SCRUM-37 el 2026-10-28; SCRUM-219 el 2026-10-29; SCRUM-36 y SCRUM-228 el 2026-10-30; SCRUM-224, 227 y 34 el 2026-11-01; SCRUM-33, 39, 38 y 35 el 2026-11-02) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 189, 190, 191 y 192.
+> **Cierre en Jira (2026-10-27):** Jesús pasó a Finalizada las historias cuyo código está en `main` (SCRUM-23, 24, 26–32, 40, 181–185, 187, 214–218, 222, 223 y 225; SCRUM-226 y SCRUM-37 el 2026-10-28; SCRUM-219 el 2026-10-29; SCRUM-36 y SCRUM-228 el 2026-10-30; SCRUM-224, 227 y 34 el 2026-11-01; SCRUM-33, 39, 38, 35 y 189 el 2026-11-02) y la épica de la Fase A (SCRUM-5). Las pruebas 👤 que les faltaban quedan como "Verificación pendiente", sin casilla: ya no bloquean. Siguen abiertas SCRUM-188, 190, 191 y 192.
 
 ---
 
