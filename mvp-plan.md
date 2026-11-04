@@ -1,7 +1,7 @@
 # mvp-plan.md — Tablero activo de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica del POC: SCRUM-180).
-> **Actualizado:** 2026-11-02 (PR-X005: el tablero queda en menos de 150 líneas).
+> **Actualizado:** 2026-11-03 (SCRUM-10: entran las historias de la Fase E a la sección 3).
 > **Lo terminado** hasta el 2026-11-02 está congelado en [`docs/archivo/mvp-plan-2026-10.md`](docs/archivo/mvp-plan-2026-10.md): el POC (F-01 a F-07, bloques 0 a 13), UX, IA, feedback y las Fases B, C y D, más la deuda. Ahí siguen la evidencia y los criterios de cada historia. No se edita: se cita.
 > **Regla:** mientras quede un `[ ]` en la sección 1, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
 
@@ -67,9 +67,23 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
 
 ## 3. Lo que sigue
 
+**Fase E · gimnasio real (SCRUM-10, Should): historias READY desde el 2026-11-03.**
+- **Decisiones DE-1 a DE-4:** en SCRUM-231.
+- **Criterios, pruebas y rutas:** en cada tarjeta de Jira.
+- **Cuándo las toma el agente:** cuando Jesús autorice el epic. Hoy la cola 👤 pasa de 5 y el runbook se detiene en el paso 0.
+
+| Orden | Historia | Depende de | Carril |
+|---|---|---|---|
+| 1 | SCRUM-232 · PR-E001 Sustituto equivalente de verdad (motor) | SCRUM-231 | 🟢 |
+| 1 | SCRUM-233 · PR-E002 Máquina ocupada: adelantar sin romper la sesión | SCRUM-231 | 🟢 |
+| 1 | SCRUM-235 · PR-E004 Mi gimnasio: el gimnasio activo se guarda | SCRUM-231 | 🟡 |
+| 2 | SCRUM-234 · PR-E003 Sustituto equivalente durante el entrenamiento | 232, 233 | 🟢 |
+| 3 | SCRUM-236 · PR-E005 "No hay esta máquina aquí", recordado y reversible | 232, 234, 235 | 🟢 (🟡 si toca persistencia) |
+| 3 | SCRUM-237 · PR-E006 Mis cargas por máquina concreta | 235 (234 para un criterio) | 🟡 |
+| 4 | SCRUM-238 · PR-E007 Varios gimnasios (Could) | 235, 236 | 🟢 |
+
 - **Antes de TestFlight:** mover la llave de la IA a un backend. La historia está por crear (SCRUM-201, SCRUM-204).
 - **Fases de 1.0, sin historias escritas todavía** (prioridad MoSCoW del 2026-10-25, `docs/product/estado-y-prioridades-2026-10-25.md`):
-  - Fase E, gimnasio real (SCRUM-10, Should);
   - Fase F, HealthKit real (SCRUM-11, Should);
   - Fase G, Apple Watch (SCRUM-12, Could);
   - Fase H, pestañas (SCRUM-13, Could): casi cubierta por SCRUM-197, 208 y 213, así que hay que revisar su alcance o cerrarla;
