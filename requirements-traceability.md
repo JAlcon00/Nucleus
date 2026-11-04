@@ -251,7 +251,7 @@ Cobertura:
 ## Pruebas E2E por recorrido (SCRUM-228, PR-T001)
 
 Las 32 pruebas de UI quedaron en 8 recorridos, una clase cada uno en `PRUITests/Journeys/` (SCRUM-224 agregó el noveno);
-ninguna comprobación se quitó ni se debilitó (tabla en `mvp-plan.md` › SCRUM-228). Qué cubre
+ninguna comprobación se quitó ni se debilitó (tabla en `docs/archivo/mvp-plan-2026-10.md` › SCRUM-228). Qué cubre
 cada recorrido:
 
 | Recorrido | Requisitos e historias |
