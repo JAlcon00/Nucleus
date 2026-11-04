@@ -959,11 +959,16 @@ public final class TodayPlanCoordinator {
             activeRestrictions: stored.profile.restrictions, equipment: builder.defaultEquipmentKnownness(),
             conversationID: newConversationID(), now: saveClock()
         )
-        return BlockPlanningResult(
-            block: PlanPersonalizationApplier.substituting(review.acceptedSubstitutions, in: regenerated.block),
-            explanation: regenerated.explanation,
-            split: regenerated.split
+        let accepted = review.acceptedSubstitutions
+        let block = PlanPersonalizationApplier.substituting(accepted, in: regenerated.block)
+        // SCRUM-241: los pares que se quedaron con el sustituto se nombran con él.
+        let names = Dictionary(catalog.exercises.map { ($0.id, $0.canonicalName) }, uniquingKeysWith: { first, _ in first })
+        let explanation = BlockExplanation(
+            facts: PlanPersonalizationApplier.supersetFacts(regenerated.explanation.facts, after: accepted, in: block, names: names),
+            ruleReferences: regenerated.explanation.ruleReferences,
+            sessionOrder: regenerated.explanation.sessionOrder
         )
+        return BlockPlanningResult(block: block, explanation: explanation, split: regenerated.split)
     }
 
     private func localPersonalization(facts: [DecisionFact]) -> PlanPersonalizationRecord {

@@ -432,6 +432,116 @@ struct PlanPersistenceTests {
         }
         #expect(saved.generatorVersion == 9)
     }
+
+    /// SCRUM-241: al regenerar un plan guardado, la sustitución aceptada de un ejercicio que
+    /// va en superset se queda con el par (sustituto compatible con la pareja) o se rechaza.
+    /// Nunca queda un par roto ni un hecho `superset` que nombre un par que no está.
+    @Test("SCRUM-241: al regenerar, una sustitución en superset conserva el par o se rechaza", arguments: [true, false])
+    func migrationKeepsSupersetsWhole(compatible: Bool) async throws {
+        let root = try makeRoot()
+        let first = try AppInstance(root: root)
+        var armsFirst = profile(days: 3, minutes: 30)
+        armsFirst.priorityMuscles = [.biceps, .triceps]
+        await first.todayPlan.activate(profile: armsFirst, userID: "u1")
+        guard case .loaded(var stored, let block) = await first.planStore.loadPlan(userID: "u1") else {
+            Issue.record("no hay plan"); return
+        }
+        let catalog = try ExerciseCatalogLoader.loadBundled()
+        let validator = try PlanPersonalizationValidator.standard()
+        let equipment = TodayPlanBuilder().defaultEquipmentKnownness()
+        let today = try trainingDay().date
+        // El primer ejercicio en par con un sustituto del tipo que pide el caso.
+        let expected: PersonalizationOutcome = compatible ? .accepted : .rejected(.breaksSuperset)
+        let paired = block.sessions.flatMap(\.supersetPairs).flatMap { [$0.first, $0.second] }
+        var found: ProposedSubstitution?
+        search: for exercise in paired {
+            for candidate in catalog.exercises {
+                let substitution = ProposedSubstitution(replace: exercise, with: candidate.id)
+                let review = try validator.reviewSubstitutions(
+                    [substitution], block: block, catalog: catalog.exercises, activeRestrictions: [],
+                    equipment: equipment, conversationID: UUID(), now: today
+                )
+                if review.decisions.map(\.outcome) == [expected] {
+                    found = substitution
+                    break search
+                }
+            }
+        }
+        let substitution = try #require(found, "El catálogo real tiene un sustituto \(compatible ? "compatible" : "que choca") con la pareja")
+
+        // Un plan del generador 8 con esa sustitución aceptada.
+        stored.personalization = PlanPersonalizationRecord(
+            decisions: [PersonalizationDecision(adjustment: .substitute(substitution), outcome: .accepted)],
+            rationale: ["Cambiamos un ejercicio por otro equivalente."],
+            rationaleSource: .local,
+            audit: []
+        )
+        stored.generatorVersion = 8
+        try await first.planStore.save(plan: stored, block: block)
+
+        let app = try AppInstance(root: root)
+        #expect(await app.todayPlan.restore(userID: "u1") == .restored(armsFirst))
+        let migrated = try #require(app.todayPlan.plan?.block)
+        let planned = Set(migrated.sessions.flatMap(\.plannedSets).map(\.exerciseID))
+        #expect(planned.contains(substitution.with) == compatible)
+        #expect(planned.contains(substitution.replace) == !compatible)
+        #expect(migrated.sessions.map { $0.supersetPairs.count } == block.sessions.map { $0.supersetPairs.count },
+                "Los mismos pares que armó el motor")
+        #expect(migrated.sessions.allSatisfy { ($0.supersets?.count ?? 0) == $0.supersetPairs.count }, "Ningún par roto")
+
+        guard case .loaded(let saved, _) = await app.planStore.loadPlan(userID: "u1") else {
+            Issue.record("no se guardó"); return
+        }
+        let names = Dictionary(catalog.exercises.map { ($0.id, $0.canonicalName) }, uniquingKeysWith: { first, _ in first })
+        var pairFacts: [String] = []
+        for pair in migrated.sessions.flatMap(\.supersetPairs) {
+            let fact = "\(names[pair.first] ?? "") + \(names[pair.second] ?? "")"
+            if !pairFacts.contains(fact) { pairFacts.append(fact) }
+        }
+        #expect(saved.explanation.facts.filter { $0.key == "superset" }.map(\.value) == pairFacts,
+                "La explicación nombra los pares que de verdad tiene el plan")
+    }
+
+    /// SCRUM-241 con DE-5 (SCRUM-239): un plan ya guardado con un par roto no se repara al
+    /// abrir; se ve igual (los dos ejercicios solos, sin perder series) y no se reescribe.
+    @Test("SCRUM-241: un plan guardado con un par roto se abre igual y sin reescribir el disco")
+    func savedBrokenPairIsLeftUntilRegeneration() async throws {
+        let root = try makeRoot()
+        let first = try AppInstance(root: root)
+        var armsFirst = profile(days: 3, minutes: 30)
+        armsFirst.priorityMuscles = [.biceps, .triceps]
+        await first.todayPlan.activate(profile: armsFirst, userID: "u1")
+        guard case .loaded(let stored, var block) = await first.planStore.loadPlan(userID: "u1") else {
+            Issue.record("no hay plan"); return
+        }
+        let pair = try #require(block.sessions.flatMap(\.supersetPairs).first)
+        let planned = Set(block.sessions.flatMap(\.plannedSets).map(\.exerciseID))
+        let outside = try #require(try ExerciseCatalogLoader.loadBundled().exercises.first { !planned.contains($0.id) })
+        // Como lo dejaba la sustitución antes de SCRUM-241: cambia las series, no el par.
+        for index in block.sessions.indices {
+            block.sessions[index].plannedSets = block.sessions[index].plannedSets.map { set in
+                guard set.exerciseID == pair.first else { return set }
+                var set = set
+                set.exerciseID = outside.id
+                return set
+            }
+        }
+        try await first.planStore.save(plan: stored, block: block)
+        let sets = block.sessions.map(\.plannedSets.count)
+
+        let app = try AppInstance(root: root)
+        #expect(await app.todayPlan.restore(userID: "u1") == .restored(armsFirst))
+        #expect(app.todayPlan.notice == nil)
+        let shown = try #require(app.todayPlan.plan?.block)
+        #expect(shown == block, "Se ve igual que antes de abrir")
+        #expect(shown.sessions.map(\.plannedSets.count) == sets, "Sin perder series")
+        #expect(!shown.sessions.flatMap(\.supersetPairs).contains(pair), "El par roto no se usa: van solos")
+        guard case .loaded(let saved, let savedBlock) = await app.planStore.loadPlan(userID: "u1") else {
+            Issue.record("no se guardó"); return
+        }
+        #expect(saved.updatedAt == stored.updatedAt, "Abrir no reescribe el plan")
+        #expect(savedBlock == block)
+    }
 }
 
 @MainActor

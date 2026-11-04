@@ -8,7 +8,8 @@
 //  - El motor genera el bloque con todo el perfil. La IA sólo PROPONE ajustes
 //    estructurados: músculos a enfatizar y sustituciones de ejercicio.
 //  - Cada ajuste pasa por reglas de forma (existe, está en el plan, mismo músculo y
-//    misma clase articular, equipo disponible) y por `ActionPolicyValidator`
+//    misma clase articular, equipo disponible y, si va en superset, sin músculos en común
+//    con su pareja: SCRUM-241) y por `ActionPolicyValidator`
 //    (`adjustVolume` / `replaceExercise`, que rechaza sustitutos prohibidos por una
 //    restricción). Sólo lo aceptado cambia el plan; todo queda en `AgentAuditRecord`.
 //  - El énfasis no fija números: el motor vuelve a repartir el volumen con la
@@ -120,6 +121,9 @@ public enum PersonalizationRejection: String, Codable, Sendable, Hashable, CaseI
     case differentJointClass
     /// El equipo del sustituto no está disponible.
     case equipmentUnavailable
+    /// El ejercicio va en superset y el sustituto comparte músculo con su pareja: el par se
+    /// desharía y la sesión dejaría de caber en el tiempo (SCRUM-241).
+    case breaksSuperset
     /// `ActionPolicyValidator` lo rechazó (p. ej. evade una restricción).
     case rejectedByPolicy
 }
@@ -249,8 +253,10 @@ public struct PlanPersonalizationValidator: Sendable {
 
     /// Sustituciones contra el bloque final del motor. El sustituto debe existir, no estar
     /// ya en el plan, trabajar el mismo músculo principal, ser de la misma clase
-    /// articular y tener equipo disponible; luego `ActionPolicyValidator` decide con el
-    /// veredicto de restricciones (nunca se evade una restricción activa).
+    /// articular, tener equipo disponible y, si el ejercicio va en superset, no compartir
+    /// músculo con su pareja (ya cambiada si también se sustituyó); luego
+    /// `ActionPolicyValidator` decide con el veredicto de restricciones (nunca se evade una
+    /// restricción activa).
     public func reviewSubstitutions(
         _ substitutions: [ProposedSubstitution],
         block: TrainingBlock,
@@ -263,16 +269,16 @@ public struct PlanPersonalizationValidator: Sendable {
         let byID = Dictionary(catalog.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let inPlan = Set(block.sessions.flatMap { $0.plannedSets.map(\.exerciseID) })
         let relevant = restrictions.relevantRestrictions(activeRestrictions, asOf: now)
-        var replaced: Set<ExerciseID> = []
-        var incoming: Set<ExerciseID> = []
+        let partners = supersetPartners(in: block)
+        // Original → sustituto de lo ya aceptado en esta propuesta.
+        var accepted: [ExerciseID: ExerciseID] = [:]
         var decisions: [PersonalizationDecision] = []
         var audit: [AgentAuditRecord] = []
         for substitution in substitutions {
             let adjustment = PersonalizationAdjustment.substitute(substitution)
             audit.append(.intent(.requestExerciseSwap(substitution.replace), conversationID: conversationID, date: now))
             let shapeProblem = shapeProblem(
-                substitution, byID: byID, inPlan: inPlan, replaced: replaced, incoming: incoming,
-                acceptedCount: decisions.filter(\.isAccepted).count, equipment: equipment
+                substitution, byID: byID, inPlan: inPlan, accepted: accepted, partners: partners, equipment: equipment
             )
             if let shapeProblem {
                 decisions.append(PersonalizationDecision(adjustment: adjustment, outcome: .rejected(shapeProblem)))
@@ -289,8 +295,7 @@ public struct PlanPersonalizationValidator: Sendable {
             )
             audit.append(.validation(policyVerdict, conversationID: conversationID, date: now))
             if case .allowed(let command) = policyVerdict.outcome {
-                replaced.insert(substitution.replace)
-                incoming.insert(substitution.with)
+                accepted[substitution.replace] = substitution.with
                 decisions.append(PersonalizationDecision(adjustment: adjustment, outcome: .accepted))
                 audit.append(.result(command: command, conversationID: conversationID, date: now))
             } else {
@@ -313,14 +318,14 @@ public struct PlanPersonalizationValidator: Sendable {
         let byID = Dictionary(catalog.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let inPlan = Set(block.sessions.flatMap { $0.plannedSets.map(\.exerciseID) })
         let relevant = restrictions.relevantRestrictions(activeRestrictions, asOf: now)
+        let partners = supersetPartners(in: block)
         var result: [ExerciseID: [ExerciseID]] = [:]
         for exerciseID in inPlan {
             var options: [ExerciseID] = []
             for candidate in catalog where options.count < config.maxAlternativesPerExercise {
                 let substitution = ProposedSubstitution(replace: exerciseID, with: candidate.id)
                 guard shapeProblem(
-                    substitution, byID: byID, inPlan: inPlan, replaced: [], incoming: [],
-                    acceptedCount: 0, equipment: equipment
+                    substitution, byID: byID, inPlan: inPlan, accepted: [:], partners: partners, equipment: equipment
                 ) == nil else { continue }
                 let verdict = try restrictions.evaluate(
                     RestrictionPolicyInput(exercise: candidate, activeRestrictions: relevant, asOf: now)
@@ -332,22 +337,23 @@ public struct PlanPersonalizationValidator: Sendable {
         return result
     }
 
+    /// `accepted`: original → sustituto de lo ya aceptado en la misma propuesta.
+    /// `partners`: parejas de superset de cada ejercicio en el bloque.
     private func shapeProblem(
         _ substitution: ProposedSubstitution,
         byID: [ExerciseID: Exercise],
         inPlan: Set<ExerciseID>,
-        replaced: Set<ExerciseID>,
-        incoming: Set<ExerciseID>,
-        acceptedCount: Int,
+        accepted: [ExerciseID: ExerciseID],
+        partners: [ExerciseID: [ExerciseID]],
         equipment: EquipmentKnownness
     ) -> PersonalizationRejection? {
         guard let original = byID[substitution.replace], let substitute = byID[substitution.with] else {
             return .unknownExercise
         }
-        if replaced.contains(substitution.replace) || incoming.contains(substitution.with) { return .duplicate }
+        if accepted[substitution.replace] != nil || accepted.values.contains(substitution.with) { return .duplicate }
         if !inPlan.contains(substitution.replace) { return .exerciseNotInPlan }
         if inPlan.contains(substitution.with) { return .alreadyInPlan }
-        if acceptedCount >= config.maxSubstitutions { return .limitReached }
+        if accepted.count >= config.maxSubstitutions { return .limitReached }
         let originalMuscles = Set(original.primaryMuscles.map(\.muscleGroupID))
         if originalMuscles.isDisjoint(with: substitute.primaryMuscles.map(\.muscleGroupID)) { return .differentMuscle }
         if original.jointClass != substitute.jointClass { return .differentJointClass }
@@ -357,7 +363,23 @@ public struct PlanPersonalizationValidator: Sendable {
         case .unknown:
             break
         }
+        // SCRUM-241: el par se queda con el sustituto sólo si no comparte músculo con la
+        // pareja de cada sesión (la pareja ya cambiada si la IA también la sustituyó).
+        for partner in partners[substitution.replace] ?? [] {
+            guard let current = byID[accepted[partner] ?? partner],
+                  SupersetPairing.areCompatible(substitute, current) else { return .breaksSuperset }
+        }
         return nil
+    }
+
+    /// Parejas de superset de cada ejercicio, en todas las sesiones del bloque.
+    private func supersetPartners(in block: TrainingBlock) -> [ExerciseID: [ExerciseID]] {
+        var partners: [ExerciseID: [ExerciseID]] = [:]
+        for pair in block.sessions.flatMap(\.supersetPairs) {
+            partners[pair.first, default: []].append(pair.second)
+            partners[pair.second, default: []].append(pair.first)
+        }
+        return partners
     }
 
     private func rejection(
@@ -392,7 +414,9 @@ public enum PlanPersonalizationApplier {
         }
     }
 
-    /// Cambia el ejercicio en cada serie planificada. La prescripción no se toca.
+    /// Cambia el ejercicio en cada serie planificada y en su par de superset (SCRUM-241: el
+    /// validador ya comprobó que el sustituto es compatible con la pareja). La prescripción
+    /// no se toca.
     public static func substituting(_ substitutions: [ProposedSubstitution], in block: TrainingBlock) -> TrainingBlock {
         let map = Dictionary(substitutions.map { ($0.replace, $0.with) }, uniquingKeysWith: { first, _ in first })
         guard !map.isEmpty else { return block }
@@ -405,8 +429,36 @@ public enum PlanPersonalizationApplier {
                 set.exerciseID = replacement
                 return set
             }
+            session.supersets = session.supersets?.compactMap { pair in
+                SupersetPair(first: map[pair.first] ?? pair.first, second: map[pair.second] ?? pair.second)
+            }
             return session
         }
+        return result
+    }
+
+    /// Clave del hecho de cada par en superset ("A + B"), la misma que pone `BlockPlanner`.
+    private static let supersetFactKey = "superset"
+
+    /// Los hechos `superset` vuelven a nombrar los pares del bloque ya sustituido, en el
+    /// lugar donde los dejó el motor (SCRUM-241): ningún hecho nombra un par que no está en
+    /// el plan, tampoco lo que viaja a la IA. Sin sustituciones, los hechos no cambian.
+    public static func supersetFacts(
+        _ facts: [DecisionFact],
+        after substitutions: [ProposedSubstitution],
+        in block: TrainingBlock,
+        names: [ExerciseID: String]
+    ) -> [DecisionFact] {
+        guard !substitutions.isEmpty else { return facts }
+        var values: [String] = []
+        for pair in block.sessions.flatMap(\.supersetPairs) {
+            let value = [pair.first, pair.second].map { names[$0] ?? $0.rawValue.uuidString }.joined(separator: " + ")
+            if !values.contains(value) { values.append(value) }
+        }
+        let rebuilt = values.map { DecisionFact(key: supersetFactKey, value: $0) }
+        guard let position = facts.firstIndex(where: { $0.key == supersetFactKey }) else { return facts + rebuilt }
+        var result = facts.filter { $0.key != supersetFactKey }
+        result.insert(contentsOf: rebuilt, at: position)
         return result
     }
 }
