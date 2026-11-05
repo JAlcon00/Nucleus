@@ -8,7 +8,8 @@
 //  - Sin consentimiento (contexto `nil`) o sin conexión: no se manda nada y el plan es
 //    el del motor con la explicación local.
 //  - La IA sólo elige de listas cerradas: músculos de las prioridades y alternativas ya
-//    filtradas por el motor (mismo músculo, misma clase, equipo y restricciones). Los
+//    filtradas por el motor (mismo músculo, misma clase, equipo, restricciones y, si va en
+//    superset, compatible con su pareja). Los
 //    ejercicios viajan con claves cortas (`e1`, `e2`…), nunca con IDs ni nombres del
 //    usuario, y la respuesta se revisa de nuevo con `PlanPersonalizationValidator`.
 //  - Toda falla (red, JSON inválido, explicación con números inventados) cae al plan y
@@ -425,7 +426,8 @@ public struct PlanPersonalizationFlow: Sendable {
             guard let from = names[substitution.replace], let to = names[substitution.with] else { return nil }
             return (from, to)
         }
-        var facts = result.explanation.facts
+        // SCRUM-241: un par que se quedó con el sustituto se nombra con él.
+        var facts = PlanPersonalizationApplier.supersetFacts(result.explanation.facts, after: accepted, in: block, names: names)
         let emphasis = emphasisReview.acceptedEmphasis
         if !emphasis.isEmpty {
             facts.append(DecisionFact(key: "emphasizedMuscles", value: emphasis.map(\.rawValue).joined(separator: ", ")))
