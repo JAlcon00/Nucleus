@@ -311,7 +311,7 @@ Evidencia: rama `SCRUM-245-energia-una-vez`, PR #40.
 - **SCRUM-257:** la pantalla del reloj, con Corona, un botón grande, descanso por hora de fin y sin contador con la muñeca abajo.
 - **SCRUM-260:** el dolor usa la misma escala y el mismo motor. El reporte no sale del buzón hasta que el iPhone lo guarde.
 - **SCRUM-259:** pausar y terminar, también sin iPhone, con su hora real. El resumen deja elegir entre series en conflicto.
-- **SCRUM-258 (abierta):** sesión de Salud en el reloj, apagada por `watch.health_session.enabled` hasta el gate. `make install-iphone` la enciende con `PR_DEVICE_TEST`.
+- **SCRUM-258:** sesión de Salud en el reloj, apagada por `watch.health_session.enabled` hasta el gate. `make install-iphone` la enciende con `PR_DEVICE_TEST`.
 
 **Criterios sin cerrar:**
 - [x] SCRUM-258 c3: el iPhone respeta `healthRecording.watchOwnsHealthWorkout` (PR #42, `watchOwnsTheWorkout`).
