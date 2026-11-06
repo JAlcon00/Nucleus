@@ -223,6 +223,56 @@ struct HealthWriteTests {
         #expect(await harness.health.savedWorkouts.keys.sorted() == [session.id.rawValue.uuidString])
     }
 
+    @Test("Si el reloj avisa que falló después de terminar, el reintento escribe una sola vez")
+    func lateWatchFailureWritesOnce() async throws {
+        let harness = try Harness()
+        defer { harness.cleanUp() }
+        var session = try completed()
+        session.healthRecording = SessionHealthRecording(state: .recording)
+        try await harness.repository.save(session)
+        try await harness.coordinator().sessionFinished(id: session.id)
+        #expect(await harness.health.saveAttempts == 0)
+
+        session.healthRecording = SessionHealthRecording(state: .failed)
+        try await harness.repository.save(session)
+        try await harness.coordinator().retryPending()
+        try await harness.coordinator().retryPending()
+
+        #expect(await harness.health.saveAttempts == 1)
+        #expect(await harness.health.savedWorkouts.keys.sorted() == [session.id.rawValue.uuidString])
+        #expect(try await harness.repository.session(id: session.id)?.healthWriteStatus == .saved)
+    }
+
+    @Test("Sin permiso, el fallo tardío del reloj espera y no se pierde")
+    func lateWatchFailureWaitsForPermission() async throws {
+        let harness = try Harness()
+        defer { harness.cleanUp() }
+        var session = try completed()
+        session.healthRecording = SessionHealthRecording(state: .failed)
+        try await harness.repository.save(session)
+
+        try await harness.coordinator(canWrite: false).retryPending()
+        #expect(await harness.health.saveAttempts == 0)
+
+        try await harness.coordinator().retryPending()
+        #expect(await harness.health.saveAttempts == 1)
+    }
+
+    @Test("El reintento no escribe lo que el reloj registró", arguments: [
+        SessionHealthRecording.State.recording, .saved,
+    ])
+    func retryLeavesWatchWorkoutsAlone(state: SessionHealthRecording.State) async throws {
+        let harness = try Harness()
+        defer { harness.cleanUp() }
+        var session = try completed()
+        session.healthRecording = SessionHealthRecording(state: state)
+        try await harness.repository.save(session)
+
+        try await harness.coordinator().retryPending()
+
+        #expect(await harness.health.saveAttempts == 0)
+    }
+
     @Test("Sólo series saltadas no cuentan como series")
     func skippedSetsDoNotCount() throws {
         var session = try completed(sets: 0)

@@ -88,7 +88,7 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
 
 **Fase G · Apple Watch (SCRUM-12, Could): en `main` por el PR #41 desde el 2026-11-06. Falta el gate.**
 - **Decisiones DG-1 a DG-5:** en SCRUM-243. **Excepción de Jesús (2026-11-05):** toda la fase en una rama, antes del gate de F y con la cola 👤 sobre 5.
-- **SCRUM-258:** sus dos criterios pendientes entraron en el PR #42: el iPhone no escribe si `healthRecording.watchOwnsHealthWorkout`, y se muestra esa energía.
+- **SCRUM-258:** c3, c4 y c9 ya pasan sus pruebas: el iPhone respeta a `healthRecording.watchOwnsHealthWorkout`, los dos usan el mismo identificador y un fallo tardío del reloj se escribe al reintentar. Sigue abierta por la prueba 👤.
 - **Gate:** SCRUM-261, 👤 en iPhone y reloj. `watch.health_session.enabled` sigue apagada hasta pasarlo.
 
 - **Antes de TestFlight:** mover la llave de la IA a un backend. La historia está por crear (SCRUM-201, SCRUM-204).

@@ -464,7 +464,7 @@ public final class WatchSessionController {
         isStartingHealth = true
         defer { isStartingHealth = false }
         do {
-            await health.builder.tag(sessionID: session.rawValue)
+            await health.builder.tag(syncIdentifier: HealthWorkoutWrite.syncIdentifier(for: session))
             healthMachine = try await health.recoverOrStart(stateMachine: healthMachine)
             await record(.running, notify: SessionHealthRecording(state: .recording), session: session)
         } catch {

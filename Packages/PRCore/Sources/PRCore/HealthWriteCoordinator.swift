@@ -56,14 +56,19 @@ public actor HealthWriteCoordinator {
     }
 
     /// Reintenta lo pendiente de esta cuenta. Sin permiso no hace nada ni pierde nada: se
-    /// queda pendiente para cuando vuelva.
+    /// queda pendiente para cuando vuelva. También recoge las sesiones cuyo reloj avisó que
+    /// falló cuando ya habían terminado: al terminar le tocaba al reloj y nadie las escribió
+    /// (SCRUM-258).
     public func retryPending() async throws {
         guard await canWrite() else { return }
-        let pending = try await repository.loadAllSessions().items
-            .filter { $0.healthWriteStatus == .pending }
+        let sessions = try await repository.loadAllSessions().items
             .sorted { $0.startedAt < $1.startedAt }
-        for session in pending {
-            try await write(id: session.id)
+        for session in sessions {
+            if session.healthWriteStatus == .pending {
+                try await write(id: session.id)
+            } else if session.healthWriteStatus == nil, session.healthRecording?.state == .failed {
+                try await sessionFinished(id: session.id)
+            }
         }
     }
 

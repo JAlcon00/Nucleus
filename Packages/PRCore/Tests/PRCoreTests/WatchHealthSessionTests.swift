@@ -19,7 +19,7 @@ private actor FakeBuilder: LiveWorkoutBuilder {
     private(set) var pauses = 0
     private(set) var resumes = 0
     private(set) var ends = 0
-    private(set) var tagged: UUID?
+    private(set) var tagged: String?
     private let failsStart: Bool
     private let failsEnd: Bool
     private let recovers: Bool
@@ -42,7 +42,7 @@ private actor FakeBuilder: LiveWorkoutBuilder {
         return HealthLiveMetrics(activeKilocalories: 300, heartRateBPM: 120)
     }
     func recover() async throws -> Bool { recovers }
-    func tag(sessionID: UUID) async { tagged = sessionID }
+    func tag(syncIdentifier: String) async { tagged = syncIdentifier }
     func averageHeartRate() async -> Double? { 120 }
 }
 
@@ -123,7 +123,7 @@ struct WatchHealthSessionTests {
     func startsAndNotifies() async throws {
         let rig = try await Rig()
         #expect(await rig.builder.starts == 1)
-        #expect(await rig.builder.tagged == rig.session.rawValue)
+        #expect(await rig.builder.tagged == HealthWorkoutWrite.syncIdentifier(for: rig.session))
         #expect(rig.watch.state.healthSession == .running)
         try await rig.deliver()
         let recording = try #require(try rig.recording)
@@ -241,6 +241,34 @@ struct WatchHealthSessionTests {
         let session = try rig.phone.snapshot().session
         #expect(session.healthRecording?.watchOwnsHealthWorkout == false)
         #expect(session.sets.count == 1)
+    }
+
+    @Test("El reloj marca el entrenamiento con el texto exacto que escribe el iPhone")
+    func sameSyncIdentifierAsPhone() async throws {
+        let rig = try await Rig(builder: FakeBuilder(failsEnd: true))
+        await rig.watch.completeCurrentSet()
+        await rig.watch.finish()
+        try await rig.deliver()
+        let write = try #require(HealthWorkoutWrite(session: try rig.phone.snapshot().session))
+        #expect(await rig.builder.tagged == write.syncIdentifier)
+    }
+
+    @Test("Lo que escribió el reloj cuenta como propio en el iPhone, aunque venga de otra app")
+    func watchWorkoutIsOwn() async throws {
+        let rig = try await Rig()
+        let sample = HealthWorkoutSample(
+            uuid: UUID(),
+            start: now,
+            end: now.addingTimeInterval(3_600),
+            activityType: .strengthTraining,
+            activeKilocalories: 300,
+            sourceBundleIdentifier: "creadevs.PR.watch",
+            sourceName: "PR",
+            syncIdentifier: await rig.builder.tagged
+        )
+        #expect(HealthWorkoutClassifier.isOwn(
+            sample, ownBundleIdentifier: "creadevs.PR", ownSyncIdentifiers: [rig.session.rawValue.uuidString]
+        ))
     }
 
     @Test("Un aviso repetido o que llega tarde no deshace que ya esté guardado")
