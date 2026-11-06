@@ -24,6 +24,9 @@ struct WorkoutSummaryView: View {
     var skipped: [String] = []
     /// Cambios de ejercicio de la sesión, como "A → B" (SCRUM-234).
     var substitutions: [String] = []
+    /// Series hechas dos veces, en el iPhone y en el reloj, sin conexión (SCRUM-259).
+    var conflicts: [SetConflictUI] = []
+    var onResolveConflict: (SetRecordID, SetConflictChoice) -> Void = { _, _ in }
     let onDone: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -93,6 +96,10 @@ struct WorkoutSummaryView: View {
                     .accessibilityIdentifier("summary.substitution")
                 }
 
+                ForEach(conflicts) { conflict in
+                    conflictCard(conflict)
+                }
+
                 if summary.nextAction == .completed {
                     Text("Sesión completada. Sigue en el plan.")
                         .font(.subheadline)
@@ -109,6 +116,52 @@ struct WorkoutSummaryView: View {
         }
         .screenBackground()
         .onAppear { celebrate() }
+    }
+
+    /// Nada se borra hasta que la persona elige. Si no elige, las dos siguen guardadas.
+    private func conflictCard(_ conflict: SetConflictUI) -> some View {
+        VStack(alignment: .leading, spacing: DSpace.s) {
+            Label("Serie registrada dos veces", systemImage: "exclamationmark.triangle")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.textPrimary)
+            Text("\(conflict.exerciseName), serie \(conflict.setNumber): el iPhone y el reloj no coinciden.")
+                .font(.subheadline)
+                .foregroundStyle(Color.textSecondary)
+            conflictButton("Dejar \(setText(conflict.current))", identifier: "summary.conflict.current") {
+                onResolveConflict(conflict.id, .keepCurrent)
+            }
+            conflictButton("Dejar \(setText(conflict.other))", identifier: "summary.conflict.other") {
+                onResolveConflict(conflict.id, .keepOther)
+            }
+            conflictButton("Fueron dos series", identifier: "summary.conflict.both") {
+                onResolveConflict(conflict.id, .keepBoth)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(DSpace.m)
+        .cardSurface(cornerRadius: DRadius.medium)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("summary.conflict")
+    }
+
+    private func conflictButton(_ title: String, identifier: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline)
+                .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonStyle(.bordered)
+        .accessibilityIdentifier(identifier)
+    }
+
+    private func setText(_ set: SetRecord) -> String {
+        let weight = set.weight.formatted(.number.precision(.fractionLength(0...2)))
+        let unit: String
+        switch set.unit {
+        case .kilograms: unit = "kg"
+        case .pounds: unit = "lb"
+        }
+        return "\(weight) \(unit) × \(set.reps)"
     }
 
     private var header: some View {

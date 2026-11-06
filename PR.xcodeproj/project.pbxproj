@@ -11,7 +11,32 @@
 		B7DC00060000000000000001 /* PRCore in Frameworks */ = {isa = PBXBuildFile; productRef = B7DC00020000000000000002 /* PRCore */; };
 		B7DC00080000000000000001 /* PRDomain in Frameworks */ = {isa = PBXBuildFile; productRef = B7DC00070000000000000001 /* PRDomain */; };
 		B7DC00090000000000000001 /* PRDomain in Frameworks */ = {isa = PBXBuildFile; productRef = B7DC00070000000000000001 /* PRDomain */; };
+		B7DC00310000000000000001 /* PRWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = B7DC0010304CFC7100D2DF71 /* PRWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		B7DC00320000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 87DD729A30464C7100D2DF71 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B7DC0013304CFC7100D2DF71;
+			remoteInfo = PRWatch;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		B7DC00330000000000000001 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				B7DC00310000000000000001 /* PRWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		87DD72A230464C7100D2DF71 /* PR.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PR.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -27,6 +52,13 @@
 			);
 			target = 87DD72A130464C7100D2DF71 /* PR */;
 		};
+		B7DC00340000000000000001 /* Exceptions for "PRWatch" folder in "PRWatch" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = B7DC0013304CFC7100D2DF71 /* PRWatch */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -40,6 +72,9 @@
 		};
 		B7DC0020304CFC7100D2DF71 /* PRWatch */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				B7DC00340000000000000001 /* Exceptions for "PRWatch" folder in "PRWatch" target */,
+			);
 			path = PRWatch;
 			sourceTree = "<group>";
 		};
@@ -109,10 +144,12 @@
 				87DD729E30464C7100D2DF71 /* Sources */,
 				87DD729F30464C7100D2DF71 /* Frameworks */,
 				87DD72A030464C7100D2DF71 /* Resources */,
+				B7DC00330000000000000001 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				B7DC00350000000000000001 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				87DD72A430464C7100D2DF71 /* PR */,
@@ -267,6 +304,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B7DC00350000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B7DC0013304CFC7100D2DF71 /* PRWatch */;
+			targetProxy = B7DC00320000000000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		87DD72AB30464C7300D2DF71 /* Debug */ = {
@@ -469,11 +514,17 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = PRWatch/PRWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5J9SRYKS7Y;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = PR;
+				INFOPLIST_FILE = PRWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Nucleus;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Nucleus lee tu energía activa y tu ritmo cardiaco durante el entrenamiento, sólo como contexto de tu sesión. Nunca como diagnóstico.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Nucleus guarda en Salud el entrenamiento que haces con el reloj. No guarda tus series, pesos ni repeticiones.";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = creadevs.PR;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -499,11 +550,17 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = PRWatch/PRWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5J9SRYKS7Y;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = PR;
+				INFOPLIST_FILE = PRWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Nucleus;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Nucleus lee tu energía activa y tu ritmo cardiaco durante el entrenamiento, sólo como contexto de tu sesión. Nunca como diagnóstico.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Nucleus guarda en Salud el entrenamiento que haces con el reloj. No guarda tus series, pesos ni repeticiones.";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = creadevs.PR;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (

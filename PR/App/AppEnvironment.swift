@@ -98,6 +98,10 @@ public final class AppEnvironment {
     /// "Usar datos de Salud" en "Sobre ti" (SCRUM-206). Sólo lectura; en pruebas de UI no
     /// se ofrece (no hay diálogo de permisos que tocar).
     public let healthPrefill: HealthPrefillCoordinator
+    /// Puente con el reloj (SCRUM-255). `nil` si este dispositivo no tiene WatchConnectivity.
+    @ObservationIgnored private var watchBridge: PhoneWatchBridge?
+    @ObservationIgnored private var simulatesSetConflict = false
+    @ObservationIgnored private var watchWorkoutLauncher: WatchWorkoutLauncher?
 
     /// Check-in diario de sueño (SCRUM-203).
     public let sleepCheckIns: SleepCheckInCoordinator
@@ -307,7 +311,9 @@ public final class AppEnvironment {
                 clock: clock
             ) {
             case .none: activeWorkout = nil
-            case .restored(let coordinator): activeWorkout = coordinator
+            case .restored(let coordinator):
+                activeWorkout = coordinator
+                watchBridge?.attach(coordinator)
             }
         } catch {
             persistence.log.saveFailed(.workouts)
@@ -333,6 +339,25 @@ public final class AppEnvironment {
         } catch {
             // Se conserva el historial anterior en memoria; Progreso ofrece reintentar.
             todayPlan.historyLoadFailed()
+        }
+    }
+
+    /// Abre el reloj al empezar (SCRUM-258). Si no responde, el iPhone sigue solo.
+    public func startWatchWorkout() async {
+        await watchWorkoutLauncher?.start()
+    }
+
+    /// Sólo en pruebas de UI: la primera serie llega dos veces, como si iPhone y reloj la
+    /// hubieran hecho sin conexión (SCRUM-259).
+    public func seedSetConflictForUITest(in coordinator: WorkoutSessionCoordinator) {
+        guard simulatesSetConflict, let exercise = coordinator.currentExerciseID else { return }
+        let slot = SetSlot(exerciseID: exercise, slotIndex: 1)
+        for (weight, age) in [(60.0, 20.0), (62.5, 10.0)] {
+            guard let set = try? SetRecord(
+                exerciseID: exercise, performedAt: Date().addingTimeInterval(-age),
+                weight: weight, unit: .kilograms, reps: 8, lifecycle: .completed
+            ) else { continue }
+            coordinator.applyRemoteSet(set, slot: slot, device: WorkoutDevice.watch)
         }
     }
 
@@ -425,6 +450,7 @@ public final class AppEnvironment {
             )
         }
         activeWorkout = coordinator
+        watchBridge?.attach(coordinator)
         return coordinator
     }
 
@@ -556,6 +582,26 @@ public final class AppEnvironment {
             presenter: RestrictionListPresenter(locale: Self.presentationLocale),
             clock: { fixedDate ?? Date() }
         )
+        self.simulatesSetConflict = testOptions.simulatesSetConflict
+        // SCRUM-255: el reloj sólo se conecta en la app de verdad, nunca en pruebas de UI.
+        if !testOptions.isolatedPersistence, let link = WatchConnectivityLink() {
+            // SCRUM-258: apagado hasta pasar el gate. `make install-iphone` lo enciende para probarlo.
+            #if DEBUG && PR_DEVICE_TEST
+            let recordsHealth = true
+            #else
+            let recordsHealth = featureFlags.isEnabled(.watchHealthSessionEnabled)
+            #endif
+            self.watchWorkoutLauncher = recordsHealth ? WatchWorkoutLauncher() : nil
+            let bridge = PhoneWatchBridge(link: link, recordsHealth: recordsHealth) { [weak self] in
+                guard let persistence = self?.persistence else { return nil }
+                return WatchBridgeStorage(
+                    queue: try persistence.pendingOperationQueue(),
+                    workouts: try persistence.workoutRepository()
+                )
+            }
+            bridge.start()
+            self.watchBridge = bridge
+        }
     }
 
     /// Locale para textos generados fuera de las Views (PR-1004): idioma que resolvió la

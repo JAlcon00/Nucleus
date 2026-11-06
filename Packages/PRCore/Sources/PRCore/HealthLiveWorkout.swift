@@ -194,6 +194,19 @@ public protocol LiveWorkoutBuilder: Sendable {
     func resume() async throws
     /// Finaliza la sesión live y devuelve el resumen final (métricas).
     func end() async throws -> HealthLiveMetrics
+    /// Recupera una sesión que seguía abierta tras un reinicio de la app (SCRUM-258).
+    /// Devuelve `true` si había una.
+    func recover() async throws -> Bool
+    /// Liga la sesión de Salud con la de PR: el mismo id evita dos entrenamientos.
+    func tag(sessionID: UUID) async
+    /// Ritmo cardiaco promedio de la sesión, si hay dato y permiso.
+    func averageHeartRate() async -> Double?
+}
+
+extension LiveWorkoutBuilder {
+    public func recover() async throws -> Bool { false }
+    public func tag(sessionID: UUID) async {}
+    public func averageHeartRate() async -> Double? { nil }
 }
 
 /// Coordinador del workout live (PR-1202): orquesta el adaptador de infraestructura y
@@ -216,13 +229,29 @@ public nonisolated struct HealthLiveWorkoutCoordinator: Sendable {
         do {
             try await builder.start()
         } catch {
-            var next = stateMachine
-            try next.apply(.didFail(reason: "\(error)"))
+            // Desde `idle` no hay sesión que marcar como fallida: se reporta la causa real.
             throw HealthLiveWorkoutError.infrastructure("\(error)")
         }
         var next = stateMachine
         try next.apply(.didStart)
         return next
+    }
+
+    /// Recupera la sesión que seguía abierta o, si no había, empieza una (SCRUM-258).
+    public func recoverOrStart(stateMachine: HealthLiveWorkoutStateMachine) async throws -> HealthLiveWorkoutStateMachine {
+        guard stateMachine.state == .idle else {
+            throw HealthLiveWorkoutError.invalidTransition
+        }
+        do {
+            if try await builder.recover() {
+                var next = stateMachine
+                try next.apply(.didStart)
+                return next
+            }
+        } catch {
+            throw HealthLiveWorkoutError.infrastructure("\(error)")
+        }
+        return try await start(stateMachine: stateMachine)
     }
 
     /// Pausa el workout live. Devuelve la máquina de estados actualizada.

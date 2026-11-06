@@ -294,3 +294,39 @@ Evidencia: rama `SCRUM-245-energia-una-vez`, PR #40.
 - **`make ci`** (2026-11-05) → `✔ Test run with 613 tests in 88 suites passed` + `✔ Test run with 772 tests in 120 suites passed` + `Executed 151 tests, with 0 failures`; build de iOS y de watchOS OK.
 - **Guard del agente:** `OK: ninguna prueba se borra, desactiva ni reduce (base b5b2d9d, 1521 → 1545 pruebas).`
 - **E2E:** `make test-ui-smoke` → `testFirstWorkoutReachesProgressAndExport` (1 min 29 s), `testIntermediateQuestionnaireFromAboutYouToReopening` (54 s) y `testWorkoutSurvivesForceQuitAndKeepsPain` (2 min 16 s) OK. El motor no se llama desde la app: ningún recorrido cambia.
+
+## Fase G en un solo PR
+
+- **Épica y prioridad:** Fase G (SCRUM-12) · Could · hito 1.0 · carril 🟡 amarillo (`*.pbxproj`, `.github/`, `Health*.swift`, `PendingOperationStore.swift`). Lo fusiona Jesús.
+- **Por qué así:** Jesús pidió toda la fase en una rama, varios commits y un PR, el 2026-11-05. Es una excepción a la cola 👤 y a esperar el gate de F (SCRUM-251).
+- **Decisiones:** DG-1 a DG-5 (SCRUM-243).
+- **Firma:** la cuenta gratuita firma iPhone y reloj con HealthKit, con perfiles de 7 días.
+
+**Qué cambió:**
+- **SCRUM-254:** `WorkoutSyncEngine` da lo mismo en cualquier orden de llegada. Una revocación gana aunque llegue antes y dos series en una ranura no pierden ninguna. Un error real, reproducido con una prueba antes de arreglarlo.
+- **SCRUM-253:** `WatchSessionSnapshot` trae lo que falta en el orden de la cola del iPhone. El reloj no calcula el orden.
+- **SCRUM-252:** `PR.app` embebe `PRWatch.app`, con entitlement, equipo, modo de segundo plano y textos propios.
+- **SCRUM-255:** `PhoneWatchBridge` guarda cada serie en la cola antes de aplicarla, en pantalla o sobre lo guardado.
+- **SCRUM-256:** `WatchSessionController` escribe en disco antes del háptico y conserva el buzón hasta que un estado lo confirme.
+- **SCRUM-257:** la pantalla del reloj, con Corona, un botón grande, descanso por hora de fin y sin contador con la muñeca abajo.
+- **SCRUM-260:** el dolor usa la misma escala y el mismo motor. El reporte no sale del buzón hasta que el iPhone lo guarde.
+- **SCRUM-259:** pausar y terminar, también sin iPhone, con su hora real. El resumen deja elegir entre series en conflicto.
+- **SCRUM-258 (abierta):** sesión de Salud en el reloj, apagada por `watch.health_session.enabled` hasta el gate. `make install-iphone` la enciende con `PR_DEVICE_TEST`.
+
+**Criterios sin cerrar:**
+- [ ] SCRUM-258 c3 y c4: que el iPhone respete `healthRecording.watchOwnsHealthWorkout`. El dato ya existe; falta PR-F003 (SCRUM-246).
+- [ ] SCRUM-258 c9: mostrar la energía del reloj una vez. El dato ya llega; falta PR-F007 (SCRUM-250).
+- [ ] 👤 Todo lo de dispositivo: instalar en el reloj (SCRUM-252 c6) y las 10 pruebas de SCRUM-261. Nada de WatchConnectivity ni HealthKit se ejecutó en un dispositivo.
+
+**Hallazgos:**
+- Las publicaciones al reloj corrían en tareas sueltas y podían llegar desordenadas. Ahora se encadenan.
+- El identificador de la tarjeta de conflicto tapaba el de sus botones. Lo encontró el recorrido E2E.
+- Medido: 60 series = 13 877 bytes por estado. El reloj en Debug pesa 30 MB con el catálogo de PRCore.
+
+Evidencia: rama `SCRUM-12-fase-g`, PR #41.
+- **`make ci`** (2026-11-06) → `✔ Test run with 648 tests in 91 suites passed` + `✔ Test run with 857 tests in 127 suites passed` + `Executed 151 tests, with 0 failures`; build de iOS y de watchOS OK.
+- **Guard del agente:** `OK: ninguna prueba se borra, desactiva ni reduce (base 58babf7, 1545 → 1666 pruebas).`
+- **Firma real:** `xcodebuild` para iPhone con reloj embebido, cuenta gratuita, `BUILD SUCCEEDED`, sin instalar.
+- **E2E:** `make test-ui-smoke` → `testFirstWorkoutReachesProgressAndExport`, `testIntermediateQuestionnaireFromAboutYouToReopening`, `testSetConflictIsResolvedInTheSummary` (nuevo) y `testWorkoutSurvivesForceQuitAndKeepsPain` OK. Dos corridas anteriores fallaron por carga de la Mac (carga promedio de 164, con otra sesión corriendo UI), no por el código; sí encontraron el error del identificador.
+- **Sin prueba automática:** no hay target de UI del reloj ni runtime de watchOS en esta Mac. La pantalla se compila, y su lógica se prueba en PRCore.
+

@@ -406,6 +406,50 @@ public struct SessionSubstitution: Codable, Sendable, Hashable {
     }
 }
 
+/// Una serie registrada en otro dispositivo sobre una serie que ya estaba hecha (DG-3). No se
+/// descarta nunca: se guarda aparte hasta que la persona elija (RNF-004, SCRUM-254).
+public struct SessionSetConflict: Codable, Sendable, Hashable {
+    public let set: SetRecord
+    public let slot: SetSlot
+
+    public init(set: SetRecord, slot: SetSlot) {
+        self.set = set
+        self.slot = slot
+    }
+}
+
+/// Lo que el reloj está registrando en Salud para esta sesión (SCRUM-258).
+public struct SessionHealthRecording: Codable, Sendable, Hashable {
+    public enum State: String, Codable, Sendable, Hashable {
+        /// El reloj tiene una sesión de Salud abierta.
+        case recording
+        /// El reloj ya guardó el entrenamiento en Salud.
+        case saved
+        /// Falló: el iPhone debe escribir por su cuenta (PR-F003).
+        case failed
+    }
+
+    public var state: State
+    /// Medidos por el reloj. `nil` si no hay dato o no hay permiso.
+    public var activeKilocalories: Double?
+    public var averageHeartRateBPM: Double?
+
+    public init(state: State, activeKilocalories: Double? = nil, averageHeartRateBPM: Double? = nil) {
+        self.state = state
+        self.activeKilocalories = activeKilocalories
+        self.averageHeartRateBPM = averageHeartRateBPM
+    }
+
+    /// ¿El reloj escribe el entrenamiento? Si sí, el iPhone no agrega otro: un entrenamiento,
+    /// una sola energía.
+    public var watchOwnsHealthWorkout: Bool {
+        switch state {
+        case .recording, .saved: return true
+        case .failed: return false
+        }
+    }
+}
+
 /// Registro de lo realmente realizado en una sesión. Nunca se muta para
 /// que coincida con el plan; guarda su propio lifecycle y set records.
 public struct WorkoutSessionRecord: Identifiable, Codable, Sendable, Hashable {
@@ -431,6 +475,15 @@ public struct WorkoutSessionRecord: Identifiable, Codable, Sendable, Hashable {
     public var template: SessionTemplate?
     /// Cambios de ejercicio de esta sesión (SCRUM-234). Campo opcional (ADR-0003).
     public var substitutions: [SessionSubstitution]?
+    /// Series en conflicto entre iPhone y reloj (SCRUM-254). Campo opcional (ADR-0003).
+    public var setConflicts: [SessionSetConflict]?
+    /// Comandos del reloj ya aplicados (SCRUM-259): no se aplican dos veces y confirman al
+    /// reloj que llegaron. Campo opcional (ADR-0003).
+    public var appliedCommandIDs: [UUID]?
+    /// Hora del último comando del reloj: uno más viejo no deshace uno nuevo. Campo opcional.
+    public var lastRemoteCommandAt: Date?
+    /// Sesión de Salud en el reloj (SCRUM-258). Campo opcional (ADR-0003).
+    public var healthRecording: SessionHealthRecording?
 
     public init(
         id: WorkoutID = WorkoutID(),
