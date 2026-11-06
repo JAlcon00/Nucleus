@@ -48,7 +48,8 @@ def fail(message):
 
 def is_iphone(device):
     hardware = device.get("properties", {}).get("hardware", {})
-    return hardware.get("reality") == "physical" and hardware.get("deviceType") == "iPhone"
+    # Un iPhone recién conectado todavía no reporta `reality`: sólo se descartan los simulados.
+    return hardware.get("reality") != "simulated" and hardware.get("deviceType") == "iPhone"
 
 
 def name_of(device):
@@ -56,8 +57,11 @@ def name_of(device):
 
 
 def developer_mode_is_off(device):
-    status = device.get("properties", {}).get("state", {}).get("developerModeStatus")
-    return status is not None and "enabled" not in status
+    # Sin conexión, el dato puede ser viejo: si sigue apagado, xcodebuild lo dirá al compilar.
+    properties = device.get("properties", {})
+    status = properties.get("state", {}).get("developerModeStatus")
+    is_connected = properties.get("connection", {}).get("state") == "connected"
+    return is_connected and status is not None and "enabled" not in status
 
 
 with open(sys.argv[1], encoding="utf-8") as devices_file:
