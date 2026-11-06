@@ -372,6 +372,25 @@ extension WorkoutSessionCoordinator {
 
 extension WorkoutSessionCoordinator {
 
+    /// Lo que el reloj necesita saber de esta sesión (SCRUM-253): la misma cola y la misma
+    /// precarga que esta pantalla. `nil` sin sesión.
+    public func watchSnapshot() -> WatchSessionSnapshot? {
+        guard let state = controller.current else { return nil }
+        let session = state.session
+        let names = exerciseNames
+        let drafts = template.plannedSets.reduce(into: [PlannedSet: SetCompletionDraft]()) { result, planned in
+            result[planned] = completer.preload(for: planned, lastPerformedWeight: lastWeight(for: planned, session: session))
+        }
+        let completer = self.completer
+        return WatchSessionSnapshotBuilder.snapshot(WatchSessionSnapshotInput(
+            session: session,
+            template: template,
+            revision: Int(state.lastTransitionAt.timeIntervalSince1970 * 1_000),
+            exerciseName: { id in names[id] ?? "Ejercicio \(id.rawValue.uuidString.prefix(8))" },
+            draft: { planned in drafts[planned] ?? completer.preload(for: planned) }
+        ))
+    }
+
     /// Set siguiente a realizar: por ejercicio, siguiendo la cola (esperas y saltos,
     /// SCRUM-212). Sin cambios en la cola es `plannedSets[sets.count]`, como antes.
     public func currentSet() -> ActiveWorkoutSetUI? {
