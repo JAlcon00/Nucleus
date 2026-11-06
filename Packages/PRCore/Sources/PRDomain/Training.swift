@@ -52,6 +52,15 @@ public enum WorkoutLifecycleState: String, Codable, Sendable, CaseIterable, Hash
     }
 }
 
+/// Si un entrenamiento terminado llegó a Salud (SCRUM-246). `nil` en la sesión significa que
+/// no va a Salud: anterior a esta historia, abandonada o con la escritura apagada.
+public enum HealthWriteStatus: String, Codable, Sendable, CaseIterable, Hashable {
+    /// Hay que escribirlo: se guardó esto antes de llamar a Salud.
+    case pending
+    /// Salud ya lo tiene.
+    case saved
+}
+
 /// Estado del lifecycle de un set. Las transiciones inválidas se rechazan.
 public enum SetLifecycleState: String, Codable, Sendable, CaseIterable, Hashable {
     case planned
@@ -475,6 +484,10 @@ public struct WorkoutSessionRecord: Identifiable, Codable, Sendable, Hashable {
     public var template: SessionTemplate?
     /// Cambios de ejercicio de esta sesión (SCRUM-234). Campo opcional (ADR-0003).
     public var substitutions: [SessionSubstitution]?
+    /// Si llegó a Salud (SCRUM-246). Campo opcional (ADR-0003).
+    public var healthWriteStatus: HealthWriteStatus?
+    /// Energía de esta sesión, de una sola fuente (SCRUM-250). Campo opcional (ADR-0003).
+    public var energy: CanonicalWorkoutEnergy?
     /// Series en conflicto entre iPhone y reloj (SCRUM-254). Campo opcional (ADR-0003).
     public var setConflicts: [SessionSetConflict]?
     /// Comandos del reloj ya aplicados (SCRUM-259): no se aplican dos veces y confirman al

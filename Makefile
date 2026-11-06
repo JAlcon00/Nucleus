@@ -5,7 +5,7 @@
 # (sin dependencia de rutas absolutas de un desarrollador). Cualquier gate que falle
 # hace que `make` devuelva exit code != 0.
 
-.PHONY: ci test build test-ios test-watch test-ui test-ui-smoke test-ui-build test-ui-journey test-ui-erase guards
+.PHONY: ci test build test-ios test-watch test-ui test-ui-smoke test-ui-build test-ui-journey test-ui-erase guards install-iphone
 
 # Pipeline completo: guards + swift build + swift test + build schemes iOS y watchOS.
 ci:
@@ -52,3 +52,8 @@ test-ui-journey:
 # con teclado físico).
 test-ui-erase:
 	./scripts/ci.sh test-ui-erase
+
+# Instala el build de prueba en un iPhone con cuenta gratuita (SCRUM-262). Con varios iPhone:
+# make install-iphone DEVICE="Nombre del iPhone"
+install-iphone:
+	DEVICE="$(DEVICE)" ./scripts/install_iphone.sh

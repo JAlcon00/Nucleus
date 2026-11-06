@@ -59,4 +59,36 @@ struct AuthLaunchModeTests {
         await onboarding.signIn()
         #expect(onboarding.phase == .signedOut)
     }
+
+    // MARK: SCRUM-262: build de prueba para iPhone
+
+    /// Tabla completa de build, condición y argumento (criterios 2, 4 y 5).
+    @Test("Build, condición y argumento deciden el modo", arguments: [
+        (isDebug: true, isDeviceTest: true, arguments: [String](), expected: AuthLaunchMode.simulated),
+        (isDebug: true, isDeviceTest: true, arguments: ["PR"], expected: AuthLaunchMode.simulated),
+        (isDebug: true, isDeviceTest: true, arguments: ["PR", "-PRFakeSignIn"], expected: AuthLaunchMode.simulated),
+        (isDebug: true, isDeviceTest: false, arguments: ["PR"], expected: AuthLaunchMode.appleID),
+        (isDebug: true, isDeviceTest: false, arguments: ["PR", "-PRFakeSignIn"], expected: AuthLaunchMode.simulated),
+        (isDebug: true, isDeviceTest: false, arguments: ["PR", "-PRDemoData"], expected: AuthLaunchMode.simulated),
+        (isDebug: false, isDeviceTest: true, arguments: ["PR"], expected: AuthLaunchMode.appleID),
+        (isDebug: false, isDeviceTest: true, arguments: ["PR", "-PRFakeSignIn"], expected: AuthLaunchMode.appleID),
+        (isDebug: false, isDeviceTest: false, arguments: ["PR", "-PRFakeSignIn"], expected: AuthLaunchMode.appleID),
+        (isDebug: false, isDeviceTest: false, arguments: ["PR", "-PRDemoData"], expected: AuthLaunchMode.appleID),
+        (isDebug: false, isDeviceTest: false, arguments: ["PR"], expected: AuthLaunchMode.appleID),
+    ])
+    func launchModeTable(
+        row: (isDebug: Bool, isDeviceTest: Bool, arguments: [String], expected: AuthLaunchMode)
+    ) {
+        let mode = AuthLaunchMode.resolve(
+            arguments: row.arguments,
+            isDebugBuild: row.isDebug,
+            isDeviceTestBuild: row.isDeviceTest
+        )
+        #expect(mode == row.expected)
+    }
+
+    @Test("Sin decir nada de la condición, el modo se decide como antes")
+    func deviceTestDefaultsToOff() {
+        #expect(AuthLaunchMode.resolve(arguments: ["PR"], isDebugBuild: true) == .appleID)
+    }
 }

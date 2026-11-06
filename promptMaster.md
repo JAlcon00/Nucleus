@@ -301,6 +301,8 @@ Objetivo: crear un primer plan útil sin cuestionario excesivo.
 
 El onboarding debe poder completarse sin HealthKit; HealthKit mejora el contexto, pero no bloquea el producto.
 
+> **Cambio DF-2 (SCRUM-242, 2026-11-05, aprobado por Jesús):** los pasos 11 y 12 salen del cuestionario. El permiso de Salud se explica y se pide en el resumen del primer entrenamiento terminado, con una tarjeta, y hay un interruptor en Perfil. Nunca al empezar ni durante un entrenamiento (SCRUM-248).
+
 ## 4.2 Datos mínimos
 
 ```swift

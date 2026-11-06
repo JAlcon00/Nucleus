@@ -43,6 +43,12 @@ struct ProfileView: View {
     var onSetAIConsent: (Bool) -> Void = { _ in }
     /// Estado de la conexión con la IA (SCRUM-204): sólo se informa, no se decide aquí.
     var aiStatus: AIConnectionStatus = .offline(.releaseBuild)
+    /// ¿La app ofrece guardar en Salud? Con el flag apagado no hay sección (SCRUM-248).
+    var showsHealth = false
+    /// Estado del interruptor, ya decidido en PRCore.
+    var healthSetting: HealthWriteSetting = .off
+    /// Intento: encender o apagar el guardado en Salud.
+    var onSetHealth: (Bool) -> Void = { _ in }
     /// ¿Hay un entrenamiento en curso? Cambia el aviso al cerrar sesión (SCRUM-208).
     var hasActiveWorkout = false
     /// Intento: cerrar sesión (no borra datos).
@@ -60,6 +66,9 @@ struct ProfileView: View {
                 aboutYouSection
                 if showsAI {
                     aiSection
+                }
+                if showsHealth {
+                    healthSection
                 }
 
                 Section("Mi entrenamiento") {
@@ -255,6 +264,40 @@ struct ProfileView: View {
         .listRowBackground(Color.surface)
     }
 
+    /// SCRUM-248: guardar en Salud. Si se negó en la hoja, sólo se cambia en Ajustes.
+    private var healthSection: some View {
+        Section {
+            Toggle(isOn: Binding(get: { healthSetting.isOn }, set: onSetHealth)) {
+                Label {
+                    Text("Guardar en Salud")
+                } icon: {
+                    Image(systemName: "heart.fill").foregroundStyle(Color.primaryAction)
+                }
+            }
+            .tint(Color.primaryAction)
+            .disabled(healthSetting == .deniedInSettings)
+            .accessibilityIdentifier("profile.healthWrites")
+        } header: {
+            Text("Salud")
+        } footer: {
+            Text(healthFooter)
+                .foregroundStyle(Color.textSecondary)
+                .accessibilityIdentifier("profile.healthWrites.note")
+        }
+        .listRowBackground(Color.surface)
+    }
+
+    private var healthFooter: String {
+        switch healthSetting {
+        case .on:
+            return String(localized: "Tus entrenamientos terminados se guardan en Salud: tipo y horas, sin series ni peso.")
+        case .off:
+            return String(localized: "No se guarda nada nuevo. Lo que ya está en Salud se queda ahí.")
+        case .deniedInSettings:
+            return String(localized: "Le negaste el permiso a Nucleus. Se cambia en Ajustes › Salud › Acceso a datos y dispositivos.")
+        }
+    }
+
     private var aiStatusText: String {
         switch aiStatus {
         case .live: return String(localized: "Conectada (desarrollo)")
@@ -321,6 +364,10 @@ struct ProfileView: View {
             .measurement(width: .abbreviated, usage: .asProvided, numberFormatStyle: .number.precision(.fractionLength(0...1)))
         )
     }
+}
+
+#Preview("Salud negada") {
+    ProfileView(showsHealth: true, healthSetting: .deniedInSettings)
 }
 
 #Preview("Sin 'Sobre ti'") {

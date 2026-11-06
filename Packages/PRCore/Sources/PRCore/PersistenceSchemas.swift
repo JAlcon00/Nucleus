@@ -34,7 +34,7 @@ public enum PersistenceSchemas {
                 isReadable: { collection.decodes($0) }
             )
         case .profile, .blocks, .exercises, .gyms, .restrictions,
-             .decisions, .agentAudit, .plans, .session, .aiConsent, .checkIns:
+             .decisions, .agentAudit, .plans, .session, .aiConsent, .checkIns, .healthPreference:
             // Siguen en el formato de antes de SCRUM-40.
             return CollectionSchema(current: .initial, steps: [], isReadable: { collection.decodes($0) })
         }
@@ -85,6 +85,7 @@ extension PersistenceCollection {
         case .session: return (try? decoder.decode(StoredSession.self, from: data)) != nil
         case .aiConsent: return (try? decoder.decode(StoredAIConsent.self, from: data)) != nil
         case .checkIns: return (try? decoder.decode(SleepCheckIn.self, from: data)) != nil
+        case .healthPreference: return (try? decoder.decode(StoredHealthPreference.self, from: data)) != nil
         }
     }
 }

@@ -22,6 +22,8 @@ public enum HealthWorkoutActivityType: String, Codable, Sendable, CaseIterable, 
     case strengthTraining
     case functionalStrengthTraining
     case running
+    /// Cualquier otra actividad que traiga Salud (SCRUM-249).
+    case other
 }
 
 /// Configuración del workout HealthKit (forma transportable; no importa HealthKit).
@@ -140,15 +142,17 @@ public struct HealthWorkoutSummary: Codable, Sendable, Hashable {
         heartRate?.origin ?? .unavailable
     }
 
-    /// El resumen sin los datos cuyo permiso no está concedido: quedan "no disponible",
-    /// nunca medidos ni estimados (RN-018, SCRUM-35). La duración no depende de permisos.
+    /// El resumen sin los datos que no se pueden usar: quedan "no disponible", nunca medidos
+    /// ni estimados (RN-018, SCRUM-35). Una lectura "no visible" se conserva: Salud no dice
+    /// si se negó, y si se negó no habría llegado el dato (SCRUM-244). La duración no
+    /// depende de permisos.
     public func limited(to permissions: HealthPermissionOutcome) -> HealthWorkoutSummary {
         var limited = self
-        if !permissions.isGranted(.activeEnergy) {
+        if !permissions.permitsReading(.activeEnergy) {
             limited.activeKilocalories = nil
             limited.energyOrigin = .unavailable
         }
-        if !permissions.isGranted(.heartRate) {
+        if !permissions.permitsReading(.heartRate) {
             limited.heartRate = nil
         }
         return limited
@@ -176,6 +180,8 @@ public struct ExternalWorkout: Codable, Sendable, Hashable {
     /// Fuente (p. ej. "Apple Watch") y nombre del device cuando el store lo autorice.
     public var sourceName: String?
     public var deviceName: String?
+    /// Qué tan confiable es su energía (§15.3). Apple Watch nativo u otra app (SCRUM-249).
+    public var energySource: EnergySource
 
     public init(
         referenceID: HealthWorkoutHandle.ID,
@@ -185,7 +191,8 @@ public struct ExternalWorkout: Codable, Sendable, Hashable {
         activeKilocalories: Double? = nil,
         energyOrigin: MeasurementOrigin? = nil,
         sourceName: String? = nil,
-        deviceName: String? = nil
+        deviceName: String? = nil,
+        energySource: EnergySource = .externalHealthKitWorkout
     ) {
         self.referenceID = referenceID
         self.start = start
@@ -195,6 +202,7 @@ public struct ExternalWorkout: Codable, Sendable, Hashable {
         self.energyOrigin = energyOrigin ?? (activeKilocalories == nil ? .unavailable : .measured)
         self.sourceName = sourceName
         self.deviceName = deviceName
+        self.energySource = energySource
     }
 }
 
@@ -309,6 +317,42 @@ public protocol HealthWorkoutStore: Sendable {
     func recentWorkouts(in query: ExternalWorkoutQuery) async throws -> [ExternalWorkout]
 }
 
+/// Lo único que se manda a Salud de un entrenamiento terminado (SCRUM-246, DF-4): tipo,
+/// horas y el identificador que evita duplicar. Nunca series, peso, reps, ejercicios ni notas.
+public struct HealthWorkoutWrite: Sendable, Hashable {
+    /// Versión con la que se guarda: repetir la misma escritura no duplica.
+    public static let syncVersion = 1
+
+    /// Identificador estable en Salud: el id de la sesión.
+    public let syncIdentifier: String
+    public let start: Date
+    public let end: Date
+    public let activityType: HealthWorkoutActivityType
+
+    /// Sólo un entrenamiento completado con al menos una serie va a Salud (DF-4). Sin horas
+    /// válidas, por ejemplo con el reloj cambiado, no hay nada que escribir. Si el reloj lo
+    /// registra, el iPhone no agrega otro; si el reloj falló, escribe con el mismo
+    /// identificador (SCRUM-258).
+    public init?(session: WorkoutSessionRecord) {
+        guard session.healthRecording?.watchOwnsHealthWorkout != true,
+              session.lifecycle == .completed,
+              let end = session.endedAt,
+              end > session.startedAt,
+              session.sets.contains(where: { $0.lifecycle == .completed })
+        else { return nil }
+        self.syncIdentifier = session.id.rawValue.uuidString
+        self.start = session.startedAt
+        self.end = end
+        self.activityType = .strengthTraining
+    }
+}
+
+/// Guarda en Salud un entrenamiento terminado (DF-1). La misma escritura repetida deja un
+/// solo entrenamiento. Devuelve la referencia del entrenamiento en Salud.
+public protocol HealthWorkoutWriting: Sendable {
+    func saveFinishedWorkout(_ write: HealthWorkoutWrite) async throws -> HealthWorkoutHandle.ID
+}
+
 /// Problemas del coordinador de workouts de HealthKit.
 public enum HealthWorkoutError: Error, Equatable, Sendable {
     case missingPermission
@@ -408,8 +452,13 @@ public nonisolated struct HealthWorkoutCoordinator: Sendable {
 }
 
 /// Fake in-memory de `HealthWorkoutStore` (tests/previews; §32.3 nunca HealthKit real).
-public actor FakeHealthWorkoutStore: HealthWorkoutStore {
+public actor FakeHealthWorkoutStore: HealthWorkoutStore, HealthWorkoutWriting, HealthWorkoutReading {
     public let provider: any HealthKitProvider
+    /// Lo que Salud tiene guardado, por identificador de sincronización (SCRUM-246).
+    public private(set) var savedWorkouts: [String: HealthWorkoutWrite] = [:]
+    /// Veces que se llamó a guardar, aunque no haya creado nada nuevo.
+    public private(set) var saveAttempts = 0
+    public private(set) var failsOnSave = false
     public var startedHandles: [HealthWorkoutHandle] = []
     public var finishedSummaries: [HealthWorkoutSummary] = []
     public let failOnStart: Bool
@@ -435,6 +484,70 @@ public actor FakeHealthWorkoutStore: HealthWorkoutStore {
         self.heartRate = heartRate
         self.energyOrigin = energyOrigin
         self.externalWorkouts = externalWorkouts
+    }
+
+    /// Entrenamientos de otras fuentes que Salud devuelve (SCRUM-249).
+    public private(set) var otherSamples: [HealthWorkoutSample] = []
+    public private(set) var failsOnRead = false
+    /// Fuente con la que Salud marca lo que escribe esta app.
+    public static let ownBundleIdentifier = "creadevs.PR"
+
+    /// Energía del entrenamiento de reloj que Salud "registra" junto a cada escritura.
+    public private(set) var echoedWatchKilocalories: Double?
+
+    public func setEchoedWatchKilocalories(_ kilocalories: Double?) {
+        echoedWatchKilocalories = kilocalories
+    }
+
+    public func setOtherSamples(_ samples: [HealthWorkoutSample]) {
+        otherSamples = samples
+    }
+
+    public func setFailsOnRead(_ fails: Bool) {
+        failsOnRead = fails
+    }
+
+    /// Como Salud: lo que escribió esta app vuelve junto con lo de las demás.
+    public func recentWorkoutSamples(since: Date, until: Date) async throws -> [HealthWorkoutSample] {
+        if failsOnRead {
+            throw NSError(domain: "HealthKit", code: 5, userInfo: [NSLocalizedDescriptionKey: "not determined"])
+        }
+        let own = savedWorkouts.values.map { write in
+            HealthWorkoutSample(
+                uuid: UUID(uuidString: write.syncIdentifier) ?? UUID(),
+                start: write.start,
+                end: write.end,
+                activityType: write.activityType,
+                sourceBundleIdentifier: Self.ownBundleIdentifier,
+                sourceName: "Nucleus",
+                syncIdentifier: write.syncIdentifier
+            )
+        }
+        return (own + otherSamples).filter { $0.start >= since && $0.start <= until }
+    }
+
+    public func setFailsOnSave(_ fails: Bool) {
+        failsOnSave = fails
+    }
+
+    public func saveFinishedWorkout(_ write: HealthWorkoutWrite) async throws -> HealthWorkoutHandle.ID {
+        saveAttempts += 1
+        if failsOnSave {
+            throw NSError(domain: "HealthKit", code: 1, userInfo: [NSLocalizedDescriptionKey: "save failed"])
+        }
+        if savedWorkouts[write.syncIdentifier] == nil, let echoedWatchKilocalories {
+            otherSamples.append(HealthWorkoutSample(
+                uuid: UUID(),
+                start: write.start,
+                end: write.end,
+                activityType: .strengthTraining,
+                activeKilocalories: echoedWatchKilocalories,
+                sourceBundleIdentifier: "com.apple.health.fake",
+                sourceName: "Apple Watch"
+            ))
+        }
+        savedWorkouts[write.syncIdentifier] = write
+        return HealthWorkoutHandle.ID(rawValue: UUID(uuidString: write.syncIdentifier) ?? UUID())
     }
 
     public func requestAuthorization() async throws -> HealthPermissionOutcome {

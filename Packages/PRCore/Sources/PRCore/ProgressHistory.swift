@@ -46,6 +46,8 @@ public struct WorkoutLogEntry: Equatable, Sendable, Identifiable {
     public let volumeUnit: LoadUnit?
     /// Récords logrados en este entrenamiento (frente a los anteriores).
     public let recordCount: Int
+    /// Energía de una sola fuente; `nil` si no hay: ni cero ni estimación (SCRUM-250).
+    public let energy: CanonicalWorkoutEnergy?
 }
 
 /// Lo que muestra Progreso.
@@ -100,7 +102,8 @@ public struct ProgressOverviewBuilder: Sendable {
                 exercises: exercises(of: done, names: exerciseNames),
                 volume: units.count == 1 ? summary.volume : nil,
                 volumeUnit: units.count == 1 ? units.first : nil,
-                recordCount: summary.records.count
+                recordCount: summary.records.count,
+                energy: session.energy
             ))
             earlier.append(session)
         }
@@ -113,6 +116,22 @@ public struct ProgressOverviewBuilder: Sendable {
                 entries: entries, plannedPerWeek: plannedPerWeek, blockStart: blockStart, date: date, timeZone: timeZone
             )
         )
+    }
+
+    /// Energía activa de la semana: una por sesión, ya reconciliada. Nunca suma dos fuentes
+    /// del mismo entrenamiento (RN-008). `nil` si ninguna sesión tiene energía.
+    public func activeEnergy(
+        inWeekOf date: Date,
+        timeZone: TimeZone,
+        sessions: [WorkoutSessionRecord]
+    ) -> Double? {
+        var calendar = Calendar(identifier: .iso8601)
+        calendar.timeZone = timeZone
+        guard let week = calendar.dateInterval(of: .weekOfYear, for: date) else { return nil }
+        let energies = sessions
+            .filter { $0.lifecycle == .completed && week.contains($0.startedAt) }
+            .compactMap { $0.energy?.activeKilocalories }
+        return energies.isEmpty ? nil : energies.reduce(0, +)
     }
 
     // MARK: - Privado

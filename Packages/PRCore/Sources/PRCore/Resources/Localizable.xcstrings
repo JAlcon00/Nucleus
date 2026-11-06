@@ -1,6 +1,11 @@
 {
   "sourceLanguage" : "es",
   "strings" : {
+    "Guardado en Salud" : { "comment" : "Resumen: el entrenamiento ya está en Salud", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Saved to Health" } } } },
+    "Se guardará en Salud" : { "comment" : "Resumen: el entrenamiento aún no llega a Salud; no es un error", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Will be saved to Health" } } } },
+    "Energía activa · Apple Watch" : { "comment" : "Origen de la energía de la sesión", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Active energy · Apple Watch" } } } },
+    "Energía activa · otra app" : { "comment" : "Origen de la energía de la sesión", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Active energy · other app" } } } },
+    "Energía estimada" : { "comment" : "Nunca se presenta una estimación como medida", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Estimated energy" } } } },
     "Salud general" : { "comment" : "Objetivo de entrenamiento", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "General health" } } } },
     "Hipertrofia" : { "comment" : "Objetivo de entrenamiento: ganar músculo", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Hypertrophy" } } } },
     "Fuerza" : { "comment" : "Objetivo de entrenamiento", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Strength" } } } },

@@ -84,6 +84,10 @@ struct AppRootView: View {
                         await environment.loadGym()
                         // Retoma el entrenamiento que quedó abierto, si lo hay (SCRUM-24).
                         await environment.recoverWorkout()
+                        // Lo que decidió esta cuenta sobre Salud (SCRUM-248).
+                        await environment.loadHealthPreference()
+                        // Lo que quedó pendiente de llegar a Salud (SCRUM-246).
+                        await environment.retryHealthWrites()
                         // Historial para "Tu semana" y "última vez" (SCRUM-197).
                         await environment.refreshHistory()
                     }
@@ -109,6 +113,11 @@ struct AppRootView: View {
             // Si Apple revocó la credencial mientras la app estaba en segundo plano.
             if newPhase == .active {
                 Task { await environment.session.verifyCredential() }
+                Task {
+                    await environment.refreshHealthSetting()
+                    await environment.retryHealthWrites()
+                    await environment.refreshHistory()
+                }
             }
         }
         .alert("No se pudo continuar", isPresented: $showAlert) {
@@ -191,7 +200,12 @@ struct AppRootView: View {
                     onMissingMachine: { replacement in
                         Task { await environment.markMissing(replacement: replacement) }
                     },
-                    coachingLevel: coachingLevel
+                    coachingLevel: coachingLevel,
+                    healthSave: environment.healthSaveDisplay,
+                    reconciledEnergy: environment.lastFinishedEnergy,
+                    showsHealthOffer: environment.healthOfferVisible,
+                    onAcceptHealthOffer: { Task { await environment.acceptHealthOffer() } },
+                    onDeclineHealthOffer: { Task { await environment.declineHealthOffer() } }
                 )
             }
         }

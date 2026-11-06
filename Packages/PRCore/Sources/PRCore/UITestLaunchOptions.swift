@@ -18,10 +18,24 @@
 //    cuestionario ya contestado con ese perfil (`UITestProfileSeeder`), para que sólo los
 //    recorridos del cuestionario lo contesten a mano. Sólo junto con `-PRUITestReset`: nunca
 //    sobre los datos reales. Un perfil desconocido se ignora.
+//  - `-PRUITestFakeHealth <modo>` (SCRUM-247; `granted`, `undecided`, `refuses` o `watch`): Salud falsa en memoria, con el flag
+//    de entrenamientos encendido. Sólo junto con `-PRUITestReset`. Un modo desconocido se ignora.
 //  La decisión es pura y testeable; la app sólo pasa sus argumentos y si es Debug.
 //
 
 import Foundation
+
+/// Cómo responde la Salud falsa de las pruebas de UI.
+public enum UITestFakeHealth: String, Equatable, Sendable {
+    /// El permiso de escribir ya está concedido.
+    case granted
+    /// Sin decidir; la hoja lo concede.
+    case undecided
+    /// Sin decidir; la hoja lo niega.
+    case refuses
+    /// Concedido, con un entrenamiento de reloj al mismo tiempo y una actividad de otra app.
+    case watch
+}
 
 public struct UITestLaunchOptions: Equatable, Sendable {
     public static let resetArgument = "-PRUITestReset"
@@ -29,6 +43,7 @@ public struct UITestLaunchOptions: Equatable, Sendable {
     public static let storeIDArgument = "-PRUITestStoreID"
     public static let planDelayArgument = "-PRUITestPlanDelay"
     public static let profileArgument = "-PRUITestProfile"
+    public static let fakeHealthArgument = "-PRUITestFakeHealth"
     /// Al empezar crea una serie en conflicto, como si llegara del reloj (SCRUM-259).
     public static let setConflictArgument = "-PRUITestSetConflict"
     /// Demoras aceptadas, en segundos (fuera de este rango se ignora).
@@ -45,6 +60,8 @@ public struct UITestLaunchOptions: Equatable, Sendable {
     public let planDelay: Duration?
     /// Perfil con el que el cuestionario se contesta solo; `nil` = se contesta a mano.
     public let seededProfile: UITestSeededProfile?
+    /// Salud falsa; `nil` = la de verdad.
+    public let fakeHealth: UITestFakeHealth?
     /// Simular una serie en conflicto con el reloj.
     public let simulatesSetConflict: Bool
 
@@ -54,6 +71,7 @@ public struct UITestLaunchOptions: Equatable, Sendable {
         storeID: String? = nil,
         planDelay: Duration? = nil,
         seededProfile: UITestSeededProfile? = nil,
+        fakeHealth: UITestFakeHealth? = nil,
         simulatesSetConflict: Bool = false
     ) {
         self.isolatedPersistence = isolatedPersistence
@@ -61,6 +79,7 @@ public struct UITestLaunchOptions: Equatable, Sendable {
         self.storeID = storeID
         self.planDelay = planDelay
         self.seededProfile = seededProfile
+        self.fakeHealth = fakeHealth
         self.simulatesSetConflict = simulatesSetConflict
     }
 
@@ -84,6 +103,7 @@ public struct UITestLaunchOptions: Equatable, Sendable {
             planDelay: planDelay(in: arguments),
             // Sin datos temporales el perfil se ignora: nunca se contesta sobre los reales.
             seededProfile: isolated ? seededProfile(in: arguments) : nil,
+            fakeHealth: isolated ? fakeHealth(in: arguments) : nil,
             simulatesSetConflict: isolated && arguments.contains(setConflictArgument)
         )
     }
@@ -111,6 +131,13 @@ public struct UITestLaunchOptions: Equatable, Sendable {
               let seconds = Int(arguments[index + 1]),
               allowedPlanDelaySeconds.contains(seconds) else { return nil }
         return .seconds(seconds)
+    }
+
+    /// Uno de los modos conocidos; cualquier otro valor se ignora.
+    private static func fakeHealth(in arguments: [String]) -> UITestFakeHealth? {
+        guard let index = arguments.firstIndex(of: fakeHealthArgument),
+              arguments.indices.contains(index + 1) else { return nil }
+        return UITestFakeHealth(rawValue: arguments[index + 1])
     }
 
     /// Uno de los perfiles conocidos; cualquier otro valor se ignora.

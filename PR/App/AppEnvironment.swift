@@ -45,8 +45,11 @@ public final class AppEnvironment {
     public let onboarding: OnboardingCoordinator
 
     /// Modo de inicio de sesión resuelto al arrancar. `.simulated` sólo en Debug con
-    /// `-PRFakeSignIn` (para probar sin Sign in with Apple); en Release siempre `.appleID`.
+    /// `-PRFakeSignIn` (para probar sin Sign in with Apple) o en el build de prueba para
+    /// iPhone (`PR_DEVICE_TEST`, SCRUM-262); en Release siempre `.appleID`.
     public let authMode: AuthLaunchMode
+    /// Permisos de los entrenamientos en Salud (SCRUM-244). Con el flag apagado, no hace nada.
+    public let healthWorkouts: HealthWorkoutsAccess
 
     /// Intent de arranque: recupera la sesión y el plan guardados; en modo simulado inicia
     /// sesión sola (salta la pantalla de login). En modo Apple, sin sesión guardada, el
@@ -91,6 +94,8 @@ public final class AppEnvironment {
 
     /// Consentimiento para compartir el perfil con la IA (SCRUM-202).
     public let aiConsent: AIConsentCoordinator
+    /// Si la persona quiere guardar en Salud (SCRUM-248).
+    public let healthPreference: HealthPreferenceCoordinator
 
     /// El gimnasio del usuario (SCRUM-235). Sin pasos nuevos: se crea solo al entrar.
     public let gym: GymCoordinator
@@ -186,12 +191,207 @@ public final class AppEnvironment {
         }
     }
 
+    /// Escribe en Salud los entrenamientos terminados (SCRUM-246, SCRUM-247).
+    private let healthWriter: any HealthWorkoutWriting
+    /// Lee de Salud lo que registraron otras apps o el reloj (SCRUM-249).
+    private let healthReader: any HealthWorkoutReading
+    /// Una cola por cuenta: sólo ve las sesiones de esa cuenta.
+    @ObservationIgnored private var healthWriteCoordinators: [String: HealthWriteCoordinator] = [:]
+    /// Una reconciliación por cuenta.
+    @ObservationIgnored private var healthEnergyCoordinators: [String: HealthEnergyCoordinator] = [:]
+    /// Lo que Salud registró y no es una sesión de Nucleus (SCRUM-250).
+    public private(set) var healthActivities: [HealthActivity] = []
+    /// Energía de la sesión recién terminada, si Salud ya la tiene.
+    public private(set) var lastFinishedEnergy: CanonicalWorkoutEnergy?
+    /// Qué dice el resumen del último entrenamiento sobre Salud (SCRUM-247).
+    public private(set) var healthSaveDisplay: HealthSaveDisplay = .hidden
+    /// ¿El resumen propone guardar en Salud? (SCRUM-248)
+    public private(set) var healthOfferVisible = false
+    /// Estado del interruptor de Perfil (SCRUM-248).
+    public private(set) var healthWriteSetting: HealthWriteSetting = .off
+    /// El último entrenamiento terminado: se guarda si se acepta la tarjeta del resumen.
+    @ObservationIgnored private var lastFinishedWorkoutID: WorkoutID?
+
+    /// ¿La app ofrece guardar en Salud?
+    public var offersHealthWrites: Bool { healthWorkouts.isEnabled && healthWorkouts.isAvailable }
+
+    private func healthWriteCoordinator(for persistence: LocalPersistence) -> HealthWriteCoordinator? {
+        guard healthWorkouts.isEnabled,
+              let userID = onboarding.auth.profile?.userIdentifier else { return nil }
+        if let existing = healthWriteCoordinators[userID] { return existing }
+        do {
+            let coordinator = HealthWriteCoordinator(
+                repository: try persistence.workoutRepository(),
+                writer: healthWriter,
+                canWrite: { [weak self] in await self?.canWriteToHealth() ?? false }
+            )
+            healthWriteCoordinators[userID] = coordinator
+            return coordinator
+        } catch {
+            persistence.log.saveFailed(.workouts)
+            return nil
+        }
+    }
+
+    private func healthEnergyCoordinator(for persistence: LocalPersistence) -> HealthEnergyCoordinator? {
+        guard healthWorkouts.isEnabled,
+              let userID = onboarding.auth.profile?.userIdentifier else { return nil }
+        if let existing = healthEnergyCoordinators[userID] { return existing }
+        do {
+            let coordinator = HealthEnergyCoordinator(
+                repository: try persistence.workoutRepository(),
+                reader: HealthExternalWorkoutsReader(
+                    reader: healthReader,
+                    isEnabled: healthWorkouts.isEnabled,
+                    ownBundleIdentifier: Bundle.main.bundleIdentifier ?? ""
+                ),
+                canRead: { [weak self] in await self?.canReadFromHealth() ?? false }
+            )
+            healthEnergyCoordinators[userID] = coordinator
+            return coordinator
+        } catch {
+            persistence.log.saveFailed(.workouts)
+            return nil
+        }
+    }
+
+    private func canReadFromHealth() -> Bool {
+        healthWorkouts.isEnabled && healthPreference.allowsWriting
+    }
+
+    /// Reconcilia con Salud: la energía queda en cada sesión, una vez (SCRUM-250).
+    public func refreshHealthEnergy() async {
+        guard let persistence, let coordinator = healthEnergyCoordinator(for: persistence) else {
+            healthActivities = []
+            return
+        }
+        do {
+            healthActivities = try await coordinator.refresh(now: clock())
+            if let id = lastFinishedWorkoutID {
+                lastFinishedEnergy = try await coordinator.energy(of: id)
+            }
+        } catch {
+            persistence.log.saveFailed(.workouts)
+        }
+    }
+
+    /// Lo que corre cuando la sesión quedó guardada: no retiene el cierre del entrenamiento,
+    /// porque el coordinador avisa desde su propia tarea (SCRUM-246).
+    private func healthWriteHook(
+        for persistence: LocalPersistence
+    ) -> @Sendable (Result<WorkoutID, any Error>) async -> Void {
+        let coordinator = healthWriteCoordinator(for: persistence)
+        let log = persistence.log
+        return { [weak self] result in
+            guard case .success(let id) = result, let coordinator else { return }
+            do {
+                let status = try await coordinator.sessionFinished(id: id)
+                let goesToHealth = try await coordinator.goesToHealth(id: id)
+                await self?.sessionReachedSummary(id: id, status: status, goesToHealth: goesToHealth)
+            } catch {
+                log.saveFailed(.workouts)
+            }
+        }
+    }
+
+    /// Salud falsa de las pruebas de UI.
+    private static func fakeHealthProvider(_ mode: UITestFakeHealth) -> any HealthKitProvider {
+        switch mode {
+        case .granted, .watch: return InMemoryHealthKitProvider(initialStatus: [.workout: .granted])
+        case .undecided: return InMemoryHealthKitProvider()
+        case .refuses: return InMemoryHealthKitProvider(grantBehavior: .denyAll)
+        }
+    }
+
+    private func canWriteToHealth() async -> Bool {
+        guard healthPreference.allowsWriting else { return false }
+        return await healthWorkouts.canWrite()
+    }
+
+    private func sessionReachedSummary(id: WorkoutID, status: HealthWriteStatus?, goesToHealth: Bool) async {
+        lastFinishedWorkoutID = id
+        healthSaveDisplay = HealthSaveDisplay(status: status, canWrite: await canWriteToHealth())
+        healthOfferVisible = HealthPermissionOffer.shouldShow(
+            isEnabled: healthWorkouts.isEnabled,
+            isAvailable: healthWorkouts.isAvailable,
+            preference: healthPreference.preference,
+            writeStatus: await healthWorkouts.writeStatus(),
+            sessionGoesToHealth: goesToHealth
+        )
+        await refreshHealthEnergy()
+    }
+
+    /// Lee la decisión de la cuenta activa, al entrar (SCRUM-248).
+    public func loadHealthPreference() async {
+        healthPreference.load(userID: onboarding.auth.profile?.userIdentifier)
+        await refreshHealthSetting()
+    }
+
+    /// El permiso se puede cambiar en Ajustes: se relee al volver a primer plano.
+    public func refreshHealthSetting() async {
+        healthWriteSetting = HealthWriteSetting(
+            preference: healthPreference.preference,
+            writeStatus: await healthWorkouts.writeStatus()
+        )
+    }
+
+    /// "Guardar en Salud" del resumen: pide el permiso y, si se concede, guarda este entrenamiento.
+    public func acceptHealthOffer() async {
+        healthOfferVisible = false
+        await enableHealthWrites()
+        guard let id = lastFinishedWorkoutID, let persistence,
+              let coordinator = healthWriteCoordinator(for: persistence) else { return }
+        do {
+            let status = try await coordinator.sessionFinished(id: id)
+            healthSaveDisplay = HealthSaveDisplay(status: status, canWrite: await canWriteToHealth())
+        } catch {
+            persistence.log.saveFailed(.workouts)
+        }
+        await refreshHealthEnergy()
+    }
+
+    /// "Ahora no" del resumen: no vuelve a salir y Perfil sigue ofreciendo la opción.
+    public func declineHealthOffer() async {
+        healthOfferVisible = false
+        healthPreference.set(.disabled)
+        await refreshHealthSetting()
+    }
+
+    /// El interruptor de Perfil. Apagar no borra lo que ya está en Salud.
+    public func setHealthWrites(_ enabled: Bool) async {
+        if enabled {
+            await enableHealthWrites()
+            await retryHealthWrites()
+        } else {
+            healthPreference.set(.disabled)
+            await refreshHealthSetting()
+        }
+    }
+
+    private func enableHealthWrites() async {
+        healthPreference.set(.enabled)
+        _ = await healthWorkouts.requestPermissions()
+        await refreshHealthSetting()
+    }
+
+    /// Reintenta lo pendiente de Salud de la cuenta activa: al abrir y al volver a primer plano.
+    public func retryHealthWrites() async {
+        guard let persistence, let coordinator = healthWriteCoordinator(for: persistence) else { return }
+        do {
+            try await coordinator.retryPending()
+        } catch {
+            persistence.log.saveFailed(.workouts)
+        }
+    }
+
     /// Persistencia sin usuario (raíz). El historial de entrenamientos siempre se abre por
     /// `persistence`, que lo separa por cuenta (SCRUM-26).
     private let basePersistence: LocalPersistence?
 
     /// "Hoy" fijo para las pruebas de UI (sólo Debug); `nil` = reloj real.
     private let fixedDate: Date?
+    /// Desde cuándo avanza el reloj fijo; `nil` = no avanza (pruebas de UI, SCRUM-247).
+    private let fixedClockStart: Date?
 
     /// Demora de la activación del plan para las pruebas de UI (sólo Debug, SCRUM-193).
     public let uiTestPlanDelay: Duration?
@@ -308,7 +508,8 @@ public final class AppEnvironment {
                 restrictions: completedProfile?.restrictions ?? [],
                 gymID: gym.activeGym?.id,
                 celebrationPresenter: PRCelebrationPresenter(locale: Self.presentationLocale),
-                clock: clock
+                clock: clock,
+                onPersisted: healthWriteHook(for: persistence)
             ) {
             case .none: activeWorkout = nil
             case .restored(let coordinator):
@@ -329,6 +530,7 @@ public final class AppEnvironment {
             todayPlan.historyLoadFailed()
             return
         }
+        await refreshHealthEnergy()
         do {
             let result = try await persistence.workoutRepository().loadAllSessions()
             todayPlan.updateHistory(
@@ -401,7 +603,14 @@ public final class AppEnvironment {
 
     private var clock: () -> Date {
         let fixed = fixedDate
-        return { fixed ?? Date() }
+        let launchedAt = fixedClockStart
+        return {
+            guard let fixed else { return Date() }
+            // Con Salud falsa el reloj avanza desde el arranque: un entrenamiento sin duración
+            // no va a Salud (SCRUM-247).
+            guard let launchedAt else { return fixed }
+            return fixed.addingTimeInterval(Date().timeIntervalSince(launchedAt))
+        }
     }
 
     /// Construye un coordinador de WORKOUT MODE para la sesión planeada hoy.
@@ -419,6 +628,9 @@ public final class AppEnvironment {
             }
         }
         guard let template = todayPlan.plan?.todayTemplate else { return nil }
+        healthSaveDisplay = .hidden
+        healthOfferVisible = false
+        lastFinishedEnergy = nil
         let presenter = PRCelebrationPresenter(locale: Self.presentationLocale)
         let coordinator: WorkoutSessionCoordinator
         if let persistence {
@@ -432,7 +644,8 @@ public final class AppEnvironment {
                     restrictions: completedProfile?.restrictions ?? [],
                     gymID: gym.activeGym?.id,
                     celebrationPresenter: presenter,
-                    clock: clock
+                    clock: clock,
+                    onPersisted: healthWriteHook(for: persistence)
                 )
             } catch {
                 persistence.log.saveFailed(.workouts)
@@ -466,7 +679,17 @@ public final class AppEnvironment {
         #else
         let isDebugBuild = false
         #endif
-        let mode = AuthLaunchMode.resolve(arguments: ProcessInfo.processInfo.arguments, isDebugBuild: isDebugBuild)
+        // Sólo `make install-iphone` pone esta condición (SCRUM-262).
+        #if PR_DEVICE_TEST
+        let isDeviceTestBuild = true
+        #else
+        let isDeviceTestBuild = false
+        #endif
+        let mode = AuthLaunchMode.resolve(
+            arguments: ProcessInfo.processInfo.arguments,
+            isDebugBuild: isDebugBuild,
+            isDeviceTestBuild: isDeviceTestBuild
+        )
         self.authMode = mode
         let testOptions = UITestLaunchOptions.resolve(
             arguments: ProcessInfo.processInfo.arguments, isDebugBuild: isDebugBuild
@@ -476,10 +699,50 @@ public final class AppEnvironment {
         // Con `-PRFixedDate` (sólo Debug) "hoy" es ese día; si no, el reloj real.
         let fixedDate = testOptions.fixedDate(timeZone: .current)
         self.fixedDate = fixedDate
+        self.fixedClockStart = testOptions.fakeHealth == nil ? nil : Date()
         self.uiTestPlanDelay = testOptions.planDelay
         self.uiTestSeededProfile = testOptions.seededProfile
-        let featureFlags = FeatureFlags.forApp(arguments: ProcessInfo.processInfo.arguments, isDebugBuild: isDebugBuild)
+        var featureFlags = FeatureFlags.forApp(
+            arguments: ProcessInfo.processInfo.arguments,
+            isDebugBuild: isDebugBuild,
+            isDeviceTestBuild: isDeviceTestBuild
+        )
+        let healthProvider: any HealthKitProvider
+        var healthIsAvailable = true
+        switch testOptions.fakeHealth {
+        case .none:
+            let system = HealthKitPermissionProvider()
+            healthIsAvailable = system.isHealthDataAvailable
+            healthProvider = HealthSystemPermissionProvider(system: system)
+            let store = HealthKitWorkoutStore()
+            self.healthWriter = store
+            self.healthReader = store
+        case .some(let mode):
+            featureFlags = featureFlags.setting(.healthWorkoutsEnabled, to: true)
+            healthProvider = Self.fakeHealthProvider(mode)
+            let store = FakeHealthWorkoutStore()
+            self.healthWriter = store
+            self.healthReader = store
+            if mode == .watch {
+                let otherAppStart = (fixedDate ?? Date()).addingTimeInterval(-3 * 3600)
+                Task {
+                    await store.setEchoedWatchKilocalories(240)
+                    await store.setOtherSamples([HealthWorkoutSample(
+                        uuid: UUID(),
+                        start: otherAppStart,
+                        end: otherAppStart.addingTimeInterval(1800),
+                        activityType: .running,
+                        activeKilocalories: 180,
+                        sourceBundleIdentifier: "com.otra.app",
+                        sourceName: "Otra app"
+                    )])
+                }
+            }
+        }
         self.featureFlags = featureFlags
+        self.healthWorkouts = HealthWorkoutsAccess(
+            flags: featureFlags, provider: healthProvider, isAvailable: healthIsAvailable
+        )
         let aiConnection: AIConnection
         if testOptions.isolatedPersistence {
             aiConnection = AIConnection(status: .offline(.uiTesting), provider: OfflineLLMProvider())
@@ -543,6 +806,17 @@ public final class AppEnvironment {
             clock: { fixedDate ?? Date() }
         )
         self.aiConsent = aiConsent
+        var healthPreferenceStore: HealthPreferenceStore?
+        if let persistence = self.basePersistence {
+            do {
+                healthPreferenceStore = try persistence.healthPreferenceStore()
+            } catch {
+                persistence.log.saveFailed(.healthPreference)
+            }
+        }
+        self.healthPreference = HealthPreferenceCoordinator(
+            store: healthPreferenceStore, clock: { fixedDate ?? Date() }
+        )
         self.gym = GymCoordinator(defaultName: String(localized: "Mi gimnasio"), clock: { fixedDate ?? Date() })
         var checkInStore: SleepCheckInStore?
         if let persistence = self.basePersistence {

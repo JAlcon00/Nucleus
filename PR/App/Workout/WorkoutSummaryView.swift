@@ -24,6 +24,14 @@ struct WorkoutSummaryView: View {
     var skipped: [String] = []
     /// Cambios de ejercicio de la sesión, como "A → B" (SCRUM-234).
     var substitutions: [String] = []
+    /// Qué decir de Salud, ya decidido en PRCore (SCRUM-247).
+    var healthSave: HealthSaveDisplay = .hidden
+    /// Energía de una sola fuente; sin ella no se muestra nada (SCRUM-250).
+    var reconciledEnergy: CanonicalWorkoutEnergy? = nil
+    /// ¿Se propone guardar en Salud? La regla vive en PRCore (SCRUM-248).
+    var showsHealthOffer = false
+    var onAcceptHealthOffer: () -> Void = {}
+    var onDeclineHealthOffer: () -> Void = {}
     /// Series hechas dos veces, en el iPhone y en el reloj, sin conexión (SCRUM-259).
     var conflicts: [SetConflictUI] = []
     var onResolveConflict: (SetRecordID, SetConflictChoice) -> Void = { _, _ in }
@@ -40,6 +48,41 @@ struct WorkoutSummaryView: View {
             return "\(m / 60) h \(m % 60) min"
         }
         return "\(m) min \(s) s"
+    }
+
+    /// SCRUM-248: la razón va a la vista antes de la hoja del sistema (RC-009).
+    private var healthOfferCard: some View {
+        VStack(alignment: .leading, spacing: DSpace.s) {
+            Label {
+                Text("¿Guardar tus entrenamientos en Salud?")
+                    .font(.headline)
+                    .foregroundStyle(Color.textPrimary)
+            } icon: {
+                Image(systemName: "heart.fill").foregroundStyle(Color.primaryAction)
+            }
+            Text("Se guarda el tipo de entrenamiento y sus horas. Nunca series, peso ni notas.")
+                .font(.subheadline)
+                .foregroundStyle(Color.textSecondary)
+            Text("Para ver tu energía, inicia también un entrenamiento en tu Apple Watch.")
+                .font(.subheadline)
+                .foregroundStyle(Color.textSecondary)
+            PrimaryActionButton(
+                String(localized: "Guardar en Salud"),
+                systemImage: "heart",
+                identifier: "summary.healthOffer.accept",
+                action: onAcceptHealthOffer
+            )
+            Button(action: onDeclineHealthOffer) {
+                Text("Ahora no")
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .accessibilityIdentifier("summary.healthOffer.decline")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(DSpace.m)
+        .cardSurface(cornerRadius: DRadius.medium)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("summary.healthOffer")
     }
 
     private var volumeText: String {
@@ -94,6 +137,31 @@ struct WorkoutSummaryView: View {
                     .cardSurface(cornerRadius: DRadius.medium)
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("summary.substitution")
+                }
+
+                if let reconciledEnergy {
+                    HealthEnergyRow(energy: reconciledEnergy)
+                        .padding(DSpace.m)
+                        .cardSurface(cornerRadius: DRadius.medium)
+                }
+
+                if let healthText = healthSave.text(locale: AppEnvironment.presentationLocale) {
+                    Label {
+                        Text(healthText)
+                    } icon: {
+                        Image(systemName: healthSave == .saved ? "heart.fill" : "clock")
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(Color.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(DSpace.m)
+                    .cardSurface(cornerRadius: DRadius.medium)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("summary.health")
+                }
+
+                if showsHealthOffer {
+                    healthOfferCard
                 }
 
                 ForEach(conflicts) { conflict in
@@ -318,6 +386,72 @@ private func previewSummaryView(
                 records: [],
                 nextAction: .completed
             ),
+            onDone: {}
+        )
+    }
+    .ironEnergyTheme()
+}
+
+/// "Energía activa · Apple Watch" y su valor. Compartida con el detalle de Progreso.
+struct HealthEnergyRow: View {
+    let energy: CanonicalWorkoutEnergy
+
+    var body: some View {
+        LabeledContent {
+            Text(HealthEnergyPresenter.value(energy))
+                .monospacedDigit()
+        } label: {
+            Label {
+                Text(HealthEnergyPresenter.label(for: energy.source, locale: AppEnvironment.presentationLocale))
+            } icon: {
+                Image(systemName: "flame")
+            }
+        }
+        .font(.subheadline)
+        .foregroundStyle(Color.textSecondary)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("health.energy")
+    }
+}
+
+#Preview("Salud · tarjeta") {
+    previewHealthSummary(.hidden, offer: true)
+}
+
+#Preview("Salud · tarjeta · oscuro · accessibility3") {
+    previewHealthSummary(.hidden, offer: true)
+        .preferredColorScheme(.dark)
+        .dynamicTypeSize(.accessibility3)
+}
+
+#Preview("Salud · guardado") {
+    previewHealthSummary(.saved)
+}
+
+#Preview("Salud · pendiente · oscuro") {
+    previewHealthSummary(.pending)
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Salud · pendiente · accessibility3") {
+    previewHealthSummary(.pending)
+        .dynamicTypeSize(.accessibility3)
+}
+
+@MainActor
+private func previewHealthSummary(_ display: HealthSaveDisplay, offer: Bool = false) -> some View {
+    NavigationStack {
+        WorkoutSummaryView(
+            summary: WorkoutSummary(
+                durationSeconds: 30 * 60,
+                workingSets: 9,
+                volume: 9400,
+                energyKcal: nil,
+                records: [],
+                nextAction: .completed
+            ),
+            healthSave: display,
+            showsHealthOffer: offer,
             onDone: {}
         )
     }
