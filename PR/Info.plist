@@ -5,7 +5,9 @@
 	<key>CFBundleDisplayName</key>
 	<string>Nucleus</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Nucleus lee tu fecha de nacimiento, sexo, estatura y peso de Salud sólo para llenar "Sobre ti" si tú lo pides. No escribe nada en Salud.</string>
+	<string>Nucleus lee de Salud tus entrenamientos y tu energía activa para no contar dos veces un mismo entrenamiento, y tu fecha de nacimiento, sexo, estatura y peso sólo para llenar "Sobre ti" si tú lo pides.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Nucleus guarda en Salud los entrenamientos que terminas, con su tipo y sus horas de inicio y fin. Nunca series, peso ni notas.</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

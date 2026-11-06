@@ -140,15 +140,17 @@ public struct HealthWorkoutSummary: Codable, Sendable, Hashable {
         heartRate?.origin ?? .unavailable
     }
 
-    /// El resumen sin los datos cuyo permiso no está concedido: quedan "no disponible",
-    /// nunca medidos ni estimados (RN-018, SCRUM-35). La duración no depende de permisos.
+    /// El resumen sin los datos que no se pueden usar: quedan "no disponible", nunca medidos
+    /// ni estimados (RN-018, SCRUM-35). Una lectura "no visible" se conserva: Salud no dice
+    /// si se negó, y si se negó no habría llegado el dato (SCRUM-244). La duración no
+    /// depende de permisos.
     public func limited(to permissions: HealthPermissionOutcome) -> HealthWorkoutSummary {
         var limited = self
-        if !permissions.isGranted(.activeEnergy) {
+        if !permissions.permitsReading(.activeEnergy) {
             limited.activeKilocalories = nil
             limited.energyOrigin = .unavailable
         }
-        if !permissions.isGranted(.heartRate) {
+        if !permissions.permitsReading(.heartRate) {
             limited.heartRate = nil
         }
         return limited

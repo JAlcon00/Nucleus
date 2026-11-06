@@ -32,6 +32,8 @@ public enum FeatureFlagKey: String, Sendable, CaseIterable, Hashable {
     case agentExerciseSubstitutionEnabled = "agent.exercise_substitution.enabled"
     // Salud (SCRUM-39): botón "Usar datos de Salud" en "Sobre ti".
     case healthPrefillEnabled = "health.prefill.enabled"
+    // Salud (SCRUM-244): entrenamientos en Salud. Apagado hasta pasar el gate SCRUM-251.
+    case healthWorkoutsEnabled = "health.workouts.enabled"
 }
 
 /// Estado de un flag: valor + origen (default o sobrescrito). Auditable.
@@ -119,6 +121,7 @@ public struct FeatureFlags: Sendable, Equatable {
         case .agentRecoveryAdjustmentEnabled: return false
         case .agentExerciseSubstitutionEnabled: return false
         case .healthPrefillEnabled: return false
+        case .healthWorkoutsEnabled: return false
         }
     }
 }
@@ -135,10 +138,18 @@ extension FeatureFlags {
 
     /// Las flags de la app, armadas una vez al arrancar: la base segura (todo apagado) con
     /// lo que la app trae encendido y, sólo en Debug, los cambios de `-PRFeatureFlag`. Una
-    /// clave desconocida o un valor raro se ignoran.
-    public static func forApp(arguments: [String], isDebugBuild: Bool) -> FeatureFlags {
+    /// clave desconocida o un valor raro se ignoran. El build de prueba para iPhone abre
+    /// desde el ícono, sin argumentos, y es el que usa el gate: enciende Salud (SCRUM-262).
+    public static func forApp(
+        arguments: [String],
+        isDebugBuild: Bool,
+        isDeviceTestBuild: Bool = false
+    ) -> FeatureFlags {
         var flags = shipped.reduce(FeatureFlags()) { $0.setting($1, to: true) }
         guard isDebugBuild else { return flags }
+        if isDeviceTestBuild {
+            flags = flags.setting(.healthWorkoutsEnabled, to: true)
+        }
         for (key, enabled) in launchOverrides(in: arguments) {
             flags = flags.setting(key, to: enabled)
         }

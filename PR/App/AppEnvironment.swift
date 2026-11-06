@@ -48,6 +48,8 @@ public final class AppEnvironment {
     /// `-PRFakeSignIn` (para probar sin Sign in with Apple) o en el build de prueba para
     /// iPhone (`PR_DEVICE_TEST`, SCRUM-262); en Release siempre `.appleID`.
     public let authMode: AuthLaunchMode
+    /// Permisos de los entrenamientos en Salud (SCRUM-244). Con el flag apagado, no hace nada.
+    public let healthWorkouts: HealthWorkoutsAccess
 
     /// Intent de arranque: recupera la sesión y el plan guardados; en modo simulado inicia
     /// sesión sola (salta la pantalla de login). En modo Apple, sin sesión guardada, el
@@ -463,8 +465,16 @@ public final class AppEnvironment {
         self.fixedDate = fixedDate
         self.uiTestPlanDelay = testOptions.planDelay
         self.uiTestSeededProfile = testOptions.seededProfile
-        let featureFlags = FeatureFlags.forApp(arguments: ProcessInfo.processInfo.arguments, isDebugBuild: isDebugBuild)
+        let featureFlags = FeatureFlags.forApp(
+            arguments: ProcessInfo.processInfo.arguments,
+            isDebugBuild: isDebugBuild,
+            isDeviceTestBuild: isDeviceTestBuild
+        )
         self.featureFlags = featureFlags
+        self.healthWorkouts = HealthWorkoutsAccess(
+            flags: featureFlags,
+            provider: HealthSystemPermissionProvider(system: HealthKitPermissionProvider())
+        )
         let aiConnection: AIConnection
         if testOptions.isolatedPersistence {
             aiConnection = AIConnection(status: .offline(.uiTesting), provider: OfflineLLMProvider())
