@@ -225,6 +225,7 @@ public final class AppEnvironment {
                 exerciseMuscles: exerciseMuscles,
                 catalog: catalog.exercises,
                 restrictions: completedProfile?.restrictions ?? [],
+                gymID: gym.activeGym?.id,
                 celebrationPresenter: PRCelebrationPresenter(locale: Self.presentationLocale),
                 clock: clock
             ) {
@@ -327,6 +328,7 @@ public final class AppEnvironment {
                     exerciseMuscles: exerciseMuscles,
                     catalog: catalog.exercises,
                     restrictions: completedProfile?.restrictions ?? [],
+                    gymID: gym.activeGym?.id,
                     celebrationPresenter: presenter,
                     clock: clock
                 )

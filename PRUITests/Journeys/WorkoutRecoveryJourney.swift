@@ -103,6 +103,16 @@ final class WorkoutRecoveryJourney: PRUITestCase {
                           "El ejercicio que dolió queda saltado y se puede retomar")
         }
 
+        // SCRUM-237: la segunda serie aparece precargada con el peso de la primera.
+        step("La segunda serie dice que trae tu último peso (SCRUM-237)") {
+            let app = launchWithPlan()
+            tap(app, "today.start")
+            tap(app, "workout.completeSet")
+            let skip = app.buttons["Saltar"].firstMatch
+            if skip.appears(within: 5) { skip.tap() }
+            XCTAssertTrue(element(app, "workout.lastWeight").appears(within: 5), "Precarga el peso de la serie anterior")
+        }
+
         // SCRUM-234: con todo ocupado se ofrece un sustituto; al elegirlo se sigue con él.
         step("Máquina ocupada ofrece un sustituto equivalente y se sigue con él (SCRUM-234)") {
             let app = launchWithPlan()

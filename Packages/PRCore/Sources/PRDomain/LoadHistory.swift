@@ -13,6 +13,78 @@
 
 import Foundation
 
+extension EquipmentType {
+    /// ¿La carga depende de la máquina concreta? (DE-4). La de máquina, polea, Smith, discos y
+    /// trineo sí: 40 kg en una no son 40 kg en otra. Barra, mancuernas y kettlebell son peso
+    /// absoluto y se comparten entre gimnasios.
+    public var loadIsPerMachine: Bool {
+        switch self {
+        case .machine, .cable, .smithMachine, .plateLoaded, .sled:
+            return true
+        case .barbell, .dumbbell, .bodyweight, .bands, .kettlebell, .other:
+            return false
+        }
+    }
+}
+
+/// Última carga realmente hecha de cada ejercicio (SCRUM-237). Se arma una vez con el
+/// historial. Sólo cuentan las series de trabajo. No sube ni inventa nada: es el último peso
+/// tal cual, y con otra unidad no se convierte (`nil`). Las series sin máquina (anteriores a
+/// SCRUM-237) no son historial de máquina, pero sí valen para el peso absoluto.
+public struct LastLoadIndex: Sendable {
+    private struct MachineKey: Hashable, Sendable {
+        let exercise: ExerciseID
+        let machine: UUID
+    }
+
+    private var latest: [ExerciseID: SetRecord] = [:]
+    private var latestByMachine: [MachineKey: SetRecord] = [:]
+
+    public init(history: [WorkoutSessionRecord] = []) {
+        for session in history {
+            for set in Self.workSets(of: session) {
+                if latest[set.exerciseID].map({ $0.performedAt <= set.performedAt }) ?? true {
+                    latest[set.exerciseID] = set
+                }
+                guard let machine = set.machineProfileID else { continue }
+                let key = MachineKey(exercise: set.exerciseID, machine: machine)
+                if latestByMachine[key].map({ $0.performedAt <= set.performedAt }) ?? true {
+                    latestByMachine[key] = set
+                }
+            }
+        }
+    }
+
+    /// El último peso de `exercise`. Con `machine` sólo el de esa máquina; sin ella, el
+    /// absoluto. La sesión en curso manda sobre el historial.
+    public func lastWeight(
+        of exercise: ExerciseID,
+        machine: UUID?,
+        unit: LoadUnit,
+        session: WorkoutSessionRecord? = nil
+    ) -> Double? {
+        let live = session.flatMap { session in
+            Self.workSets(of: session).last { $0.exerciseID == exercise && (machine == nil || $0.machineProfileID == machine) }
+        }
+        let stored = machine.map { latestByMachine[MachineKey(exercise: exercise, machine: $0)] } ?? latest[exercise]
+        guard let set = live ?? stored, set.unit == unit else { return nil }
+        return set.weight
+    }
+
+    /// Las series de trabajo de una sesión. La plantilla guardada dice cuál fue calentamiento:
+    /// la k-ésima serie hecha de un ejercicio es su k-ésima planeada. Sin plantilla, todas.
+    private static func workSets(of session: WorkoutSessionRecord) -> [SetRecord] {
+        guard let template = session.template else { return session.sets }
+        var done: [ExerciseID: Int] = [:]
+        return session.sets.filter { set in
+            let position = done[set.exerciseID, default: 0]
+            done[set.exerciseID] = position + 1
+            let planned = template.plannedSets.filter { $0.exerciseID == set.exerciseID }
+            return position >= planned.count || !planned[position].prescription.isWarmup
+        }
+    }
+}
+
 /// Perfil EWMA de carga por máquina (espejo de `ExerciseDurationProfile`, PR-0801).
 public struct MachineLoadProfile: Codable, Hashable, Sendable {
     /// Media exponencial ponderada (kg/lb) de la carga en esa máquina.

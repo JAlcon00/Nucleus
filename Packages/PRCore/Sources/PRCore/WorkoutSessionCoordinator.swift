@@ -50,6 +50,8 @@ public struct ActiveWorkoutSetUI: Equatable, Sendable {
     public let position: Int
     /// Si va en superset con su pareja todavía junta (SCRUM-224); `nil` si va solo.
     public let superset: ActiveSupersetUI?
+    /// ¿El peso depende de la máquina? Para decir "en esta máquina" (SCRUM-237).
+    public let loadIsPerMachine: Bool
 
     public init(
         index: Int,
@@ -60,7 +62,8 @@ public struct ActiveWorkoutSetUI: Equatable, Sendable {
         targetRIR: ClosedRange<Int>? = nil,
         dropset: DropsetAdvice? = nil,
         position: Int? = nil,
-        superset: ActiveSupersetUI? = nil
+        superset: ActiveSupersetUI? = nil,
+        loadIsPerMachine: Bool = false
     ) {
         self.index = index
         self.total = total
@@ -71,6 +74,7 @@ public struct ActiveWorkoutSetUI: Equatable, Sendable {
         self.dropset = dropset
         self.position = position ?? index + 1
         self.superset = superset
+        self.loadIsPerMachine = loadIsPerMachine
     }
 }
 
@@ -174,6 +178,9 @@ public final class WorkoutSessionCoordinator: Identifiable {
     private let exercises: [ExerciseID: Exercise]
     /// Restricciones al empezar: ningún sustituto las salta (SCRUM-234).
     private let restrictions: [TrainingRestriction]
+    /// Gimnasio de esta sesión y última carga de cada ejercicio (SCRUM-237).
+    private let gymID: GymID?
+    private let loads: LastLoadIndex
     /// El último "Máquina ocupada" y cuántas series había entonces (SCRUM-233).
     private var lastOccupied: (outcome: OccupiedOutcome, setCount: Int)?
     private var controller: ActiveWorkoutController
@@ -218,6 +225,8 @@ public final class WorkoutSessionCoordinator: Identifiable {
         exerciseMuscles: [ExerciseID: [MuscleGroup.ID]] = [:],
         catalog: [Exercise] = [],
         restrictions: [TrainingRestriction] = [],
+        gymID: GymID? = nil,
+        loadHistory: [WorkoutSessionRecord] = [],
         completer: SetCompleter = SetCompleter(),
         restTimer: RestTimer = RestTimer(),
         summaryBuilder: WorkoutSummaryBuilder = WorkoutSummaryBuilder(),
@@ -235,6 +244,8 @@ public final class WorkoutSessionCoordinator: Identifiable {
         self.template = template
         self.id = template.id
         self.restrictions = restrictions
+        self.gymID = gymID
+        self.loads = LastLoadIndex(history: loadHistory)
         self.exerciseNames = exerciseNames
         self.dropsetAdvice = dropsetAdvice
         self.exerciseMuscles = exerciseMuscles
@@ -369,10 +380,7 @@ extension WorkoutSessionCoordinator {
                 template: template, sets: session.sets, state: session.queue ?? .empty
               ) else { return nil }
         let planned = template.plannedSets[index]
-        let draft = completer.preload(
-            for: planned,
-            lastPerformedWeight: lastPerformedWeightLookup(planned.exerciseID)
-        )
+        let draft = completer.preload(for: planned, lastPerformedWeight: lastWeight(for: planned, session: session))
         let isWarmup = planned.prescription.isWarmup
         // El dropset sólo se sugiere en la última serie de trabajo de ese ejercicio.
         let isLastWorkSet = !isWarmup && !template.plannedSets[(index + 1)...].contains {
@@ -402,7 +410,8 @@ extension WorkoutSessionCoordinator {
             targetRIR: isWarmup ? nil : planned.prescription.targetRIR,
             dropset: isLastWorkSet ? dropsetAdvice[planned.exerciseID] : nil,
             position: session.sets.count + 1,
-            superset: superset
+            superset: superset,
+            loadIsPerMachine: exercises[planned.exerciseID]?.equipment.loadIsPerMachine ?? false
         )
     }
 
@@ -530,6 +539,10 @@ extension WorkoutSessionCoordinator {
         // El descanso nace junto con la serie: se guarda como hora de fin en el MISMO
         // registro, en una sola escritura atómica.
         var session = updated
+        // SCRUM-237: la serie queda con su máquina, sin preguntar nada.
+        if let index = session.sets.indices.last {
+            session.sets[index].machineProfileID = machine(for: planned.exerciseID)
+        }
         let hasNext = WorkoutQueue.nextPlannedIndex(
             template: template, sets: updated.sets, state: updated.queue ?? .empty
         ) != nil
@@ -799,6 +812,24 @@ extension WorkoutSessionCoordinator {
         } catch {
             return nil
         }
+    }
+
+    /// La máquina implícita (gimnasio + ejercicio) si la carga es por máquina (DE-4).
+    private func machine(for exercise: ExerciseID) -> UUID? {
+        guard let gymID, exercises[exercise]?.equipment.loadIsPerMachine == true else { return nil }
+        return ImplicitMachine.id(gym: gymID, exercise: exercise)
+    }
+
+    /// El peso para precargar: el último realmente hecho. Un calentamiento no se precarga con
+    /// el peso de trabajo. Un ejercicio por máquina sin gimnasio se queda vacío (RN-007).
+    private func lastWeight(for planned: PlannedSet, session: WorkoutSessionRecord) -> Double? {
+        guard !planned.prescription.isWarmup else { return nil }
+        guard let exercise = exercises[planned.exerciseID] else {
+            return lastPerformedWeightLookup(planned.exerciseID)
+        }
+        let machine = machine(for: exercise.id)
+        if exercise.equipment.loadIsPerMachine && machine == nil { return nil }
+        return loads.lastWeight(of: exercise.id, machine: machine, unit: planned.prescription.loadUnit, session: session)
     }
 
     private func name(of exercise: ExerciseID) -> String {

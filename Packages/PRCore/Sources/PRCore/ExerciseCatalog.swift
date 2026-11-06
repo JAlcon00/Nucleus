@@ -24,6 +24,14 @@ import PRDomain
 /// Deriva un UUID estable a partir de un slug, con namespace por tipo.
 /// Permite que el import sea idempotente: el mismo slug siempre produce el
 /// mismo `ExerciseID`/`ExerciseFamilyID`, sin estado de import previo.
+/// La máquina de un ejercicio en un gimnasio (DE-1, SCRUM-237): está implícita en gimnasio +
+/// ejercicio, así que no hay nada que dar de alta ni que guardar aparte.
+public enum ImplicitMachine {
+    public static func id(gym: GymID, exercise: ExerciseID) -> UUID {
+        SeedID.uuid(namespace: "machine", slug: "\(gym.rawValue.uuidString)|\(exercise.rawValue.uuidString)")
+    }
+}
+
 enum SeedID {
     /// Devuelve un UUID determinista: SHA-256(namespace + slug) → 16 bytes.
     static func uuid(namespace: String, slug: String) -> UUID {

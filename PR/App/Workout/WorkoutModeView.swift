@@ -399,6 +399,12 @@ struct WorkoutModeView: View {
                 step: set.draft.targetWeight < 25 ? 2.5 : 5,
                 suffix: set.draft.targetUnit == .pounds ? "lb" : "kg"
             )
+            if set.draft.weightFromHistory {
+                Text(set.loadIsPerMachine ? "Tu último peso en esta máquina" : "Tu último peso")
+                    .font(.footnote)
+                    .foregroundStyle(Color.textSecondary)
+                    .accessibilityIdentifier("workout.lastWeight")
+            }
 
             SetInputControl(
                 label: "Repeticiones",
