@@ -59,10 +59,16 @@ public struct PendingOperationQueueStore: Sendable {
 public struct StoredSetSave: Codable, Sendable, Equatable {
     public let sessionID: WorkoutID
     public let set: SetRecord
+    /// Ranura y dispositivo cuando la serie viene del reloj (SCRUM-255). Campos opcionales
+    /// (ADR-0003): sin ellos es una serie del iPhone, como siempre.
+    public let slot: SetSlot?
+    public let device: WorkoutDeviceKey?
 
-    public init(sessionID: WorkoutID, set: SetRecord) {
+    public init(sessionID: WorkoutID, set: SetRecord, slot: SetSlot? = nil, device: WorkoutDeviceKey? = nil) {
         self.sessionID = sessionID
         self.set = set
+        self.slot = slot
+        self.device = device
     }
 }
 
@@ -100,16 +106,47 @@ public struct SetPersistenceGuard: Sendable {
         return try queue.enqueue(operation)
     }
 
+    /// Guarda en la cola una serie que llegó del reloj, ANTES de aplicarla (SCRUM-255): si la
+    /// app se cierra, el drenado la aplica después. La clave incluye el dolor: reportarlo
+    /// después reenvía la misma serie, y no es un duplicado (SCRUM-260).
+    @discardableResult
+    public func enqueueRemoteSet(
+        _ set: SetRecord,
+        slot: SetSlot,
+        device: WorkoutDeviceKey,
+        in sessionID: WorkoutID,
+        queue: PendingOperationQueueStore,
+        now: Date = Date()
+    ) throws -> Bool {
+        let envelope = StoredSetSave(sessionID: sessionID, set: set, slot: slot, device: device)
+        let pain = set.painFeedback.map { "|\($0.level.rawValue)" } ?? ""
+        return try queue.enqueue(PendingOperation(
+            idempotencyKey: set.id.rawValue.persistenceKey + pain,
+            kind: .saveSet,
+            payload: try JSONEncoder().encode(envelope),
+            createdAt: now
+        ))
+    }
+
     /// Aplica localmente el set a su sesión de forma idempotente. Devuelve TRUE si lo
-    /// aplicó, FALSE si el set ya existía en la sesión (sin duplicado).
+    /// aplicó, FALSE si el set ya existía en la sesión (sin duplicado). Con `slot` viene de
+    /// otro dispositivo: se une con `SessionSetMerger` y un conflicto no pierde ninguna serie.
     @discardableResult
     public func applySetLocally(
         _ set: SetRecord,
         in sessionID: WorkoutID,
+        slot: SetSlot? = nil,
+        device: WorkoutDeviceKey? = nil,
         workoutRepository: any WorkoutRepository
     ) async throws -> Bool {
         guard let session = try await workoutRepository.session(id: sessionID) else {
             throw SetPersistenceError.sessionNotFound(sessionID)
+        }
+        if let slot {
+            let merged = SessionSetMerger.merging(set, slot: slot, device: device ?? WorkoutDevice.watch, into: session)
+            guard merged.session != session else { return false }
+            try await workoutRepository.save(merged.session)
+            return true
         }
         guard !session.sets.contains(where: { $0.id == set.id }) else {
             return false // ya aplicado → idempotente, no duplica
@@ -159,6 +196,8 @@ public struct SetPersistenceGuard: Sendable {
                 let applied = try await applySetLocally(
                     envelope.set,
                     in: envelope.sessionID,
+                    slot: envelope.slot,
+                    device: envelope.device,
                     workoutRepository: workoutRepository
                 )
                 if applied { result.applied += 1 }

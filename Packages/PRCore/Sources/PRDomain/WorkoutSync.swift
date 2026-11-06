@@ -311,3 +311,84 @@ public struct WorkoutSyncEngine: Sendable {
         return slotValue
     }
 }
+
+// MARK: - Sesión guardada
+
+/// Une al registro de la sesión una serie que llegó de otro dispositivo (SCRUM-255). La sesión
+/// guardada es la fuente de verdad del iPhone: el ledger se arma a partir de ella, se aplica
+/// el evento con `WorkoutSyncEngine` y el resultado vuelve a la sesión.
+///
+/// Las ranuras de lo ya hecho salen del orden de las series de cada ejercicio. Eso vale porque
+/// `transferUserInfo` entrega en orden; si no, lo peor es un conflicto de más, nunca una
+/// serie perdida.
+public enum SessionSetMerger {
+
+    /// Devuelve la sesión con la serie aplicada. Idempotente: repetirla no cambia nada.
+    public static func merging(
+        _ set: SetRecord,
+        slot: SetSlot,
+        device: WorkoutDeviceKey,
+        into session: WorkoutSessionRecord,
+        engine: WorkoutSyncEngine = WorkoutSyncEngine()
+    ) -> (session: WorkoutSessionRecord, effect: SetEventEffect) {
+        if let updated = updatingPain(of: set, in: session) { return (updated, .duplicateNoOp) }
+        let event = SetEvent(device: device, emittedAt: set.performedAt, slot: slot, action: .recorded(set), sessionID: session.id)
+        let result = engine.applySingle(event, to: ledger(of: session))
+        guard result.ledger != ledger(of: session) else { return (session, .duplicateNoOp) }
+        var merged = session
+        let canonical = Set(result.ledger.canonicalSets.map(\.id))
+        let kept = session.sets.filter { canonical.contains($0.id) }
+        let added = result.ledger.canonicalSets.filter { candidate in !kept.contains { $0.id == candidate.id } }
+        merged.sets = inPerformedOrder(kept + added)
+        let conflicts = result.ledger.conflictingSets.compactMap { conflict in
+            result.ledger.slotsBySetID[conflict.id].map { SessionSetConflict(set: conflict, slot: $0) }
+        }
+        merged.setConflicts = conflicts.isEmpty ? nil : conflicts
+        return (merged, result.effect)
+    }
+
+    /// La ranura de cada serie hecha: el orden dentro de su ejercicio.
+    public static func slots(of sets: [SetRecord]) -> [SetRecordID: SetSlot] {
+        var counts: [ExerciseID: Int] = [:]
+        var result: [SetRecordID: SetSlot] = [:]
+        for set in sets {
+            let index = (counts[set.exerciseID] ?? 0) + 1
+            counts[set.exerciseID] = index
+            result[set.id] = SetSlot(exerciseID: set.exerciseID, slotIndex: index)
+        }
+        return result
+    }
+
+    /// Una serie ya guardada sólo puede cambiar en el dolor reportado después (SCRUM-260).
+    private static func updatingPain(of set: SetRecord, in session: WorkoutSessionRecord) -> WorkoutSessionRecord? {
+        guard let pain = set.painFeedback, let index = session.sets.firstIndex(where: { $0.id == set.id }),
+              session.sets[index].painFeedback != pain else { return nil }
+        var updated = session
+        updated.sets[index].painFeedback = pain
+        return updated
+    }
+
+    private static func ledger(of session: WorkoutSessionRecord) -> WorkoutSyncLedger {
+        let conflicts = session.setConflicts ?? []
+        var slots = Self.slots(of: session.sets)
+        for conflict in conflicts { slots[conflict.set.id] = conflict.slot }
+        let records = session.sets + conflicts.map(\.set)
+        return WorkoutSyncLedger(
+            sessionID: session.id,
+            canonicalSets: session.sets,
+            conflictingSets: conflicts.map(\.set),
+            slotsBySetID: slots,
+            devicesBySetID: Dictionary(uniqueKeysWithValues: records.map { ($0.id, WorkoutDevice.phone) }),
+            appliedKeys: Set(records.map { "record|\($0.id.rawValue)" })
+        )
+    }
+
+    /// Por hora y, si empatan, en el orden en que estaban.
+    private static func inPerformedOrder(_ sets: [SetRecord]) -> [SetRecord] {
+        sets.enumerated().sorted { first, second in
+            first.element.performedAt == second.element.performedAt
+                ? first.offset < second.offset
+                : first.element.performedAt < second.element.performedAt
+        }.map(\.element)
+    }
+}

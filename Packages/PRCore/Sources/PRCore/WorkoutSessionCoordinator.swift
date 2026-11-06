@@ -209,6 +209,10 @@ public final class WorkoutSessionCoordinator: Identifiable {
     /// que la UI avance; nunca desde `tick()`. `nil` = sin disco (sólo memoria).
     private let persistSession: ((WorkoutSessionRecord) throws -> Void)?
 
+    /// Avisa cada cambio de estado que el reloj debe conocer (SCRUM-255): el mismo momento en
+    /// que se guarda, así nunca se publica algo que no esté en disco.
+    public var onWatchStateChange: ((WatchSessionSnapshot) -> Void)?
+
     /// `true` si la última escritura a disco falló: la sesión sigue viva en memoria pero la
     /// UI debe avisar (nunca se traga el error de un dato de entrenamiento).
     public private(set) var persistenceFailed = false
@@ -608,6 +612,62 @@ extension WorkoutSessionCoordinator {
         return next
     }
 
+    // MARK: - SCRUM-255: series que llegan del reloj
+
+    /// ¿Esta es la sesión de `id`? El puente decide con esto si la aplica aquí o en disco.
+    public func isLive(session id: WorkoutID) -> Bool {
+        controller.current?.session.id == id
+    }
+
+    /// Aplica una serie hecha en el reloj. Idempotente: si ya estaba, no cambia nada. Guarda
+    /// antes de cambiar la pantalla. Una serie de una sesión ya cerrada se agrega igual: nunca
+    /// se tira. Devuelve `true` si cambió algo.
+    @discardableResult
+    public func applyRemoteSet(_ set: SetRecord, slot: SetSlot, device: WorkoutDeviceKey) -> Bool {
+        guard let session = controller.current?.session else { return false }
+        var stamped = set
+        stamped.machineProfileID = machine(for: set.exerciseID)
+        let merged = SessionSetMerger.merging(stamped, slot: slot, device: device, into: session)
+        guard merged.session != session else { return false }
+        var updated = merged.session
+        switch session.lifecycle {
+        case .completed, .abandoned:
+            controller.replaceSession(updated, at: clock())
+            persistLive()
+            return true
+        case .planned, .preparing, .active, .paused, .finishing:
+            break
+        }
+        let state = updated.queue ?? .empty
+        let hasNext = WorkoutQueue.nextPlannedIndex(template: template, sets: updated.sets, state: state) != nil
+        if merged.effect == .appliedNewlyAddedSet || merged.effect == .supersededExisting {
+            let sameExercise = template.plannedSets.filter { $0.exerciseID == set.exerciseID }
+            let planned = sameExercise.indices.contains(slot.slotIndex - 1) ? sameExercise[slot.slotIndex - 1] : sameExercise.last
+            let midRound = WorkoutQueue.continuesSupersetRound(
+                after: set.exerciseID, template: template, sets: updated.sets, state: state
+            )
+            let nextRest = planned.map {
+                restTimer.autoStart(afterCompletedWarmup: $0.prescription.isWarmup, prescription: $0.prescription, now: set.performedAt)
+            }
+            rest = hasNext && !midRound ? nextRest ?? RestTimerState(recommendedSeconds: 0) : RestTimerState(recommendedSeconds: 0)
+            updated.rest = rest.isActive ? RestSnapshot(rest) : nil
+        }
+        controller.replaceSession(updated, at: clock())
+        persistLive()
+        guard hasNext else {
+            do {
+                try completeSession(at: set.performedAt)
+            } catch {
+                persistenceFailed = true
+            }
+            rest = RestTimerState(recommendedSeconds: 0)
+            finalizeSession()
+            return true
+        }
+        publishActivePhase()
+        return true
+    }
+
     // MARK: - SCRUM-32: reportar dolor
 
     /// Reporta el dolor sentido en la última serie registrada, en la escala única
@@ -923,6 +983,7 @@ extension WorkoutSessionCoordinator {
     /// queda a la vista en `persistenceFailed`; una escritura posterior exitosa lo limpia
     /// porque contiene todas las series.
     private func persistLive() {
+        defer { publishToWatch() }
         guard let persistSession, let live = controller.current?.session else { return }
         do {
             try persistSession(live)
@@ -930,6 +991,11 @@ extension WorkoutSessionCoordinator {
         } catch {
             persistenceFailed = true
         }
+    }
+
+    private func publishToWatch() {
+        guard let onWatchStateChange, let snapshot = watchSnapshot() else { return }
+        onWatchStateChange(snapshot)
     }
 
     /// Refleja el descanso actual (omitir/extender) en el registro y lo guarda.

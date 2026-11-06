@@ -98,6 +98,8 @@ public final class AppEnvironment {
     /// "Usar datos de Salud" en "Sobre ti" (SCRUM-206). Sólo lectura; en pruebas de UI no
     /// se ofrece (no hay diálogo de permisos que tocar).
     public let healthPrefill: HealthPrefillCoordinator
+    /// Puente con el reloj (SCRUM-255). `nil` si este dispositivo no tiene WatchConnectivity.
+    @ObservationIgnored private var watchBridge: PhoneWatchBridge?
 
     /// Check-in diario de sueño (SCRUM-203).
     public let sleepCheckIns: SleepCheckInCoordinator
@@ -307,7 +309,9 @@ public final class AppEnvironment {
                 clock: clock
             ) {
             case .none: activeWorkout = nil
-            case .restored(let coordinator): activeWorkout = coordinator
+            case .restored(let coordinator):
+                activeWorkout = coordinator
+                watchBridge?.attach(coordinator)
             }
         } catch {
             persistence.log.saveFailed(.workouts)
@@ -425,6 +429,7 @@ public final class AppEnvironment {
             )
         }
         activeWorkout = coordinator
+        watchBridge?.attach(coordinator)
         return coordinator
     }
 
@@ -556,6 +561,18 @@ public final class AppEnvironment {
             presenter: RestrictionListPresenter(locale: Self.presentationLocale),
             clock: { fixedDate ?? Date() }
         )
+        // SCRUM-255: el reloj sólo se conecta en la app de verdad, nunca en pruebas de UI.
+        if !testOptions.isolatedPersistence, let link = WatchConnectivityLink() {
+            let bridge = PhoneWatchBridge(link: link) { [weak self] in
+                guard let persistence = self?.persistence else { return nil }
+                return WatchBridgeStorage(
+                    queue: try persistence.pendingOperationQueue(),
+                    workouts: try persistence.workoutRepository()
+                )
+            }
+            bridge.start()
+            self.watchBridge = bridge
+        }
     }
 
     /// Locale para textos generados fuera de las Views (PR-1004): idioma que resolvió la
