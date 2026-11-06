@@ -140,6 +140,7 @@ struct WorkoutSummaryView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(DSpace.m)
         .cardSurface(cornerRadius: DRadius.medium)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("summary.conflict")
     }
 

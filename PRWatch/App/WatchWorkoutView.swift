@@ -233,7 +233,7 @@ private struct WatchSetView: View {
         controller.draftWeight.map { $0.formatted(.number.precision(.fractionLength(0...2))) } ?? "—"
     }
 
-    private var unitText: LocalizedStringKey {
+    private var unitText: String {
         switch set.unit {
         case .kilograms: return "kg"
         case .pounds: return "lb"
