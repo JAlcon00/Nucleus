@@ -80,6 +80,8 @@ struct AppRootView: View {
                         // Activa y guarda el plan del perfil (SCRUM-26). Si venimos de un
                         // plan recordado, ya está activo y no se regenera.
                         _ = await environment.session.planCompleted(profile: profile)
+                        // El gimnasio de esta cuenta (SCRUM-235).
+                        await environment.loadGym()
                         // Retoma el entrenamiento que quedó abierto, si lo hay (SCRUM-24).
                         await environment.recoverWorkout()
                         // Historial para "Tu semana" y "última vez" (SCRUM-197).
@@ -185,6 +187,9 @@ struct AppRootView: View {
                         environment.workoutEnded()
                         // La semana marca el día como hecho.
                         Task { await environment.refreshHistory() }
+                    },
+                    onMissingMachine: { replacement in
+                        Task { await environment.markMissing(replacement: replacement) }
                     },
                     coachingLevel: coachingLevel
                 )

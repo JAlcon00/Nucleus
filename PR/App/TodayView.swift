@@ -62,6 +62,10 @@ struct TodayView: View {
     var timeRemovedExercises = false
     /// SCRUM-224: qué va hoy en superset y por qué (ya traducido); `nil` si nada.
     var supersetNote: String?
+    /// SCRUM-236: lo que el gimnasio cambió en la sesión de hoy; `nil` si nada.
+    var gymNote: String?
+    /// SCRUM-238: en qué gimnasio estoy; `nil` con uno solo.
+    var activeGymLabel: String?
     /// Intento: ajustar la sesión a esos minutos (`nil` = quitar el ajuste).
     var onChooseTime: (Int?) -> Void = { _ in }
     @Environment(\.sessionOrderActions) private var orderActions
@@ -356,6 +360,22 @@ struct TodayView: View {
             if let timeNote {
                 timeNoteCard(timeNote)
             }
+            if let activeGymLabel {
+                Label {
+                    Text("En: \(activeGymLabel)")
+                } icon: {
+                    Image(systemName: "mappin.and.ellipse")
+                }
+                .font(.footnote)
+                .foregroundStyle(Color.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Gimnasio activo: \(activeGymLabel)")
+                .accessibilityIdentifier("today.activeGym")
+            }
+            if let gymNote {
+                gymNoteCard(gymNote)
+            }
             if let supersetNote {
                 supersetNoteCard(supersetNote)
             }
@@ -494,6 +514,19 @@ struct TodayView: View {
 
     /// SCRUM-224: qué ejercicios van hoy alternados (superset) y por qué. Informativa: el
     /// ícono acompaña al texto.
+    private func gymNoteCard(_ note: String) -> some View {
+        Label {
+            Text(note)
+        } icon: {
+            Image(systemName: "dumbbell")
+        }
+        .font(.footnote)
+        .foregroundStyle(Color.textSecondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("today.gymNote")
+    }
+
     private func supersetNoteCard(_ note: String) -> some View {
         Label {
             Text(note).fixedSize(horizontal: false, vertical: true)

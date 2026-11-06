@@ -50,6 +50,8 @@ public struct ActiveWorkoutSetUI: Equatable, Sendable {
     public let position: Int
     /// Si va en superset con su pareja todavía junta (SCRUM-224); `nil` si va solo.
     public let superset: ActiveSupersetUI?
+    /// ¿El peso depende de la máquina? Para decir "en esta máquina" (SCRUM-237).
+    public let loadIsPerMachine: Bool
 
     public init(
         index: Int,
@@ -60,7 +62,8 @@ public struct ActiveWorkoutSetUI: Equatable, Sendable {
         targetRIR: ClosedRange<Int>? = nil,
         dropset: DropsetAdvice? = nil,
         position: Int? = nil,
-        superset: ActiveSupersetUI? = nil
+        superset: ActiveSupersetUI? = nil,
+        loadIsPerMachine: Bool = false
     ) {
         self.index = index
         self.total = total
@@ -71,6 +74,7 @@ public struct ActiveWorkoutSetUI: Equatable, Sendable {
         self.dropset = dropset
         self.position = position ?? index + 1
         self.superset = superset
+        self.loadIsPerMachine = loadIsPerMachine
     }
 }
 
@@ -97,6 +101,50 @@ public enum WorkoutSessionError: Error, Equatable, Sendable {
     case setValidation(String)
 }
 
+/// Qué pasó al tocar "Máquina ocupada" (SCRUM-233), con los nombres para la pantalla.
+public enum OccupiedOutcome: Equatable, Sendable {
+    /// `next` se adelantó y `after` va justo después.
+    case advanced(next: String, after: String)
+    /// Nada se pudo adelantar: la persona decide (SCRUM-234). No cambió nada todavía.
+    case needsChoice(OccupiedChoice)
+    /// Eligió esperar: `exercise` va al final.
+    case movedToEnd(exercise: String)
+}
+
+/// Un sustituto equivalente que se ofrece en la hoja (SCRUM-234).
+public struct SubstituteOption: Identifiable, Equatable, Sendable {
+    public let id: ExerciseID
+    public let name: String
+    /// ¿Trabaja exactamente los mismos músculos principales? Para la razón corta.
+    public let sameMuscles: Bool
+
+    public init(id: ExerciseID, name: String, sameMuscles: Bool) {
+        self.id = id
+        self.name = name
+        self.sameMuscles = sameMuscles
+    }
+}
+
+/// Lo que se ofrece cuando no hay nada que adelantar.
+public struct OccupiedChoice: Equatable, Sendable, Identifiable {
+    public let exercise: String
+    /// Hasta 3, el mejor primero. Vacío si no hay ninguno equivalente y seguro.
+    public let options: [SubstituteOption]
+    /// Con dolor moderado o alto en esta sesión no se ofrecen sustitutos (SCRUM-231).
+    public let painRecommendation: PainRecommendation?
+    /// Es lo único que queda: esperar no lo mueve de lugar.
+    public let isOnlyExercise: Bool
+
+    public var id: String { exercise }
+
+    public init(exercise: String, options: [SubstituteOption], painRecommendation: PainRecommendation?, isOnlyExercise: Bool) {
+        self.exercise = exercise
+        self.options = options
+        self.painRecommendation = painRecommendation
+        self.isOnlyExercise = isOnlyExercise
+    }
+}
+
 /// Coordinador de una sesión de entrenamiento activa (WORKOUT MODE).
 ///
 /// Fuente única de verdad: `ActiveWorkoutController` (la sesión viva). El set actual
@@ -110,12 +158,13 @@ public enum WorkoutSessionError: Error, Equatable, Sendable {
 @MainActor
 @Observable
 public final class WorkoutSessionCoordinator: Identifiable {
-    /// Plantilla de la sesión (lo planeado). Inmutable.
-    public let template: SessionTemplate
+    /// Plantilla de la sesión (lo planeado para hoy). Sólo cambia con una sustitución en vivo
+    /// (SCRUM-234), que toca lo pendiente y nunca lo hecho.
+    public private(set) var template: SessionTemplate
 
     /// Identidad estable (la de la plantilla): permite presentar la sesión con
     /// `fullScreenCover(item:)`, que entrega el coordinador ya no opcional.
-    public nonisolated var id: UUID { template.id }
+    public nonisolated let id: UUID
 
     /// Fase actual que la UI presenta (idle / active / resting / paused / finished).
     public private(set) var phase: WorkoutSessionPhase
@@ -125,6 +174,15 @@ public final class WorkoutSessionCoordinator: Identifiable {
     private let dropsetAdvice: [ExerciseID: DropsetAdvice]
     /// Músculos de cada ejercicio para decir dónde dolió (SCRUM-226; `PainMuscleOptions`).
     private let exerciseMuscles: [ExerciseID: [MuscleGroup.ID]]
+    /// Catálogo por ID: el gate de fatiga de "Máquina ocupada" necesita los ejercicios.
+    private let exercises: [ExerciseID: Exercise]
+    /// Restricciones al empezar: ningún sustituto las salta (SCRUM-234).
+    private let restrictions: [TrainingRestriction]
+    /// Gimnasio de esta sesión y última carga de cada ejercicio (SCRUM-237).
+    private let gymID: GymID?
+    private let loads: LastLoadIndex
+    /// El último "Máquina ocupada" y cuántas series había entonces (SCRUM-233).
+    private var lastOccupied: (outcome: OccupiedOutcome, setCount: Int)?
     private var controller: ActiveWorkoutController
     private let completer: SetCompleter
     private let restTimer: RestTimer
@@ -165,6 +223,10 @@ public final class WorkoutSessionCoordinator: Identifiable {
         exerciseNames: [ExerciseID: String] = [:],
         dropsetAdvice: [ExerciseID: DropsetAdvice] = [:],
         exerciseMuscles: [ExerciseID: [MuscleGroup.ID]] = [:],
+        catalog: [Exercise] = [],
+        restrictions: [TrainingRestriction] = [],
+        gymID: GymID? = nil,
+        loadHistory: [WorkoutSessionRecord] = [],
         completer: SetCompleter = SetCompleter(),
         restTimer: RestTimer = RestTimer(),
         summaryBuilder: WorkoutSummaryBuilder = WorkoutSummaryBuilder(),
@@ -180,9 +242,14 @@ public final class WorkoutSessionCoordinator: Identifiable {
         restoring record: WorkoutSessionRecord? = nil
     ) {
         self.template = template
+        self.id = template.id
+        self.restrictions = restrictions
+        self.gymID = gymID
+        self.loads = LastLoadIndex(history: loadHistory)
         self.exerciseNames = exerciseNames
         self.dropsetAdvice = dropsetAdvice
         self.exerciseMuscles = exerciseMuscles
+        self.exercises = Dictionary(catalog.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         self.controller = ActiveWorkoutController()
         self.completer = completer
         self.restTimer = restTimer
@@ -313,10 +380,7 @@ extension WorkoutSessionCoordinator {
                 template: template, sets: session.sets, state: session.queue ?? .empty
               ) else { return nil }
         let planned = template.plannedSets[index]
-        let draft = completer.preload(
-            for: planned,
-            lastPerformedWeight: lastPerformedWeightLookup(planned.exerciseID)
-        )
+        let draft = completer.preload(for: planned, lastPerformedWeight: lastWeight(for: planned, session: session))
         let isWarmup = planned.prescription.isWarmup
         // El dropset sólo se sugiere en la última serie de trabajo de ese ejercicio.
         let isLastWorkSet = !isWarmup && !template.plannedSets[(index + 1)...].contains {
@@ -346,7 +410,8 @@ extension WorkoutSessionCoordinator {
             targetRIR: isWarmup ? nil : planned.prescription.targetRIR,
             dropset: isLastWorkSet ? dropsetAdvice[planned.exerciseID] : nil,
             position: session.sets.count + 1,
-            superset: superset
+            superset: superset,
+            loadIsPerMachine: exercises[planned.exerciseID]?.equipment.loadIsPerMachine ?? false
         )
     }
 
@@ -474,6 +539,10 @@ extension WorkoutSessionCoordinator {
         // El descanso nace junto con la serie: se guarda como hora de fin en el MISMO
         // registro, en una sola escritura atómica.
         var session = updated
+        // SCRUM-237: la serie queda con su máquina, sin preguntar nada.
+        if let index = session.sets.indices.last {
+            session.sets[index].machineProfileID = machine(for: planned.exerciseID)
+        }
         let hasNext = WorkoutQueue.nextPlannedIndex(
             template: template, sets: updated.sets, state: updated.queue ?? .empty
         ) != nil
@@ -601,6 +670,178 @@ extension WorkoutSessionCoordinator {
         try changeQueue { exercise, state, session in
             WorkoutQueue.deferring(exercise, in: state, template: template, sets: session.sets)
         }
+    }
+
+    /// Lo que la pantalla dice tras "Máquina ocupada", hasta completar la siguiente serie.
+    public var occupiedNotice: OccupiedOutcome? {
+        guard let lastOccupied, controller.current?.session.sets.count == lastOccupied.setCount else { return nil }
+        return lastOccupied.outcome
+    }
+
+    /// SCRUM-233: "Máquina ocupada" sobre el ejercicio actual. Adelanta el primer pendiente
+    /// que no suba la interferencia por fatiga; si ninguno, lo manda al final; si es lo único
+    /// que queda, no cambia nada. Las series hechas no cambian, el descanso sigue y la cola
+    /// se guarda antes de cambiar la pantalla. La ocupación sólo vive en esta sesión (RN-005).
+    @discardableResult
+    public func markCurrentExerciseOccupied() throws -> OccupiedOutcome {
+        let session = try activeSessionForSet()
+        switch phase {
+        case .active, .resting: break
+        case .idle, .paused, .finished: throw WorkoutSessionError.invalidTransition
+        }
+        guard let current = currentSet() else { throw WorkoutSessionError.allSetsCompleted }
+        let exercise = template.plannedSets[current.index].exerciseID
+        let state = session.queue ?? .empty
+        let others = WorkoutQueue.pendingOthers(than: exercise, template: template, sets: session.sets, state: state)
+        guard let candidate = advanceCandidate(for: exercise, others: others, state: state) else {
+            return .needsChoice(occupiedChoice(for: exercise, isOnlyExercise: others.isEmpty, session: session))
+        }
+        _ = try changeQueue { exercise, state, _ in
+            WorkoutQueue.advancing(candidate, before: exercise, in: state, template: template)
+        }
+        let outcome = OccupiedOutcome.advanced(next: name(of: candidate), after: name(of: exercise))
+        lastOccupied = (outcome, session.sets.count)
+        return outcome
+    }
+
+    /// "Esperar": el ejercicio ocupado va al final. Si es lo único que queda no cambia nada.
+    @discardableResult
+    public func waitForOccupiedExercise() throws -> OccupiedOutcome {
+        let session = try activeSessionForSet()
+        guard let current = currentSet() else { throw WorkoutSessionError.allSetsCompleted }
+        let exercise = template.plannedSets[current.index].exerciseID
+        _ = try changeQueue { exercise, state, session in
+            WorkoutQueue.deferring(exercise, in: WorkoutQueue.markingOccupied(exercise, in: state), template: template, sets: session.sets)
+        }
+        let outcome = OccupiedOutcome.movedToEnd(exercise: name(of: exercise))
+        lastOccupied = (outcome, session.sets.count)
+        return outcome
+    }
+
+    /// SCRUM-234: cambia lo pendiente del ejercicio actual por `replacement`, sólo por hoy.
+    /// Tiene que ser uno de los sustitutos que se ofrecen: la regla se aplica otra vez aquí.
+    /// Lo hecho se queda como está y se guarda antes de cambiar la pantalla.
+    @discardableResult
+    public func substituteCurrentExercise(
+        with replacement: ExerciseID,
+        reason: SessionSubstitution.Reason = .occupied
+    ) throws -> WorkoutSessionPhase {
+        var session = try activeSessionForSet()
+        let wasResting: Bool
+        switch phase {
+        case .active: wasResting = false
+        case .resting: wasResting = true
+        case .idle, .paused, .finished: throw WorkoutSessionError.invalidTransition
+        }
+        guard let current = currentSet() else { throw WorkoutSessionError.allSetsCompleted }
+        let exercise = template.plannedSets[current.index].exerciseID
+        let state = session.queue ?? .empty
+        guard !hadDisruptivePain(exercise, session: session),
+              let chosen = equivalents(for: exercise, session: session).first(where: { $0.id == replacement }) else {
+            throw WorkoutSessionError.invalidTransition
+        }
+        let adapted = WorkoutQueue.substituting(exercise, with: replacement, in: template, sets: session.sets)
+        session.queue = WorkoutQueue.replacing(exercise, with: replacement, in: state, template: adapted)
+        session.template = adapted
+        session.substitutions = (session.substitutions ?? []) + [SessionSubstitution(
+            original: exercise, replacement: replacement, reason: reason,
+            score: chosen.totalScore, rule: chosen.ruleReference, date: clock()
+        )]
+        template = adapted
+        controller.replaceSession(session, at: clock())
+        persistLive()
+        guard let upcoming = currentSet() else { return phase }
+        let result: WorkoutSessionPhase = wasResting && rest.isActive ? .resting(upcoming, rest: rest) : .active(upcoming)
+        phase = result
+        return result
+    }
+
+    /// El ejercicio de la serie actual.
+    public var currentExerciseID: ExerciseID? {
+        currentSet().map { template.plannedSets[$0.index].exerciseID }
+    }
+
+    /// "A → B" de cada sustitución de la sesión, para el resumen.
+    public var substitutionSummaries: [(from: String, to: String)] {
+        (controller.current?.session.substitutions ?? []).map { (name(of: $0.original), name(of: $0.replacement)) }
+    }
+
+    private func occupiedChoice(for exercise: ExerciseID, isOnlyExercise: Bool, session: WorkoutSessionRecord) -> OccupiedChoice {
+        if let pain = session.sets.last(where: { set in
+            set.exerciseID == exercise && set.painFeedback?.level.isConservativeDisruptive == true
+        })?.painFeedback?.level {
+            return OccupiedChoice(
+                exercise: name(of: exercise), options: [],
+                painRecommendation: (try? painRecommendation(for: pain, exercise: exercise)) ?? .stopAndRest,
+                isOnlyExercise: isOnlyExercise
+            )
+        }
+        let muscles = exercises[exercise].map { Set($0.primaryMuscles.map(\.muscleGroupID)) } ?? []
+        let options = equivalents(for: exercise, session: session).map { option in
+            SubstituteOption(
+                id: option.exercise.id, name: name(of: option.exercise.id),
+                sameMuscles: Set(option.exercise.primaryMuscles.map(\.muscleGroupID)) == muscles
+            )
+        }
+        return OccupiedChoice(exercise: name(of: exercise), options: options, painRecommendation: nil, isOnlyExercise: isOnlyExercise)
+    }
+
+    /// Los sustitutos de PR-E001 para `exercise`: sin lo que ya está en la sesión ni lo ocupado.
+    private func equivalents(for exercise: ExerciseID, session: WorkoutSessionRecord) -> [ScoredSubstitute] {
+        guard let target = exercises[exercise] else { return [] }
+        do {
+            let engine = SubstitutionScoringEngine(config: try SubstitutionScoringConfig(rule: SubstitutionScoringDefaults.makeRule()))
+            return try engine.substitutes(for: SubstitutionRequest(
+                target: target,
+                candidates: Array(exercises.values),
+                unavailableExerciseIDs: Set(session.queue?.occupied ?? []),
+                sessionExerciseIDs: Set(template.plannedSets.map(\.exerciseID)),
+                activeRestrictions: restrictions,
+                asOf: clock()
+            )).ranked
+        } catch {
+            return []
+        }
+    }
+
+    private func hadDisruptivePain(_ exercise: ExerciseID, session: WorkoutSessionRecord) -> Bool {
+        session.sets.contains { $0.exerciseID == exercise && $0.painFeedback?.level.isConservativeDisruptive == true }
+    }
+
+    /// Sin los datos del ejercicio no se adelanta a ciegas: nunca se arriesga lo prioritario.
+    private func advanceCandidate(for exercise: ExerciseID, others: [ExerciseID], state: ExerciseQueueState) -> ExerciseID? {
+        guard let blocked = exercises[exercise] else { return nil }
+        do {
+            let config = try FatigueInterferenceConfig(rule: FatigueInterferenceDefaults.makeRule())
+            return try ReorderBeforeReplaceController().advanceCandidate(
+                blocked: blocked, remaining: others.compactMap { exercises[$0] },
+                excluded: Set(state.occupied ?? []), config: config
+            )?.id
+        } catch {
+            return nil
+        }
+    }
+
+    /// La máquina implícita (gimnasio + ejercicio) si la carga es por máquina (DE-4).
+    private func machine(for exercise: ExerciseID) -> UUID? {
+        guard let gymID, exercises[exercise]?.equipment.loadIsPerMachine == true else { return nil }
+        return ImplicitMachine.id(gym: gymID, exercise: exercise)
+    }
+
+    /// El peso para precargar: el último realmente hecho. Un calentamiento no se precarga con
+    /// el peso de trabajo. Un ejercicio por máquina sin gimnasio se queda vacío (RN-007).
+    private func lastWeight(for planned: PlannedSet, session: WorkoutSessionRecord) -> Double? {
+        guard !planned.prescription.isWarmup else { return nil }
+        guard let exercise = exercises[planned.exerciseID] else {
+            return lastPerformedWeightLookup(planned.exerciseID)
+        }
+        let machine = machine(for: exercise.id)
+        if exercise.equipment.loadIsPerMachine && machine == nil { return nil }
+        return loads.lastWeight(of: exercise.id, machine: machine, unit: planned.prescription.loadUnit, session: session)
+    }
+
+    private func name(of exercise: ExerciseID) -> String {
+        exerciseNames[exercise] ?? exerciseFallbackName(exercise)
     }
 
     /// Salta el ejercicio actual: queda marcado como saltado, sin crear series. Si no

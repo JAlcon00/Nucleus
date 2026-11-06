@@ -19,6 +19,8 @@ struct WorkoutModeView: View {
     @Bindable var coordinator: WorkoutSessionCoordinator
     /// Intento: tras terminar la sesión, volver al plan (cierra el fullScreenCover).
     var onDone: () -> Void = {}
+    /// Intento: "No hay esta máquina aquí", con su sustituto o sin ninguno (SCRUM-236).
+    var onMissingMachine: (ExerciseID?) -> Void = { _ in }
     /// Nivel de detalle de coaching (PR-1501); derivado del perfil, nunca inventado.
     var coachingLevel: CoachingDetailLevel = .guided
 
@@ -50,6 +52,7 @@ struct WorkoutModeView: View {
                     summary: summary,
                     celebration: coordinator.celebration(for: summary, level: coachingLevel),
                     skipped: coordinator.skippedExercises.map(\.name),
+                    substitutions: coordinator.substitutionSummaries.map { "\($0.from) → \($0.to)" },
                     onDone: onDone
                 )
             }
@@ -90,6 +93,28 @@ struct WorkoutModeView: View {
             Button("Seguir entrenando", role: .cancel) {}
         }
         .sheet(isPresented: $reportingPain) { painSheet }
+        .sheet(item: $occupiedChoice) { choice in
+            OccupiedChoiceSheet(
+                choice: choice,
+                onChoose: { option in
+                    occupiedChoice = nil
+                    _ = try? coordinator.substituteCurrentExercise(with: option)
+                },
+                onWait: {
+                    occupiedChoice = nil
+                    _ = try? coordinator.waitForOccupiedExercise()
+                },
+                onSkip: {
+                    occupiedChoice = nil
+                    _ = try? coordinator.skipCurrentExercise()
+                },
+                onMissing: { replacement in
+                    occupiedChoice = nil
+                    onMissingMachine(replacement)
+                }
+            )
+            .presentationDetents([.medium, .large])
+        }
         .sensoryFeedback(trigger: coordinator.painReport?.level, painFeedback)
         // Si la sesión termina con la hoja abierta (p. ej. saltar lo último), se cierra.
         .onChange(of: coordinator.painReport == nil) { _, isGone in
@@ -105,6 +130,8 @@ struct WorkoutModeView: View {
     /// SCRUM-226: hoja "¿Te dolió esta serie?". Abre a media altura (la escala queda al
     /// alcance del pulgar) y crece al reportar dolor, para que la recomendación se vea entera.
     @State private var reportingPain = false
+    /// SCRUM-234: la hoja de "Máquina ocupada" cuando no hay nada que adelantar.
+    @State private var occupiedChoice: OccupiedChoice?
     @State private var painDetent: PresentationDetent = .medium
     private let painPresenter = PainRecommendationPresenter(locale: AppEnvironment.presentationLocale)
 
@@ -176,23 +203,17 @@ struct WorkoutModeView: View {
                     .font(.subheadline)
                     .foregroundStyle(Color.textSecondary)
             }
-            HStack(spacing: DSpace.s) {
-                Button {
-                    _ = try? coordinator.deferCurrentExercise()
-                } label: {
-                    Label("Para después", systemImage: "clock.arrow.circlepath")
-                }
-                .buttonStyle(.surface)
-                .accessibilityHint("Pasa este ejercicio al final, por ejemplo si la máquina está ocupada.")
-                .accessibilityIdentifier("workout.defer")
-                Button {
-                    confirmingSkip = set.exerciseName
-                } label: {
-                    // "Saltar" a secas es del descanso: éste dice qué salta.
-                    Label("Saltar ejercicio", systemImage: "forward.end")
-                }
-                .buttonStyle(.surface)
-                .accessibilityIdentifier("workout.skip")
+            if let notice = coordinator.occupiedNotice {
+                Text(occupiedText(notice))
+                    .font(.footnote)
+                    .foregroundStyle(Color.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("workout.occupied.notice")
+            }
+            // Con letra grande se apilan para no tapar "Completar serie".
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: DSpace.s) { queueButtons(for: set) }
+                VStack(spacing: DSpace.s) { queueButtons(for: set) }
             }
             ForEach(Array(coordinator.skippedExercises.enumerated()), id: \.element.id) { index, skipped in
                 HStack {
@@ -207,6 +228,40 @@ struct WorkoutModeView: View {
                     .accessibilityIdentifier("workout.resume.\(index)")
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func queueButtons(for set: ActiveWorkoutSetUI) -> some View {
+        Button {
+            if case .needsChoice(let choice)? = try? coordinator.markCurrentExerciseOccupied() {
+                occupiedChoice = choice
+            }
+        } label: {
+            Label("Máquina ocupada", systemImage: "clock.arrow.circlepath")
+        }
+        .buttonStyle(.surface)
+        .accessibilityHint("Te dice qué hacer mientras se desocupa.")
+        .accessibilityIdentifier("workout.occupied")
+        Button {
+            confirmingSkip = set.exerciseName
+        } label: {
+            // "Saltar" a secas es del descanso: éste dice qué salta.
+            Label("Saltar ejercicio", systemImage: "forward.end")
+        }
+        .buttonStyle(.surface)
+        .accessibilityIdentifier("workout.skip")
+    }
+
+    /// SCRUM-233: dónde quedó todo tras "Máquina ocupada".
+    private func occupiedText(_ outcome: OccupiedOutcome) -> String {
+        switch outcome {
+        case .advanced(let next, let after):
+            return String(localized: "Adelantamos \(next). \(after) va después.")
+        case .movedToEnd(let exercise):
+            return String(localized: "Nada se puede adelantar sin cansar antes lo prioritario: \(exercise) va al final.")
+        case .needsChoice(let choice):
+            return choice.exercise
         }
     }
 
@@ -350,6 +405,12 @@ struct WorkoutModeView: View {
                 step: set.draft.targetWeight < 25 ? 2.5 : 5,
                 suffix: set.draft.targetUnit == .pounds ? "lb" : "kg"
             )
+            if set.draft.weightFromHistory {
+                Text(set.loadIsPerMachine ? "Tu último peso en esta máquina" : "Tu último peso")
+                    .font(.footnote)
+                    .foregroundStyle(Color.textSecondary)
+                    .accessibilityIdentifier("workout.lastWeight")
+            }
 
             SetInputControl(
                 label: "Repeticiones",

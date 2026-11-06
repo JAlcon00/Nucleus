@@ -131,8 +131,8 @@ public struct LocalPersistence: Sendable {
         self.userKey = userKey
     }
 
-    /// Colecciones que pertenecen a un usuario (su historial de entrenamientos).
-    private static let userScopedCollections: [PersistenceCollection] = [.workouts, .pendingOperations]
+    /// Colecciones que pertenecen a un usuario (su historial y sus gimnasios).
+    private static let userScopedCollections: [PersistenceCollection] = [.workouts, .pendingOperations, .gyms]
 
     /// Vista de esta persistencia para UN usuario. Primero lleva sus colecciones a su
     /// formato vigente (SCRUM-40). La primera vez que cualquier usuario entra, adopta el
@@ -238,6 +238,11 @@ public struct LocalPersistence: Sendable {
         FileWorkoutRepository(store: try store(for: .workouts), log: log)
     }
 
+    /// Gimnasios del usuario (SCRUM-235). Se pide sobre la vista `scoped(toUser:)`.
+    public func gymRepository() throws -> FileGymRepository {
+        FileGymRepository(store: try store(for: .gyms), log: log)
+    }
+
     public func pendingOperationQueue() throws -> PendingOperationQueueStore {
         PendingOperationQueueStore(store: try store(for: .pendingOperations))
     }
@@ -253,6 +258,9 @@ public struct LocalPersistence: Sendable {
         exerciseNames: [ExerciseID: String] = [:],
         dropsetAdvice: [ExerciseID: DropsetAdvice] = [:],
         exerciseMuscles: [ExerciseID: [MuscleGroup.ID]] = [:],
+        catalog: [Exercise] = [],
+        restrictions: [TrainingRestriction] = [],
+        gymID: GymID? = nil,
         celebrationPresenter: PRCelebrationPresenter = PRCelebrationPresenter(),
         clock: @escaping () -> Date = { Date() },
         restoring: WorkoutSessionRecord? = nil,
@@ -274,6 +282,10 @@ public struct LocalPersistence: Sendable {
             exerciseNames: exerciseNames,
             dropsetAdvice: dropsetAdvice,
             exerciseMuscles: exerciseMuscles,
+            catalog: catalog,
+            restrictions: restrictions,
+            gymID: gymID,
+            loadHistory: history,
             recordBaselines: PersonalRecordBaselineBuilder.baselines(from: history),
             celebrationPresenter: celebrationPresenter,
             clock: clock,
@@ -318,6 +330,9 @@ public struct LocalPersistence: Sendable {
         exerciseNames: [ExerciseID: String] = [:],
         dropsetAdvice: [ExerciseID: DropsetAdvice] = [:],
         exerciseMuscles: [ExerciseID: [MuscleGroup.ID]] = [:],
+        catalog: [Exercise] = [],
+        restrictions: [TrainingRestriction] = [],
+        gymID: GymID? = nil,
         celebrationPresenter: PRCelebrationPresenter = PRCelebrationPresenter(),
         clock: @escaping () -> Date = { Date() },
         onPersisted: @escaping @Sendable (Result<WorkoutID, any Error>) async -> Void = { _ in }
@@ -350,6 +365,9 @@ public struct LocalPersistence: Sendable {
             exerciseNames: exerciseNames,
             dropsetAdvice: dropsetAdvice,
             exerciseMuscles: exerciseMuscles,
+            catalog: catalog,
+            restrictions: restrictions,
+            gymID: gymID,
             celebrationPresenter: celebrationPresenter,
             clock: clock,
             restoring: record,

@@ -131,3 +131,135 @@ Evidencia: rama `SCRUM-240-ia-equivalencia-estricta`, PR #37.
   | 6 días, 60 min | 26 de 26 | 78 | 27 | 67 |
 
   Ahora ninguna alternativa es de otro patrón y ningún ejercicio se queda sin opciones.
+
+---
+
+## Fase E en un solo PR (PR #38)
+
+- **Épica:** Fase E (SCRUM-10) · hito 1.0 · carril 🟡 amarillo por `LocalPersistence.swift` y `CodableRepositories.swift`.
+- **Estado:** PR #38, rama `SCRUM-10-fase-e`, 2026-11-05. Un commit por historia; lo fusiona Jesús con merge commit.
+- **Por qué en un PR:** excepción de Jesús del 2026-11-05 para toda la fase, con la cola 👤 sobre el límite.
+- **Decisiones que aplica:** DE-1 a DE-4 (SCRUM-231) y DE-5 (SCRUM-239).
+- **También corrige:** el puntaje de sustitución de SCRUM-232 cambiaba en el último dígito según el orden de un diccionario, y eso hacía fallar de vez en cuando la prueba de paridad. Ahora suma con claves ordenadas (commit `4aabd25`, prueba `realCatalogScoresAreStable`).
+
+### SCRUM-235 · PR-E004 Mi gimnasio
+
+**Qué cambió:** `GymCoordinator` nuevo; colección `.gyms` por usuario; `FileGymRepository.save` guarda sin la ocupación; Perfil › Gimnasio; el export lleva los gimnasios.
+
+**Criterios:**
+- [x] Sin gimnasio guardado se crea "Mi gimnasio", sin pasos nuevos y con el mismo plan.
+- [x] Perfil lo muestra y se renombra; el nombre vacío se rechaza y el nombre sobrevive a reabrir.
+- [x] Dos cuentas en el mismo iPhone tienen cada una su gimnasio.
+- [x] Lo guardado nunca lleva ocupación.
+- [x] Un error al escribir avisa, no bloquea y no se traga.
+- [x] El export incluye los gimnasios.
+- [x] Los datos anteriores se ven igual.
+- [x] El gimnasio vive en su propia colección, fuera del plan y del perfil.
+
+### SCRUM-233 · PR-E002 Máquina ocupada
+
+**Qué cambió:** `ExerciseQueueState` gana `order` y `occupied`, opcionales; `WorkoutQueue` y `ReorderBeforeReplaceController` trabajan sobre la cola real; "Máquina ocupada" (`workout.occupied`) reemplaza a "Para después" en la pantalla.
+
+**Criterios:**
+- [x] Con adelanto seguro, B pasa a ser el actual, A queda justo después y la pantalla lo dice.
+- [x] Sin adelanto seguro, A va al final y lo dice. Desde SCRUM-234 primero se ofrece la hoja y "Esperar" lo manda al final.
+- [x] Si A es lo único pendiente, nada cambia y se ofrece esperar o saltar.
+- [x] Las series hechas no cambian, el descanso sigue y no se crea ninguna serie.
+- [x] La ocupación no pasa a otra sesión.
+- [x] En superset el par se separa y la pareja sigue sola.
+- [x] Tras un cierre forzado sigue el mismo orden.
+- [x] En pausa no está disponible.
+- [ ] En el descanso la acción está sobre "Sigue: X". Está en la pantalla, pero sin prueba automática: va en la verificación 👤.
+- [x] "Para después" desaparece de la pantalla. `deferCurrentExercise` sigue en el coordinador porque "Esperar" usa la misma cola.
+
+### SCRUM-234 · PR-E003 Sustituto durante el entrenamiento
+
+**Qué cambió:** `SessionSubstitution` y `WorkoutSessionRecord.substitutions`, opcional; `OccupiedChoiceSheet`; el resumen dice "A → B (máquina ocupada)". La plantilla de la sesión pasa a ser lo planeado para hoy, ya adaptado: el plan guardado no cambia.
+
+**Criterios:**
+- [x] Hasta 3 sustitutos con su razón, más esperar y saltar.
+- [x] Lo pendiente pasa a B, lo hecho se queda como A y el total no cambia.
+- [x] El peso de B nunca es el de A.
+- [x] Con restricciones no aparece nada prohibido; sin sustitutos, la hoja lo dice.
+- [x] Con dolor moderado o alto no se ofrecen sustitutos: sale la recomendación y saltar.
+- [x] Tras un cierre forzado se sigue con B.
+- [x] Otro día toca A.
+- [x] El resumen y el export dicen A → B y las series de B salen como B.
+- [x] Los récords de B sólo se comparan con B: la base es por ejercicio.
+- [x] La sesión guarda objetivo, elegido, puntaje, regla y versión.
+
+### SCRUM-237 · PR-E006 Mis cargas por máquina
+
+**Qué cambió:** `EquipmentType.loadIsPerMachine`, `LastLoadIndex` e `ImplicitMachine.id(gym:exercise:)`; cada serie "por máquina" se guarda con su máquina; `workout.lastWeight` dice "Tu último peso en esta máquina".
+
+**Criterios:**
+- [x] La misma máquina en el mismo gimnasio trae el último peso y lo dice.
+- [x] La segunda serie trae el peso de la anterior.
+- [x] Sin historial en el gimnasio activo aparece vacío, aunque haya historial en otro.
+- [x] Barra, mancuernas y kettlebell comparten el peso entre gimnasios.
+- [x] Los calentamientos no cuentan.
+- [x] Un sustituto trae su último peso, nunca el del original.
+- [x] La serie se guarda con su máquina.
+- [x] Las series viejas sin máquina no son historial de máquina; para barra sí cuentan.
+- [x] Los récords se comparan por máquina.
+- [x] Se precarga lo último hecho: no sube carga y después de dolor nunca propone más.
+
+**Medición:** abrir el entrenamiento con 500 sesiones de 20 series tarda 117 ms en debug; armar el índice, 25 ms.
+
+### SCRUM-236 · PR-E005 "No hay esta máquina aquí"
+
+**Qué cambió:** `GymSessionAdapter` aplica el gimnasio encima del plan al armar el día, sin tocar el bloque guardado; `GymProfile.missingExercises`, opcional; notas en Hoy y Semana; Perfil › Máquinas que no hay.
+
+**Criterios:**
+- [x] Marcar sigue hoy con B y guarda la marca antes de cambiar la pantalla.
+- [x] Una sesión futura trae B, con su nota.
+- [x] Quitar devuelve A a la siguiente sesión.
+- [x] Marcar y quitar no regeneran el plan guardado.
+- [x] Una restricción nueva descarta a B y propone otro; sin ninguno, A se omite y se explica.
+- [x] Si B ya está en la sesión se usa el siguiente equivalente.
+- [x] Sin sustituto se guarda igual y nunca se programa la máquina.
+- [x] Un error al guardar no marca el gimnasio y avisa.
+- [x] Marcar sólo afecta al gimnasio activo.
+
+**Diferencias con la tarjeta:**
+- El paso E2E de quitar la marca está en `WorkoutRecoveryJourney`, no en `ProfileJourney`, porque necesita una marca hecha en ese mismo recorrido.
+- La nota de Semana es un aviso general en la pestaña Plan, no una nota por día.
+
+**Sin prueba propia:** "quitar la marca con un entrenamiento activo no cambia la sesión". Se cumple porque la sesión tiene su propia plantilla.
+
+**Limitaciones conocidas:**
+- `reorderSession` valida contra el bloque del motor: en una sesión con sustituto del gimnasio, reordenar falla sin dañar nada.
+- `timeRoles` no trata al sustituto de un ancla como ancla, y la explicación no lo menciona (caso límite de la tarjeta, sin cubrir).
+
+### SCRUM-238 · PR-E007 Varios gimnasios
+
+**Qué cambió:** `GymCoordinator.addGym` y `select(_:duringWorkout:)`; `renameActive` también rechaza repetidos; lista "Mis gimnasios" en Perfil; "En: Oficina" en Hoy sólo con más de un gimnasio.
+
+**Criterios:**
+- [x] Agregar aparece en la lista; vacío o repetido, sin importar mayúsculas, se rechaza con mensaje.
+- [x] Elegir cambia lo que dice Hoy y la sesión se arma con lo de ese gimnasio.
+- [x] Con un entrenamiento activo la opción está desactivada y dice por qué.
+- [x] Cambiar no toca el plan guardado ni el historial. La racha sale del historial.
+- [x] El activo sobrevive a reabrir y es por usuario.
+- [x] Una prensa sin historial en ese gimnasio aparece sin peso.
+- [x] VoiceOver dice "Gimnasio activo: Oficina".
+- [ ] Letra grande sin cortes y áreas de toque de 44 × 44 pt: sin prueba automática, van en la verificación 👤.
+
+**Pruebas existentes que cambiaron:** en el commit de SCRUM-234, cinco casos de `OccupiedMachineTests` (escritos en SCRUM-233) se ajustaron porque sin adelanto seguro ahora primero se pregunta: `.movedToEnd` pasa a `needsChoice` más `waitForOccupiedExercise()`, y `.onlyExercise` pasa a `needsChoice` con `isOnlyExercise`. Ninguna prueba se borró ni se desactivó. Las muestras de `Fixtures/Persistence/` no cambian.
+
+**Verificaciones pendientes 👤:** en `mvp-plan.md` §2.
+
+Evidencia: rama `SCRUM-10-fase-e`, PR #38.
+- **Pruebas nuevas:** `GymCoordinatorTests`, `OccupiedMachineTests`, `LiveSubstitutionTests`, `MachineLoadTests` y `GymAdaptationTests`, con `LocalPersistence` real en un directorio temporal.
+- **`make ci`** (2026-11-05) → `✔ Test run with 613 tests in 88 suites passed` + `✔ Test run with 748 tests in 119 suites passed` + `Executed 151 tests, with 0 failures`; build de iOS y de watchOS OK. Línea base: 613 + 679.
+- **Guard del agente:** `OK: ninguna prueba se borra, desactiva ni reduce (base 88d4db9, 1452 → 1521 pruebas).`
+- **E2E:** `make test-ui` completa, 9 de 9 a la primera (incluye los 3 recorridos del smoke, así que `make test-ui-smoke` no se corrió aparte):
+  - `OK testBeginnerAndAdvancedQuestionnaires() (1 min 16 s)`
+  - `OK testFirstWorkoutReachesProgressAndExport() (47 s)`
+  - `OK testIntermediateQuestionnaireFromAboutYouToReopening() (44 s)`
+  - `OK testPendingPlanShowsLoadingThenExplainsTheWeek() (31 s)`
+  - `OK testProfileRestrictionsSignOutAndRedo() (1 min 42 s)`
+  - `OK testSundayIsRestDayWithoutStartButton() (10 s)`
+  - `OK testSupersetFromTodayThroughTheRound() (24 s)`
+  - `OK testTodayFromSleepCheckInToTheWeek() (1 min 11 s)`
+  - `OK testWorkoutSurvivesForceQuitAndKeepsPain() (2 min 35 s)`

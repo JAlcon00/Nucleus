@@ -151,5 +151,32 @@ final class TodayJourney: PRUITestCase {
             XCTAssertFalse(element(app, "today.sleep").exists, "No vuelve a preguntar hoy")
             XCTAssertTrue(element(app, "today.start").exists, "Se puede entrenar igual")
         }
+
+        // SCRUM-238: con un solo gimnasio Hoy no dice nada; con dos dice en cuál estoy, antes
+        // de empezar, y lo recuerda al reabrir. Usa su propio almacén para no tocar lo anterior.
+        step("Con dos gimnasios Hoy dice en cuál estoy y sigue al reabrir (SCRUM-238)") {
+            let gymStore = newStoreID()
+            let app = launchWithPlan(storeID: gymStore)
+            XCTAssertTrue(element(app, "today.start").appears(within: 15))
+            XCTAssertFalse(element(app, "today.activeGym").exists, "Con un solo gimnasio no se muestra")
+            openTab(app, "Perfil")
+            tap(app, "profile.gym")
+            tap(app, "gym.add")
+            let field = app.alerts.textFields.firstMatch
+            XCTAssertTrue(field.appears(within: 5), "Pide el nombre")
+            field.tap()
+            field.typeText("Oficina")
+            app.alerts.buttons["Agregar"].firstMatch.tap()
+            tap(app, "gym.row.1")       // "Oficina" va después de "Mi gimnasio"
+            openTab(app, "Hoy")
+            let active = element(app, "today.activeGym")
+            XCTAssertTrue(active.appears(within: 10), "Hoy dice en qué gimnasio estoy")
+            XCTAssertEqual(active.label, "Gimnasio activo: Oficina")
+
+            app.terminate()
+            let reopened = launch(storeID: gymStore)
+            XCTAssertTrue(element(reopened, "today.activeGym").appears(within: 20), "Sigue al reabrir")
+            XCTAssertEqual(element(reopened, "today.activeGym").label, "Gimnasio activo: Oficina")
+        }
     }
 }

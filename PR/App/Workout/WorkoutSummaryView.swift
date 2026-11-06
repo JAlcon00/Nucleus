@@ -22,6 +22,8 @@ struct WorkoutSummaryView: View {
     var celebration: PRCelebrationPresentation? = nil
     /// Ejercicios saltados en la sesión (SCRUM-212), ya con su nombre.
     var skipped: [String] = []
+    /// Cambios de ejercicio de la sesión, como "A → B" (SCRUM-234).
+    var substitutions: [String] = []
     let onDone: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -74,6 +76,21 @@ struct WorkoutSummaryView: View {
                     .cardSurface(cornerRadius: DRadius.medium)
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("summary.skipped")
+                }
+
+                ForEach(substitutions, id: \.self) { substitution in
+                    Label {
+                        Text("\(substitution) (máquina ocupada)")
+                    } icon: {
+                        Image(systemName: "arrow.left.arrow.right")
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(Color.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(DSpace.m)
+                    .cardSurface(cornerRadius: DRadius.medium)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("summary.substitution")
                 }
 
                 if summary.nextAction == .completed {

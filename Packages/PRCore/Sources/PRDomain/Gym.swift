@@ -132,6 +132,12 @@ public struct GymProfile: Identifiable, Codable, Sendable, Hashable {
     public var learnedBusyPatterns: [BusyPattern]
     /// Equipos ocupados durante la sesión actual (session-scoped, no persistido).
     public var occupiedDuringSession: [EquipmentType]
+    /// Cuándo se eligió este gimnasio por última vez: el activo es el más reciente (SCRUM-235).
+    /// Así elegir es una sola escritura atómica. Campo opcional (ADR-0003).
+    public var lastSelectedAt: Date?
+    /// Ejercicios que no hay en este gimnasio y su sustituto (SCRUM-236, DE-1: por ejercicio,
+    /// no por tipo de equipo). Se aplica encima del plan. Campo opcional (ADR-0003).
+    public var missingExercises: [MissingExercise]?
 
     public init(
         id: GymID = GymID(),
@@ -139,7 +145,9 @@ public struct GymProfile: Identifiable, Codable, Sendable, Hashable {
         equipmentAvailability: [EquipmentAvailability] = [],
         machineInstances: [MachineProfile] = [],
         learnedBusyPatterns: [BusyPattern] = [],
-        occupiedDuringSession: [EquipmentType] = []
+        occupiedDuringSession: [EquipmentType] = [],
+        lastSelectedAt: Date? = nil,
+        missingExercises: [MissingExercise]? = nil
     ) {
         self.id = id
         self.name = name
@@ -147,6 +155,18 @@ public struct GymProfile: Identifiable, Codable, Sendable, Hashable {
         self.machineInstances = machineInstances
         self.learnedBusyPatterns = learnedBusyPatterns
         self.occupiedDuringSession = occupiedDuringSession
+        self.lastSelectedAt = lastSelectedAt
+        self.missingExercises = missingExercises
+    }
+
+    /// El gimnasio activo: el elegido más recientemente; si empatan, por ID (determinista).
+    public static func active(in gyms: [GymProfile]) -> GymProfile? {
+        gyms.max { lhs, rhs in
+            let left = lhs.lastSelectedAt ?? .distantPast
+            let right = rhs.lastSelectedAt ?? .distantPast
+            if left != right { return left < right }
+            return lhs.id.rawValue.uuidString < rhs.id.rawValue.uuidString
+        }
     }
 
     /// Consulta el estado observable de un equipamiento.

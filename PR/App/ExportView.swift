@@ -23,6 +23,8 @@ struct ExportView: View {
     let unreadableCount: Int
     /// "Sobre ti" guardado; `nil` si la persona no lo ha llenado.
     var aboutYou: AboutYou?
+    /// Gimnasios del usuario (SCRUM-235).
+    var gyms: [GymProfile] = []
 
     private let coordinator = DataExportCoordinator()
     @State private var includeAboutYou = false
@@ -92,7 +94,7 @@ struct ExportView: View {
                 sessions: sessions,
                 exercises: exercises,
                 blocks: [],
-                gyms: [],
+                gyms: gyms,
                 restrictions: [],
                 profile: nil,
                 aboutYou: includeAboutYou ? aboutYou : nil

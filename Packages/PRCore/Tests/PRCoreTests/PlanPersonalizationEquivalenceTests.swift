@@ -118,6 +118,33 @@ private func plan(days: Int, minutes: Int = 90) -> OnboardingProfile {
 @Suite("SCRUM-240 · La IA sólo propone sustitutos equivalentes de verdad")
 struct PlanPersonalizationEquivalenceTests {
 
+    /// SCRUM-232: el puntaje sumaba en el orden de un diccionario y cambiaba en el último
+    /// dígito entre cálculos, lo que podía romper un empate. Con este plan pasaba en cada ronda.
+    @Test("Catálogo real: los mismos datos dan exactamente los mismos puntajes y el mismo orden")
+    func realCatalogScoresAreStable() throws {
+        let catalog = try ExerciseCatalogLoader.loadBundled()
+        let block = try TodayPlanBuilder().generate(profile: plan(days: 6), catalog: catalog, planner: TodayPlanBuilder.defaultPlanner()).block
+        let inPlan = Set(block.sessions.flatMap(\.plannedSets).map(\.exerciseID))
+        let targets = catalog.exercises.filter { inPlan.contains($0.id) }
+        let engine = SubstitutionScoringEngine(config: try SubstitutionScoringConfig(rule: SubstitutionScoringDefaults.makeRule()))
+        var first: [ExerciseID: [ScoredSubstitute]] = [:]
+        // El orden de un diccionario depende de su dirección en memoria: retener copias hace
+        // que cada ronda use direcciones nuevas, como en la app.
+        var retained: [[MuscleGroup: Double]] = []
+
+        for _ in 0..<30 {
+            for target in targets {
+                let ranked = try engine.substitutes(for: SubstitutionRequest(
+                    target: target, candidates: catalog.exercises, sessionExerciseIDs: inPlan, asOf: now
+                )).ranked
+                #expect((first[target.id] ?? ranked) == ranked, "Cambió el resultado de \(target.canonicalName)")
+                first[target.id] = ranked
+                retained.append(target.localFatigue.mapValues(\.normalized))
+            }
+        }
+        #expect(!retained.isEmpty)
+    }
+
     @Test("Otro patrón: se rechaza, el plan conserva el remo y la bitácora guarda el motivo")
     func differentPatternIsRejected() throws {
         let back = try Back()

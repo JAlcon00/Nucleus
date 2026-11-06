@@ -28,6 +28,8 @@ struct PlanView: View {
     var onRedoQuestionnaire: () -> Void = {}
     /// "Por qué tu plan es así" (SCRUM-205).
     var rationale: PlanPersonalizationRecord?
+    /// Lo que el gimnasio activo cambió esta semana (SCRUM-236).
+    var gymNotes: [String] = []
 
     var body: some View {
         NavigationStack {
@@ -46,6 +48,18 @@ struct PlanView: View {
                             onStart: onStart,
                             rationale: rationale
                         )
+                        .safeAreaInset(edge: .top) {
+                            if !gymNotes.isEmpty {
+                                Text(gymNotes.joined(separator: " "))
+                                    .font(.footnote)
+                                    .foregroundStyle(Color.textSecondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(DSpace.m)
+                                    .cardSurface(cornerRadius: DRadius.medium)
+                                    .padding(.horizontal, DSpace.m)
+                                    .accessibilityIdentifier("plan.gymNote")
+                            }
+                        }
                     } else {
                         emptyState
                     }

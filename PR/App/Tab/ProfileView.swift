@@ -25,6 +25,16 @@ struct ProfileView: View {
     var onRedoQuestionnaire: () -> Void = {}
     /// Perfil › Restricciones (SCRUM-36): ver, agregar, editar y resolver. `nil` en previews.
     var restrictionScreen: RestrictionScreenModel?
+    /// Perfil › Gimnasio (SCRUM-235). `nil` en previews.
+    var gyms: GymCoordinator?
+    /// Nombre visible de un ejercicio (Perfil › Gimnasio).
+    var exerciseName: (ExerciseID) -> String = { _ in "" }
+    /// Intento: quitar una marca "no hay" (SCRUM-236).
+    var onRemoveMissing: (ExerciseID) -> Void = { _ in }
+    /// ¿Se puede cambiar de gimnasio? (SCRUM-238)
+    var canSelectGym = true
+    /// Intento: elegir el gimnasio activo.
+    var onSelectGym: (GymID) -> Void = { _ in }
     /// ¿La app ofrece la IA? Con la flag apagada no hay sección de la IA (SCRUM-39).
     var showsAI = true
     /// ¿La IA puede usar los datos del perfil? (SCRUM-202)
@@ -53,6 +63,22 @@ struct ProfileView: View {
                 }
 
                 Section("Mi entrenamiento") {
+                    if let gyms {
+                        NavigationLink {
+                            GymView(
+                                gyms: gyms, exerciseName: exerciseName, onRemoveMissing: onRemoveMissing,
+                                canSelect: canSelectGym, onSelect: onSelectGym
+                            )
+                        } label: {
+                            Label {
+                                LabeledContent("Gimnasio", value: gyms.activeGym?.name ?? "")
+                            } icon: {
+                                Image(systemName: "dumbbell")
+                            }
+                        }
+                        .accessibilityIdentifier("profile.gym")
+                    }
+
                     if let restrictionScreen {
                         NavigationLink {
                             RestrictionManagementView(model: restrictionScreen)

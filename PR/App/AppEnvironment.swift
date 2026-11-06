@@ -92,6 +92,9 @@ public final class AppEnvironment {
     /// Consentimiento para compartir el perfil con la IA (SCRUM-202).
     public let aiConsent: AIConsentCoordinator
 
+    /// El gimnasio del usuario (SCRUM-235). Sin pasos nuevos: se crea solo al entrar.
+    public let gym: GymCoordinator
+
     /// "Usar datos de Salud" en "Sobre ti" (SCRUM-206). Sólo lectura; en pruebas de UI no
     /// se ofrece (no hay diálogo de permisos que tocar).
     public let healthPrefill: HealthPrefillCoordinator
@@ -131,6 +134,7 @@ public final class AppEnvironment {
     public func signOut() {
         activeWorkout = nil
         healthPrefill.reset()
+        gym.reset()
         session.signOut()
     }
 
@@ -196,6 +200,94 @@ public final class AppEnvironment {
     /// Hoy muestra "Continuar" mientras exista y no haya terminado (SCRUM-24).
     public private(set) var activeWorkout: WorkoutSessionCoordinator?
 
+    /// Carga el gimnasio de la cuenta (SCRUM-235). Sin almacén sigue con uno en memoria.
+    public func loadGym() async {
+        var repository: FileGymRepository?
+        do {
+            repository = try persistence?.gymRepository()
+        } catch {
+            basePersistence?.log.saveFailed(.gyms)
+        }
+        await gym.load(repository: repository)
+        applyGym()
+    }
+
+    /// SCRUM-236: lo que no hay en el gimnasio activo se aplica a Hoy y a Semana. La sesión en
+    /// curso sigue con su plantilla.
+    public func applyGym() {
+        todayPlan.applyGym(gym.activeGym)
+        refreshTodayState()
+    }
+
+    /// "No hay esta máquina aquí": se guarda antes de cambiar la pantalla. Si no se pudo
+    /// guardar, hoy se sigue con el sustituto, el gimnasio no queda marcado y `gym.notice`
+    /// avisa. Sin sustituto, hoy se salta.
+    public func markMissing(replacement: ExerciseID?) async {
+        guard let workout = activeWorkout, let exercise = workout.currentExerciseID else { return }
+        await gym.markMissing(exercise, replacement: replacement)
+        if let replacement {
+            _ = try? workout.substituteCurrentExercise(with: replacement, reason: .notAvailable)
+        } else {
+            _ = try? workout.skipCurrentExercise()
+        }
+        applyGym()
+    }
+
+    /// Perfil › Gimnasio: quita la marca. La sesión activa no cambia.
+    public func removeMissing(_ exercise: ExerciseID) async {
+        await gym.removeMissing(exercise)
+        applyGym()
+    }
+
+    /// SCRUM-238: con un entrenamiento en curso no se cambia de gimnasio.
+    public var canChangeGym: Bool {
+        guard let activeWorkout else { return true }
+        if case .finished = activeWorkout.phase { return true }
+        return false
+    }
+
+    /// SCRUM-238: elige el gimnasio activo; Hoy y Semana se arman con lo suyo.
+    public func selectGym(_ id: GymID) async {
+        guard await gym.select(id, duringWorkout: !canChangeGym) else { return }
+        applyGym()
+    }
+
+    /// SCRUM-238: "En: Oficina" en Hoy; con un solo gimnasio no se muestra.
+    public var activeGymLabel: String? {
+        gym.gyms.count > 1 ? gym.activeGym?.name : nil
+    }
+
+    /// SCRUM-236: la nota de Hoy sobre lo que el gimnasio cambió; `nil` si nada.
+    public var gymNote: String? {
+        guard let today = todayPlan.plan?.todayTemplate, let name = gym.activeGym?.name,
+              let notes = todayPlan.plan?.gymNotes[today.id], !notes.isEmpty else { return nil }
+        return Self.gymSentences(notes, gym: name, exerciseName: { exerciseNames[$0] ?? "" }).joined(separator: " ")
+    }
+
+    /// Lo que el gimnasio cambió en toda la semana, sin repetir (SCRUM-236).
+    public var gymWeekNotes: [String] {
+        guard let name = gym.activeGym?.name, let plan = todayPlan.plan else { return [] }
+        let notes = plan.sessions.flatMap { plan.gymNotes[$0.id] ?? [] }
+        var seen: Set<String> = []
+        return Self.gymSentences(notes, gym: name, exerciseName: { exerciseNames[$0] ?? "" }).filter { seen.insert($0).inserted }
+    }
+
+    private static func gymSentences(_ notes: [GymAdaptationNote], gym: String, exerciseName: (ExerciseID) -> String) -> [String] {
+        notes.map { note in
+            switch note {
+            case .replaced(let original, let replacement):
+                return String(localized: "En \(gym) no hay \(exerciseName(original)): haces \(exerciseName(replacement)).")
+            case .omitted(let original):
+                return String(localized: "\(exerciseName(original)) no va hoy: no hay un sustituto equivalente y seguro en este gimnasio.")
+            }
+        }
+    }
+
+    /// Nombre visible de un ejercicio (lista de Perfil › Gimnasio).
+    public func exerciseName(_ id: ExerciseID) -> String {
+        exerciseNames[id] ?? ""
+    }
+
     /// Al abrir: drena la cola de pendientes y retoma el entrenamiento que quedó abierto
     /// ("Tienes un entrenamiento en curso"). Si hay dos activas por error retoma la más
     /// reciente y abandona la otra sin tocar sus series.
@@ -208,6 +300,9 @@ public final class AppEnvironment {
                 exerciseNames: exerciseNames,
                 dropsetAdvice: dropsetAdvice,
                 exerciseMuscles: exerciseMuscles,
+                catalog: catalog.exercises,
+                restrictions: completedProfile?.restrictions ?? [],
+                gymID: gym.activeGym?.id,
                 celebrationPresenter: PRCelebrationPresenter(locale: Self.presentationLocale),
                 clock: clock
             ) {
@@ -308,6 +403,9 @@ public final class AppEnvironment {
                     exerciseNames: exerciseNames,
                     dropsetAdvice: dropsetAdvice,
                     exerciseMuscles: exerciseMuscles,
+                    catalog: catalog.exercises,
+                    restrictions: completedProfile?.restrictions ?? [],
+                    gymID: gym.activeGym?.id,
                     celebrationPresenter: presenter,
                     clock: clock
                 )
@@ -315,13 +413,15 @@ public final class AppEnvironment {
                 persistence.log.saveFailed(.workouts)
                 coordinator = WorkoutSessionCoordinator(
                     template: template, exerciseNames: exerciseNames, dropsetAdvice: dropsetAdvice,
-                    exerciseMuscles: exerciseMuscles, celebrationPresenter: presenter, clock: clock
+                    exerciseMuscles: exerciseMuscles, catalog: catalog.exercises,
+                    restrictions: completedProfile?.restrictions ?? [], celebrationPresenter: presenter, clock: clock
                 )
             }
         } else {
             coordinator = WorkoutSessionCoordinator(
                 template: template, exerciseNames: exerciseNames, dropsetAdvice: dropsetAdvice,
-                exerciseMuscles: exerciseMuscles, celebrationPresenter: presenter, clock: clock
+                exerciseMuscles: exerciseMuscles, catalog: catalog.exercises,
+                    restrictions: completedProfile?.restrictions ?? [], celebrationPresenter: presenter, clock: clock
             )
         }
         activeWorkout = coordinator
@@ -417,6 +517,7 @@ public final class AppEnvironment {
             clock: { fixedDate ?? Date() }
         )
         self.aiConsent = aiConsent
+        self.gym = GymCoordinator(defaultName: String(localized: "Mi gimnasio"), clock: { fixedDate ?? Date() })
         var checkInStore: SleepCheckInStore?
         if let persistence = self.basePersistence {
             do {

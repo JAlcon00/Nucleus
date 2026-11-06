@@ -145,6 +145,27 @@ public struct ReorderBeforeReplaceController: Sendable {
         return substitute(input.ordered[blockedIndex], input: input, reasons: rejected)
     }
 
+    /// SCRUM-233: sobre lo que queda de la sesión, el primer ejercicio que se puede adelantar
+    /// a `blocked` sin subir la interferencia por fatiga. La ocupación es del ejercicio, no del
+    /// tipo de equipo (DE-1): `excluded` son los que tampoco se pueden hacer ahora. `nil` si
+    /// ninguno es seguro.
+    public func advanceCandidate(
+        blocked: Exercise,
+        remaining: [Exercise],
+        excluded: Set<ExerciseID>,
+        config: FatigueInterferenceConfig
+    ) throws -> Exercise? {
+        let engine = FatigueInterferenceEngine()
+        let base = try engine.assess(input: [blocked] + remaining, config: config).totalPenalty
+        for candidate in remaining where !excluded.contains(candidate.id) {
+            let plan = [candidate, blocked] + remaining.filter { $0.id != candidate.id }
+            if try engine.assess(input: plan, config: config).totalPenalty <= base {
+                return candidate
+            }
+        }
+        return nil
+    }
+
     // MARK: - Helpers
 
     private func firstBlockedIndex(

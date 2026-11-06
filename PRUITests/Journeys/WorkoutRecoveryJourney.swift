@@ -48,6 +48,14 @@ final class WorkoutRecoveryJourney: PRUITestCase {
             let reopened = launch(storeID: forceQuitStore)
             XCTAssertTrue(element(reopened, "today.activeBanner").appears(within: 20),
                           "Debe decir 'Tienes un entrenamiento en curso'")
+
+            // SCRUM-238: con el entrenamiento en curso no se cambia de gimnasio y dice por qué.
+            openTab(reopened, "Perfil")
+            tap(reopened, "profile.gym")
+            XCTAssertTrue(element(reopened, "gym.locked").appears(within: 5), "Dice por qué")
+            XCTAssertFalse(element(reopened, "gym.row.0").isEnabled, "La opción está desactivada")
+            openTab(reopened, "Hoy")
+
             tap(reopened, "today.resume")
             let resumed = reopened.descendants(matching: .any).matching(
                 NSPredicate(format: "label CONTAINS 'Serie 4 de'")
@@ -103,14 +111,72 @@ final class WorkoutRecoveryJourney: PRUITestCase {
                           "El ejercicio que dolió queda saltado y se puede retomar")
         }
 
-        // SCRUM-212: en el entrenamiento se deja un ejercicio para después, se salta (con
-        // confirmación), se retoma, y al terminar el resumen dice qué se saltó.
+        // SCRUM-237: la segunda serie aparece precargada con el peso de la primera.
+        step("La segunda serie dice que trae tu último peso (SCRUM-237)") {
+            let app = launchWithPlan()
+            tap(app, "today.start")
+            tap(app, "workout.completeSet")
+            let skip = app.buttons["Saltar"].firstMatch
+            if skip.appears(within: 5) { skip.tap() }
+            XCTAssertTrue(element(app, "workout.lastWeight").appears(within: 5), "Precarga el peso de la serie anterior")
+        }
+
+        // SCRUM-234: con todo ocupado se ofrece un sustituto; al elegirlo se sigue con él.
+        step("Máquina ocupada ofrece un sustituto equivalente y se sigue con él (SCRUM-234)") {
+            let app = launchWithPlan()
+            tap(app, "today.start")
+            XCTAssertTrue(element(app, "workout.completeSet").appears(within: 10))
+            var option = element(app, "occupied.option.0")
+            for _ in 0..<12 where !option.exists {
+                tap(app, "workout.occupied")
+                option = element(app, "occupied.option.0")
+                _ = option.appears(within: 2)
+            }
+            XCTAssertTrue(option.exists, "Sin nada que adelantar ofrece un sustituto")
+            option.tap()
+            XCTAssertTrue(element(app, "workout.completeSet").appears(within: 5), "Sigue con el sustituto")
+            tap(app, "workout.completeSet")
+        }
+
+        // SCRUM-236: "No hay esta máquina aquí" se recuerda, Semana lo dice y se puede quitar.
+        step("No hay esta máquina: se recuerda y se quita desde Perfil (SCRUM-236)") {
+            let storeID = newStoreID()
+            let app = launchWithPlan(storeID: storeID)
+            tap(app, "today.start")
+            XCTAssertTrue(element(app, "workout.completeSet").appears(within: 10))
+            let sheet = element(app, "occupied.option.0")
+            for _ in 0..<12 where !sheet.exists {
+                tap(app, "workout.occupied")
+                _ = sheet.appears(within: 2)
+            }
+            let missing = scrollTo(app, "occupied.missing")
+            XCTAssertTrue(missing.appears(within: 5), "La hoja ofrece decir que no hay la máquina")
+            missing.tap()
+            tap(app, "occupied.option.0")
+            XCTAssertTrue(element(app, "workout.completeSet").appears(within: 5), "Sigue con el sustituto")
+
+            app.terminate()
+            let reopened = launch(storeID: storeID)
+            XCTAssertTrue(element(reopened, "today.activeBanner").appears(within: 20))
+            openTab(reopened, "Plan")
+            XCTAssertTrue(element(reopened, "plan.gymNote").appears(within: 10), "La semana dice qué cambió")
+            openTab(reopened, "Perfil")
+            tap(reopened, "profile.gym")
+            tap(reopened, "gym.missing.remove.0")
+            XCTAssertFalse(element(reopened, "gym.missing.0").waitForExistence(timeout: 3), "La marca se quitó")
+        }
+
+        // SCRUM-212 y SCRUM-233: "Máquina ocupada" dice qué sigue, se salta (con confirmación),
+        // se retoma, y al terminar el resumen dice qué se saltó.
         step("Dejar para después, saltar y retomar; el resumen dice qué se saltó (testDeferSkipAndResumeInWorkout)") {
             let app = launchWithPlan()
             tap(app, "today.start")
             XCTAssertTrue(element(app, "workout.completeSet").appears(within: 10))
 
-            tap(app, "workout.defer")
+            tap(app, "workout.occupied")
+            // Sin nada que adelantar pregunta (SCRUM-234): "Esperar" lo manda al final.
+            if element(app, "occupied.wait").appears(within: 3) { tap(app, "occupied.wait") }
+            XCTAssertTrue(element(app, "workout.occupied.notice").appears(within: 5), "Dice dónde quedó el ejercicio")
             XCTAssertTrue(element(app, "workout.completeSet").appears(within: 5), "Sigue con el siguiente ejercicio")
 
             tap(app, "workout.skip")

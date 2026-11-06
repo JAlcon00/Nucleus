@@ -377,6 +377,35 @@ public struct SessionTemplate: Identifiable, Codable, Sendable, Hashable {
 
 // MARK: - WorkoutSessionRecord (lo realizado, promptMaster §6.7)
 
+/// Un cambio de ejercicio durante la sesión, con sus hechos (RD-007, SCRUM-234).
+public struct SessionSubstitution: Codable, Sendable, Hashable {
+    public enum Reason: String, Codable, Sendable, Hashable, CaseIterable {
+        /// La máquina estaba ocupada: es sólo de hoy (RN-005).
+        case occupied
+        /// La máquina no existe en el gimnasio activo (SCRUM-236).
+        case notAvailable
+    }
+
+    public let original: ExerciseID
+    public let replacement: ExerciseID
+    public let reason: Reason
+    public let score: Double
+    public let rule: EvidenceRuleReference
+    public let date: Date
+
+    public init(
+        original: ExerciseID, replacement: ExerciseID, reason: Reason,
+        score: Double, rule: EvidenceRuleReference, date: Date
+    ) {
+        self.original = original
+        self.replacement = replacement
+        self.reason = reason
+        self.score = score
+        self.rule = rule
+        self.date = date
+    }
+}
+
 /// Registro de lo realmente realizado en una sesión. Nunca se muta para
 /// que coincida con el plan; guarda su propio lifecycle y set records.
 public struct WorkoutSessionRecord: Identifiable, Codable, Sendable, Hashable {
@@ -397,8 +426,11 @@ public struct WorkoutSessionRecord: Identifiable, Codable, Sendable, Hashable {
     public var queue: ExerciseQueueState?
     /// Copia de la plantilla con la que empezó (SCRUM-36). Si el plan se regenera a mitad
     /// del entrenamiento (p. ej. al agregar una restricción), la sesión se retoma igual.
-    /// `nil` en sesiones anteriores: se busca por `templateID`.
+    /// `nil` en sesiones anteriores: se busca por `templateID`. Con una sustitución en vivo
+    /// (SCRUM-234) es "lo planeado para hoy, ya adaptado": lo hecho sigue en `sets`.
     public var template: SessionTemplate?
+    /// Cambios de ejercicio de esta sesión (SCRUM-234). Campo opcional (ADR-0003).
+    public var substitutions: [SessionSubstitution]?
 
     public init(
         id: WorkoutID = WorkoutID(),
