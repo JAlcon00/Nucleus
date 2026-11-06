@@ -25,6 +25,8 @@ struct ProfileView: View {
     var onRedoQuestionnaire: () -> Void = {}
     /// Perfil › Restricciones (SCRUM-36): ver, agregar, editar y resolver. `nil` en previews.
     var restrictionScreen: RestrictionScreenModel?
+    /// Perfil › Gimnasio (SCRUM-235). `nil` en previews.
+    var gyms: GymCoordinator?
     /// ¿La app ofrece la IA? Con la flag apagada no hay sección de la IA (SCRUM-39).
     var showsAI = true
     /// ¿La IA puede usar los datos del perfil? (SCRUM-202)
@@ -53,6 +55,19 @@ struct ProfileView: View {
                 }
 
                 Section("Mi entrenamiento") {
+                    if let gyms {
+                        NavigationLink {
+                            GymView(gyms: gyms)
+                        } label: {
+                            Label {
+                                LabeledContent("Gimnasio", value: gyms.activeGym?.name ?? "")
+                            } icon: {
+                                Image(systemName: "dumbbell")
+                            }
+                        }
+                        .accessibilityIdentifier("profile.gym")
+                    }
+
                     if let restrictionScreen {
                         NavigationLink {
                             RestrictionManagementView(model: restrictionScreen)

@@ -92,6 +92,9 @@ public final class AppEnvironment {
     /// Consentimiento para compartir el perfil con la IA (SCRUM-202).
     public let aiConsent: AIConsentCoordinator
 
+    /// El gimnasio del usuario (SCRUM-235). Sin pasos nuevos: se crea solo al entrar.
+    public let gym: GymCoordinator
+
     /// "Usar datos de Salud" en "Sobre ti" (SCRUM-206). Sólo lectura; en pruebas de UI no
     /// se ofrece (no hay diálogo de permisos que tocar).
     public let healthPrefill: HealthPrefillCoordinator
@@ -131,6 +134,7 @@ public final class AppEnvironment {
     public func signOut() {
         activeWorkout = nil
         healthPrefill.reset()
+        gym.reset()
         session.signOut()
     }
 
@@ -195,6 +199,17 @@ public final class AppEnvironment {
     /// Entrenamiento vivo (retomado tras un cierre o empezado ahora). `nil` si no hay ninguno.
     /// Hoy muestra "Continuar" mientras exista y no haya terminado (SCRUM-24).
     public private(set) var activeWorkout: WorkoutSessionCoordinator?
+
+    /// Carga el gimnasio de la cuenta (SCRUM-235). Sin almacén sigue con uno en memoria.
+    public func loadGym() async {
+        var repository: FileGymRepository?
+        do {
+            repository = try persistence?.gymRepository()
+        } catch {
+            basePersistence?.log.saveFailed(.gyms)
+        }
+        await gym.load(repository: repository)
+    }
 
     /// Al abrir: drena la cola de pendientes y retoma el entrenamiento que quedó abierto
     /// ("Tienes un entrenamiento en curso"). Si hay dos activas por error retoma la más
@@ -417,6 +432,7 @@ public final class AppEnvironment {
             clock: { fixedDate ?? Date() }
         )
         self.aiConsent = aiConsent
+        self.gym = GymCoordinator(defaultName: String(localized: "Mi gimnasio"), clock: { fixedDate ?? Date() })
         var checkInStore: SleepCheckInStore?
         if let persistence = self.basePersistence {
             do {

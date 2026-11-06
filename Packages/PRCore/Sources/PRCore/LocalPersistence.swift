@@ -131,8 +131,8 @@ public struct LocalPersistence: Sendable {
         self.userKey = userKey
     }
 
-    /// Colecciones que pertenecen a un usuario (su historial de entrenamientos).
-    private static let userScopedCollections: [PersistenceCollection] = [.workouts, .pendingOperations]
+    /// Colecciones que pertenecen a un usuario (su historial y sus gimnasios).
+    private static let userScopedCollections: [PersistenceCollection] = [.workouts, .pendingOperations, .gyms]
 
     /// Vista de esta persistencia para UN usuario. Primero lleva sus colecciones a su
     /// formato vigente (SCRUM-40). La primera vez que cualquier usuario entra, adopta el
@@ -236,6 +236,11 @@ public struct LocalPersistence: Sendable {
 
     public func workoutRepository() throws -> FileWorkoutRepository {
         FileWorkoutRepository(store: try store(for: .workouts), log: log)
+    }
+
+    /// Gimnasios del usuario (SCRUM-235). Se pide sobre la vista `scoped(toUser:)`.
+    public func gymRepository() throws -> FileGymRepository {
+        FileGymRepository(store: try store(for: .gyms), log: log)
     }
 
     public func pendingOperationQueue() throws -> PendingOperationQueueStore {

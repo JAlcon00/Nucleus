@@ -167,7 +167,12 @@ public final class FileGymRepository: GymRepository, @unchecked Sendable {
     }
 
     public func allGyms() async throws -> [GymProfile] {
-        try JSONBlob.decodeAll(GymProfile.self, from: store, collection: .gyms, log: log).items
+        try await loadAllGyms().items
+    }
+
+    /// Lectura tolerante: lo válido y cuántos registros no se pudieron leer (SCRUM-235).
+    public func loadAllGyms() async throws -> RepositoryReadResult<GymProfile> {
+        try JSONBlob.decodeAll(GymProfile.self, from: store, collection: .gyms, log: log)
     }
 
     public func gym(id: GymID) async throws -> GymProfile? {
@@ -175,8 +180,9 @@ public final class FileGymRepository: GymRepository, @unchecked Sendable {
         return try JSONBlob.decode(GymProfile.self, from: data)
     }
 
+    /// La ocupación es de la sesión y nunca se guarda (RN-005, SCRUM-235).
     public func save(_ gym: GymProfile) async throws {
-        try store.write(key: gym.id.rawValue.persistenceKey, data: JSONBlob.encode(gym))
+        try store.write(key: gym.id.rawValue.persistenceKey, data: JSONBlob.encode(gym.endingSession()))
     }
 
     public func delete(id: GymID) async throws {

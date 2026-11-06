@@ -58,6 +58,26 @@ final class ProfileJourney: PRUITestCase {
             XCTAssertFalse(updated.label.localizedCaseInsensitiveContains("codo"), "Resuelta: el plan ya no la cuida: \(updated.label)")
         }
 
+        // SCRUM-235: "Mi gimnasio" existe sin pasos nuevos y se puede renombrar.
+        step("Perfil muestra Mi gimnasio y se puede renombrar (SCRUM-235)") {
+            let app = launchWithPlan()
+            XCTAssertTrue(element(app, "today.start").appears(within: 15))
+            openTab(app, "Perfil")
+            let row = element(app, "profile.gym")
+            XCTAssertTrue(row.appears(within: 10), "Perfil muestra el gimnasio")
+            XCTAssertTrue(row.label.contains("Mi gimnasio"), "Se llama Mi gimnasio: \(row.label)")
+            tap(app, "profile.gym")
+            tap(app, "gym.rename")
+            let field = app.alerts.textFields.firstMatch
+            XCTAssertTrue(field.appears(within: 5), "Pide el nombre")
+            field.tap()
+            field.typeText("Oficina")
+            app.alerts.buttons["Guardar"].firstMatch.tap()
+            let renamed = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "label CONTAINS 'Oficina' OR value CONTAINS 'Oficina'")).firstMatch
+            XCTAssertTrue(renamed.appears(within: 10), "El nombre nuevo se ve")
+        }
+
         // SCRUM-208: "Cerrar sesión" pide confirmación, vuelve al login y, al entrar con la
         // misma cuenta, el plan sigue ahí (no se borró nada).
         step("Cerrar sesión pide confirmación y la misma cuenta recupera su plan (testSignOutAsksAndKeepsThePlan)") {
@@ -79,6 +99,7 @@ final class ProfileJourney: PRUITestCase {
             let app = launchWithPlan()
             XCTAssertTrue(element(app, "today.start").appears(within: 15))
             openTab(app, "Perfil")
+            XCTAssertTrue(scrollTo(app, "profile.redo").appears(within: 5), "Perfil ofrece rehacer el cuestionario")
             tap(app, "profile.redo")
             let confirm = app.buttons["Sí, rehacer"].firstMatch
             XCTAssertTrue(confirm.appears(within: 5))
@@ -98,7 +119,7 @@ final class ProfileJourney: PRUITestCase {
             tap(app, "weekIntro.done")
             XCTAssertTrue(element(app, "today.start").appears(within: 15))
             openTab(app, "Perfil")
-            XCTAssertTrue(element(app, "profile.redo").appears(within: 10))
+            XCTAssertTrue(scrollTo(app, "profile.redo").appears(within: 10))
             XCTAssertFalse(app.switches["profile.aiConsent"].exists, "Perfil no muestra la IA")
             XCTAssertFalse(element(app, "profile.aiStatus").exists)
         }
