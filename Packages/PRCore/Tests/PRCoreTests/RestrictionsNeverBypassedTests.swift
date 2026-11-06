@@ -122,6 +122,10 @@ struct RestrictionsNeverBypassedTests {
             ))
             let forbidden = verdict.ranked.map(\.exercise).filter { isForbidden($0, by: restrictions) }
             #expect(forbidden.isEmpty, "Sustitutos prohibidos de \(target.canonicalName): \(forbidden.map(\.canonicalName))")
+            // SCRUM-232 (DE-3): mismo músculo no es ejercicio equivalente.
+            let otherMovement = verdict.ranked.map(\.exercise).filter { $0.movementPattern != target.movementPattern }
+            #expect(otherMovement.isEmpty, "Otro patrón en los sustitutos de \(target.canonicalName): \(otherMovement.map(\.canonicalName))")
+            #expect(verdict.ranked.count <= engine.config.maxOptions)
         }
 
         // IA: lo que se le ofrece y lo que se acepta si lo propone.
@@ -152,6 +156,22 @@ struct RestrictionsNeverBypassedTests {
         for exercise in catalog.exercises {
             #expect(IntensityAdvisor.isRestricted(exercise, by: restrictions) == isForbidden(exercise, by: restrictions), "\(exercise.canonicalName)")
         }
+    }
+
+    @Test("SCRUM-232, catálogo real: para el press de banca, el press con mancuernas sí y las aperturas no")
+    func benchPressSubstitutesInTheRealCatalog() throws {
+        let catalog = try ExerciseCatalogLoader.loadBundled()
+        func exercise(_ name: String) throws -> Exercise {
+            try #require(catalog.exercises.first { $0.canonicalName == name || $0.aliases.contains(name) })
+        }
+        let bench = try exercise("Barbell Bench Press - Medium Grip")
+        let dumbbellPress = try exercise("Dumbbell Bench Press")
+        let flyes = try exercise("Dumbbell Flyes")
+        let engine = SubstitutionScoringEngine(config: try SubstitutionScoringConfig(rule: SubstitutionScoringDefaults.makeRule()))
+
+        let verdict = try engine.substitutes(for: SubstitutionRequest(target: bench, candidates: [flyes, dumbbellPress]))
+
+        #expect(verdict.ranked.map(\.exercise.id) == [dumbbellPress.id])
     }
 
     @Test("Un músculo sin ejercicio seguro se omite y se explica, aunque otra restricción \"permita\" sus ejercicios")

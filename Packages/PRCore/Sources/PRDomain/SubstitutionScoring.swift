@@ -10,6 +10,9 @@
 //  mismo orden) y las restricciones/safety son un gate obligatorio: un candidato
 //  prohibido por la política jamás se adopta. Determinista y auditable.
 //
+//  SCRUM-232 (DE-3): sólo es equivalente lo que hace el mismo movimiento, es seguro,
+//  está disponible, no está ya en la sesión y llega al puntaje mínimo de la regla v2.
+//
 
 import Foundation
 
@@ -27,14 +30,21 @@ public enum SubstitutionScoringKeys {
     public static let userHistoryConfidence = "userHistoryConfidence" // 0.05
     public static let preferenceMatch = "preferenceMatch"         // 0.04
     public static let equipmentConfidence = "equipmentConfidence" // 0.03
+    /// Puntaje mínimo para ser sustituto equivalente (DE-3).
+    public static let minimumScore = "minimumScore"               // 0.60
+    /// Opciones que se ofrecen como máximo (DE-3).
+    public static let maxOptions = "maxOptions"                   // 3
 
-    public static let allRequired: Set<String> = [
+    /// Los pesos del puntaje: son los que deben sumar 1.00.
+    public static let weights: Set<String> = [
         muscleMatch, movementPatternMatch, trainingRoleMatch, angleMatch,
         fatigueProfileMatch, stabilityMatch, userHistoryConfidence,
         preferenceMatch, equipmentConfidence,
     ]
 
-    /// Pesos por defecto del spec §10.3 (suman 1.00).
+    public static let allRequired: Set<String> = weights.union([minimumScore, maxOptions])
+
+    /// Parámetros por defecto: pesos del spec §10.3 (suman 1.00) y límites de DE-3.
     public static func defaults() -> [String: Double] {
         [
             muscleMatch: 0.30,
@@ -46,6 +56,8 @@ public enum SubstitutionScoringKeys {
             userHistoryConfidence: 0.05,
             preferenceMatch: 0.04,
             equipmentConfidence: 0.03,
+            minimumScore: 0.60,
+            maxOptions: 3,
         ]
     }
 }
@@ -54,10 +66,11 @@ public enum SubstitutionScoringKeys {
 public enum SubstitutionScoringDefaults {
     public static let ruleID = EvidenceRuleID(rawValue: "safety.substitutionScoring")
 
-    public static func makeRule(version: Int = 1) throws -> EvidenceRule {
+    /// v2 (SCRUM-232, DE-3): agrega `minimumScore` y `maxOptions`.
+    public static func makeRule(version: Int = 2) throws -> EvidenceRule {
         let reference = try EvidenceReference(
             title: "Substitution ranking weights (promptMaster §10.3)",
-            source: "Plan §9 / promptMaster §10.3"
+            source: "Plan §9 / promptMaster §10.3 / SCRUM-231 DE-3"
         )
         return try EvidenceRule(
             id: ruleID,
@@ -78,6 +91,8 @@ public enum SubstitutionScoringError: Error, Equatable, Sendable {
     case missingConfig(keys: [String])
     case wrongCategory
     case weightsDoNotSumToOne(Double)
+    /// `minimumScore` fuera de 0...1 o `maxOptions` que no es un entero positivo.
+    case invalidLimit(key: String)
 }
 
 /// Configuración versionada de los pesos del scoring (§10.3).
@@ -93,6 +108,8 @@ public struct SubstitutionScoringConfig: Sendable {
     public var userHistoryConfidence: Double { weight(SubstitutionScoringKeys.userHistoryConfidence) }
     public var preferenceMatch: Double { weight(SubstitutionScoringKeys.preferenceMatch) }
     public var equipmentConfidence: Double { weight(SubstitutionScoringKeys.equipmentConfidence) }
+    public var minimumScore: Double { weight(SubstitutionScoringKeys.minimumScore) }
+    public var maxOptions: Int { Int(weight(SubstitutionScoringKeys.maxOptions)) }
 
     public init(rule: EvidenceRule, requireUnityWeights: Bool = true) throws {
         guard rule.category == .safety else {
@@ -103,13 +120,21 @@ public struct SubstitutionScoringConfig: Sendable {
             throw SubstitutionScoringError.missingConfig(keys: Array(missing).sorted())
         }
         if requireUnityWeights {
-            let total = SubstitutionScoringKeys.allRequired.reduce(0.0) { sum, key in
+            let total = SubstitutionScoringKeys.weights.reduce(0.0) { sum, key in
                 sum + (rule.parameters[key] ?? 0)
             }
             // Tolerancia razonable a redondeo, pero exige que reflejen el modelo.
             guard abs(total - 1.0) <= 0.001 else {
                 throw SubstitutionScoringError.weightsDoNotSumToOne(total)
             }
+        }
+        let minimum = rule.parameters[SubstitutionScoringKeys.minimumScore] ?? 0
+        guard (0...1).contains(minimum) else {
+            throw SubstitutionScoringError.invalidLimit(key: SubstitutionScoringKeys.minimumScore)
+        }
+        let options = rule.parameters[SubstitutionScoringKeys.maxOptions] ?? 0
+        guard options >= 1, options == options.rounded() else {
+            throw SubstitutionScoringError.invalidLimit(key: SubstitutionScoringKeys.maxOptions)
         }
         self.rule = rule
     }
@@ -153,6 +178,11 @@ public struct SubstitutionRequest: Sendable {
     public let userSignal: SubstitutionUserSignal
     /// Perfil del gym para confianza de equipamiento (opcional).
     public let gymProfile: GymProfile?
+    /// Ejercicios ocupados hoy o marcados "no hay" en el gimnasio activo. Es por ejercicio,
+    /// no por tipo de equipo (DE-1): `gymProfile` sólo matiza el puntaje.
+    public let unavailableExerciseIDs: Set<ExerciseID>
+    /// Ejercicios que ya están en la sesión del día.
+    public let sessionExerciseIDs: Set<ExerciseID>
     /// Restricciones activas para el safety gate (opcional; si vacío no filtra).
     public let activeRestrictions: [TrainingRestriction]
     /// Fecha respecto a la que refrescar restricciones.
@@ -168,6 +198,8 @@ public struct SubstitutionRequest: Sendable {
         candidates: [Exercise],
         userSignal: SubstitutionUserSignal = SubstitutionUserSignal(),
         gymProfile: GymProfile? = nil,
+        unavailableExerciseIDs: Set<ExerciseID> = [],
+        sessionExerciseIDs: Set<ExerciseID> = [],
         activeRestrictions: [TrainingRestriction] = [],
         asOf: Date = Date(),
         restrictionPolicyConfig: RestrictionPolicyConfig? = nil,
@@ -178,6 +210,8 @@ public struct SubstitutionRequest: Sendable {
         self.candidates = candidates
         self.userSignal = userSignal
         self.gymProfile = gymProfile
+        self.unavailableExerciseIDs = unavailableExerciseIDs
+        self.sessionExerciseIDs = sessionExerciseIDs
         self.activeRestrictions = activeRestrictions
         self.asOf = asOf
         self.restrictionPolicyConfig = restrictionPolicyConfig
@@ -207,27 +241,42 @@ public struct ScoredSubstitute: Identifiable, Equatable, Sendable {
     public let exercise: Exercise
     public let totalScore: Double
     public let components: [ScoreComponent]
+    /// Regla y versión que produjeron el puntaje (RD-007).
+    public let ruleReference: EvidenceRuleReference
 
     public var id: ExerciseID { exercise.id }
 
-    public init(exercise: Exercise, totalScore: Double, components: [ScoreComponent]) {
+    public init(exercise: Exercise, totalScore: Double, components: [ScoreComponent], ruleReference: EvidenceRuleReference) {
         self.exercise = exercise
         self.totalScore = totalScore
         self.components = components
+        self.ruleReference = ruleReference
     }
+}
+
+/// Por qué no hay sustituto equivalente: la etapa de la regla que dejó la lista vacía.
+public enum NoEquivalentReason: String, Sendable, CaseIterable {
+    /// Ninguna candidata hace el mismo movimiento, o las que lo hacen ya están en la sesión.
+    case noCandidates
+    /// Una restricción prohíbe todas las que hacen el mismo movimiento.
+    case allForbidden
+    /// Las permitidas están ocupadas o no las hay en el gimnasio activo.
+    case allUnavailable
+    /// Las disponibles quedan bajo el puntaje mínimo de la regla.
+    case allBelowMinimum
 }
 
 /// Veredicto de la sustitución (PR-0904 AC: "devuelve no safe substitute si corresponde").
 public enum SubstitutionVerdict: Equatable, Sendable {
-    /// Sustitutos seguros rankeados (mejor primero). Vacío si no hay candidatas seguras.
+    /// Sustitutos equivalentes rankeados (mejor primero), `maxOptions` como máximo.
     case safe([ScoredSubstitute])
-    /// No existe sustituto seguro (ninguna candidata pasó el gate o no hay candidatas).
-    case noSafeSubstitute([String])
+    /// Sin sustituto equivalente, con la razón.
+    case noEquivalent(NoEquivalentReason)
 
     public var ranked: [ScoredSubstitute] {
         switch self {
         case .safe(let list): return list
-        case .noSafeSubstitute: return []
+        case .noEquivalent: return []
         }
     }
 }
@@ -236,13 +285,18 @@ public enum SubstitutionVerdict: Equatable, Sendable {
 
 /// Motor determinista de scoring de sustitución (PR-0904).
 ///
-/// Flujo:
-/// 1. El **safety gate** (`RestrictionPolicyEngine`) filtra candidatas: un sustituto
+/// Flujo (DE-3, SCRUM-232: mismo músculo no es ejercicio equivalente):
+/// 1. **Mismo movimiento:** mismo patrón, al menos un músculo principal en común y misma
+///    clase articular; ni el objetivo ni lo que ya está en la sesión.
+/// 2. El **safety gate** (`RestrictionPolicyEngine`) filtra candidatas: un sustituto
 ///    prohibido por la política NUNCA se adopta.
-/// 2. Se puntúa cada candidata superviviente por los componentes del §10.3 con los
-///    pesos de configuración (regla versionada).
-/// 3. Ranking reproducible: mayor score primero; empate → nombre canónico.
+/// 3. **Disponibles:** ni ocupadas hoy ni marcadas "no hay" en el gimnasio activo.
+/// 4. Se puntúa cada candidata superviviente por los componentes del §10.3 con los
+///    pesos de configuración y se quedan las que llegan a `minimumScore`.
+/// 5. Ranking reproducible, hasta `maxOptions`: mayor score primero; empate → nombre
+///    canónico y, con el mismo nombre, ID.
 ///
+/// Si una etapa deja la lista vacía, el veredicto dice cuál (`NoEquivalentReason`).
 /// Mismos inputs ⇒ mismo orden (determinista, sin dependencias de tiempo/azar).
 public struct SubstitutionScoringEngine: Sendable {
     public let config: SubstitutionScoringConfig
@@ -255,34 +309,52 @@ public struct SubstitutionScoringEngine: Sendable {
     public func substitutes(for request: SubstitutionRequest) throws -> SubstitutionVerdict {
         let reference = try config.reference()
 
-        // 1. Candidatas que superan el gate de restricciones/safety.
-        let safe = try safeCandidates(from: request)
-
-        // 2. Sin candidatas seguras → no hay sustituto seguro.
-        guard !safe.isEmpty else {
-            let reasons = request.activeRestrictions.isEmpty
-                ? ["no candidate exercises to substitute"]
-                : ["all candidates are forbidden by the restriction policy"]
-            return .noSafeSubstitute(reasons)
+        // 1. Mismo movimiento.
+        let equivalent = request.candidates.filter { candidate in
+            candidate.id != request.target.id
+                && !request.sessionExerciseIDs.contains(candidate.id)
+                && isSameMovement(candidate, as: request.target)
         }
+        guard !equivalent.isEmpty else { return .noEquivalent(.noCandidates) }
 
-        // 3. Rankear.
-        let scored: [ScoredSubstitute] = try safe.map { candidate in
-            try score(candidate, request: request)
-        }.sorted { lhs, rhs in
+        // 2. Restricciones.
+        let safe = try safeCandidates(from: equivalent, request: request)
+        guard !safe.isEmpty else { return .noEquivalent(.allForbidden) }
+
+        // 3. Disponibilidad en el gimnasio activo.
+        let available = safe.filter { !request.unavailableExerciseIDs.contains($0.id) }
+        guard !available.isEmpty else { return .noEquivalent(.allUnavailable) }
+
+        // 4. Puntaje mínimo.
+        let scored = try available.map { candidate in
+            try score(candidate, request: request, reference: reference)
+        }.filter { $0.totalScore >= config.minimumScore }
+        guard !scored.isEmpty else { return .noEquivalent(.allBelowMinimum) }
+
+        // 5. Rankear.
+        let ranked = scored.sorted { lhs, rhs in
             if lhs.totalScore != rhs.totalScore { return lhs.totalScore > rhs.totalScore }
-            return lhs.exercise.canonicalName.localizedStandardCompare(rhs.exercise.canonicalName) == .orderedAscending
+            if lhs.exercise.canonicalName != rhs.exercise.canonicalName {
+                return lhs.exercise.canonicalName < rhs.exercise.canonicalName
+            }
+            return lhs.exercise.id.rawValue.uuidString < rhs.exercise.id.rawValue.uuidString
         }
+        return .safe(Array(ranked.prefix(config.maxOptions)))
+    }
 
-        return .safe(scored)
+    private func isSameMovement(_ candidate: Exercise, as target: Exercise) -> Bool {
+        let targetMuscles = Set(target.primaryMuscles.map(\.muscleGroupID))
+        return candidate.movementPattern == target.movementPattern
+            && candidate.jointClass == target.jointClass
+            && !targetMuscles.isDisjoint(with: candidate.primaryMuscles.map(\.muscleGroupID))
     }
 
     // MARK: - Safety gate
 
-    private func safeCandidates(from request: SubstitutionRequest) throws -> [Exercise] {
+    private func safeCandidates(from candidates: [Exercise], request: SubstitutionRequest) throws -> [Exercise] {
         guard !request.activeRestrictions.isEmpty else {
-            // Sin restricciones declaradas no hay gate; se respeta la disponibilidad básica.
-            return request.candidates
+            // Sin restricciones declaradas no hay gate.
+            return candidates
         }
         let policyConfig: RestrictionPolicyConfig
         if let injected = request.restrictionPolicyConfig {
@@ -294,7 +366,7 @@ public struct SubstitutionScoringEngine: Sendable {
         }
         let engine = try RestrictionPolicyEngine(config: policyConfig)
         return try engine.safeSubstitutes(
-            among: request.candidates,
+            among: candidates,
             restrictions: request.activeRestrictions,
             asOf: request.asOf
         )
@@ -302,7 +374,9 @@ public struct SubstitutionScoringEngine: Sendable {
 
     // MARK: - Scoring
 
-    private func score(_ candidate: Exercise, request: SubstitutionRequest) throws -> ScoredSubstitute {
+    private func score(
+        _ candidate: Exercise, request: SubstitutionRequest, reference: EvidenceRuleReference
+    ) throws -> ScoredSubstitute {
         var components: [ScoreComponent] = []
         append(SubstitutionScoringKeys.muscleMatch, match: muscleMatch(request.target, candidate), weight: config.muscleMatch, into: &components)
         append(SubstitutionScoringKeys.movementPatternMatch, match: movementPatternMatch(request.target, candidate), weight: config.movementPatternMatch, into: &components)
@@ -315,7 +389,7 @@ public struct SubstitutionScoringEngine: Sendable {
         append(SubstitutionScoringKeys.equipmentConfidence, match: equipmentConfidence(request.gymProfile, candidate), weight: config.equipmentConfidence, into: &components)
 
         let total = components.reduce(0.0) { $0 + $1.contribution }
-        return ScoredSubstitute(exercise: candidate, totalScore: total, components: components)
+        return ScoredSubstitute(exercise: candidate, totalScore: total, components: components, ruleReference: reference)
     }
 
     private func append(_ key: String, match: Double, weight: Double, into components: inout [ScoreComponent]) {
