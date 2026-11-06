@@ -78,6 +78,26 @@ public struct ActiveWorkoutSetUI: Equatable, Sendable {
     }
 }
 
+/// Dos series hechas para la misma ranura, una en cada dispositivo (SCRUM-259).
+public struct SetConflictUI: Identifiable, Equatable, Sendable {
+    public let id: SetRecordID
+    public let exerciseName: String
+    /// Número de serie dentro del ejercicio.
+    public let setNumber: Int
+    /// La que cuenta hoy: la más reciente.
+    public let current: SetRecord
+    /// La que está guardada aparte.
+    public let other: SetRecord
+
+    public init(id: SetRecordID, exerciseName: String, setNumber: Int, current: SetRecord, other: SetRecord) {
+        self.id = id
+        self.exerciseName = exerciseName
+        self.setNumber = setNumber
+        self.current = current
+        self.other = other
+    }
+}
+
 /// Estado observable que expone la pantalla de entrenamiento activo (WORKOUT MODE).
 public enum WorkoutSessionPhase: Equatable, Sendable {
     case idle
@@ -666,6 +686,65 @@ extension WorkoutSessionCoordinator {
         }
         publishActivePhase()
         return true
+    }
+
+    /// Aplica un comando del reloj (SCRUM-259). Repetido, viejo o sobre una sesión terminada no
+    /// cambia nada. La hora es la del reloj: terminar sin conexión conserva la hora real.
+    @discardableResult
+    public func applyRemoteCommand(_ command: WatchSessionCommand) -> Bool {
+        guard let session = controller.current?.session, session.id == command.sessionID,
+              !(session.appliedCommandIDs ?? []).contains(command.id) else { return false }
+        let applies = SessionCommandPolicy.shouldApply(command, to: session)
+        controller.replaceSession(SessionCommandPolicy.recording(command, in: session), at: clock())
+        guard applies else {
+            persistLive()
+            return true
+        }
+        do {
+            switch command.kind {
+            case .pause: _ = try pause(now: command.issuedAt)
+            case .resume: _ = try resume(now: command.issuedAt)
+            case .finish:
+                if session.sets.isEmpty {
+                    try abandon(now: command.issuedAt)
+                } else {
+                    try complete(now: command.issuedAt)
+                }
+            }
+        } catch {
+            // Pausar lo pausado no aplica: el comando igual queda confirmado.
+            persistLive()
+        }
+        return true
+    }
+
+    /// Las series en conflicto, para que la persona elija en el resumen (DG-3).
+    public var setConflicts: [SetConflictUI] {
+        guard let session = controller.current?.session else { return [] }
+        let slots = SessionSetMerger.slots(of: session.sets)
+        return (session.setConflicts ?? []).compactMap { conflict in
+            guard let current = session.sets.first(where: { slots[$0.id] == conflict.slot }) else { return nil }
+            return SetConflictUI(
+                id: conflict.set.id,
+                exerciseName: name(of: conflict.set.exerciseID),
+                setNumber: conflict.slot.slotIndex,
+                current: current,
+                other: conflict.set
+            )
+        }
+    }
+
+    /// Resuelve un conflicto por decisión de la persona. Guarda y rehace el resumen.
+    public func resolveSetConflict(_ id: SetRecordID, choice: SetConflictChoice) {
+        guard let session = controller.current?.session else { return }
+        let updated = SessionSetConflictResolver.resolving(id, choice: choice, in: session)
+        guard updated != session else { return }
+        controller.replaceSession(updated, at: clock())
+        persistLive()
+        guard finalSummary != nil else { return }
+        let summary = summaryBuilder.summarize(updated, now: clock(), baselines: recordBaselines)
+        finalSummary = summary
+        phase = .finished(summary)
     }
 
     // MARK: - SCRUM-32: reportar dolor

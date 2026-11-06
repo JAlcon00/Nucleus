@@ -61,7 +61,7 @@ private final class Rig {
 
     /// Entrega al reloj lo último que publicó el iPhone.
     func sync() async {
-        for _ in 0..<20 { await Task.yield() }
+        await bridge.flush()
         if let latest = link.publishedSnapshots.last { await watch.receive(latest) }
     }
 

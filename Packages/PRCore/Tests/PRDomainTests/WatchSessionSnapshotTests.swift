@@ -49,7 +49,7 @@ private struct Fixture {
         template custom: SessionTemplate? = nil,
         draft: (@Sendable (PlannedSet) -> SetCompletionDraft)? = nil
     ) -> WatchSessionSnapshot {
-        var session = WorkoutSessionRecord(id: sessionID, lifecycle: lifecycle, sets: sets)
+        var session = WorkoutSessionRecord(id: sessionID, startedAt: Date(timeIntervalSince1970: 1_000), lifecycle: lifecycle, sets: sets)
         session.queue = queue
         return WatchSessionSnapshotBuilder.snapshot(WatchSessionSnapshotInput(
             session: session, template: custom ?? template, revision: 7, exerciseName: names,

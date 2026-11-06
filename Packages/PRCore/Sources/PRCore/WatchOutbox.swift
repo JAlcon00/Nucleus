@@ -28,6 +28,10 @@ public struct WatchLocalState: Codable, Sendable, Equatable {
     public var lastCompletedAt: Date?
     /// La última serie hecha aquí: sobre ella se reporta dolor (SCRUM-260).
     public var lastSet: SetRecord?
+    /// Lo que se pidió aquí y el iPhone aún no confirma (SCRUM-259). Manda sobre lo recibido.
+    public var localStage: WatchSessionStage?
+    /// Hora en que se terminó aquí.
+    public var finishedAt: Date?
 
     public init(
         snapshot: WatchSessionSnapshot? = nil,
@@ -35,7 +39,9 @@ public struct WatchLocalState: Codable, Sendable, Equatable {
         outbox: [WatchMessage] = [],
         restEndsAt: Date? = nil,
         lastCompletedAt: Date? = nil,
-        lastSet: SetRecord? = nil
+        lastSet: SetRecord? = nil,
+        localStage: WatchSessionStage? = nil,
+        finishedAt: Date? = nil
     ) {
         self.snapshot = snapshot
         self.done = done
@@ -43,9 +49,14 @@ public struct WatchLocalState: Codable, Sendable, Equatable {
         self.restEndsAt = restEndsAt
         self.lastCompletedAt = lastCompletedAt
         self.lastSet = lastSet
+        self.localStage = localStage
+        self.finishedAt = finishedAt
     }
 
     public static let empty = WatchLocalState()
+
+    /// En qué va la sesión: lo pedido aquí manda hasta que el iPhone lo confirme.
+    public var stage: WatchSessionStage? { localStage ?? snapshot?.stage }
 
     /// Lo que falta confirmar.
     public var pendingCount: Int { outbox.count }
@@ -131,11 +142,35 @@ public enum WatchOutbox {
         return (next, message)
     }
 
+    /// El estado con un comando pedido en el reloj. Funciona sin conexión.
+    public static func commanding(
+        _ kind: WatchSessionCommandKind,
+        at now: Date,
+        in state: WatchLocalState
+    ) throws -> (state: WatchLocalState, message: WatchMessage) {
+        guard let snapshot = state.snapshot else { throw WatchSessionError.noSession }
+        let message = WatchMessage.command(WatchSessionCommand(sessionID: snapshot.sessionID, kind: kind, issuedAt: now))
+        var next = state
+        next.outbox.append(message)
+        switch kind {
+        case .pause:
+            next.localStage = .paused
+        case .resume:
+            next.localStage = .active
+        case .finish:
+            next.localStage = .finished
+            next.finishedAt = now
+            next.restEndsAt = nil
+        }
+        return (next, message)
+    }
+
     /// El estado tras recibir uno del iPhone. Uno viejo no reemplaza a uno nuevo. Lo confirmado
     /// sale del buzón, y las series locales siguen mandando sobre qué toca.
     public static func receiving(_ snapshot: WatchSessionSnapshot, in state: WatchLocalState) -> WatchLocalState {
         var next = state
         next.outbox = pruned(state.outbox, confirmedBy: snapshot)
+        if !hasPendingCommand(next.outbox) { next.localStage = nil }
         guard let current = state.snapshot, current.sessionID == snapshot.sessionID else {
             // Una sesión terminada de antes sólo confirma lo suyo: no reemplaza a la de hoy.
             if state.snapshot != nil, snapshot.stage == .finished { return next }
@@ -153,7 +188,7 @@ public enum WatchOutbox {
 
     /// ¿Ya se puede olvidar la sesión? Terminada y sin nada por confirmar.
     public static func isFinishedAndConfirmed(_ state: WatchLocalState) -> Bool {
-        state.snapshot?.stage == .finished && state.outbox.isEmpty
+        state.stage == .finished && state.outbox.isEmpty
     }
 
     /// Una serie con reporte de dolor sólo sale cuando el iPhone ya guardó ese reporte: estar
@@ -161,11 +196,23 @@ public enum WatchOutbox {
     private static func pruned(_ outbox: [WatchMessage], confirmedBy snapshot: WatchSessionSnapshot) -> [WatchMessage] {
         let confirmed = Set(snapshot.confirmedSetIDs)
         let annotated = Set(snapshot.annotatedSetIDs)
+        let commands = Set(snapshot.confirmedCommandIDs)
         return outbox.filter { message in
             switch message {
             case .event(let event):
                 guard case .recorded(let record) = event.action else { return true }
                 return !(record.painFeedback == nil ? confirmed : annotated).contains(record.id)
+            case .command(let command):
+                return !commands.contains(command.id)
+            }
+        }
+    }
+
+    private static func hasPendingCommand(_ outbox: [WatchMessage]) -> Bool {
+        outbox.contains { message in
+            switch message {
+            case .event: return false
+            case .command: return true
             }
         }
     }
@@ -185,6 +232,20 @@ public struct WatchSetScreen: Equatable, Sendable {
     public init(set: WatchPlannedSet, remaining: Int) {
         self.set = set
         self.remaining = remaining
+    }
+}
+
+/// El resumen corto al terminar: sin análisis.
+public struct WatchFinishedSummary: Equatable, Sendable {
+    public let sets: Int
+    public let durationSeconds: Int?
+    /// `false` mientras haya algo por confirmar: el reloj no dice "guardado" antes de tiempo.
+    public let isSaved: Bool
+
+    public init(sets: Int, durationSeconds: Int?, isSaved: Bool) {
+        self.sets = sets
+        self.durationSeconds = durationSeconds
+        self.isSaved = isSaved
     }
 }
 
@@ -272,17 +333,17 @@ public final class WatchSessionController {
     public var screen: WatchScreen {
         if loadFailed { return .failed }
         guard let snapshot = state.snapshot else { return .idle }
-        if snapshot.stage == .finished { return .finished }
+        if state.stage == .finished { return .finished }
         guard let set = state.currentSet else { return .allDone }
         let view = WatchSetScreen(set: set, remaining: WatchSessionCursor.remainingCount(in: snapshot, done: state.done))
-        if snapshot.stage == .paused { return .paused(view) }
+        if state.stage == .paused { return .paused(view) }
         if let endsAt = state.restEndsAt, endsAt > clock() { return .resting(view, endsAt: endsAt) }
         return .active(view)
     }
 
     /// Sin peso no se puede completar: nunca se inventa uno.
     public var canComplete: Bool {
-        guard state.currentSet != nil, state.snapshot?.stage == .active, let draftWeight else { return false }
+        guard state.currentSet != nil, state.stage == .active, let draftWeight else { return false }
         return draftWeight >= 0 && draftReps >= 1
     }
 
@@ -317,6 +378,42 @@ public final class WatchSessionController {
         state = result.state
         confirmedTaps += 1
         syncDraft()
+        await link.send(result.message)
+    }
+
+    /// El resumen corto, cuando la sesión ya terminó.
+    public var finishedSummary: WatchFinishedSummary? {
+        guard state.stage == .finished, let snapshot = state.snapshot else { return nil }
+        let unconfirmed = state.outbox.filter { message in
+            guard case .event(let event) = message, case .recorded(let set) = event.action else { return false }
+            return set.painFeedback == nil
+        }.count
+        let end = snapshot.endedAt ?? state.finishedAt
+        return WatchFinishedSummary(
+            sets: snapshot.confirmedSetIDs.count + unconfirmed,
+            durationSeconds: snapshot.startedAt.flatMap { start in end.map { Int(max(0, $0.timeIntervalSince(start))) } },
+            isSaved: state.outbox.isEmpty
+        )
+    }
+
+    public func pause() async { await command(.pause) }
+    public func resume() async { await command(.resume) }
+
+    /// Termina la sesión desde el reloj, también sin iPhone: se cierra al reconectar, con esta hora.
+    public func finish() async { await command(.finish) }
+
+    /// Primero el disco, después el envío, igual que una serie.
+    private func command(_ kind: WatchSessionCommandKind) async {
+        let result: (state: WatchLocalState, message: WatchMessage)
+        do {
+            result = try WatchOutbox.commanding(kind, at: clock(), in: state)
+            try store.save(result.state)
+        } catch {
+            saveFailed = true
+            return
+        }
+        saveFailed = false
+        state = result.state
         await link.send(result.message)
     }
 

@@ -13,6 +13,27 @@ import XCTest
 
 final class WorkoutRecoveryJourney: PRUITestCase {
 
+    // SCRUM-259: una serie hecha en el iPhone y en el reloj sin conexión. El resumen muestra
+    // las dos y nada se borra hasta que la persona elige.
+    func testSetConflictIsResolvedInTheSummary() {
+        let app = launch(profile: Self.seededProfile, extraArguments: ["-PRUITestSetConflict"])
+
+        step("El resumen muestra la serie en conflicto y se elige") {
+            tap(app, "today.start")
+            let finish = app.buttons["Terminar"].firstMatch
+            XCTAssertTrue(finish.appears(within: 10))
+            finish.tap()
+            let complete = app.buttons["Completar sesión"].firstMatch
+            XCTAssertTrue(complete.appears(within: 5))
+            complete.tap()
+
+            XCTAssertTrue(element(app, "summary.conflict").appears(within: 10), "Debe avisar del conflicto")
+            tap(app, "summary.conflict.both")
+            XCTAssertFalse(element(app, "summary.conflict").waitForExistence(timeout: 2), "Al elegir, ya no hay conflicto")
+            XCTAssertTrue(element(app, "summary.done").exists)
+        }
+    }
+
     func testWorkoutSurvivesForceQuitAndKeepsPain() {
         let forceQuitStore = newStoreID()
         let app = launchWithPlan(storeID: forceQuitStore)

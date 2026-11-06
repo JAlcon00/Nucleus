@@ -100,6 +100,7 @@ public final class AppEnvironment {
     public let healthPrefill: HealthPrefillCoordinator
     /// Puente con el reloj (SCRUM-255). `nil` si este dispositivo no tiene WatchConnectivity.
     @ObservationIgnored private var watchBridge: PhoneWatchBridge?
+    @ObservationIgnored private var simulatesSetConflict = false
 
     /// Check-in diario de sueño (SCRUM-203).
     public let sleepCheckIns: SleepCheckInCoordinator
@@ -340,6 +341,20 @@ public final class AppEnvironment {
         }
     }
 
+    /// Sólo en pruebas de UI: la primera serie llega dos veces, como si iPhone y reloj la
+    /// hubieran hecho sin conexión (SCRUM-259).
+    public func seedSetConflictForUITest(in coordinator: WorkoutSessionCoordinator) {
+        guard simulatesSetConflict, let exercise = coordinator.currentExerciseID else { return }
+        let slot = SetSlot(exerciseID: exercise, slotIndex: 1)
+        for (weight, age) in [(60.0, 20.0), (62.5, 10.0)] {
+            guard let set = try? SetRecord(
+                exerciseID: exercise, performedAt: Date().addingTimeInterval(-age),
+                weight: weight, unit: .kilograms, reps: 8, lifecycle: .completed
+            ) else { continue }
+            coordinator.applyRemoteSet(set, slot: slot, device: WorkoutDevice.watch)
+        }
+    }
+
     /// El entrenamiento terminó (resumen cerrado): Hoy vuelve a su estado normal.
     public func workoutEnded() {
         if case .finished? = activeWorkout?.phase { activeWorkout = nil }
@@ -561,6 +576,7 @@ public final class AppEnvironment {
             presenter: RestrictionListPresenter(locale: Self.presentationLocale),
             clock: { fixedDate ?? Date() }
         )
+        self.simulatesSetConflict = testOptions.simulatesSetConflict
         // SCRUM-255: el reloj sólo se conecta en la app de verdad, nunca en pruebas de UI.
         if !testOptions.isolatedPersistence, let link = WatchConnectivityLink() {
             let bridge = PhoneWatchBridge(link: link) { [weak self] in

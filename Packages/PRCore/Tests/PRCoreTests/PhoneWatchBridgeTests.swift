@@ -79,12 +79,6 @@ private struct Rig {
     }
 }
 
-/// Espera a que el Task de publicación entregue en el fake.
-@MainActor
-private func settle() async {
-    for _ in 0..<20 { await Task.yield() }
-}
-
 @MainActor
 @Suite("SCRUM-255 · Puente iPhone ⇄ reloj")
 struct PhoneWatchBridgeTests {
@@ -104,7 +98,7 @@ struct PhoneWatchBridgeTests {
         #expect(coordinator.currentSet()?.position == 2)
         #expect(try rig.persistence.pendingOperationQueue().load().contains(idempotencyKey: set.id.rawValue.persistenceKey))
         #expect(try await rig.stored(session)?.sets.map(\.id) == [set.id], "Queda guardada en disco.")
-        await settle()
+        await rig.bridge.flush()
         #expect(rig.link.publishedSnapshots.last?.confirmedSetIDs == [set.id])
     }
 
@@ -153,7 +147,7 @@ struct PhoneWatchBridgeTests {
         let stored = try #require(try await rig.stored(session.id))
         #expect(stored.sets.count == 2, "Nunca se tira ni crea otra sesión.")
         #expect(stored.lifecycle == .completed)
-        await settle()
+        await rig.bridge.flush()
         let confirmation = try #require(rig.link.publishedSnapshots.last)
         #expect(confirmation.stage == .finished)
         #expect(confirmation.confirmedSetIDs.contains(late.id))
@@ -190,8 +184,21 @@ struct PhoneWatchBridgeTests {
             Issue.record("La sesión debía terminar")
             return
         }
-        await settle()
+        await rig.bridge.flush()
         #expect(rig.link.publishedSnapshots.last?.stage == .finished)
+    }
+
+    @Test("Los estados salen en orden: el último publicado es el que queda")
+    func publishesInOrder() async throws {
+        let rig = try Rig(sets: 20)
+        let coordinator = try await rig.coordinator()
+        rig.bridge.attach(coordinator)
+        _ = coordinator.start()
+        for _ in 0..<19 { _ = try coordinator.recordEditedSet(weight: 60, reps: 8) }
+        await rig.bridge.flush()
+        let counts = rig.link.publishedSnapshots.map(\.confirmedSetIDs.count)
+        #expect(counts == counts.sorted())
+        #expect(counts.last == 19)
     }
 
     @Test("Un cambio en el iPhone se publica; lo que no cambia no se reenvía")
@@ -200,14 +207,14 @@ struct PhoneWatchBridgeTests {
         let coordinator = try await rig.coordinator()
         rig.bridge.attach(coordinator)
         _ = coordinator.start()
-        await settle()
+        await rig.bridge.flush()
         let afterStart = rig.link.publishedSnapshots.count
         #expect(afterStart == 1)
         coordinator.skipRest()
-        await settle()
+        await rig.bridge.flush()
         #expect(rig.link.publishedSnapshots.count == afterStart, "Nada cambió para el reloj.")
         _ = try coordinator.recordEditedSet(weight: 60, reps: 8)
-        await settle()
+        await rig.bridge.flush()
         #expect(rig.link.publishedSnapshots.count > afterStart)
     }
 

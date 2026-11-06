@@ -233,6 +233,7 @@ struct AppRootView: View {
                   !Task.isCancelled else { return }
             if startingNewSession {
                 _ = coordinator.start()
+                environment.seedSetConflictForUITest(in: coordinator)
             }
             workout = coordinator
         }

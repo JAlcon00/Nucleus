@@ -53,6 +53,8 @@ struct WorkoutModeView: View {
                     celebration: coordinator.celebration(for: summary, level: coachingLevel),
                     skipped: coordinator.skippedExercises.map(\.name),
                     substitutions: coordinator.substitutionSummaries.map { "\($0.from) → \($0.to)" },
+                    conflicts: coordinator.setConflicts,
+                    onResolveConflict: { coordinator.resolveSetConflict($0, choice: $1) },
                     onDone: onDone
                 )
             }

@@ -15,6 +15,7 @@ import PRDomain
 /// apagado: nada de esto puede perderse.
 public enum WatchMessage: Codable, Sendable, Hashable {
     case event(SetEvent)
+    case command(WatchSessionCommand)
 }
 
 /// El lado del iPhone.
@@ -60,6 +61,8 @@ public struct WatchBridgeStorage: Sendable {
 public enum WatchBridgeError: Error, Equatable, Sendable {
     /// Todavía no hay cuenta ni almacén. El reloj conserva la serie y la vuelve a mandar.
     case storageUnavailable
+    /// No hay sesión con ese id (por ejemplo, otra cuenta activa). El reloj conserva el mensaje.
+    case sessionNotFound
 }
 
 /// Recibe lo que manda el reloj y le publica el estado de la sesión.
@@ -73,6 +76,9 @@ public final class PhoneWatchBridge {
     private var coordinator: WorkoutSessionCoordinator?
     private var listening: Task<Void, Never>?
     private var lastPublished: WatchSessionSnapshot?
+    /// La publicación en curso. Se encadenan: `updateApplicationContext` sólo guarda el último,
+    /// así que uno viejo que llegara después borraría al nuevo.
+    private var publishing: Task<Void, Never>?
 
     public init(
         link: any PhoneWorkoutLink,
@@ -114,7 +120,28 @@ public final class PhoneWatchBridge {
         switch message {
         case .event(let event):
             return try await handle(event)
+        case .command(let command):
+            return try await handle(command)
         }
+    }
+
+    /// Un comando no pasa por la cola: se aplica directo a la sesión, en pantalla o en disco.
+    /// Si no se pudo, no se confirma y el reloj lo vuelve a mandar.
+    private func handle(_ command: WatchSessionCommand) async throws -> WatchMessageOutcome {
+        if let coordinator, coordinator.isLive(session: command.sessionID) {
+            coordinator.applyRemoteCommand(command)
+            if let snapshot = coordinator.watchSnapshot() { publish(snapshot) }
+            return .appliedLive
+        }
+        guard let storage = try storage() else { throw WatchBridgeError.storageUnavailable }
+        guard let session = try await storage.workouts.session(id: command.sessionID) else {
+            throw WatchBridgeError.sessionNotFound
+        }
+        let updated = SessionCommandPolicy.applying(command, to: session)
+        guard updated != session else { return .noChange }
+        try await storage.workouts.save(updated)
+        await confirmStored(command.sessionID, in: storage.workouts)
+        return .appliedStored
     }
 
     private func handle(_ event: SetEvent) async throws -> WatchMessageOutcome {
@@ -155,7 +182,16 @@ public final class PhoneWatchBridge {
         if let lastPublished, lastPublished.hasSameContent(as: snapshot) { return }
         lastPublished = snapshot
         let link = self.link
-        Task { await link.publish(snapshot) }
+        let previous = publishing
+        publishing = Task {
+            await previous?.value
+            await link.publish(snapshot)
+        }
+    }
+
+    /// Espera a que salga todo lo publicado.
+    public func flush() async {
+        await publishing?.value
     }
 }
 

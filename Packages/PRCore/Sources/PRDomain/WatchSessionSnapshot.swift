@@ -79,6 +79,11 @@ public struct WatchSessionSnapshot: Codable, Sendable, Hashable {
     public let confirmedSetIDs: [SetRecordID]
     /// De ésas, las que ya tienen reporte guardado (SCRUM-260). Sólo ids: no lleva el reporte.
     public let annotatedSetIDs: [SetRecordID]
+    /// Comandos del reloj ya aplicados (SCRUM-259).
+    public let confirmedCommandIDs: [UUID]
+    /// Inicio y fin de la sesión, para el resumen corto del reloj.
+    public let startedAt: Date?
+    public let endedAt: Date?
     /// Fin del descanso en curso. Es una hora, no un contador: sobrevive a bajar la muñeca.
     public let restEndsAt: Date?
     /// Lo que falta, en el orden en que se va a hacer.
@@ -92,7 +97,10 @@ public struct WatchSessionSnapshot: Codable, Sendable, Hashable {
         confirmedSetIDs: [SetRecordID],
         restEndsAt: Date?,
         remaining: [WatchPlannedSet],
-        annotatedSetIDs: [SetRecordID] = []
+        annotatedSetIDs: [SetRecordID] = [],
+        confirmedCommandIDs: [UUID] = [],
+        startedAt: Date? = nil,
+        endedAt: Date? = nil
     ) {
         self.sessionID = sessionID
         self.revision = revision
@@ -100,6 +108,9 @@ public struct WatchSessionSnapshot: Codable, Sendable, Hashable {
         self.stage = stage
         self.confirmedSetIDs = confirmedSetIDs
         self.annotatedSetIDs = annotatedSetIDs
+        self.confirmedCommandIDs = confirmedCommandIDs
+        self.startedAt = startedAt
+        self.endedAt = endedAt
         self.restEndsAt = restEndsAt
         self.remaining = remaining
     }
@@ -111,6 +122,7 @@ public struct WatchSessionSnapshot: Codable, Sendable, Hashable {
     public func hasSameContent(as other: WatchSessionSnapshot) -> Bool {
         sessionID == other.sessionID && title == other.title && stage == other.stage
             && confirmedSetIDs == other.confirmedSetIDs && annotatedSetIDs == other.annotatedSetIDs
+            && confirmedCommandIDs == other.confirmedCommandIDs && endedAt == other.endedAt
             && restEndsAt == other.restEndsAt
             && remaining == other.remaining
     }
@@ -160,7 +172,10 @@ public enum WatchSessionSnapshotBuilder {
             confirmedSetIDs: confirmed,
             restEndsAt: stage == .finished ? nil : session.rest?.endDate,
             remaining: stage == .finished ? [] : remaining(input),
-            annotatedSetIDs: annotated
+            annotatedSetIDs: annotated,
+            confirmedCommandIDs: session.appliedCommandIDs ?? [],
+            startedAt: session.startedAt,
+            endedAt: session.endedAt
         )
     }
 

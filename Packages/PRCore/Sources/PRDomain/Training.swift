@@ -445,6 +445,11 @@ public struct WorkoutSessionRecord: Identifiable, Codable, Sendable, Hashable {
     public var substitutions: [SessionSubstitution]?
     /// Series en conflicto entre iPhone y reloj (SCRUM-254). Campo opcional (ADR-0003).
     public var setConflicts: [SessionSetConflict]?
+    /// Comandos del reloj ya aplicados (SCRUM-259): no se aplican dos veces y confirman al
+    /// reloj que llegaron. Campo opcional (ADR-0003).
+    public var appliedCommandIDs: [UUID]?
+    /// Hora del último comando del reloj: uno más viejo no deshace uno nuevo. Campo opcional.
+    public var lastRemoteCommandAt: Date?
 
     public init(
         id: WorkoutID = WorkoutID(),

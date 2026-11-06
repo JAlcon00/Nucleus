@@ -39,15 +39,11 @@ struct WatchWorkoutView: View {
                 WatchSetView(controller: controller, screen: screen, restEndsAt: endsAt)
             }
         case .paused(let screen):
-            WatchMessageView(symbol: "pause.circle", title: "En pausa", detail: screen.set.exerciseName)
+            WatchPausedView(controller: controller, exerciseName: screen.set.exerciseName)
         case .allDone:
-            WatchMessageView(
-                symbol: "checkmark.circle",
-                title: "Series completas",
-                detail: "Termina la sesión en el iPhone."
-            )
+            WatchAllDoneView(controller: controller)
         case .finished:
-            WatchMessageView(symbol: "checkmark.seal", title: "Entrenamiento guardado", detail: nil)
+            WatchFinishedView(summary: controller.finishedSummary)
         case .failed:
             WatchMessageView(
                 symbol: "exclamationmark.triangle",
@@ -80,6 +76,7 @@ private struct WatchSetView: View {
                 completeButton
                 if controller.saveFailed { saveFailedNotice }
                 if !controller.isPhoneReachable { offlineNotice }
+                WatchSessionActions(controller: controller)
             }
             .padding(.horizontal, WatchMetric.spacing)
         }
@@ -248,6 +245,106 @@ private struct WatchSetView: View {
             get: { controller.draftWeight ?? 0 },
             set: { controller.draftWeight = $0 }
         )
+    }
+}
+
+/// Pausar y terminar: secundarias, debajo de la acción principal.
+private struct WatchSessionActions: View {
+    let controller: WatchSessionController
+    @State private var confirmsFinish = false
+
+    var body: some View {
+        HStack(spacing: WatchMetric.spacing) {
+            Button {
+                Task { await controller.pause() }
+            } label: {
+                Label("Pausar", systemImage: "pause")
+                    .labelStyle(.iconOnly)
+                    .frame(maxWidth: .infinity, minHeight: WatchMetric.touchTarget)
+            }
+            .accessibilityLabel("Pausar")
+            Button {
+                confirmsFinish = true
+            } label: {
+                Label("Terminar", systemImage: "stop")
+                    .labelStyle(.iconOnly)
+                    .frame(maxWidth: .infinity, minHeight: WatchMetric.touchTarget)
+            }
+            .accessibilityLabel("Terminar sesión")
+        }
+        .confirmationDialog("¿Terminar la sesión?", isPresented: $confirmsFinish) {
+            Button("Terminar") { Task { await controller.finish() } }
+            Button("Seguir", role: .cancel) {}
+        }
+    }
+}
+
+private struct WatchPausedView: View {
+    let controller: WatchSessionController
+    let exerciseName: String
+
+    var body: some View {
+        VStack(spacing: WatchMetric.spacing) {
+            WatchMessageView(symbol: "pause.circle", title: "En pausa", detail: exerciseName)
+            Button {
+                Task { await controller.resume() }
+            } label: {
+                Text("Reanudar")
+                    .foregroundStyle(WatchColor.onAction)
+                    .frame(maxWidth: .infinity, minHeight: WatchMetric.touchTarget)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(WatchColor.action)
+        }
+    }
+}
+
+private struct WatchAllDoneView: View {
+    let controller: WatchSessionController
+
+    var body: some View {
+        VStack(spacing: WatchMetric.spacing) {
+            WatchMessageView(symbol: "checkmark.circle", title: "Series completas", detail: nil)
+            Button {
+                Task { await controller.finish() }
+            } label: {
+                Text("Terminar")
+                    .foregroundStyle(WatchColor.onAction)
+                    .frame(maxWidth: .infinity, minHeight: WatchMetric.touchTarget)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(WatchColor.action)
+        }
+    }
+}
+
+/// Resumen corto. No dice "guardado" hasta que el iPhone lo confirme.
+private struct WatchFinishedView: View {
+    let summary: WatchFinishedSummary?
+
+    var body: some View {
+        VStack(spacing: WatchMetric.spacing) {
+            Image(systemName: summary?.isSaved == false ? "arrow.triangle.2.circlepath" : "checkmark.seal")
+                .imageScale(.large)
+                .accessibilityHidden(true)
+            Text(summary?.isSaved == false ? "Se guardará al ver el iPhone" : "Entrenamiento guardado")
+                .font(.headline)
+                .multilineTextAlignment(.center)
+            if let summary {
+                Text("\(summary.sets) series")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                if let seconds = summary.durationSeconds {
+                    Text(Duration.seconds(seconds), format: .units(allowed: [.hours, .minutes], width: .abbreviated))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            }
+        }
+        .padding(.horizontal, WatchMetric.spacing)
+        .accessibilityElement(children: .combine)
     }
 }
 
