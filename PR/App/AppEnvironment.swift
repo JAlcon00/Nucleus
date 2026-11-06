@@ -586,7 +586,7 @@ public final class AppEnvironment {
         // SCRUM-255: el reloj sólo se conecta en la app de verdad, nunca en pruebas de UI.
         if !testOptions.isolatedPersistence, let link = WatchConnectivityLink() {
             // SCRUM-258: apagado hasta pasar el gate. `make install-iphone` lo enciende para probarlo.
-            #if PR_DEVICE_TEST
+            #if DEBUG && PR_DEVICE_TEST
             let recordsHealth = true
             #else
             let recordsHealth = featureFlags.isEnabled(.watchHealthSessionEnabled)
