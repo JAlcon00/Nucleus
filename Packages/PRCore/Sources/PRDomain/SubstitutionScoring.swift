@@ -437,11 +437,14 @@ public struct SubstitutionScoringEngine: Sendable {
         let targetFatigue = fatigueVector(target)
         let candidateFatigue = fatigueVector(candidate)
         guard !targetFatigue.isEmpty else { return 1 }
-        let numerator = Set(targetFatigue.keys).union(candidateFatigue.keys).reduce(0.0) { sum, key in
+        // Siempre en el mismo orden: el de un diccionario cambia entre instancias, y sumar
+        // decimales en otro orden mueve el último dígito y puede romper un empate (SCRUM-232).
+        let muscles = Set(targetFatigue.keys).union(candidateFatigue.keys).sorted { $0.rawValue < $1.rawValue }
+        let numerator = muscles.reduce(0.0) { sum, key in
             sum + (targetFatigue[key] ?? 0) * (candidateFatigue[key] ?? 0)
         }
-        let normTarget = sqrt(targetFatigue.values.reduce(0) { $0 + $1 * $1 })
-        let normCandidate = sqrt(candidateFatigue.values.reduce(0) { $0 + $1 * $1 })
+        let normTarget = sqrt(muscles.reduce(0.0) { $0 + (targetFatigue[$1] ?? 0) * (targetFatigue[$1] ?? 0) })
+        let normCandidate = sqrt(muscles.reduce(0.0) { $0 + (candidateFatigue[$1] ?? 0) * (candidateFatigue[$1] ?? 0) })
         guard normTarget > 0, normCandidate > 0 else { return 0 }
         let cos = numerator / (normTarget * normCandidate)
         // Similitud coseno en [0,1] para vectores de fatiga normalizados.
