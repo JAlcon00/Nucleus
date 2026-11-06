@@ -323,7 +323,7 @@ Evidencia: rama `SCRUM-245-energia-una-vez`, PR #40.
 - El identificador de la tarjeta de conflicto tapaba el de sus botones. Lo encontró el recorrido E2E.
 - Medido: 60 series = 13 877 bytes por estado. El reloj en Debug pesa 30 MB con el catálogo de PRCore.
 
-Evidencia: rama `SCRUM-12-fase-g`.
+Evidencia: rama `SCRUM-12-fase-g`, PR #41.
 - **`make ci`** (2026-11-06) → `✔ Test run with 648 tests in 91 suites passed` + `✔ Test run with 857 tests in 127 suites passed` + `Executed 151 tests, with 0 failures`; build de iOS y de watchOS OK.
 - **Guard del agente:** `OK: ninguna prueba se borra, desactiva ni reduce (base 58babf7, 1545 → 1666 pruebas).`
 - **Firma real:** `xcodebuild` para iPhone con reloj embebido, cuenta gratuita, `BUILD SUCCEEDED`, sin instalar.

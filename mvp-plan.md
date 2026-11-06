@@ -92,7 +92,7 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
 | 4 | SCRUM-249 · PR-F006 Leer entrenamientos externos | 244 | 🟡 |
 | 5 | SCRUM-250 · PR-F007 Ver la energía una sola vez | 245, 247, 249 | 🟢 (🟡 si toca persistencia) |
 
-**Fase G · Apple Watch (SCRUM-12, Could): programada en un solo PR (rama `SCRUM-12-fase-g`), a la espera de Jesús.**
+**Fase G · Apple Watch (SCRUM-12, Could): programada en el PR #41, a la espera de Jesús.**
 - **Decisiones DG-1 a DG-5:** en SCRUM-243. **Excepción de Jesús (2026-11-05):** toda la fase en una rama, antes del gate de F y con la cola 👤 sobre 5.
 - **Abierta: SCRUM-258.** Faltan dos criterios que dependen de F: que el iPhone no escriba si `healthRecording.watchOwnsHealthWorkout` (SCRUM-246) y mostrar esa energía (SCRUM-250).
 - **Gate:** SCRUM-261, 👤 en iPhone y reloj. `watch.health_session.enabled` sigue apagada hasta pasarlo.
@@ -127,14 +127,14 @@ Una línea por historia terminada después del 2026-11-02: `SCRUM-XX · título 
 - SCRUM-236 · PR-E005 "No hay esta máquina aquí", recordado y reversible · PR #38 · 2026-11-05 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-e-en-un-solo-pr-pr-38))
 - SCRUM-238 · PR-E007 Varios gimnasios · PR #38 · 2026-11-05 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-e-en-un-solo-pr-pr-38))
 - SCRUM-245 · PR-F002 La energía del mismo entrenamiento se cuenta una vez (motor) · PR #40 · 2026-11-05 ([detalle](docs/archivo/mvp-plan-2026-11.md#scrum-245--pr-f002-la-energía-del-mismo-entrenamiento-se-cuenta-una-vez-motor))
-- SCRUM-252 · PR-G001 El reloj se instala con la app · rama `SCRUM-12-fase-g` · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
-- SCRUM-253 · PR-G002 Qué le dice el iPhone al reloj · rama `SCRUM-12-fase-g` · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
-- SCRUM-254 · PR-G003 Sincronización que no pierde series · rama `SCRUM-12-fase-g` · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
-- SCRUM-255 · PR-G004 Puente iPhone ⇄ reloj · rama `SCRUM-12-fase-g` · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
-- SCRUM-256 · PR-G005 El reloj guarda primero · rama `SCRUM-12-fase-g` · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
-- SCRUM-257 · PR-G006 Entrenar desde el reloj · rama `SCRUM-12-fase-g` · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
-- SCRUM-259 · PR-G008 Pausar y terminar desde el reloj · rama `SCRUM-12-fase-g` · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
-- SCRUM-260 · PR-G009 Reportar dolor desde el reloj · rama `SCRUM-12-fase-g` · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
+- SCRUM-252 · PR-G001 El reloj se instala con la app · PR #41 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
+- SCRUM-253 · PR-G002 Qué le dice el iPhone al reloj · PR #41 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
+- SCRUM-254 · PR-G003 Sincronización que no pierde series · PR #41 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
+- SCRUM-255 · PR-G004 Puente iPhone ⇄ reloj · PR #41 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
+- SCRUM-256 · PR-G005 El reloj guarda primero · PR #41 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
+- SCRUM-257 · PR-G006 Entrenar desde el reloj · PR #41 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
+- SCRUM-259 · PR-G008 Pausar y terminar desde el reloj · PR #41 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
+- SCRUM-260 · PR-G009 Reportar dolor desde el reloj · PR #41 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
 
 ---
 
