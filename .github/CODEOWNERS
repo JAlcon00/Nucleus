@@ -36,6 +36,7 @@
 /Packages/PRCore/Sources/PRCore/NVIDIA*.swift                @JAlcon00
 /Packages/PRCore/Sources/PRCore/LLMBackendTransport.swift    @JAlcon00
 /PR/PR.entitlements                                          @JAlcon00
+/PRWatch/PRWatch.entitlements                                @JAlcon00
 
 # Proyecto y dependencias
 /Packages/PRCore/Package.swift  @JAlcon00
