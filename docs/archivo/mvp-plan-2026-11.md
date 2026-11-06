@@ -314,8 +314,9 @@ Evidencia: rama `SCRUM-245-energia-una-vez`, PR #40.
 - **SCRUM-258 (abierta):** sesión de Salud en el reloj, apagada por `watch.health_session.enabled` hasta el gate. `make install-iphone` la enciende con `PR_DEVICE_TEST`.
 
 **Criterios sin cerrar:**
-- [ ] SCRUM-258 c3 y c4: que el iPhone respete `healthRecording.watchOwnsHealthWorkout`. El dato ya existe; falta PR-F003 (SCRUM-246).
-- [ ] SCRUM-258 c9: mostrar la energía del reloj una vez. El dato ya llega; falta PR-F007 (SCRUM-250).
+- [x] SCRUM-258 c3: el iPhone respeta `healthRecording.watchOwnsHealthWorkout` (PR #42, `watchOwnsTheWorkout`).
+- [x] SCRUM-258 c4: si el reloj falla, el iPhone escribe con el mismo identificador. Ver "SCRUM-258: un solo entrenamiento", abajo.
+- [x] SCRUM-258 c9: la energía del reloj gana y se ve una vez (PR #42, `watchSessionEnergyWins`).
 - [ ] 👤 Todo lo de dispositivo: instalar en el reloj (SCRUM-252 c6) y las 10 pruebas de SCRUM-261. Nada de WatchConnectivity ni HealthKit se ejecutó en un dispositivo.
 
 **Hallazgos:**
@@ -329,6 +330,17 @@ Evidencia: rama `SCRUM-12-fase-g`, PR #41.
 - **Firma real:** `xcodebuild` para iPhone con reloj embebido, cuenta gratuita, `BUILD SUCCEEDED`, sin instalar.
 - **E2E:** `make test-ui-smoke` → `testFirstWorkoutReachesProgressAndExport`, `testIntermediateQuestionnaireFromAboutYouToReopening`, `testSetConflictIsResolvedInTheSummary` (nuevo) y `testWorkoutSurvivesForceQuitAndKeepsPain` OK. Dos corridas anteriores fallaron por carga de la Mac (carga promedio de 164, con otra sesión corriendo UI), no por el código; sí encontraron el error del identificador.
 - **Sin prueba automática:** no hay target de UI del reloj ni runtime de watchOS en esta Mac. La pantalla se compila, y su lógica se prueba en PRCore.
+
+### SCRUM-258: un solo entrenamiento
+
+La revisión en `main` tras los PR #41 y #42 encontró que c4 no se cumplía, por dos huecos. Los dos se reprodujeron con pruebas que fallaban.
+
+- **Identificador distinto:** el reloj lo escribía en minúsculas y el iPhone en mayúsculas, y Salud compara el texto exacto. Ahora los dos salen de `HealthWorkoutWrite.syncIdentifier(for:)`, y el contrato `LiveWorkoutBuilder.tag` recibe el texto ya armado. Lo que escribe el reloj también cuenta como propio en `HealthWorkoutClassifier.isOwn`.
+- **Fallo tardío:** si el aviso de fallo llegaba cuando la sesión ya había terminado, nadie la escribía. Ahora `retryPending` la recoge, al abrir la app y al volver a primer plano.
+
+Evidencia: `make ci` (2026-11-06) → `✔ Test run with 648 tests in 91 suites passed` + `✔ Test run with 961 tests in 133 suites passed` + `Executed 151 tests, with 0 failures`; guard `1770 → 1775 pruebas`. Pruebas: `sameSyncIdentifierAsPhone`, `watchWorkoutIsOwn`, `lateWatchFailureWritesOnce`, `lateWatchFailureWaitsForPermission` y `retryLeavesWatchWorkoutsAlone`.
+
+**Por verificar en el gate (SCRUM-261):** qué versión conserva Salud si el iPhone y el reloj escriben los dos con el mismo identificador y la misma versión. Esa regla no se puede probar sin dispositivo.
 
 ## Fase F en un solo PR (PR #42)
 

@@ -340,10 +340,16 @@ public struct HealthWorkoutWrite: Sendable, Hashable {
               end > session.startedAt,
               session.sets.contains(where: { $0.lifecycle == .completed })
         else { return nil }
-        self.syncIdentifier = session.id.rawValue.uuidString
+        self.syncIdentifier = Self.syncIdentifier(for: session.id)
         self.start = session.startedAt
         self.end = end
         self.activityType = .strengthTraining
+    }
+
+    /// El identificador de una sesión en Salud. Salud compara el texto exacto, así que el reloj
+    /// y el iPhone lo sacan de aquí (SCRUM-258).
+    public static func syncIdentifier(for session: WorkoutID) -> String {
+        session.rawValue.uuidString
     }
 }
 
