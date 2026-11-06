@@ -263,3 +263,34 @@ Evidencia: rama `SCRUM-10-fase-e`, PR #38.
   - `OK testSupersetFromTodayThroughTheRound() (24 s)`
   - `OK testTodayFromSleepCheckInToTheWeek() (1 min 11 s)`
   - `OK testWorkoutSurvivesForceQuitAndKeepsPain() (2 min 35 s)`
+
+## SCRUM-245 · PR-F002 La energía del mismo entrenamiento se cuenta una vez (motor)
+
+- **Épica y prioridad:** Fase F (SCRUM-11) · Should · hito 1.0 · carril 🟡 amarillo.
+- **Estado:** PR #40, 2026-11-05. Lo aprueba Jesús.
+- **Por qué amarillo y no 🟢:** el criterio 5 necesita representar fuerza funcional y carrera, y `HealthWorkoutActivityType` vive en `HealthWorkout.swift`, que entra en `Health*.swift`. La tarjeta no lo preveía.
+- **Decisión que aplica:** ninguna abierta. La tolerancia de 10 minutos la fija la regla v1 para cubrir la prueba 7 del gate (SCRUM-251) también en entrenamientos cortos.
+
+**Qué cambió:**
+- `WorkoutReconciliationEngine` mide el solapamiento sobre el más corto, no intersección sobre unión.
+- También son el mismo los que comparten tiempo y tienen inicio y fin dentro de la tolerancia (§15.4). Sin un segundo en común, nunca.
+- Los grupos son componentes conexas: el resultado ya no depende del orden de entrada.
+- Umbral, tolerancia y confianza por fuente salen de la regla `health.workoutReconciliation` v1 (`ReconciliationRule.swift`).
+- Un candidato sin duración o con el fin antes del inicio se ignora: no se une a nada ni aporta energía. Energía negativa, `NaN` o infinita no cuenta como energía real.
+- `HealthWorkoutActivityType` gana `functionalStrengthTraining` y `running`. `WorkoutEnergyCandidate` gana `identifier`, que `ExternalWorkout.asCandidate` llena con su referencia.
+
+**Criterios:**
+- [x] A de 18:00 a 19:00 y B de 18:10 a 18:50 son el mismo.
+- [x] A de 18:00 a 19:00 y B de 18:30 a 19:30 son distintos.
+- [x] A de 18:00 a 19:00 y B de 19:00 a 20:00 son distintos.
+- [x] Fuera del umbral, con inicio y fin dentro de la tolerancia, son el mismo.
+- [x] Fuerza tradicional y funcional pueden ser el mismo; fuerza y carrera, nunca.
+- [x] Gana la fuente de mayor prioridad con energía real, sin sumar. Sin energía, no hay energía.
+- [x] A igual prioridad gana la mayor duración; si empatan, el menor identificador. Cualquier orden da lo mismo.
+- [x] Umbral, tolerancia y confianza salen de una regla versionada.
+
+Evidencia: rama `SCRUM-245-energia-una-vez`, PR #40.
+- **Pruebas:** suite `WorkoutEnergyCountedOnceTests` (24 pruebas) en `ReconciliationTests.swift`, con una de 200 barajas de semilla fija. Las 8 pruebas de PR-1105 quedan sin cambios: ninguna afirmaba intersección sobre unión, sólo lo decía un comentario.
+- **`make ci`** (2026-11-05) → `✔ Test run with 613 tests in 88 suites passed` + `✔ Test run with 772 tests in 120 suites passed` + `Executed 151 tests, with 0 failures`; build de iOS y de watchOS OK.
+- **Guard del agente:** `OK: ninguna prueba se borra, desactiva ni reduce (base b5b2d9d, 1521 → 1545 pruebas).`
+- **E2E:** `make test-ui-smoke` → `testFirstWorkoutReachesProgressAndExport` (1 min 29 s), `testIntermediateQuestionnaireFromAboutYouToReopening` (54 s) y `testWorkoutSurvivesForceQuitAndKeepsPain` (2 min 16 s) OK. El motor no se llama desde la app: ningún recorrido cambia.

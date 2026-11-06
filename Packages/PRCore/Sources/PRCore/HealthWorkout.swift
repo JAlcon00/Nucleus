@@ -18,7 +18,10 @@ import PRDomain
 /// Tipo de actividad del workout (configuración transportable; la app lo mapea a
 /// `HKWorkoutConfiguration`/`HKWorkoutActivityType` correcto).
 public enum HealthWorkoutActivityType: String, Codable, Sendable, CaseIterable, Hashable {
+    /// Fuerza tradicional.
     case strengthTraining
+    case functionalStrengthTraining
+    case running
 }
 
 /// Configuración del workout HealthKit (forma transportable; no importa HealthKit).
