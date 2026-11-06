@@ -24,8 +24,8 @@ nonisolated final class HealthKitLiveWorkoutBuilder: NSObject, LiveWorkoutBuilde
     private var stopped: CheckedContinuation<Date, Never>?
     private var averageBPM: Double?
 
-    func tag(sessionID: UUID) async {
-        lock.withLock { syncIdentifier = sessionID.uuidString.lowercased() }
+    func tag(syncIdentifier: String) async {
+        lock.withLock { self.syncIdentifier = syncIdentifier }
     }
 
     func start() async throws {
@@ -71,7 +71,7 @@ nonisolated final class HealthKitLiveWorkoutBuilder: NSObject, LiveWorkoutBuilde
         if let identifier = lock.withLock({ syncIdentifier }) {
             try await builder.addMetadata([
                 HKMetadataKeySyncIdentifier: identifier,
-                HKMetadataKeySyncVersion: 1,
+                HKMetadataKeySyncVersion: HealthWorkoutWrite.syncVersion,
             ])
         }
         let energy = builder.statistics(for: HKQuantityType(.activeEnergyBurned))?

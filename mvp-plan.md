@@ -88,7 +88,7 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
 
 **Fase G · Apple Watch (SCRUM-12, Could): en `main` por el PR #41 desde el 2026-11-06. Falta el gate.**
 - **Decisiones DG-1 a DG-5:** en SCRUM-243. **Excepción de Jesús (2026-11-05):** toda la fase en una rama, antes del gate de F y con la cola 👤 sobre 5.
-- **SCRUM-258:** sus dos criterios pendientes entraron en el PR #42: el iPhone no escribe si `healthRecording.watchOwnsHealthWorkout`, y se muestra esa energía.
+- **SCRUM-258:** c3, c4 y c9 ya pasan sus pruebas: el iPhone respeta a `healthRecording.watchOwnsHealthWorkout`, los dos usan el mismo identificador y un fallo tardío del reloj se escribe al reintentar. Finalizada en Jira; sus pruebas 👤 van en SCRUM-261.
 - **Gate:** SCRUM-261, 👤 en iPhone y reloj. `watch.health_session.enabled` sigue apagada hasta pasarlo.
 
 - **Antes de TestFlight:** mover la llave de la IA a un backend. La historia está por crear (SCRUM-201, SCRUM-204).
@@ -129,6 +129,7 @@ Una línea por historia terminada después del 2026-11-02: `SCRUM-XX · título 
 - SCRUM-257 · PR-G006 Entrenar desde el reloj · PR #41 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
 - SCRUM-259 · PR-G008 Pausar y terminar desde el reloj · PR #41 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
 - SCRUM-260 · PR-G009 Reportar dolor desde el reloj · PR #41 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
+- SCRUM-258 · PR-G007 Sesión de Salud en el reloj · PR #41, #42 y #44 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#scrum-258-un-solo-entrenamiento))
 - SCRUM-262 · PR-F009 Build de prueba para iPhone con cuenta gratuita · PR #42 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-f-en-un-solo-pr-pr-42))
 - SCRUM-244 · PR-F001 Permisos de Salud reales · PR #42 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-f-en-un-solo-pr-pr-42))
 - SCRUM-246 · PR-F003 Cola de escritura a Salud · PR #42 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-f-en-un-solo-pr-pr-42))

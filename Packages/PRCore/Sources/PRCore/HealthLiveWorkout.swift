@@ -197,15 +197,16 @@ public protocol LiveWorkoutBuilder: Sendable {
     /// Recupera una sesión que seguía abierta tras un reinicio de la app (SCRUM-258).
     /// Devuelve `true` si había una.
     func recover() async throws -> Bool
-    /// Liga la sesión de Salud con la de PR: el mismo id evita dos entrenamientos.
-    func tag(sessionID: UUID) async
+    /// Liga la sesión de Salud con la de PR: el mismo identificador que usa el iPhone
+    /// (`HealthWorkoutWrite.syncIdentifier(for:)`) evita dos entrenamientos.
+    func tag(syncIdentifier: String) async
     /// Ritmo cardiaco promedio de la sesión, si hay dato y permiso.
     func averageHeartRate() async -> Double?
 }
 
 extension LiveWorkoutBuilder {
     public func recover() async throws -> Bool { false }
-    public func tag(sessionID: UUID) async {}
+    public func tag(syncIdentifier: String) async {}
     public func averageHeartRate() async -> Double? { nil }
 }
 
