@@ -84,3 +84,50 @@ Evidencia: rama `SCRUM-232-sustituto-equivalente`, PR #36.
   | 6 días, 60 min | 26 de 26 |
   | Hombro y rodilla restringidos, 3 días, 60 min | 14 de 14 |
   | Hombro y rodilla restringidos, 4 días, 75 min | 25 de 25 |
+
+## SCRUM-240 · PR-E008 La IA sólo propone sustitutos equivalentes de verdad
+
+- **Épica y prioridad:** Fase E (SCRUM-10) · Should · hito 1.0 · carril 🟢 verde.
+- **Estado:** PR #37, 2026-11-05. Sin auto-merge porque el epic no está autorizado para el agente: lo fusiona Jesús.
+- **Por qué se hizo antes de autorizar el epic:** excepción de Jesús del 2026-11-05 para SCRUM-232 y SCRUM-240, que no agregan pantallas.
+- **Decisiones que aplica:** DE-3 (SCRUM-231) y DE-5 (SCRUM-239).
+
+**Qué cambió:**
+- `PlanPersonalizationValidator` ya no tiene su propia regla. La definición de "mismo movimiento" y el puntaje salen del motor de PR-E001, que ahora también se usa para calcular lo que se le ofrece a la IA.
+- Motivos nuevos: `differentPattern` y `belowMinimumScore`. Los rechazos de equivalencia llevan la versión de la regla en la bitácora.
+- `PlanPersonalizationFlow.reapply` revisa las sustituciones al migrar un plan guardado y deja el registro y la explicación coherentes con el plan final.
+
+**Criterios:**
+- [x] La personalización usa la regla de PR-E001 para ofrecer y para aceptar, sin una segunda copia; con el catálogo real da lo mismo que el motor.
+- [x] Otro patrón se rechaza con `differentPattern`, el plan queda igual y la bitácora guarda el motivo.
+- [x] Bajo el mínimo se rechaza con `belowMinimumScore` y la bitácora lleva la versión de la regla.
+- [x] A la IA se le ofrecen como máximo `maxAlternativesPerExercise` opciones, todas equivalentes, por puntaje y, si empatan, por nombre; sin equivalentes, el ejercicio no aparece.
+- [x] Un equivalente prohibido nunca se ofrece y se rechaza con `rejectedByPolicy`, también con la revisión vencida.
+- [x] El motivo es el primero que falla, en el orden fijo de la regla.
+- [x] Un plan guardado con una sustitución que ya no pasa se abre igual y no se reescribe el disco (DE-5).
+- [x] Al migrar, lo que no pasa vuelve al ejercicio del motor y queda rechazado con su motivo; la explicación ya no lo menciona y lo que pasa se conserva con su hecho `substitution`.
+- [x] Sin red: la regla corre local y la migración no usa la IA.
+- [x] Formato: `PersonalizationRejection` sólo gana casos; las muestras de `Fixtures/Persistence/` no cambian.
+
+**Una prueba existente cambió:** en `crossedPermissionsSubstitutionsAgentAndDropset`, el caso "permitido sólo por la otra zona" se armaba sobre el plan restringido. Ahí ya no puede existir, porque el sustituto hace el mismo movimiento que el original. Ahora se arma sobre el plan del mismo perfil sin restricciones; el `#require` y la aserción no cambian.
+
+**Verificación pendiente 👤:** con la IA real (SCRUM-201), que cada ejercicio que cambie en el plan haga el mismo movimiento que el original.
+
+Evidencia: rama `SCRUM-240-ia-equivalencia-estricta`, PR #37.
+- **Pruebas:** `PlanPersonalizationEquivalenceTests` (9 pruebas, 11 casos) y 3 de integración en `PlanPersistenceTests` con `LocalPersistence` real en un directorio temporal.
+- **Rojo antes del cambio:** 10 de esas 12 pruebas fallaron.
+- **`make ci`** (2026-11-05) → `✔ Test run with 613 tests in 88 suites passed` + `✔ Test run with 679 tests in 113 suites passed` + `Executed 151 tests, with 0 failures`; build de iOS y de watchOS OK. Línea base: 613 + 667.
+- **Guard del agente:** `OK: ninguna prueba se borra, desactiva ni reduce (base 965f01a, 1440 → 1452 pruebas).`
+- **E2E:** `make test-ui-smoke` → `OK testFirstWorkoutReachesProgressAndExport() (37 s)`, `OK testIntermediateQuestionnaireFromAboutYouToReopening() (38 s)`, `OK testWorkoutSurvivesForceQuitAndKeepsPain() (50 s)`. Ningún recorrido usa la IA.
+- **Medición** (lo que se le ofrecía a la IA antes y después, sin restricciones):
+
+  | Plan | Ejercicios con alternativas (antes y después) | Ofrecidas antes | De otro patrón antes | Ofrecidas después |
+  |---|---|---|---|---|
+  | 2 días, 60 min | 7 de 7 | 21 | 4 | 20 |
+  | 3 días, 45 min | 8 de 8 | 24 | 4 | 23 |
+  | 3 días, 60 min | 13 de 13 | 39 | 10 | 37 |
+  | 4 días, 60 min | 18 de 18 | 54 | 17 | 48 |
+  | 4 días, 75 min | 25 de 25 | 75 | 27 | 64 |
+  | 6 días, 60 min | 26 de 26 | 78 | 27 | 67 |
+
+  Ahora ninguna alternativa es de otro patrón y ningún ejercicio se queda sin opciones.

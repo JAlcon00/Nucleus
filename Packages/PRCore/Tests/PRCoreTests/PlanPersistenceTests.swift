@@ -89,6 +89,87 @@ private func profile(
     )
 }
 
+/// Un plan guardado con dos sustituciones de antes de SCRUM-240: una equivalente y otra que
+/// la regla estricta ya no acepta (otro patrón), con una explicación de la IA que la menciona.
+private struct OldSubstitutions {
+    let stored: StoredPlan
+    let block: TrainingBlock
+    let valid: ProposedSubstitution
+    let stale: ProposedSubstitution
+    let staleName: String
+    let validName: String
+    let validFact: DecisionFact
+    let record: PlanPersonalizationRecord
+
+    static func decision(_ substitution: ProposedSubstitution, _ outcome: PersonalizationOutcome) -> PersonalizationDecision {
+        PersonalizationDecision(adjustment: .substitute(substitution), outcome: outcome)
+    }
+
+    @MainActor
+    init(app: AppInstance, profile: OnboardingProfile, includingStale: Bool = true) async throws {
+        await app.todayPlan.activate(profile: profile, userID: "u1")
+        guard case .loaded(var stored, let base) = await app.planStore.loadPlan(userID: "u1") else {
+            throw PlanPersistenceFixtureError.noPlan
+        }
+        let catalog = try ExerciseCatalogLoader.loadBundled()
+        let byID = Dictionary(catalog.exercises.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let validator = try PlanPersonalizationValidator.standard()
+        let equipment = TodayPlanBuilder().defaultEquipmentKnownness()
+        let today = try trainingDay().date
+        var planned: [ExerciseID] = []
+        for id in base.sessions.flatMap(\.plannedSets).map(\.exerciseID) where !planned.contains(id) { planned.append(id) }
+
+        let offered = try validator.alternatives(
+            block: base, catalog: catalog.exercises, activeRestrictions: [], equipment: equipment, now: today
+        )
+        let replace = try #require(planned.first { offered[$0]?.isEmpty == false })
+        let valid = ProposedSubstitution(replace: replace, with: try #require(offered[replace]?.first))
+
+        var found: ProposedSubstitution?
+        search: for id in planned where id != valid.replace {
+            for candidate in catalog.exercises where candidate.id != valid.with {
+                let substitution = ProposedSubstitution(replace: id, with: candidate.id)
+                let outcome = try validator.reviewSubstitutions(
+                    [substitution], block: base, catalog: catalog.exercises, activeRestrictions: [],
+                    equipment: equipment, conversationID: UUID(), now: today
+                ).decisions.map(\.outcome)
+                if outcome == [.rejected(.differentPattern)] {
+                    found = substitution
+                    break search
+                }
+            }
+        }
+        let stale = try #require(found, "El catálogo real tiene un ejercicio de otro patrón con el mismo músculo")
+        let staleName = try #require(byID[stale.with]?.canonicalName)
+        let validName = try #require(byID[valid.with]?.canonicalName)
+        let validOrigin = try #require(byID[valid.replace]?.canonicalName)
+
+        let substitutions = includingStale ? [stale, valid] : [valid]
+        let record = PlanPersonalizationRecord(
+            decisions: substitutions.map { Self.decision($0, .accepted) },
+            rationale: ["Cambiamos ejercicios: \(includingStale ? staleName : validName) entra a tu plan."],
+            rationaleSource: .ai,
+            audit: []
+        )
+        stored.personalization = record
+        let block = PlanPersonalizationApplier.substituting(substitutions, in: base)
+        try await app.planStore.save(plan: stored, block: block)
+
+        self.stored = stored
+        self.block = block
+        self.valid = valid
+        self.stale = stale
+        self.staleName = staleName
+        self.validName = validName
+        self.validFact = DecisionFact(key: "substitution", value: "\(validOrigin) → \(validName)")
+        self.record = record
+    }
+}
+
+private enum PlanPersistenceFixtureError: Error {
+    case noPlan
+}
+
 @MainActor
 @Suite("SCRUM-26 · Recordar mi perfil y mi plan")
 struct PlanPersistenceTests {
@@ -541,6 +622,85 @@ struct PlanPersistenceTests {
         }
         #expect(saved.updatedAt == stored.updatedAt, "Abrir no reescribe el plan")
         #expect(savedBlock == block)
+    }
+
+    /// SCRUM-240 con DE-5 (SCRUM-239): la regla nueva no toca un plan guardado al abrir.
+    @Test("SCRUM-240: un plan guardado con una sustitución que ya no pasa se abre igual y sin reescribir el disco")
+    func savedStaleSubstitutionIsLeftUntilRegeneration() async throws {
+        let root = try makeRoot()
+        let chosen = profile(days: 3, minutes: 90)
+        let old = try await OldSubstitutions(app: try AppInstance(root: root), profile: chosen)
+
+        let app = try AppInstance(root: root)
+        #expect(await app.todayPlan.restore(userID: "u1") == .restored(chosen))
+        #expect(app.todayPlan.notice == nil)
+        #expect(app.todayPlan.plan?.block == old.block, "Se ve igual que antes de abrir")
+        #expect(app.todayPlan.personalization == old.record)
+        guard case .loaded(let saved, let savedBlock) = await app.planStore.loadPlan(userID: "u1") else {
+            Issue.record("no se guardó"); return
+        }
+        #expect(saved.updatedAt == old.stored.updatedAt, "Abrir no reescribe el plan")
+        #expect(savedBlock == old.block)
+    }
+
+    /// SCRUM-240: al migrar, lo que ya no pasa vuelve al ejercicio del motor y el registro y la
+    /// explicación quedan coherentes con el plan. Corre sin red: `AppInstance` no tiene IA.
+    @Test("SCRUM-240: al migrar, la sustitución que no pasa se quita y queda registrada; la que pasa se conserva")
+    func migrationDropsStaleSubstitutionCoherently() async throws {
+        let root = try makeRoot()
+        let chosen = profile(days: 3, minutes: 90)
+        let first = try AppInstance(root: root)
+        let old = try await OldSubstitutions(app: first, profile: chosen)
+        var stored = old.stored
+        stored.generatorVersion = StoredPlan.currentGeneratorVersion - 1
+        try await first.planStore.save(plan: stored, block: old.block)
+
+        let app = try AppInstance(root: root)
+        #expect(await app.todayPlan.restore(userID: "u1") == .restored(chosen))
+        #expect(app.todayPlan.notice == .planUpdated)
+        let migrated = try #require(app.todayPlan.plan?.block)
+        let planned = Set(migrated.sessions.flatMap(\.plannedSets).map(\.exerciseID))
+        #expect(planned.contains(old.stale.replace), "Vuelve el ejercicio del motor")
+        #expect(!planned.contains(old.stale.with))
+        #expect(planned.contains(old.valid.with), "La equivalente se conserva")
+        #expect(!planned.contains(old.valid.replace))
+
+        guard case .loaded(let saved, _) = await app.planStore.loadPlan(userID: "u1") else {
+            Issue.record("no se guardó"); return
+        }
+        let record = try #require(saved.personalization)
+        #expect(record.decisions == [
+            OldSubstitutions.decision(old.stale, .rejected(.differentPattern)),
+            OldSubstitutions.decision(old.valid, .accepted),
+        ])
+        #expect(record.rationaleSource == .local, "La explicación de la IA mencionaba lo que se quitó")
+        #expect(!record.rationale.joined().contains(old.staleName))
+        #expect(record.rationale.joined().contains(old.validName))
+        #expect(app.todayPlan.personalization == record, "Lo que se ve es lo que quedó guardado")
+        let substitutionFacts = saved.explanation.facts.filter { $0.key == "substitution" }
+        #expect(substitutionFacts == [old.validFact], "Sólo el hecho de la que se conservó")
+    }
+
+    @Test("SCRUM-240: al migrar sin quitar nada, la explicación de la IA se conserva con su hecho")
+    func migrationKeepsTheAIRationaleWhenNothingIsDropped() async throws {
+        let root = try makeRoot()
+        let chosen = profile(days: 3, minutes: 90)
+        let first = try AppInstance(root: root)
+        let old = try await OldSubstitutions(app: first, profile: chosen, includingStale: false)
+        var stored = old.stored
+        stored.generatorVersion = StoredPlan.currentGeneratorVersion - 1
+        try await first.planStore.save(plan: stored, block: old.block)
+
+        let app = try AppInstance(root: root)
+        #expect(await app.todayPlan.restore(userID: "u1") == .restored(chosen))
+        guard case .loaded(let saved, _) = await app.planStore.loadPlan(userID: "u1") else {
+            Issue.record("no se guardó"); return
+        }
+        let record = try #require(saved.personalization)
+        #expect(record.decisions == old.record.decisions)
+        #expect(record.rationale == old.record.rationale)
+        #expect(record.rationaleSource == .ai)
+        #expect(saved.explanation.facts.filter { $0.key == "substitution" } == [old.validFact])
     }
 }
 

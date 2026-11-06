@@ -1,7 +1,7 @@
 # mvp-plan.md — Tablero activo de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica del POC: SCRUM-180).
-> **Actualizado:** 2026-11-05 (SCRUM-232 terminada: el motor de sustitutos ya cumple DE-3).
+> **Actualizado:** 2026-11-05 (SCRUM-240 terminada: la IA usa la misma regla de equivalencia que el motor).
 > **Lo terminado** hasta el 2026-11-02 está congelado en [`docs/archivo/mvp-plan-2026-10.md`](docs/archivo/mvp-plan-2026-10.md): el POC (F-01 a F-07, bloques 0 a 13), UX, IA, feedback y las Fases B, C y D, más la deuda. Ahí siguen la evidencia y los criterios de cada historia. No se edita: se cita.
 > **Regla:** mientras quede un `[ ]` en la sección 1, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
 
@@ -65,6 +65,7 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
 | SCRUM-224 | Un entrenamiento con superset en el iPhone, con letra grande y Reduce Transparency. |
 | SCRUM-35 | En un dispositivo físico, cuando exista HealthKit real (EPIC-25, Fase F). |
 | SCRUM-241 | Con la IA real (SCRUM-201), un plan de 30 min con superset: si la IA cambia un ejercicio del par, Hoy y "Por qué tu plan es así" nombran al sustituto. |
+| SCRUM-240 | Con la IA real (SCRUM-201), que cada ejercicio que cambie en el plan haga el mismo movimiento que el original. |
 
 ## 3. Lo que sigue
 
@@ -72,14 +73,13 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
 - **Decisiones DE-1 a DE-4:** en SCRUM-231. **DE-5** (planes guardados que dejan de cumplir una regla nueva): en SCRUM-239.
 - **Criterios, pruebas y rutas:** en cada tarjeta de Jira.
 - **Cuándo las toma el agente:** cuando Jesús autorice el epic. Hoy la cola 👤 pasa de 5 y el runbook se detiene en el paso 0.
-- **Excepción de Jesús (2026-11-05):** SCRUM-232 y SCRUM-240 se trabajan antes de autorizar el epic porque no agregan pantallas. Después sigue su sesión con el iPhone.
+- **Excepción de Jesús (2026-11-05):** SCRUM-232 y SCRUM-240 se trabajaron antes de autorizar el epic porque no agregan pantallas. Antes de SCRUM-233 va su sesión con el iPhone.
 
 | Orden | Historia | Depende de | Carril |
 |---|---|---|---|
 | 1 | SCRUM-233 · PR-E002 Máquina ocupada: adelantar sin romper la sesión | SCRUM-231 | 🟢 |
 | 1 | SCRUM-235 · PR-E004 Mi gimnasio: el gimnasio activo se guarda | SCRUM-231 | 🟡 |
 | 2 | SCRUM-234 · PR-E003 Sustituto equivalente durante el entrenamiento | 232, 233 | 🟢 |
-| 2 | SCRUM-240 · PR-E008 La IA sólo propone sustitutos equivalentes (la regla de PR-E001) | 232 | 🟢 |
 | 3 | SCRUM-236 · PR-E005 "No hay esta máquina aquí", recordado y reversible | 232, 234, 235 | 🟢 (🟡 si toca persistencia) |
 | 3 | SCRUM-237 · PR-E006 Mis cargas por máquina concreta | 235 (234 para un criterio) | 🟡 |
 | 4 | SCRUM-238 · PR-E007 Varios gimnasios (Could) | 235, 236 | 🟢 |
@@ -108,6 +108,7 @@ Una línea por historia terminada después del 2026-11-02: `SCRUM-XX · título 
 
 - SCRUM-241 · PR-E009 Cambiar un ejercicio con IA no deshace su superset · PR #35 · 2026-11-03 ([detalle](docs/archivo/mvp-plan-2026-11.md#scrum-241--pr-e009-cambiar-un-ejercicio-con-ia-no-deshace-su-superset))
 - SCRUM-232 · PR-E001 Sustituto equivalente de verdad (motor) · PR #36 · 2026-11-05 ([detalle](docs/archivo/mvp-plan-2026-11.md#scrum-232--pr-e001-sustituto-equivalente-de-verdad-motor))
+- SCRUM-240 · PR-E008 La IA sólo propone sustitutos equivalentes de verdad · PR #37 · 2026-11-05 ([detalle](docs/archivo/mvp-plan-2026-11.md#scrum-240--pr-e008-la-ia-sólo-propone-sustitutos-equivalentes-de-verdad))
 
 ---
 
