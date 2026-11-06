@@ -25,15 +25,28 @@ public struct ExerciseQueueState: Codable, Sendable, Hashable {
     public var deferred: [ExerciseID]
     /// Ejercicios saltados, en el orden en que se saltaron.
     public var skipped: [ExerciseID]
+    /// Orden propio de esta sesión, si "Máquina ocupada" adelantó algo (SCRUM-233). Campo
+    /// opcional (ADR-0003): sin él manda el orden de la plantilla.
+    public var order: [ExerciseID]?
+    /// Ejercicios marcados "Máquina ocupada" en esta sesión (SCRUM-233). Sólo vive aquí: la
+    /// ocupación no se guarda en el gimnasio ni en el plan (RN-005). Campo opcional.
+    public var occupied: [ExerciseID]?
 
-    public init(deferred: [ExerciseID] = [], skipped: [ExerciseID] = []) {
+    public init(
+        deferred: [ExerciseID] = [],
+        skipped: [ExerciseID] = [],
+        order: [ExerciseID]? = nil,
+        occupied: [ExerciseID]? = nil
+    ) {
         self.deferred = deferred
         self.skipped = skipped
+        self.order = order
+        self.occupied = occupied
     }
 
     public static let empty = ExerciseQueueState()
 
-    public var isEmpty: Bool { deferred.isEmpty && skipped.isEmpty }
+    public var isEmpty: Bool { deferred.isEmpty && skipped.isEmpty && order == nil && occupied == nil }
 }
 
 public enum WorkoutQueue {
@@ -43,11 +56,14 @@ public enum WorkoutQueue {
         return template.plannedSets.compactMap { seen.insert($0.exerciseID).inserted ? $0.exerciseID : nil }
     }
 
-    /// Orden efectivo: los no diferidos en el orden de la plantilla y, al final, los
-    /// diferidos en el orden en que se dejaron. Incluye los saltados (no se pierden).
+    /// Orden efectivo: los no diferidos en el orden de la sesión (el propio, si lo hay, o el
+    /// de la plantilla) y, al final, los diferidos en el orden en que se dejaron. Incluye los
+    /// saltados (no se pierden).
     public static func effectiveOrder(of template: SessionTemplate, state: ExerciseQueueState) -> [ExerciseID] {
-        let order = exerciseOrder(of: template)
-        let deferred = state.deferred.filter(order.contains)
+        let planned = exerciseOrder(of: template)
+        let custom = (state.order ?? []).filter(planned.contains)
+        let order = custom + planned.filter { !custom.contains($0) }
+        let deferred = state.deferred.filter(planned.contains)
         return order.filter { !deferred.contains($0) } + deferred
     }
 
@@ -86,11 +102,13 @@ public enum WorkoutQueue {
         return done < plannedIndices.count ? plannedIndices[done] : nil
     }
 
-    /// ¿Los dos ejercicios del par siguen juntos en la cola? Ninguno saltado y los dos
-    /// diferidos o ninguno: dejar uno para después o saltarlo lo separa y su pareja sigue
-    /// sola (decisión de Jesús, 2026-10-30).
+    /// ¿Los dos ejercicios del par siguen juntos en la cola? Ninguno saltado ni ocupado, y
+    /// los dos diferidos o ninguno: dejar uno para después, marcarlo ocupado o saltarlo lo
+    /// separa y su pareja sigue sola (decisión de Jesús, 2026-10-30).
     public static func isTogether(_ pair: SupersetPair, state: ExerciseQueueState) -> Bool {
-        !state.skipped.contains(pair.first) && !state.skipped.contains(pair.second)
+        let occupied = state.occupied ?? []
+        return !state.skipped.contains(pair.first) && !state.skipped.contains(pair.second)
+            && !occupied.contains(pair.first) && !occupied.contains(pair.second)
             && state.deferred.contains(pair.first) == state.deferred.contains(pair.second)
     }
 
@@ -158,6 +176,42 @@ public enum WorkoutQueue {
         var next = state
         next.deferred.removeAll { $0 == exercise }
         next.deferred.append(exercise)
+        return next
+    }
+
+    /// Lo que queda por hacer además de `exercise`, en el orden efectivo. Un saltado no cuenta.
+    public static func pendingOthers(
+        than exercise: ExerciseID,
+        template: SessionTemplate,
+        sets: [SetRecord],
+        state: ExerciseQueueState
+    ) -> [ExerciseID] {
+        effectiveOrder(of: template, state: state).filter { other in
+            other != exercise && !state.skipped.contains(other)
+                && hasPendingSets(other, template: template, sets: sets)
+        }
+    }
+
+    /// Marca el ejercicio como ocupado en esta sesión (idempotente).
+    public static func markingOccupied(_ exercise: ExerciseID, in state: ExerciseQueueState) -> ExerciseQueueState {
+        guard !(state.occupied ?? []).contains(exercise) else { return state }
+        var next = state
+        next.occupied = (state.occupied ?? []) + [exercise]
+        return next
+    }
+
+    /// "Máquina ocupada" con adelanto seguro: `candidate` pasa a ser el actual y `exercise`
+    /// queda justo después. Los dos dejan de estar diferidos: los coloca este orden.
+    public static func advancing(
+        _ candidate: ExerciseID,
+        before exercise: ExerciseID,
+        in state: ExerciseQueueState,
+        template: SessionTemplate
+    ) -> ExerciseQueueState {
+        let rest = effectiveOrder(of: template, state: state).filter { $0 != candidate && $0 != exercise }
+        var next = markingOccupied(exercise, in: state)
+        next.deferred.removeAll { $0 == candidate || $0 == exercise }
+        next.order = [candidate, exercise] + rest
         return next
     }
 

@@ -97,6 +97,16 @@ public enum WorkoutSessionError: Error, Equatable, Sendable {
     case setValidation(String)
 }
 
+/// Qué pasó al tocar "Máquina ocupada" (SCRUM-233), con los nombres para la pantalla.
+public enum OccupiedOutcome: Equatable, Sendable {
+    /// `next` se adelantó y `after` va justo después.
+    case advanced(next: String, after: String)
+    /// Nada se pudo adelantar sin cansar antes lo prioritario: `exercise` va al final.
+    case movedToEnd(exercise: String)
+    /// Es lo único que queda: nada cambia y se puede esperar o saltar.
+    case onlyExercise(exercise: String)
+}
+
 /// Coordinador de una sesión de entrenamiento activa (WORKOUT MODE).
 ///
 /// Fuente única de verdad: `ActiveWorkoutController` (la sesión viva). El set actual
@@ -125,6 +135,10 @@ public final class WorkoutSessionCoordinator: Identifiable {
     private let dropsetAdvice: [ExerciseID: DropsetAdvice]
     /// Músculos de cada ejercicio para decir dónde dolió (SCRUM-226; `PainMuscleOptions`).
     private let exerciseMuscles: [ExerciseID: [MuscleGroup.ID]]
+    /// Catálogo por ID: el gate de fatiga de "Máquina ocupada" necesita los ejercicios.
+    private let exercises: [ExerciseID: Exercise]
+    /// El último "Máquina ocupada" y cuántas series había entonces (SCRUM-233).
+    private var lastOccupied: (outcome: OccupiedOutcome, setCount: Int)?
     private var controller: ActiveWorkoutController
     private let completer: SetCompleter
     private let restTimer: RestTimer
@@ -165,6 +179,7 @@ public final class WorkoutSessionCoordinator: Identifiable {
         exerciseNames: [ExerciseID: String] = [:],
         dropsetAdvice: [ExerciseID: DropsetAdvice] = [:],
         exerciseMuscles: [ExerciseID: [MuscleGroup.ID]] = [:],
+        catalog: [Exercise] = [],
         completer: SetCompleter = SetCompleter(),
         restTimer: RestTimer = RestTimer(),
         summaryBuilder: WorkoutSummaryBuilder = WorkoutSummaryBuilder(),
@@ -183,6 +198,7 @@ public final class WorkoutSessionCoordinator: Identifiable {
         self.exerciseNames = exerciseNames
         self.dropsetAdvice = dropsetAdvice
         self.exerciseMuscles = exerciseMuscles
+        self.exercises = Dictionary(catalog.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         self.controller = ActiveWorkoutController()
         self.completer = completer
         self.restTimer = restTimer
@@ -601,6 +617,63 @@ extension WorkoutSessionCoordinator {
         try changeQueue { exercise, state, session in
             WorkoutQueue.deferring(exercise, in: state, template: template, sets: session.sets)
         }
+    }
+
+    /// Lo que la pantalla dice tras "Máquina ocupada", hasta completar la siguiente serie.
+    public var occupiedNotice: OccupiedOutcome? {
+        guard let lastOccupied, controller.current?.session.sets.count == lastOccupied.setCount else { return nil }
+        return lastOccupied.outcome
+    }
+
+    /// SCRUM-233: "Máquina ocupada" sobre el ejercicio actual. Adelanta el primer pendiente
+    /// que no suba la interferencia por fatiga; si ninguno, lo manda al final; si es lo único
+    /// que queda, no cambia nada. Las series hechas no cambian, el descanso sigue y la cola
+    /// se guarda antes de cambiar la pantalla. La ocupación sólo vive en esta sesión (RN-005).
+    @discardableResult
+    public func markCurrentExerciseOccupied() throws -> OccupiedOutcome {
+        let session = try activeSessionForSet()
+        switch phase {
+        case .active, .resting: break
+        case .idle, .paused, .finished: throw WorkoutSessionError.invalidTransition
+        }
+        guard let current = currentSet() else { throw WorkoutSessionError.allSetsCompleted }
+        let exercise = template.plannedSets[current.index].exerciseID
+        let state = session.queue ?? .empty
+        let others = WorkoutQueue.pendingOthers(than: exercise, template: template, sets: session.sets, state: state)
+        let outcome: OccupiedOutcome
+        if others.isEmpty {
+            outcome = .onlyExercise(exercise: name(of: exercise))
+        } else if let candidate = advanceCandidate(for: exercise, others: others, state: state) {
+            _ = try changeQueue { exercise, state, _ in
+                WorkoutQueue.advancing(candidate, before: exercise, in: state, template: template)
+            }
+            outcome = .advanced(next: name(of: candidate), after: name(of: exercise))
+        } else {
+            _ = try changeQueue { exercise, state, session in
+                WorkoutQueue.deferring(exercise, in: WorkoutQueue.markingOccupied(exercise, in: state), template: template, sets: session.sets)
+            }
+            outcome = .movedToEnd(exercise: name(of: exercise))
+        }
+        lastOccupied = (outcome, session.sets.count)
+        return outcome
+    }
+
+    /// Sin los datos del ejercicio no se adelanta a ciegas: nunca se arriesga lo prioritario.
+    private func advanceCandidate(for exercise: ExerciseID, others: [ExerciseID], state: ExerciseQueueState) -> ExerciseID? {
+        guard let blocked = exercises[exercise] else { return nil }
+        do {
+            let config = try FatigueInterferenceConfig(rule: FatigueInterferenceDefaults.makeRule())
+            return try ReorderBeforeReplaceController().advanceCandidate(
+                blocked: blocked, remaining: others.compactMap { exercises[$0] },
+                excluded: Set(state.occupied ?? []), config: config
+            )?.id
+        } catch {
+            return nil
+        }
+    }
+
+    private func name(of exercise: ExerciseID) -> String {
+        exerciseNames[exercise] ?? exerciseFallbackName(exercise)
     }
 
     /// Salta el ejercicio actual: queda marcado como saltado, sin crear series. Si no

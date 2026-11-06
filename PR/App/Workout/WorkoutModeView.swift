@@ -176,23 +176,17 @@ struct WorkoutModeView: View {
                     .font(.subheadline)
                     .foregroundStyle(Color.textSecondary)
             }
-            HStack(spacing: DSpace.s) {
-                Button {
-                    _ = try? coordinator.deferCurrentExercise()
-                } label: {
-                    Label("Para después", systemImage: "clock.arrow.circlepath")
-                }
-                .buttonStyle(.surface)
-                .accessibilityHint("Pasa este ejercicio al final, por ejemplo si la máquina está ocupada.")
-                .accessibilityIdentifier("workout.defer")
-                Button {
-                    confirmingSkip = set.exerciseName
-                } label: {
-                    // "Saltar" a secas es del descanso: éste dice qué salta.
-                    Label("Saltar ejercicio", systemImage: "forward.end")
-                }
-                .buttonStyle(.surface)
-                .accessibilityIdentifier("workout.skip")
+            if let notice = coordinator.occupiedNotice {
+                Text(occupiedText(notice))
+                    .font(.footnote)
+                    .foregroundStyle(Color.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("workout.occupied.notice")
+            }
+            // Con letra grande se apilan para no tapar "Completar serie".
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: DSpace.s) { queueButtons(for: set) }
+                VStack(spacing: DSpace.s) { queueButtons(for: set) }
             }
             ForEach(Array(coordinator.skippedExercises.enumerated()), id: \.element.id) { index, skipped in
                 HStack {
@@ -207,6 +201,38 @@ struct WorkoutModeView: View {
                     .accessibilityIdentifier("workout.resume.\(index)")
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func queueButtons(for set: ActiveWorkoutSetUI) -> some View {
+        Button {
+            _ = try? coordinator.markCurrentExerciseOccupied()
+        } label: {
+            Label("Máquina ocupada", systemImage: "clock.arrow.circlepath")
+        }
+        .buttonStyle(.surface)
+        .accessibilityHint("Te dice qué hacer mientras se desocupa.")
+        .accessibilityIdentifier("workout.occupied")
+        Button {
+            confirmingSkip = set.exerciseName
+        } label: {
+            // "Saltar" a secas es del descanso: éste dice qué salta.
+            Label("Saltar ejercicio", systemImage: "forward.end")
+        }
+        .buttonStyle(.surface)
+        .accessibilityIdentifier("workout.skip")
+    }
+
+    /// SCRUM-233: dónde quedó todo tras "Máquina ocupada".
+    private func occupiedText(_ outcome: OccupiedOutcome) -> String {
+        switch outcome {
+        case .advanced(let next, let after):
+            return String(localized: "Adelantamos \(next). \(after) va después.")
+        case .movedToEnd(let exercise):
+            return String(localized: "Nada se puede adelantar sin cansar antes lo prioritario: \(exercise) va al final.")
+        case .onlyExercise(let exercise):
+            return String(localized: "\(exercise) es lo único que falta: puedes esperar o saltarlo.")
         }
     }
 

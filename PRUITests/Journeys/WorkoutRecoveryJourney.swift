@@ -103,14 +103,15 @@ final class WorkoutRecoveryJourney: PRUITestCase {
                           "El ejercicio que dolió queda saltado y se puede retomar")
         }
 
-        // SCRUM-212: en el entrenamiento se deja un ejercicio para después, se salta (con
-        // confirmación), se retoma, y al terminar el resumen dice qué se saltó.
+        // SCRUM-212 y SCRUM-233: "Máquina ocupada" dice qué sigue, se salta (con confirmación),
+        // se retoma, y al terminar el resumen dice qué se saltó.
         step("Dejar para después, saltar y retomar; el resumen dice qué se saltó (testDeferSkipAndResumeInWorkout)") {
             let app = launchWithPlan()
             tap(app, "today.start")
             XCTAssertTrue(element(app, "workout.completeSet").appears(within: 10))
 
-            tap(app, "workout.defer")
+            tap(app, "workout.occupied")
+            XCTAssertTrue(element(app, "workout.occupied.notice").appears(within: 5), "Dice dónde quedó el ejercicio")
             XCTAssertTrue(element(app, "workout.completeSet").appears(within: 5), "Sigue con el siguiente ejercicio")
 
             tap(app, "workout.skip")

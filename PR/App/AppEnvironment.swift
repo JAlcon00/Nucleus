@@ -223,6 +223,7 @@ public final class AppEnvironment {
                 exerciseNames: exerciseNames,
                 dropsetAdvice: dropsetAdvice,
                 exerciseMuscles: exerciseMuscles,
+                catalog: catalog.exercises,
                 celebrationPresenter: PRCelebrationPresenter(locale: Self.presentationLocale),
                 clock: clock
             ) {
@@ -323,6 +324,7 @@ public final class AppEnvironment {
                     exerciseNames: exerciseNames,
                     dropsetAdvice: dropsetAdvice,
                     exerciseMuscles: exerciseMuscles,
+                    catalog: catalog.exercises,
                     celebrationPresenter: presenter,
                     clock: clock
                 )
@@ -330,13 +332,13 @@ public final class AppEnvironment {
                 persistence.log.saveFailed(.workouts)
                 coordinator = WorkoutSessionCoordinator(
                     template: template, exerciseNames: exerciseNames, dropsetAdvice: dropsetAdvice,
-                    exerciseMuscles: exerciseMuscles, celebrationPresenter: presenter, clock: clock
+                    exerciseMuscles: exerciseMuscles, catalog: catalog.exercises, celebrationPresenter: presenter, clock: clock
                 )
             }
         } else {
             coordinator = WorkoutSessionCoordinator(
                 template: template, exerciseNames: exerciseNames, dropsetAdvice: dropsetAdvice,
-                exerciseMuscles: exerciseMuscles, celebrationPresenter: presenter, clock: clock
+                exerciseMuscles: exerciseMuscles, catalog: catalog.exercises, celebrationPresenter: presenter, clock: clock
             )
         }
         activeWorkout = coordinator
