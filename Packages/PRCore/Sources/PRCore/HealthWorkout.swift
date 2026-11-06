@@ -330,9 +330,12 @@ public struct HealthWorkoutWrite: Sendable, Hashable {
     public let activityType: HealthWorkoutActivityType
 
     /// Sólo un entrenamiento completado con al menos una serie va a Salud (DF-4). Sin horas
-    /// válidas, por ejemplo con el reloj cambiado, no hay nada que escribir.
+    /// válidas, por ejemplo con el reloj cambiado, no hay nada que escribir. Si el reloj lo
+    /// registra, el iPhone no agrega otro; si el reloj falló, escribe con el mismo
+    /// identificador (SCRUM-258).
     public init?(session: WorkoutSessionRecord) {
-        guard session.lifecycle == .completed,
+        guard session.healthRecording?.watchOwnsHealthWorkout != true,
+              session.lifecycle == .completed,
               let end = session.endedAt,
               end > session.startedAt,
               session.sets.contains(where: { $0.lifecycle == .completed })

@@ -193,6 +193,36 @@ struct HealthWriteTests {
         #expect(await harness.health.saveAttempts == 0)
     }
 
+    // SCRUM-258: el reloj y el iPhone no escriben los dos.
+    @Test("Si el reloj registra el entrenamiento, el iPhone no agrega otro", arguments: [
+        SessionHealthRecording.State.recording, .saved,
+    ])
+    func watchOwnsTheWorkout(state: SessionHealthRecording.State) async throws {
+        let harness = try Harness()
+        defer { harness.cleanUp() }
+        var session = try completed()
+        session.healthRecording = SessionHealthRecording(state: state)
+        try await harness.repository.save(session)
+
+        try await harness.coordinator().sessionFinished(id: session.id)
+
+        #expect(await harness.health.saveAttempts == 0)
+        #expect(try await harness.repository.session(id: session.id)?.healthWriteStatus == nil)
+    }
+
+    @Test("Si Salud falló en el reloj, escribe el iPhone con el mismo identificador")
+    func watchFailedSoPhoneWrites() async throws {
+        let harness = try Harness()
+        defer { harness.cleanUp() }
+        var session = try completed()
+        session.healthRecording = SessionHealthRecording(state: .failed)
+        try await harness.repository.save(session)
+
+        try await harness.coordinator().sessionFinished(id: session.id)
+
+        #expect(await harness.health.savedWorkouts.keys.sorted() == [session.id.rawValue.uuidString])
+    }
+
     @Test("Sólo series saltadas no cuentan como series")
     func skippedSetsDoNotCount() throws {
         var session = try completed(sets: 0)

@@ -44,6 +44,8 @@ public struct UITestLaunchOptions: Equatable, Sendable {
     public static let planDelayArgument = "-PRUITestPlanDelay"
     public static let profileArgument = "-PRUITestProfile"
     public static let fakeHealthArgument = "-PRUITestFakeHealth"
+    /// Al empezar crea una serie en conflicto, como si llegara del reloj (SCRUM-259).
+    public static let setConflictArgument = "-PRUITestSetConflict"
     /// Demoras aceptadas, en segundos (fuera de este rango se ignora).
     public static let allowedPlanDelaySeconds: ClosedRange<Int> = 1...10
 
@@ -60,6 +62,8 @@ public struct UITestLaunchOptions: Equatable, Sendable {
     public let seededProfile: UITestSeededProfile?
     /// Salud falsa; `nil` = la de verdad.
     public let fakeHealth: UITestFakeHealth?
+    /// Simular una serie en conflicto con el reloj.
+    public let simulatesSetConflict: Bool
 
     public init(
         isolatedPersistence: Bool = false,
@@ -67,7 +71,8 @@ public struct UITestLaunchOptions: Equatable, Sendable {
         storeID: String? = nil,
         planDelay: Duration? = nil,
         seededProfile: UITestSeededProfile? = nil,
-        fakeHealth: UITestFakeHealth? = nil
+        fakeHealth: UITestFakeHealth? = nil,
+        simulatesSetConflict: Bool = false
     ) {
         self.isolatedPersistence = isolatedPersistence
         self.fixedDay = fixedDay
@@ -75,6 +80,7 @@ public struct UITestLaunchOptions: Equatable, Sendable {
         self.planDelay = planDelay
         self.seededProfile = seededProfile
         self.fakeHealth = fakeHealth
+        self.simulatesSetConflict = simulatesSetConflict
     }
 
     /// Nombre del directorio temporal aislado: estable con `storeID`, nuevo si no hay.
@@ -97,7 +103,8 @@ public struct UITestLaunchOptions: Equatable, Sendable {
             planDelay: planDelay(in: arguments),
             // Sin datos temporales el perfil se ignora: nunca se contesta sobre los reales.
             seededProfile: isolated ? seededProfile(in: arguments) : nil,
-            fakeHealth: isolated ? fakeHealth(in: arguments) : nil
+            fakeHealth: isolated ? fakeHealth(in: arguments) : nil,
+            simulatesSetConflict: isolated && arguments.contains(setConflictArgument)
         )
     }
 

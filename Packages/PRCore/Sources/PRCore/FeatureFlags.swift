@@ -34,6 +34,8 @@ public enum FeatureFlagKey: String, Sendable, CaseIterable, Hashable {
     case healthPrefillEnabled = "health.prefill.enabled"
     // Salud (SCRUM-244): entrenamientos en Salud. Apagado hasta pasar el gate SCRUM-251.
     case healthWorkoutsEnabled = "health.workouts.enabled"
+    // Reloj (SCRUM-258): sesión de Salud en el reloj. Apagada hasta pasar el gate SCRUM-261.
+    case watchHealthSessionEnabled = "watch.health_session.enabled"
 }
 
 /// Estado de un flag: valor + origen (default o sobrescrito). Auditable.
@@ -122,6 +124,7 @@ public struct FeatureFlags: Sendable, Equatable {
         case .agentExerciseSubstitutionEnabled: return false
         case .healthPrefillEnabled: return false
         case .healthWorkoutsEnabled: return false
+        case .watchHealthSessionEnabled: return false
         }
     }
 }

@@ -68,7 +68,6 @@ public actor HealthEnergyCoordinator {
         let sessions = try await repository.loadAllSessions().items
         let ownIdentifiers = Set(sessions.map { $0.id.rawValue.uuidString })
         let externals = await reader.recentWorkouts(now: now, ownSyncIdentifiers: ownIdentifiers)
-        guard !externals.isEmpty else { return [] }
 
         let completed = sessions.filter { $0.lifecycle == .completed }
         let byIdentifier = Dictionary(
@@ -114,6 +113,8 @@ public actor HealthEnergyCoordinator {
             start: session.startedAt,
             end: end,
             activityType: .strengthTraining,
+            // Lo que midió el reloj en la sesión de Salud de Nucleus (SCRUM-258): prioridad 1.
+            activeKilocalories: session.healthRecording?.activeKilocalories,
             source: .ourHealthKitWorkout
         )
     }

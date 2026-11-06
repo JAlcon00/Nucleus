@@ -78,6 +78,26 @@ public struct ActiveWorkoutSetUI: Equatable, Sendable {
     }
 }
 
+/// Dos series hechas para la misma ranura, una en cada dispositivo (SCRUM-259).
+public struct SetConflictUI: Identifiable, Equatable, Sendable {
+    public let id: SetRecordID
+    public let exerciseName: String
+    /// Número de serie dentro del ejercicio.
+    public let setNumber: Int
+    /// La que cuenta hoy: la más reciente.
+    public let current: SetRecord
+    /// La que está guardada aparte.
+    public let other: SetRecord
+
+    public init(id: SetRecordID, exerciseName: String, setNumber: Int, current: SetRecord, other: SetRecord) {
+        self.id = id
+        self.exerciseName = exerciseName
+        self.setNumber = setNumber
+        self.current = current
+        self.other = other
+    }
+}
+
 /// Estado observable que expone la pantalla de entrenamiento activo (WORKOUT MODE).
 public enum WorkoutSessionPhase: Equatable, Sendable {
     case idle
@@ -208,6 +228,12 @@ public final class WorkoutSessionCoordinator: Identifiable {
     /// iniciar y en cada cambio de estado (serie, pausa, reanudar, descanso, fin) ANTES de
     /// que la UI avance; nunca desde `tick()`. `nil` = sin disco (sólo memoria).
     private let persistSession: ((WorkoutSessionRecord) throws -> Void)?
+
+    /// Avisa cada cambio de estado que el reloj debe conocer (SCRUM-255): el mismo momento en
+    /// que se guarda, así nunca se publica algo que no esté en disco.
+    public var onWatchStateChange: ((WatchSessionSnapshot) -> Void)?
+    /// ¿El reloj debe abrir una sesión de Salud? (SCRUM-258). Lo decide la app.
+    public var watchRecordsHealth = false
 
     /// `true` si la última escritura a disco falló: la sesión sigue viva en memoria pero la
     /// UI debe avisar (nunca se traga el error de un dato de entrenamiento).
@@ -371,6 +397,26 @@ extension WorkoutSessionCoordinator {
 // MARK: - Current set & completion
 
 extension WorkoutSessionCoordinator {
+
+    /// Lo que el reloj necesita saber de esta sesión (SCRUM-253): la misma cola y la misma
+    /// precarga que esta pantalla. `nil` sin sesión.
+    public func watchSnapshot() -> WatchSessionSnapshot? {
+        guard let state = controller.current else { return nil }
+        let session = state.session
+        let names = exerciseNames
+        let completer = self.completer
+        let drafts = template.plannedSets.reduce(into: [PlannedSet: SetCompletionDraft]()) { result, planned in
+            result[planned] = completer.preload(for: planned, lastPerformedWeight: lastWeight(for: planned, session: session))
+        }
+        return WatchSessionSnapshotBuilder.snapshot(WatchSessionSnapshotInput(
+            session: session,
+            template: template,
+            revision: Int(state.lastTransitionAt.timeIntervalSince1970 * 1_000),
+            exerciseName: { id in names[id] ?? "Ejercicio \(id.rawValue.uuidString.prefix(8))" },
+            draft: { planned in drafts[planned] ?? completer.preload(for: planned) },
+            opensWorkoutSession: watchRecordsHealth
+        ))
+    }
 
     /// Set siguiente a realizar: por ejercicio, siguiendo la cola (esperas y saltos,
     /// SCRUM-212). Sin cambios en la cola es `plannedSets[sets.count]`, como antes.
@@ -587,6 +633,130 @@ extension WorkoutSessionCoordinator {
         let next: WorkoutSessionPhase = rest.isActive ? .resting(current, rest: rest) : .active(current)
         phase = next
         return next
+    }
+
+    // MARK: - SCRUM-255: series que llegan del reloj
+
+    /// ¿Esta es la sesión de `id`? El puente decide con esto si la aplica aquí o en disco.
+    public func isLive(session id: WorkoutID) -> Bool {
+        controller.current?.session.id == id
+    }
+
+    /// Aplica una serie hecha en el reloj. Idempotente: si ya estaba, no cambia nada. Guarda
+    /// antes de cambiar la pantalla. Una serie de una sesión ya cerrada se agrega igual: nunca
+    /// se tira. Devuelve `true` si cambió algo.
+    @discardableResult
+    public func applyRemoteSet(_ set: SetRecord, slot: SetSlot, device: WorkoutDeviceKey) -> Bool {
+        guard let session = controller.current?.session else { return false }
+        var stamped = set
+        stamped.machineProfileID = machine(for: set.exerciseID)
+        let merged = SessionSetMerger.merging(stamped, slot: slot, device: device, into: session)
+        guard merged.session != session else { return false }
+        var updated = merged.session
+        switch session.lifecycle {
+        case .completed, .abandoned:
+            controller.replaceSession(updated, at: clock())
+            persistLive()
+            return true
+        case .planned, .preparing, .active, .paused, .finishing:
+            break
+        }
+        let state = updated.queue ?? .empty
+        let hasNext = WorkoutQueue.nextPlannedIndex(template: template, sets: updated.sets, state: state) != nil
+        if merged.effect == .appliedNewlyAddedSet || merged.effect == .supersededExisting {
+            let sameExercise = template.plannedSets.filter { $0.exerciseID == set.exerciseID }
+            let planned = sameExercise.indices.contains(slot.slotIndex - 1) ? sameExercise[slot.slotIndex - 1] : sameExercise.last
+            let midRound = WorkoutQueue.continuesSupersetRound(
+                after: set.exerciseID, template: template, sets: updated.sets, state: state
+            )
+            let nextRest = planned.map {
+                restTimer.autoStart(afterCompletedWarmup: $0.prescription.isWarmup, prescription: $0.prescription, now: set.performedAt)
+            }
+            rest = hasNext && !midRound ? nextRest ?? RestTimerState(recommendedSeconds: 0) : RestTimerState(recommendedSeconds: 0)
+            updated.rest = rest.isActive ? RestSnapshot(rest) : nil
+        }
+        controller.replaceSession(updated, at: clock())
+        persistLive()
+        guard hasNext else {
+            do {
+                try completeSession(at: set.performedAt)
+            } catch {
+                persistenceFailed = true
+            }
+            rest = RestTimerState(recommendedSeconds: 0)
+            finalizeSession()
+            return true
+        }
+        publishActivePhase()
+        return true
+    }
+
+    /// Aplica un comando del reloj (SCRUM-259). Repetido, viejo o sobre una sesión terminada no
+    /// cambia nada. La hora es la del reloj: terminar sin conexión conserva la hora real.
+    @discardableResult
+    public func applyRemoteCommand(_ command: WatchSessionCommand) -> Bool {
+        guard let session = controller.current?.session, session.id == command.sessionID,
+              !(session.appliedCommandIDs ?? []).contains(command.id) else { return false }
+        let applies = SessionCommandPolicy.shouldApply(command, to: session)
+        controller.replaceSession(SessionCommandPolicy.recording(command, in: session), at: clock())
+        guard applies else {
+            persistLive()
+            return true
+        }
+        do {
+            switch command.kind {
+            case .pause: _ = try pause(now: command.issuedAt)
+            case .resume: _ = try resume(now: command.issuedAt)
+            case .finish:
+                if session.sets.isEmpty {
+                    try abandon(now: command.issuedAt)
+                } else {
+                    try complete(now: command.issuedAt)
+                }
+            }
+        } catch {
+            // Pausar lo pausado no aplica: el comando igual queda confirmado.
+            persistLive()
+        }
+        return true
+    }
+
+    /// Guarda lo que el reloj avisa de su sesión de Salud (SCRUM-258). Idempotente.
+    public func applyHealthNotice(_ notice: WatchHealthNotice) {
+        guard let session = controller.current?.session, session.id == notice.sessionID else { return }
+        let updated = notice.applied(to: session)
+        guard updated != session else { return }
+        controller.replaceSession(updated, at: clock())
+        persistLive()
+    }
+
+    /// Las series en conflicto, para que la persona elija en el resumen (DG-3).
+    public var setConflicts: [SetConflictUI] {
+        guard let session = controller.current?.session else { return [] }
+        let slots = SessionSetMerger.slots(of: session.sets)
+        return (session.setConflicts ?? []).compactMap { conflict in
+            guard let current = session.sets.first(where: { slots[$0.id] == conflict.slot }) else { return nil }
+            return SetConflictUI(
+                id: conflict.set.id,
+                exerciseName: name(of: conflict.set.exerciseID),
+                setNumber: conflict.slot.slotIndex,
+                current: current,
+                other: conflict.set
+            )
+        }
+    }
+
+    /// Resuelve un conflicto por decisión de la persona. Guarda y rehace el resumen.
+    public func resolveSetConflict(_ id: SetRecordID, choice: SetConflictChoice) {
+        guard let session = controller.current?.session else { return }
+        let updated = SessionSetConflictResolver.resolving(id, choice: choice, in: session)
+        guard updated != session else { return }
+        controller.replaceSession(updated, at: clock())
+        persistLive()
+        guard finalSummary != nil else { return }
+        let summary = summaryBuilder.summarize(updated, now: clock(), baselines: recordBaselines)
+        finalSummary = summary
+        phase = .finished(summary)
     }
 
     // MARK: - SCRUM-32: reportar dolor
@@ -904,6 +1074,7 @@ extension WorkoutSessionCoordinator {
     /// queda a la vista en `persistenceFailed`; una escritura posterior exitosa lo limpia
     /// porque contiene todas las series.
     private func persistLive() {
+        defer { publishToWatch() }
         guard let persistSession, let live = controller.current?.session else { return }
         do {
             try persistSession(live)
@@ -911,6 +1082,11 @@ extension WorkoutSessionCoordinator {
         } catch {
             persistenceFailed = true
         }
+    }
+
+    private func publishToWatch() {
+        guard let onWatchStateChange, let snapshot = watchSnapshot() else { return }
+        onWatchStateChange(snapshot)
     }
 
     /// Refleja el descanso actual (omitir/extender) en el registro y lo guarda.

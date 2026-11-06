@@ -87,6 +87,37 @@ struct HealthEnergyTests {
         #expect(HealthEnergyPresenter.value(try #require(saved.energy)) == "240 kcal")
     }
 
+    // SCRUM-258: lo que midió el reloj en la sesión de Nucleus.
+    @Test("La energía del reloj en la sesión de Nucleus gana y no duplica la de otra fuente")
+    func watchSessionEnergyWins() async throws {
+        let harness = try EnergyHarness()
+        defer { harness.cleanUp() }
+        var session = try harness.session()
+        session.healthRecording = SessionHealthRecording(state: .saved, activeKilocalories: 310)
+        try await harness.repository.save(session)
+        await harness.health.setOtherSamples([harness.watch(kcal: 240)])
+
+        let activities = try await harness.coordinator().refresh(now: harness.now)
+
+        let energy = try await harness.repository.session(id: session.id)?.energy
+        #expect(energy?.activeKilocalories == 310)
+        #expect(energy?.source == .ourHealthKitWorkout)
+        #expect(activities.isEmpty)
+    }
+
+    @Test("La energía del reloj se guarda aunque Salud no devuelva nada más")
+    func watchSessionEnergyWithoutExternals() async throws {
+        let harness = try EnergyHarness()
+        defer { harness.cleanUp() }
+        var session = try harness.session()
+        session.healthRecording = SessionHealthRecording(state: .saved, activeKilocalories: 310)
+        try await harness.repository.save(session)
+
+        _ = try await harness.coordinator().refresh(now: harness.now)
+
+        #expect(try await harness.repository.session(id: session.id)?.energy?.activeKilocalories == 310)
+    }
+
     // Criterio 2
     @Test("Sin coincidencia no hay energía: ni cero ni estimación")
     func noMatchNoEnergy() async throws {

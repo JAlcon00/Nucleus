@@ -66,6 +66,8 @@ struct WorkoutModeView: View {
                     showsHealthOffer: showsHealthOffer,
                     onAcceptHealthOffer: onAcceptHealthOffer,
                     onDeclineHealthOffer: onDeclineHealthOffer,
+                    conflicts: coordinator.setConflicts,
+                    onResolveConflict: { coordinator.resolveSetConflict($0, choice: $1) },
                     onDone: onDone
                 )
             }

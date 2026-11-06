@@ -9,9 +9,12 @@
 //
 
 import SwiftUI
+import WatchKit
 
 @main
 struct PRWatchApp: App {
+    @WKApplicationDelegateAdaptor private var delegate: WatchAppDelegate
+
     var body: some Scene {
         WindowGroup {
             WatchContentView()
