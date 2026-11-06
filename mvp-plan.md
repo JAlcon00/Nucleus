@@ -63,7 +63,9 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
 | SCRUM-36 | En el iPhone, agregar, editar y resolver una restricción, con letra grande, Reduce Transparency e Increase Contrast. |
 | SCRUM-227 | [ ] El cuestionario ya no dice "Más tiempo no suma series": verlo en el paso de minutos. |
 | SCRUM-224 | Un entrenamiento con superset en el iPhone, con letra grande y Reduce Transparency. |
-| SCRUM-35 | En un dispositivo físico, cuando exista HealthKit real (EPIC-25, Fase F). |
+| SCRUM-35 | En un dispositivo físico, con HealthKit real: va en el gate SCRUM-251. |
+| SCRUM-262 | `make install-iphone` en el iPhone: abre desde el ícono sin inicio de sesión, sigue igual tras cierre forzado, y al vencer el perfil renueva sin borrar datos. |
+| SCRUM-248 | La tarjeta de Salud en el iPhone con letra grande, claro y oscuro, y VoiceOver. |
 | SCRUM-241 | Con la IA real (SCRUM-201), un plan de 30 min con superset: si la IA cambia un ejercicio del par, Hoy y "Por qué tu plan es así" nombran al sustituto. |
 | SCRUM-240 | Con la IA real (SCRUM-201), que cada ejercicio que cambie en el plan haga el mismo movimiento que el original. |
 | SCRUM-233 | En el iPhone: en el descanso "Máquina ocupada" está sobre "Sigue: X"; con letra grande no tapa "Completar serie" y el aviso dice dónde quedó el ejercicio. |
@@ -79,22 +81,14 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
 - **Decisiones DE-1 a DE-4:** en SCRUM-231. **DE-5** (planes guardados que dejan de cumplir una regla nueva): en SCRUM-239.
 - **Excepción de Jesús (2026-11-05):** toda la Fase E se trabajó en una rama y un PR, un commit por historia, aunque la cola 👤 pasa de 5 y el runbook se detiene en el paso 0. Antes ya había autorizado SCRUM-232 y SCRUM-240 por no agregar pantallas. Las verificaciones de la sección 2 siguen pendientes.
 
-**Fase F · HealthKit real (SCRUM-11, Should): autorizada por Jesús el 2026-11-05, como excepción a la cola 👤 (pasa de 5).**
-- **Decisiones DF-1 a DF-5:** en SCRUM-242. **Gate:** SCRUM-251, 👤 en dispositivo físico, con cuenta gratuita y SCRUM-262. `health.workouts.enabled` sigue apagado hasta pasarlo.
-
-| Orden | Historia | Depende de | Carril |
-|---|---|---|---|
-| 1 | SCRUM-244 · PR-F001 Permisos de Salud reales (READY) | SCRUM-242 | 🟡 |
-| 1 | SCRUM-262 · PR-F009 Build de prueba para iPhone con cuenta gratuita (READY) | — | 🟡 |
-| 2 | SCRUM-246 · PR-F003 Cola de escritura a Salud | 244 | 🟡 |
-| 3 | SCRUM-247 · PR-F004 Guardar en Salud de verdad | 246 | 🟡 |
-| 4 | SCRUM-248 · PR-F005 Pedir permiso en el momento correcto | 244, 246 | 🟡 |
-| 4 | SCRUM-249 · PR-F006 Leer entrenamientos externos | 244 | 🟡 |
-| 5 | SCRUM-250 · PR-F007 Ver la energía una sola vez | 245, 247, 249 | 🟢 (🟡 si toca persistencia) |
+**Fase F · HealthKit real (SCRUM-11, Should): programada en el PR #42, a la espera de Jesús.**
+- **Decisiones DF-1 a DF-5:** en SCRUM-242. **Excepción de Jesús (2026-11-05):** toda la fase en una rama y un PR, un commit por historia, con la cola 👤 sobre 5.
+- **Carril:** 🟡 amarillo (`Health*.swift`, `LocalPersistence.swift`, `Makefile`, `scripts/`). Se fusiona con merge commit, no squash.
+- **Gate:** SCRUM-251, 👤 en iPhone y reloj, con `make install-iphone`. `health.workouts.enabled` sigue apagado hasta pasarlo; sólo el build de prueba lo enciende.
 
 **Fase G · Apple Watch (SCRUM-12, Could): programada en el PR #41, a la espera de Jesús.**
 - **Decisiones DG-1 a DG-5:** en SCRUM-243. **Excepción de Jesús (2026-11-05):** toda la fase en una rama, antes del gate de F y con la cola 👤 sobre 5.
-- **Abierta: SCRUM-258.** Faltan dos criterios que dependen de F: que el iPhone no escriba si `healthRecording.watchOwnsHealthWorkout` (SCRUM-246) y mostrar esa energía (SCRUM-250).
+- **SCRUM-258:** sus dos criterios pendientes entran en el PR #42: el iPhone no escribe si `healthRecording.watchOwnsHealthWorkout`, y se muestra esa energía.
 - **Gate:** SCRUM-261, 👤 en iPhone y reloj. `watch.health_session.enabled` sigue apagada hasta pasarlo.
 
 - **Antes de TestFlight:** mover la llave de la IA a un backend. La historia está por crear (SCRUM-201, SCRUM-204).
@@ -135,6 +129,13 @@ Una línea por historia terminada después del 2026-11-02: `SCRUM-XX · título 
 - SCRUM-257 · PR-G006 Entrenar desde el reloj · PR #41 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
 - SCRUM-259 · PR-G008 Pausar y terminar desde el reloj · PR #41 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
 - SCRUM-260 · PR-G009 Reportar dolor desde el reloj · PR #41 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-g-en-un-solo-pr))
+- SCRUM-262 · PR-F009 Build de prueba para iPhone con cuenta gratuita · PR #42 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-f-en-un-solo-pr-pr-42))
+- SCRUM-244 · PR-F001 Permisos de Salud reales · PR #42 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-f-en-un-solo-pr-pr-42))
+- SCRUM-246 · PR-F003 Cola de escritura a Salud · PR #42 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-f-en-un-solo-pr-pr-42))
+- SCRUM-247 · PR-F004 Guardar en Salud de verdad · PR #42 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-f-en-un-solo-pr-pr-42))
+- SCRUM-248 · PR-F005 Pedir permiso en el momento correcto · PR #42 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-f-en-un-solo-pr-pr-42))
+- SCRUM-249 · PR-F006 Leer entrenamientos externos · PR #42 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-f-en-un-solo-pr-pr-42))
+- SCRUM-250 · PR-F007 Ver la energía una sola vez · PR #42 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-f-en-un-solo-pr-pr-42))
 
 ---
 

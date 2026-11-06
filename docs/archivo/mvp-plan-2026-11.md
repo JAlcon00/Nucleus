@@ -267,7 +267,7 @@ Evidencia: rama `SCRUM-10-fase-e`, PR #38.
 ## SCRUM-245 · PR-F002 La energía del mismo entrenamiento se cuenta una vez (motor)
 
 - **Épica y prioridad:** Fase F (SCRUM-11) · Should · hito 1.0 · carril 🟡 amarillo.
-- **Estado:** PR #40, 2026-11-05. Lo aprueba Jesús.
+- **Estado:** PR #40, en `main` el 2026-11-06.
 - **Por qué amarillo y no 🟢:** el criterio 5 necesita representar fuerza funcional y carrera, y `HealthWorkoutActivityType` vive en `HealthWorkout.swift`, que entra en `Health*.swift`. La tarjeta no lo preveía.
 - **Decisión que aplica:** ninguna abierta. La tolerancia de 10 minutos la fija la regla v1 para cubrir la prueba 7 del gate (SCRUM-251) también en entrenamientos cortos.
 
@@ -329,4 +329,123 @@ Evidencia: rama `SCRUM-12-fase-g`, PR #41.
 - **Firma real:** `xcodebuild` para iPhone con reloj embebido, cuenta gratuita, `BUILD SUCCEEDED`, sin instalar.
 - **E2E:** `make test-ui-smoke` → `testFirstWorkoutReachesProgressAndExport`, `testIntermediateQuestionnaireFromAboutYouToReopening`, `testSetConflictIsResolvedInTheSummary` (nuevo) y `testWorkoutSurvivesForceQuitAndKeepsPain` OK. Dos corridas anteriores fallaron por carga de la Mac (carga promedio de 164, con otra sesión corriendo UI), no por el código; sí encontraron el error del identificador.
 - **Sin prueba automática:** no hay target de UI del reloj ni runtime de watchOS en esta Mac. La pantalla se compila, y su lógica se prueba en PRCore.
+
+## Fase F en un solo PR (PR #42)
+
+- **Épica:** Fase F (SCRUM-11) · hito 1.0 · carril 🟡 amarillo. SCRUM-245 entró antes, por el PR #40.
+- **Estado:** PR #42, rama `SCRUM-11-fase-f`, 2026-11-06. Un commit por historia; lo fusiona Jesús con merge commit.
+- **Por qué en un PR:** Jesús lo pidió el 2026-11-05, igual que la Fase E.
+- **Decisiones que aplica:** DF-1 a DF-5 (SCRUM-242).
+- **También cierra:** los dos criterios de SCRUM-258 que dependían de esta fase.
+
+### SCRUM-262 · PR-F009 Build de prueba para iPhone
+
+**Qué cambió:** `make install-iphone` compila Debug, firma con `scripts/device/PR.device.entitlements` e instala con `devicectl`. `AuthLaunchMode.resolve` admite `isDeviceTestBuild`, que sale de `PR_DEVICE_TEST`.
+
+**Criterios:**
+- [x] Compila Debug, firma sólo con HealthKit. Verificado con la firma real, sin instalar.
+- [x] Release es siempre `.appleID`, aunque traiga la condición o el argumento.
+- [x] Debug sin la condición decide como antes.
+- [x] `PR/PR.entitlements` no cambia.
+- [x] Sin iPhone falla con mensaje y código distinto de 0.
+- [x] Con varios iPhone se elige con `DEVICE=<nombre>`; ningún identificador queda en el repo.
+- [x] El README explica el comando, los 7 días y que no sirve para TestFlight.
+- [ ] 👤 Abrir desde el ícono en el iPhone sin inicio de sesión (en simulador limpio sí).
+- [ ] 👤 Mismo usuario tras cierre forzado.
+- [ ] 👤 Perfil vencido: renueva sin borrar datos.
+
+### SCRUM-244 · PR-F001 Permisos de Salud reales
+
+**Qué cambió:** `HealthAccessRequest.workouts`, `HealthSystemPermissionProvider`, `HealthWorkoutsAccess` y el estado `.notVisible`. El flag `health.workouts.enabled` viene apagado; lo enciende sólo el build de prueba, porque abre sin argumentos y es el que usa el gate.
+
+**Prueba modificada:** `usageDescriptionsCorrect` ahora afirma `NSHealthUpdateUsageDescription` para `workout`, porque el criterio 7 lo pide.
+
+**Criterios:**
+- [x] Se piden exactamente escribir entrenamientos, leerlos y leer energía activa. Sin ritmo cardiaco. Visto también en la hoja real del simulador.
+- [x] Negar escribir deja `workout` negado; conceder, concedido.
+- [x] Un permiso de lectura es "no visible"; la energía se conserva con él y se quita con negado.
+- [x] Sin Salud es un fallo recuperable.
+- [x] `Info.plist` coincide con `HealthUsageDescription` y no dice que la app no escribe.
+- [x] Con el flag apagado no se pide ni se lee nada.
+- [x] "Usar datos de Salud" funciona igual.
+
+### SCRUM-246 · PR-F003 Cola de escritura a Salud
+
+**Qué cambió:** campo opcional `healthWriteStatus`, `HealthWorkoutWrite`, protocolo `HealthWorkoutWriting` y `HealthWriteCoordinator`, un actor por cuenta. Se engancha por `onPersisted`: `LocalPersistence.swift` sólo gana la colección de SCRUM-248.
+
+**Criterios:**
+- [x] Queda pendiente en disco antes de llamar a Salud; guardado después, con la referencia llena.
+- [x] Si Salud falla queda pendiente y se reintenta al abrir y al volver a primer plano.
+- [x] Cerrar entre escribir y marcar no duplica.
+- [x] Abandonada, sin series o anterior a esta historia no se escribe.
+- [x] Apagado o negado no deja nada pendiente; negado con algo pendiente no falla ni lo pierde.
+- [x] Series, horas y resumen no cambian.
+- [x] El resumen no espera a Salud.
+- [x] Dos cuentas: sólo la activa.
+- [x] A Salud sólo van inicio, fin, tipo e identificador.
+
+### SCRUM-247 · PR-F004 Guardar en Salud de verdad
+
+**Qué cambió:** `HealthKitWorkoutStore` con `HKWorkoutBuilder`, `HealthSaveDisplay` y la Salud falsa de las pruebas de UI (`-PRUITestFakeHealth`). Con Salud falsa el reloj fijo avanza, porque una sesión sin duración no va a Salud.
+
+**Condición de paro revisada:** en simulador, tres escrituras con el mismo identificador y versión dejaron un entrenamiento. El `uuid` cambia en cada escritura: la última reemplaza a la anterior.
+
+**Criterios:**
+- [x] Fuerza tradicional, horas reales, en interiores, con Nucleus como fuente (simulador).
+- [x] Identificador de la sesión, versión 1.
+- [x] Sin energía ni ritmo cardiaco.
+- [x] El resumen dice "Guardado en Salud" o "Se guardará en Salud"; apagado o negado, nada.
+- [ ] 👤 Con letra grande y VoiceOver en el iPhone. Tiene previews por estado.
+
+### SCRUM-248 · PR-F005 Pedir permiso en el momento correcto
+
+**Qué cambió:** colección `health-preference`, `HealthPermissionOffer`, `HealthWriteSetting`, la tarjeta del resumen y el interruptor de Perfil. Nota de DF-2 en `promptMaster.md` §4.1.
+
+**Criterios:**
+- [x] La tarjeta sale tras un entrenamiento completado sin haber decidido, nunca al empezar ni durante.
+- [x] "Guardar en Salud" abre la hoja real sobre el resumen y guarda ese entrenamiento (simulador, de punta a punta).
+- [x] "Ahora no" no vuelve a salir y Perfil sigue ofreciéndolo.
+- [x] El interruptor explica el caso negado; apagar no borra lo guardado.
+- [x] Negar en la hoja no insiste.
+- [x] La decisión es por usuario y sobrevive a reabrir.
+- [ ] 👤 Letra grande, claro y oscuro, y VoiceOver en el iPhone.
+
+### SCRUM-249 · PR-F006 Leer entrenamientos externos
+
+**Qué cambió:** `HealthExternalWorkouts.swift` clasifica y filtra; `HealthKitWorkoutStore` lee de Salud. `HealthWorkoutActivityType` gana `other`.
+
+**Criterios:**
+- [x] Lo externo llega con inicio, fin, tipo, energía y fuente, de los últimos 14 días.
+- [x] Lo propio se filtra por fuente y por identificador.
+- [x] Apple Watch y otra app se distinguen con una función pura.
+- [x] Un tipo desconocido llega como otro.
+- [x] Sin permiso es vacío, sin error.
+- [x] Sin series, reps ni peso, y sin duplicados.
+- [x] Nada entra a la IA ni a los logs.
+- [ ] 👤 Confirmar en el gate el identificador real de la fuente de Apple.
+
+### SCRUM-250 · PR-F007 Ver la energía una sola vez
+
+**Qué cambió:** `EnergySource` y `CanonicalWorkoutEnergy` pasan a PRDomain con las mismas claves; campo opcional `energy` en la sesión; `HealthEnergyCoordinator`; fila "Actividad de Salud" en Progreso; el export lleva `healthActivities`.
+
+**Criterios:**
+- [x] Con un entrenamiento de reloj que se solapa, la sesión muestra "Energía activa · Apple Watch" una vez.
+- [x] Sin coincidencia no hay energía.
+- [x] Nada suma dos fuentes; el total semanal lo prueba.
+- [x] Si el reloj llega tarde, la energía aparece al abrir el historial.
+- [x] Un externo sin sesión sale como "Actividad de Salud", sin series.
+- [x] No cuenta en la racha ni en el historial.
+- [x] El export lleva la energía con su fuente y las actividades aparte.
+- [x] Con Salud apagada no entra energía nueva y lo guardado se queda.
+- [x] Nada entra al contexto de la IA.
+
+**Verificación pendiente 👤:** el gate SCRUM-251 completo, en iPhone y reloj, y las filas de SCRUM-262 y SCRUM-248 en `mvp-plan.md` §2.
+
+Evidencia: rama `SCRUM-11-fase-f`, PR #42, sobre `main` @ `c011a98`.
+- **`make ci`** (2026-11-06) → `✔ Test run with 648 tests in 91 suites passed` + `✔ Test run with 956 tests in 133 suites passed`; build de iOS y de watchOS OK.
+- **Guard del agente:** `OK: ninguna prueba se borra, desactiva ni reduce (base c011a98, 1666 → 1770 pruebas).`
+- **E2E:** `make test-ui` → 15 de 15 OK, entre ellas `testSummaryOffersHealthAndSavesTheWorkout`, `testRefusingTheSheetDoesNotInsist`, `testSummarySaysItWasSavedInHealth`, `testWatchEnergyShowsOnceAndActivityStaysApart` y `testHealthSwitchInProfile`.
+- **Fallas que encontró la E2E, ya arregladas:** la tarjeta pisaba los identificadores de sus botones, y Progreso no recibía las actividades, así que la fila nunca salía.
+- **Salud real en simulador:** la hoja pide lo correcto, con nuestros textos. Tarjeta, hoja y "Guardado en Salud" de punta a punta. iOS 27 agrega un segundo paso: cuántos datos históricos compartir.
+- **Firma real:** `xcodebuild` para el iPhone con cuenta gratuita, `BUILD SUCCEEDED`, sin instalar. `codesign` muestra HealthKit y no `applesignin`. Esa corrida fue antes de integrar la Fase G.
 
