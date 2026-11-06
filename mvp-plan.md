@@ -1,7 +1,7 @@
 # mvp-plan.md — Tablero activo de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica del POC: SCRUM-180).
-> **Actualizado:** 2026-11-06 (Fase G programada en la rama `SCRUM-12-fase-g`; falta el gate en dispositivo, SCRUM-261).
+> **Actualizado:** 2026-11-06 (Fases F y G en `main` por los PR #42 y #41; faltan los gates en dispositivo, SCRUM-251 y SCRUM-261).
 > **Lo terminado** hasta el 2026-11-02 está congelado en [`docs/archivo/mvp-plan-2026-10.md`](docs/archivo/mvp-plan-2026-10.md): el POC (F-01 a F-07, bloques 0 a 13), UX, IA, feedback y las Fases B, C y D, más la deuda. Ahí siguen la evidencia y los criterios de cada historia. No se edita: se cita.
 > **Regla:** mientras quede un `[ ]` en la sección 1, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
 
@@ -81,14 +81,14 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
 - **Decisiones DE-1 a DE-4:** en SCRUM-231. **DE-5** (planes guardados que dejan de cumplir una regla nueva): en SCRUM-239.
 - **Excepción de Jesús (2026-11-05):** toda la Fase E se trabajó en una rama y un PR, un commit por historia, aunque la cola 👤 pasa de 5 y el runbook se detiene en el paso 0. Antes ya había autorizado SCRUM-232 y SCRUM-240 por no agregar pantallas. Las verificaciones de la sección 2 siguen pendientes.
 
-**Fase F · HealthKit real (SCRUM-11, Should): programada en el PR #42, a la espera de Jesús.**
+**Fase F · HealthKit real (SCRUM-11, Should): en `main` por el PR #42 desde el 2026-11-06. Falta el gate.**
 - **Decisiones DF-1 a DF-5:** en SCRUM-242. **Excepción de Jesús (2026-11-05):** toda la fase en una rama y un PR, un commit por historia, con la cola 👤 sobre 5.
 - **Carril:** 🟡 amarillo (`Health*.swift`, `LocalPersistence.swift`, `Makefile`, `scripts/`). Se fusiona con merge commit, no squash.
 - **Gate:** SCRUM-251, 👤 en iPhone y reloj, con `make install-iphone`. `health.workouts.enabled` sigue apagado hasta pasarlo; sólo el build de prueba lo enciende.
 
-**Fase G · Apple Watch (SCRUM-12, Could): programada en el PR #41, a la espera de Jesús.**
+**Fase G · Apple Watch (SCRUM-12, Could): en `main` por el PR #41 desde el 2026-11-06. Falta el gate.**
 - **Decisiones DG-1 a DG-5:** en SCRUM-243. **Excepción de Jesús (2026-11-05):** toda la fase en una rama, antes del gate de F y con la cola 👤 sobre 5.
-- **SCRUM-258:** sus dos criterios pendientes entran en el PR #42: el iPhone no escribe si `healthRecording.watchOwnsHealthWorkout`, y se muestra esa energía.
+- **SCRUM-258:** sus dos criterios pendientes entraron en el PR #42: el iPhone no escribe si `healthRecording.watchOwnsHealthWorkout`, y se muestra esa energía.
 - **Gate:** SCRUM-261, 👤 en iPhone y reloj. `watch.health_session.enabled` sigue apagada hasta pasarlo.
 
 - **Antes de TestFlight:** mover la llave de la IA a un backend. La historia está por crear (SCRUM-201, SCRUM-204).
