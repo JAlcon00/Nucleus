@@ -215,6 +215,45 @@ public enum WorkoutQueue {
         return next
     }
 
+    /// SCRUM-234: las series pendientes de `exercise` pasan a `replacement`; las hechas se
+    /// quedan como están y el total no cambia. La carga planeada no se hereda: nunca se
+    /// transfiere entre ejercicios (RN-007). Los calentamientos pendientes siguen siéndolo.
+    public static func substituting(
+        _ exercise: ExerciseID,
+        with replacement: ExerciseID,
+        in template: SessionTemplate,
+        sets: [SetRecord]
+    ) -> SessionTemplate {
+        var pendingFrom = sets.filter { $0.exerciseID == exercise }.count
+        var result = template
+        result.plannedSets = template.plannedSets.map { planned in
+            guard planned.exerciseID == exercise else { return planned }
+            guard pendingFrom == 0 else {
+                pendingFrom -= 1
+                return planned
+            }
+            var moved = planned
+            moved.exerciseID = replacement
+            moved.prescription.targetLoad = nil
+            return moved
+        }
+        return result
+    }
+
+    /// La cola tras sustituir: `replacement` toma el lugar de `exercise`, que queda ocupado.
+    public static func replacing(
+        _ exercise: ExerciseID,
+        with replacement: ExerciseID,
+        in state: ExerciseQueueState,
+        template: SessionTemplate
+    ) -> ExerciseQueueState {
+        let order = effectiveOrder(of: template, state: state).flatMap { $0 == exercise ? [replacement, exercise] : [$0] }
+        var next = markingOccupied(exercise, in: state)
+        next.deferred.removeAll { $0 == exercise }
+        next.order = order
+        return next
+    }
+
     /// Marca el ejercicio como saltado (idempotente). Sólo si le faltan series.
     public static func skipping(
         _ exercise: ExerciseID,

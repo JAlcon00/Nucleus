@@ -50,6 +50,7 @@ struct WorkoutModeView: View {
                     summary: summary,
                     celebration: coordinator.celebration(for: summary, level: coachingLevel),
                     skipped: coordinator.skippedExercises.map(\.name),
+                    substitutions: coordinator.substitutionSummaries.map { "\($0.from) → \($0.to)" },
                     onDone: onDone
                 )
             }
@@ -90,6 +91,24 @@ struct WorkoutModeView: View {
             Button("Seguir entrenando", role: .cancel) {}
         }
         .sheet(isPresented: $reportingPain) { painSheet }
+        .sheet(item: $occupiedChoice) { choice in
+            OccupiedChoiceSheet(
+                choice: choice,
+                onChoose: { option in
+                    occupiedChoice = nil
+                    _ = try? coordinator.substituteCurrentExercise(with: option)
+                },
+                onWait: {
+                    occupiedChoice = nil
+                    _ = try? coordinator.waitForOccupiedExercise()
+                },
+                onSkip: {
+                    occupiedChoice = nil
+                    _ = try? coordinator.skipCurrentExercise()
+                }
+            )
+            .presentationDetents([.medium, .large])
+        }
         .sensoryFeedback(trigger: coordinator.painReport?.level, painFeedback)
         // Si la sesión termina con la hoja abierta (p. ej. saltar lo último), se cierra.
         .onChange(of: coordinator.painReport == nil) { _, isGone in
@@ -105,6 +124,8 @@ struct WorkoutModeView: View {
     /// SCRUM-226: hoja "¿Te dolió esta serie?". Abre a media altura (la escala queda al
     /// alcance del pulgar) y crece al reportar dolor, para que la recomendación se vea entera.
     @State private var reportingPain = false
+    /// SCRUM-234: la hoja de "Máquina ocupada" cuando no hay nada que adelantar.
+    @State private var occupiedChoice: OccupiedChoice?
     @State private var painDetent: PresentationDetent = .medium
     private let painPresenter = PainRecommendationPresenter(locale: AppEnvironment.presentationLocale)
 
@@ -207,7 +228,9 @@ struct WorkoutModeView: View {
     @ViewBuilder
     private func queueButtons(for set: ActiveWorkoutSetUI) -> some View {
         Button {
-            _ = try? coordinator.markCurrentExerciseOccupied()
+            if case .needsChoice(let choice)? = try? coordinator.markCurrentExerciseOccupied() {
+                occupiedChoice = choice
+            }
         } label: {
             Label("Máquina ocupada", systemImage: "clock.arrow.circlepath")
         }
@@ -231,8 +254,8 @@ struct WorkoutModeView: View {
             return String(localized: "Adelantamos \(next). \(after) va después.")
         case .movedToEnd(let exercise):
             return String(localized: "Nada se puede adelantar sin cansar antes lo prioritario: \(exercise) va al final.")
-        case .onlyExercise(let exercise):
-            return String(localized: "\(exercise) es lo único que falta: puedes esperar o saltarlo.")
+        case .needsChoice(let choice):
+            return choice.exercise
         }
     }
 

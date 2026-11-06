@@ -103,6 +103,23 @@ final class WorkoutRecoveryJourney: PRUITestCase {
                           "El ejercicio que dolió queda saltado y se puede retomar")
         }
 
+        // SCRUM-234: con todo ocupado se ofrece un sustituto; al elegirlo se sigue con él.
+        step("Máquina ocupada ofrece un sustituto equivalente y se sigue con él (SCRUM-234)") {
+            let app = launchWithPlan()
+            tap(app, "today.start")
+            XCTAssertTrue(element(app, "workout.completeSet").appears(within: 10))
+            var option = element(app, "occupied.option.0")
+            for _ in 0..<12 where !option.exists {
+                tap(app, "workout.occupied")
+                option = element(app, "occupied.option.0")
+                _ = option.appears(within: 2)
+            }
+            XCTAssertTrue(option.exists, "Sin nada que adelantar ofrece un sustituto")
+            option.tap()
+            XCTAssertTrue(element(app, "workout.completeSet").appears(within: 5), "Sigue con el sustituto")
+            tap(app, "workout.completeSet")
+        }
+
         // SCRUM-212 y SCRUM-233: "Máquina ocupada" dice qué sigue, se salta (con confirmación),
         // se retoma, y al terminar el resumen dice qué se saltó.
         step("Dejar para después, saltar y retomar; el resumen dice qué se saltó (testDeferSkipAndResumeInWorkout)") {
@@ -111,6 +128,8 @@ final class WorkoutRecoveryJourney: PRUITestCase {
             XCTAssertTrue(element(app, "workout.completeSet").appears(within: 10))
 
             tap(app, "workout.occupied")
+            // Sin nada que adelantar pregunta (SCRUM-234): "Esperar" lo manda al final.
+            if element(app, "occupied.wait").appears(within: 3) { tap(app, "occupied.wait") }
             XCTAssertTrue(element(app, "workout.occupied.notice").appears(within: 5), "Dice dónde quedó el ejercicio")
             XCTAssertTrue(element(app, "workout.completeSet").appears(within: 5), "Sigue con el siguiente ejercicio")
 

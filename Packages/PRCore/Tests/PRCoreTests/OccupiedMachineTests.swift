@@ -120,7 +120,12 @@ struct OccupiedMachineTests {
         let coordinator = try await make(try template([gym.bench, gym.pushdown]), gym, root: try makeRoot())
         _ = coordinator.start()
 
-        #expect(try coordinator.markCurrentExerciseOccupied() == .movedToEnd(exercise: "Press de banca"))
+        // SCRUM-234: primero pregunta y nada cambia; "Esperar" lo manda al final.
+        guard case .needsChoice = try coordinator.markCurrentExerciseOccupied() else {
+            Issue.record("Sin adelanto seguro debe preguntar"); return
+        }
+        #expect(current(coordinator) == gym.bench.id)
+        #expect(try coordinator.waitForOccupiedExercise() == .movedToEnd(exercise: "Press de banca"))
         #expect(current(coordinator) == gym.pushdown.id)
     }
 
@@ -130,7 +135,10 @@ struct OccupiedMachineTests {
         let coordinator = try await make(try template([gym.bench]), gym, root: try makeRoot())
         _ = coordinator.start()
 
-        #expect(try coordinator.markCurrentExerciseOccupied() == .onlyExercise(exercise: "Press de banca"))
+        guard case .needsChoice(let choice) = try coordinator.markCurrentExerciseOccupied() else {
+            Issue.record("Debe ofrecer esperar o saltar"); return
+        }
+        #expect(choice.isOnlyExercise)
         #expect(current(coordinator) == gym.bench.id)
         #expect(try coordinator.snapshot().session.queue == nil, "No se guardó ningún cambio")
     }
@@ -174,6 +182,7 @@ struct OccupiedMachineTests {
         #expect(coordinator.currentSet()?.superset != nil)
 
         try coordinator.markCurrentExerciseOccupied()
+        try coordinator.waitForOccupiedExercise()
 
         #expect(current(coordinator) == gym.pushdown.id)
         #expect(coordinator.currentSet()?.superset == nil, "Ya no va en par")
@@ -221,8 +230,9 @@ struct OccupiedMachineTests {
         try coordinator.markCurrentExerciseOccupied()     // la máquina pasa adelante del press
         let second = try coordinator.markCurrentExerciseOccupied()
 
-        #expect(current(coordinator) != gym.chestMachine.id)
         if case .advanced(let next, _) = second { #expect(next != "Press de banca", "El press también está ocupado") }
+        if case .needsChoice = second { try coordinator.waitForOccupiedExercise() }
+        #expect(current(coordinator) != gym.chestMachine.id)
         #expect(try coordinator.snapshot().session.sets.isEmpty)
     }
 
@@ -233,7 +243,10 @@ struct OccupiedMachineTests {
         _ = coordinator.start()
         try coordinator.skipCurrentExercise()             // la máquina queda saltada: toca el press
 
-        #expect(try coordinator.markCurrentExerciseOccupied() == .onlyExercise(exercise: "Press de banca"))
+        guard case .needsChoice(let choice) = try coordinator.markCurrentExerciseOccupied() else {
+            Issue.record("El saltado no se adelanta"); return
+        }
+        #expect(choice.isOnlyExercise)
     }
 
     @Test("Un ejercicio ya diferido se puede adelantar y queda antes del ocupado")
