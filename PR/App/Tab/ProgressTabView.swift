@@ -21,6 +21,8 @@ import PRDomain
 
 struct ProgressTabView: View {
     var screen: ProgressScreen = .loading
+    /// Lo que Salud registró y no es una sesión de Nucleus (SCRUM-250).
+    var activities: [HealthActivity] = []
     /// Intento: volver a leer el historial.
     var onRetry: () -> Void = {}
 
@@ -115,6 +117,7 @@ struct ProgressTabView: View {
 private struct ProgressLogView: View {
     let overview: ProgressOverview
     let unreadable: Int
+    var activities: [HealthActivity] = []
 
     private let vocabulary = TrainingVocabularyPresenter(locale: AppEnvironment.presentationLocale)
 
@@ -138,6 +141,16 @@ private struct ProgressLogView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("progress.entry.\(index)")
+                }
+                if !activities.isEmpty {
+                    Label("Actividad de Salud", systemImage: "heart")
+                        .eyebrowStyle()
+                        .foregroundStyle(Color.textSecondary)
+                        .padding(.top, DSpace.s)
+                    ForEach(Array(activities.enumerated()), id: \.element.id) { index, activity in
+                        HealthActivityRow(activity: activity)
+                            .accessibilityIdentifier("progress.activity.\(index)")
+                    }
                 }
             }
             .padding(DSpace.m)
@@ -197,6 +210,41 @@ private struct ProgressLogView: View {
 
 // MARK: - Detalle de un entrenamiento
 
+/// Una actividad que registró Salud: duración, fuente y energía si existe. Nunca series.
+private struct HealthActivityRow: View {
+    let activity: HealthActivity
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DSpace.xs) {
+            Text("Actividad de Salud")
+                .font(.headline)
+            Text(activity.start, format: .dateTime.day().month().hour().minute())
+                .font(.subheadline)
+                .foregroundStyle(Color.textSecondary)
+            Label {
+                Text("\(activity.durationSeconds / 60) min")
+                    .monospacedDigit()
+            } icon: {
+                Image(systemName: "clock")
+            }
+            .font(.subheadline)
+            .foregroundStyle(Color.textSecondary)
+            if let source = activity.sourceName {
+                Text(source)
+                    .font(.subheadline)
+                    .foregroundStyle(Color.textSecondary)
+            }
+            if let energy = activity.energy {
+                HealthEnergyRow(energy: energy)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(DSpace.m)
+        .cardSurface(cornerRadius: DRadius.medium)
+        .accessibilityElement(children: .combine)
+    }
+}
+
 /// Ejercicios y series tal como se hicieron.
 struct WorkoutLogDetailView: View {
     let entry: WorkoutLogEntry
@@ -220,6 +268,9 @@ struct WorkoutLogDetailView: View {
                         Label(WorkoutLogText.records(entry.recordCount), systemImage: "trophy.fill")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Color.accentSecondary)
+                    }
+                    if let energy = entry.energy {
+                        HealthEnergyRow(energy: energy)
                     }
                 }
                 ForEach(entry.exercises) { exercise in

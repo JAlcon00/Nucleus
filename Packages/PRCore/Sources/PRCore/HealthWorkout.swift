@@ -489,6 +489,13 @@ public actor FakeHealthWorkoutStore: HealthWorkoutStore, HealthWorkoutWriting, H
     /// Fuente con la que Salud marca lo que escribe esta app.
     public static let ownBundleIdentifier = "creadevs.PR"
 
+    /// Energía del entrenamiento de reloj que Salud "registra" junto a cada escritura.
+    public private(set) var echoedWatchKilocalories: Double?
+
+    public func setEchoedWatchKilocalories(_ kilocalories: Double?) {
+        echoedWatchKilocalories = kilocalories
+    }
+
     public func setOtherSamples(_ samples: [HealthWorkoutSample]) {
         otherSamples = samples
     }
@@ -524,6 +531,17 @@ public actor FakeHealthWorkoutStore: HealthWorkoutStore, HealthWorkoutWriting, H
         saveAttempts += 1
         if failsOnSave {
             throw NSError(domain: "HealthKit", code: 1, userInfo: [NSLocalizedDescriptionKey: "save failed"])
+        }
+        if savedWorkouts[write.syncIdentifier] == nil, let echoedWatchKilocalories {
+            otherSamples.append(HealthWorkoutSample(
+                uuid: UUID(),
+                start: write.start,
+                end: write.end,
+                activityType: .strengthTraining,
+                activeKilocalories: echoedWatchKilocalories,
+                sourceBundleIdentifier: "com.apple.health.fake",
+                sourceName: "Apple Watch"
+            ))
         }
         savedWorkouts[write.syncIdentifier] = write
         return HealthWorkoutHandle.ID(rawValue: UUID(uuidString: write.syncIdentifier) ?? UUID())

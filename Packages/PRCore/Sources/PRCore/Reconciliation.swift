@@ -15,43 +15,7 @@
 //
 
 import Foundation
-
-/// Fuente de la energía canónica (promptMaster §15.2). Orden de prioridad inversa al
-/// `priority` (1 = más confiable). Véase §15.3.
-public enum EnergySource: String, Codable, Sendable, CaseIterable, Hashable {
-    /// Workout iniciado por PR con HealthKit/Apple Watch.
-    case ourHealthKitWorkout
-    /// Workout nativo Apple Watch.
-    case externalAppleWorkout
-    /// Otro HKWorkout confiable.
-    case externalHealthKitWorkout
-    /// Estimación fallback (etiquetada siempre como estimación).
-    case fallbackEstimate
-
-    /// Prioridad §15.3: menor número = más confiable.
-    public var priority: Int {
-        switch self {
-        case .ourHealthKitWorkout: return 1
-        case .externalAppleWorkout: return 2
-        case .externalHealthKitWorkout: return 3
-        case .fallbackEstimate: return 4
-        }
-    }
-}
-
-/// Energía canónica de un workout (promptMaster §15.2). Nunca se suma entre fuentes.
-public struct CanonicalWorkoutEnergy: Codable, Sendable, Hashable {
-    public var activeKilocalories: Double
-    public var source: EnergySource
-    /// Confianza 0...1 coherente con la fuente; no es un score inventado.
-    public var confidence: Double
-
-    public init(activeKilocalories: Double, source: EnergySource, confidence: Double) {
-        self.activeKilocalories = activeKilocalories
-        self.source = source
-        self.confidence = confidence
-    }
-}
+import PRDomain
 
 /// Candidato a energía: una representación (posiblemente duplicada) de un workout.
 /// Sólo transporta metadata; nunca fabrica sets (PR-1104).
@@ -112,6 +76,12 @@ public struct WorkoutEnergyResolution: Codable, Sendable, Hashable {
     }
 }
 
+/// Un entrenamiento único y los candidatos que lo describen.
+public struct WorkoutEnergyGroup: Sendable, Hashable {
+    public let candidates: [WorkoutEnergyCandidate]
+    public let resolution: WorkoutEnergyResolution
+}
+
 /// Motor de reconciliación (plan §13, promptMaster §15).
 ///
 /// Reglas deterministas:
@@ -150,12 +120,20 @@ public struct WorkoutReconciliationEngine: Sendable {
 
     /// Reconoce los candidatos y devuelve una resolución por workout único. No suma energía.
     public func reconcile(_ candidates: [WorkoutEnergyCandidate]) -> [WorkoutEnergyResolution] {
+        groups(candidates).map(\.resolution)
+    }
+
+    /// Como `reconcile`, pero dice qué candidatos cayeron en cada entrenamiento (SCRUM-250).
+    public func groups(_ candidates: [WorkoutEnergyCandidate]) -> [WorkoutEnergyGroup] {
         let valid = candidates.filter(\.hasValidInterval).sorted(by: isOrderedBefore)
         return clusters(of: valid).map { cluster in
-            WorkoutEnergyResolution(
-                energy: canonicalEnergy(for: cluster),
-                candidateCount: cluster.count,
-                deduplicated: cluster.count > 1
+            WorkoutEnergyGroup(
+                candidates: cluster,
+                resolution: WorkoutEnergyResolution(
+                    energy: canonicalEnergy(for: cluster),
+                    candidateCount: cluster.count,
+                    deduplicated: cluster.count > 1
+                )
             )
         }
     }

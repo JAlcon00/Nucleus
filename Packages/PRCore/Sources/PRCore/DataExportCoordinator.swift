@@ -101,6 +101,7 @@ public struct DataExportCoordinator: Sendable {
         restrictions: [TrainingRestriction],
         profile: UserTrainingProfile?,
         aboutYou: AboutYou? = nil,
+        healthActivities: [HealthActivity] = [],
         exportedAt: Date = Date()
     ) throws -> DataExportFile {
         let bundle = ExportBundle(
@@ -112,7 +113,8 @@ public struct DataExportCoordinator: Sendable {
             gyms: gyms,
             restrictions: restrictions,
             profile: profile,
-            aboutYou: aboutYou
+            aboutYou: aboutYou,
+            healthActivities: healthActivities.isEmpty ? nil : healthActivities
         )
         let data = try engine.jsonData(for: bundle)
         guard !ExportEngine.containsForbiddenSecretFields(inJSON: data) else {

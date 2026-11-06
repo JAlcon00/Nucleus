@@ -25,6 +25,8 @@ struct ExportView: View {
     var aboutYou: AboutYou?
     /// Gimnasios del usuario (SCRUM-235).
     var gyms: [GymProfile] = []
+    /// Actividades de Salud: van como actividades, nunca como series (SCRUM-250).
+    var healthActivities: [HealthActivity] = []
 
     private let coordinator = DataExportCoordinator()
     @State private var includeAboutYou = false
@@ -97,7 +99,8 @@ struct ExportView: View {
                 gyms: gyms,
                 restrictions: [],
                 profile: nil,
-                aboutYou: includeAboutYou ? aboutYou : nil
+                aboutYou: includeAboutYou ? aboutYou : nil,
+                healthActivities: healthActivities
             )
         } catch {
             json = nil

@@ -442,6 +442,8 @@ public struct WorkoutSessionRecord: Identifiable, Codable, Sendable, Hashable {
     public var substitutions: [SessionSubstitution]?
     /// Si llegó a Salud (SCRUM-246). Campo opcional (ADR-0003).
     public var healthWriteStatus: HealthWriteStatus?
+    /// Energía de esta sesión, de una sola fuente (SCRUM-250). Campo opcional (ADR-0003).
+    public var energy: CanonicalWorkoutEnergy?
 
     public init(
         id: WorkoutID = WorkoutID(),

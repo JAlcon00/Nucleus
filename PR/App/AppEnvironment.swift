@@ -189,8 +189,16 @@ public final class AppEnvironment {
 
     /// Escribe en Salud los entrenamientos terminados (SCRUM-246, SCRUM-247).
     private let healthWriter: any HealthWorkoutWriting
+    /// Lee de Salud lo que registraron otras apps o el reloj (SCRUM-249).
+    private let healthReader: any HealthWorkoutReading
     /// Una cola por cuenta: sólo ve las sesiones de esa cuenta.
     @ObservationIgnored private var healthWriteCoordinators: [String: HealthWriteCoordinator] = [:]
+    /// Una reconciliación por cuenta.
+    @ObservationIgnored private var healthEnergyCoordinators: [String: HealthEnergyCoordinator] = [:]
+    /// Lo que Salud registró y no es una sesión de Nucleus (SCRUM-250).
+    public private(set) var healthActivities: [HealthActivity] = []
+    /// Energía de la sesión recién terminada, si Salud ya la tiene.
+    public private(set) var lastFinishedEnergy: CanonicalWorkoutEnergy?
     /// Qué dice el resumen del último entrenamiento sobre Salud (SCRUM-247).
     public private(set) var healthSaveDisplay: HealthSaveDisplay = .hidden
     /// ¿El resumen propone guardar en Salud? (SCRUM-248)
@@ -221,6 +229,48 @@ public final class AppEnvironment {
         }
     }
 
+    private func healthEnergyCoordinator(for persistence: LocalPersistence) -> HealthEnergyCoordinator? {
+        guard healthWorkouts.isEnabled,
+              let userID = onboarding.auth.profile?.userIdentifier else { return nil }
+        if let existing = healthEnergyCoordinators[userID] { return existing }
+        do {
+            let coordinator = HealthEnergyCoordinator(
+                repository: try persistence.workoutRepository(),
+                reader: HealthExternalWorkoutsReader(
+                    reader: healthReader,
+                    isEnabled: healthWorkouts.isEnabled,
+                    ownBundleIdentifier: Bundle.main.bundleIdentifier ?? ""
+                ),
+                canRead: { [weak self] in await self?.canReadFromHealth() ?? false }
+            )
+            healthEnergyCoordinators[userID] = coordinator
+            return coordinator
+        } catch {
+            persistence.log.saveFailed(.workouts)
+            return nil
+        }
+    }
+
+    private func canReadFromHealth() -> Bool {
+        healthWorkouts.isEnabled && healthPreference.allowsWriting
+    }
+
+    /// Reconcilia con Salud: la energía queda en cada sesión, una vez (SCRUM-250).
+    public func refreshHealthEnergy() async {
+        guard let persistence, let coordinator = healthEnergyCoordinator(for: persistence) else {
+            healthActivities = []
+            return
+        }
+        do {
+            healthActivities = try await coordinator.refresh(now: clock())
+            if let id = lastFinishedWorkoutID {
+                lastFinishedEnergy = try await coordinator.energy(of: id)
+            }
+        } catch {
+            persistence.log.saveFailed(.workouts)
+        }
+    }
+
     /// Lo que corre cuando la sesión quedó guardada: no retiene el cierre del entrenamiento,
     /// porque el coordinador avisa desde su propia tarea (SCRUM-246).
     private func healthWriteHook(
@@ -243,7 +293,7 @@ public final class AppEnvironment {
     /// Salud falsa de las pruebas de UI.
     private static func fakeHealthProvider(_ mode: UITestFakeHealth) -> any HealthKitProvider {
         switch mode {
-        case .granted: return InMemoryHealthKitProvider(initialStatus: [.workout: .granted])
+        case .granted, .watch: return InMemoryHealthKitProvider(initialStatus: [.workout: .granted])
         case .undecided: return InMemoryHealthKitProvider()
         case .refuses: return InMemoryHealthKitProvider(grantBehavior: .denyAll)
         }
@@ -264,6 +314,7 @@ public final class AppEnvironment {
             writeStatus: await healthWorkouts.writeStatus(),
             sessionGoesToHealth: goesToHealth
         )
+        await refreshHealthEnergy()
     }
 
     /// Lee la decisión de la cuenta activa, al entrar (SCRUM-248).
@@ -292,6 +343,7 @@ public final class AppEnvironment {
         } catch {
             persistence.log.saveFailed(.workouts)
         }
+        await refreshHealthEnergy()
     }
 
     /// "Ahora no" del resumen: no vuelve a salir y Perfil sigue ofreciendo la opción.
@@ -472,6 +524,7 @@ public final class AppEnvironment {
             todayPlan.historyLoadFailed()
             return
         }
+        await refreshHealthEnergy()
         do {
             let result = try await persistence.workoutRepository().loadAllSessions()
             todayPlan.updateHistory(
@@ -552,6 +605,7 @@ public final class AppEnvironment {
         guard let template = todayPlan.plan?.todayTemplate else { return nil }
         healthSaveDisplay = .hidden
         healthOfferVisible = false
+        lastFinishedEnergy = nil
         let presenter = PRCelebrationPresenter(locale: Self.presentationLocale)
         let coordinator: WorkoutSessionCoordinator
         if let persistence {
@@ -634,11 +688,30 @@ public final class AppEnvironment {
             let system = HealthKitPermissionProvider()
             healthIsAvailable = system.isHealthDataAvailable
             healthProvider = HealthSystemPermissionProvider(system: system)
-            self.healthWriter = HealthKitWorkoutStore()
+            let store = HealthKitWorkoutStore()
+            self.healthWriter = store
+            self.healthReader = store
         case .some(let mode):
             featureFlags = featureFlags.setting(.healthWorkoutsEnabled, to: true)
             healthProvider = Self.fakeHealthProvider(mode)
-            self.healthWriter = FakeHealthWorkoutStore()
+            let store = FakeHealthWorkoutStore()
+            self.healthWriter = store
+            self.healthReader = store
+            if mode == .watch {
+                let otherAppStart = (fixedDate ?? Date()).addingTimeInterval(-3 * 3600)
+                Task {
+                    await store.setEchoedWatchKilocalories(240)
+                    await store.setOtherSamples([HealthWorkoutSample(
+                        uuid: UUID(),
+                        start: otherAppStart,
+                        end: otherAppStart.addingTimeInterval(1800),
+                        activityType: .running,
+                        activeKilocalories: 180,
+                        sourceBundleIdentifier: "com.otra.app",
+                        sourceName: "Otra app"
+                    )])
+                }
+            }
         }
         self.featureFlags = featureFlags
         self.healthWorkouts = HealthWorkoutsAccess(

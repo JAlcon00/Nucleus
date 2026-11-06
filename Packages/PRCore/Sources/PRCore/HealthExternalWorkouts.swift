@@ -8,6 +8,7 @@
 //
 
 import Foundation
+import PRDomain
 
 /// Lo que Salud devuelve de un entrenamiento, sin importar HealthKit.
 public struct HealthWorkoutSample: Sendable, Hashable {

@@ -115,4 +115,28 @@ final class FirstWorkoutJourney: PRUITestCase {
             XCTAssertFalse(element(app, "summary.healthOffer").exists)
         }
     }
+
+    /// SCRUM-250: la sesión muestra la energía del reloj una vez, y lo de otra app sale aparte.
+    func testWatchEnergyShowsOnceAndActivityStaysApart() {
+        let app = launch(profile: Self.seededProfile, extraArguments: ["-PRUITestFakeHealth", "watch"])
+
+        step("El resumen muestra la energía con su fuente") {
+            XCTAssertTrue(element(app, "today.start").appears(within: 15))
+            tap(app, "today.start")
+            finishWorkoutAfterOneSet(app)
+            let energy = element(app, "health.energy")
+            XCTAssertTrue(energy.appears(within: 10), "La sesión debe mostrar la energía del reloj")
+            XCTAssertTrue(energy.label.contains("Apple Watch"), "Dijo: \(energy.label)")
+            XCTAssertTrue(energy.label.contains("240 kcal"), "Dijo: \(energy.label)")
+            tap(app, "summary.done")
+        }
+
+        step("Progreso cuenta un entrenamiento y la actividad de otra app va aparte") {
+            openTab(app, "Progreso")
+            XCTAssertTrue(element(app, "progress.entry.0").appears(within: 10))
+            XCTAssertFalse(element(app, "progress.entry.1").exists, "La actividad no es un entrenamiento")
+            XCTAssertTrue(scrollTo(app, "progress.activity.0").appears(within: 10), "Debe salir la actividad de Salud")
+            XCTAssertFalse(element(app, "progress.activity.1").exists, "El reloj no sale como actividad aparte")
+        }
+    }
 }

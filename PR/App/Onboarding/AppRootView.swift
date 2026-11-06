@@ -116,6 +116,7 @@ struct AppRootView: View {
                 Task {
                     await environment.refreshHealthSetting()
                     await environment.retryHealthWrites()
+                    await environment.refreshHistory()
                 }
             }
         }
@@ -201,6 +202,7 @@ struct AppRootView: View {
                     },
                     coachingLevel: coachingLevel,
                     healthSave: environment.healthSaveDisplay,
+                    reconciledEnergy: environment.lastFinishedEnergy,
                     showsHealthOffer: environment.healthOfferVisible,
                     onAcceptHealthOffer: { Task { await environment.acceptHealthOffer() } },
                     onDeclineHealthOffer: { Task { await environment.declineHealthOffer() } }

@@ -26,6 +26,8 @@ struct WorkoutSummaryView: View {
     var substitutions: [String] = []
     /// Qué decir de Salud, ya decidido en PRCore (SCRUM-247).
     var healthSave: HealthSaveDisplay = .hidden
+    /// Energía de una sola fuente; sin ella no se muestra nada (SCRUM-250).
+    var reconciledEnergy: CanonicalWorkoutEnergy? = nil
     /// ¿Se propone guardar en Salud? La regla vive en PRCore (SCRUM-248).
     var showsHealthOffer = false
     var onAcceptHealthOffer: () -> Void = {}
@@ -131,6 +133,12 @@ struct WorkoutSummaryView: View {
                     .cardSurface(cornerRadius: DRadius.medium)
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("summary.substitution")
+                }
+
+                if let reconciledEnergy {
+                    HealthEnergyRow(energy: reconciledEnergy)
+                        .padding(DSpace.m)
+                        .cardSurface(cornerRadius: DRadius.medium)
                 }
 
                 if let healthText = healthSave.text(locale: AppEnvironment.presentationLocale) {
@@ -328,6 +336,28 @@ private func previewSummaryView(
         )
     }
     .ironEnergyTheme()
+}
+
+/// "Energía activa · Apple Watch" y su valor. Compartida con el detalle de Progreso.
+struct HealthEnergyRow: View {
+    let energy: CanonicalWorkoutEnergy
+
+    var body: some View {
+        LabeledContent {
+            Text(HealthEnergyPresenter.value(energy))
+                .monospacedDigit()
+        } label: {
+            Label {
+                Text(HealthEnergyPresenter.label(for: energy.source, locale: AppEnvironment.presentationLocale))
+            } icon: {
+                Image(systemName: "flame")
+            }
+        }
+        .font(.subheadline)
+        .foregroundStyle(Color.textSecondary)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("health.energy")
+    }
 }
 
 #Preview("Salud · tarjeta") {
