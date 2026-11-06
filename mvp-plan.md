@@ -1,7 +1,7 @@
 # mvp-plan.md — Tablero activo de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica del POC: SCRUM-180).
-> **Actualizado:** 2026-11-05 (Fase E terminada en el PR #38: máquina ocupada, sustitutos, Mi gimnasio, cargas por máquina y varios gimnasios).
+> **Actualizado:** 2026-11-05 (Fase E en `main` por el PR #38; historias de las Fases F y G escritas en Jira).
 > **Lo terminado** hasta el 2026-11-02 está congelado en [`docs/archivo/mvp-plan-2026-10.md`](docs/archivo/mvp-plan-2026-10.md): el POC (F-01 a F-07, bloques 0 a 13), UX, IA, feedback y las Fases B, C y D, más la deuda. Ahí siguen la evidencia y los criterios de cada historia. No se edita: se cita.
 > **Regla:** mientras quede un `[ ]` en la sección 1, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
 
@@ -75,15 +75,41 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
 
 ## 3. Lo que sigue
 
-**Fase E · gimnasio real (SCRUM-10, Should): terminada en el PR #38, a la espera de la fusión de Jesús.**
+**Fase E · gimnasio real (SCRUM-10, Should): en `main` por el PR #38 desde el 2026-11-05.**
 - **Decisiones DE-1 a DE-4:** en SCRUM-231. **DE-5** (planes guardados que dejan de cumplir una regla nueva): en SCRUM-239.
 - **Excepción de Jesús (2026-11-05):** toda la Fase E se trabajó en una rama y un PR, un commit por historia, aunque la cola 👤 pasa de 5 y el runbook se detiene en el paso 0. Antes ya había autorizado SCRUM-232 y SCRUM-240 por no agregar pantallas. Las verificaciones de la sección 2 siguen pendientes.
-- **Carril:** 🟡 amarillo, porque toca `LocalPersistence.swift` y `CodableRepositories.swift`. El PR se fusiona con merge commit, no squash, para conservar un commit por historia.
+
+**Fase F · HealthKit real (SCRUM-11, Should): autorizada por Jesús el 2026-11-05, como excepción a la cola 👤 (pasa de 5).**
+- **Decisiones DF-1 a DF-5:** en SCRUM-242. **Gate:** SCRUM-251, 👤 en dispositivo físico, con cuenta gratuita y SCRUM-262. `health.workouts.enabled` sigue apagado hasta pasarlo.
+
+| Orden | Historia | Depende de | Carril |
+|---|---|---|---|
+| 1 | SCRUM-244 · PR-F001 Permisos de Salud reales (READY) | SCRUM-242 | 🟡 |
+| 1 | SCRUM-245 · PR-F002 La energía se cuenta una vez, motor (READY) | — | 🟢 |
+| 1 | SCRUM-262 · PR-F009 Build de prueba para iPhone con cuenta gratuita (READY) | — | 🟡 |
+| 2 | SCRUM-246 · PR-F003 Cola de escritura a Salud | 244 | 🟡 |
+| 3 | SCRUM-247 · PR-F004 Guardar en Salud de verdad | 246 | 🟡 |
+| 4 | SCRUM-248 · PR-F005 Pedir permiso en el momento correcto | 244, 246 | 🟡 |
+| 4 | SCRUM-249 · PR-F006 Leer entrenamientos externos | 244 | 🟡 |
+| 5 | SCRUM-250 · PR-F007 Ver la energía una sola vez | 245, 247, 249 | 🟢 (🟡 si toca persistencia) |
+
+**Fase G · Apple Watch (SCRUM-12, Could): historias escritas el 2026-11-05. El PO recomienda autorizarla después del gate de F y con Apple Watch físico.**
+- **Decisiones DG-1 a DG-5:** en SCRUM-243. **Gate:** SCRUM-261, 👤 en dispositivo físico.
+
+| Orden | Historia | Depende de | Carril |
+|---|---|---|---|
+| 1 | SCRUM-252 · PR-G001 El reloj se instala con la app | SCRUM-251 | 🟡 |
+| 1 | SCRUM-253 · PR-G002 Qué le dice el iPhone al reloj (READY) | SCRUM-243 | 🟢 |
+| 1 | SCRUM-254 · PR-G003 Sincronización que no pierde series (READY) | SCRUM-243 | 🟢 |
+| 2 | SCRUM-255 · PR-G004 Puente iPhone ⇄ reloj | 252, 253, 254 | 🟡 |
+| 3 | SCRUM-256 · PR-G005 El reloj guarda primero | 254, 255 | 🟢 (🟡 si toca persistencia) |
+| 4 | SCRUM-257 · PR-G006 Entrenar desde el reloj | 253, 256 | 🟢 |
+| 5 | SCRUM-258 · PR-G007 Sesión de Salud en el reloj | 252, 257, 247 | 🟡 |
+| 6 | SCRUM-259 · PR-G008 Pausar y terminar desde el reloj | 257, 258 | 🟢 |
+| 6 | SCRUM-260 · PR-G009 Reportar dolor desde el reloj | 257 | 🟢 |
 
 - **Antes de TestFlight:** mover la llave de la IA a un backend. La historia está por crear (SCRUM-201, SCRUM-204).
 - **Fases de 1.0, sin historias escritas todavía** (prioridad MoSCoW del 2026-10-25, `docs/product/estado-y-prioridades-2026-10-25.md`):
-  - Fase F, HealthKit real (SCRUM-11, Should);
-  - Fase G, Apple Watch (SCRUM-12, Could);
   - Fase H, pestañas (SCRUM-13, Could): casi cubierta por SCRUM-197, 208 y 213, así que hay que revisar su alcance o cerrarla;
   - Fase I, coach conversacional (SCRUM-14, Could);
   - Fase J, release 1.0 (SCRUM-15, Must), que es el gate final.
