@@ -185,6 +185,57 @@ public final class AppEnvironment {
         }
     }
 
+    /// Escribe en Salud los entrenamientos terminados (SCRUM-246). `nil` sin adaptador real.
+    private let healthWriter: (any HealthWorkoutWriting)?
+    /// Una cola por cuenta: sólo ve las sesiones de esa cuenta.
+    private var healthWriteCoordinators: [String: HealthWriteCoordinator] = [:]
+
+    private func healthWriteCoordinator(for persistence: LocalPersistence) -> HealthWriteCoordinator? {
+        guard let healthWriter, healthWorkouts.isEnabled,
+              let userID = onboarding.auth.profile?.userIdentifier else { return nil }
+        if let existing = healthWriteCoordinators[userID] { return existing }
+        do {
+            let access = healthWorkouts
+            let coordinator = HealthWriteCoordinator(
+                repository: try persistence.workoutRepository(),
+                writer: healthWriter,
+                canWrite: { await access.canWrite() }
+            )
+            healthWriteCoordinators[userID] = coordinator
+            return coordinator
+        } catch {
+            persistence.log.saveFailed(.workouts)
+            return nil
+        }
+    }
+
+    /// Lo que corre cuando la sesión quedó guardada: no retiene el cierre del entrenamiento,
+    /// porque el coordinador avisa desde su propia tarea (SCRUM-246).
+    private func healthWriteHook(
+        for persistence: LocalPersistence
+    ) -> @Sendable (Result<WorkoutID, any Error>) async -> Void {
+        let coordinator = healthWriteCoordinator(for: persistence)
+        let log = persistence.log
+        return { result in
+            guard case .success(let id) = result, let coordinator else { return }
+            do {
+                try await coordinator.sessionFinished(id: id)
+            } catch {
+                log.saveFailed(.workouts)
+            }
+        }
+    }
+
+    /// Reintenta lo pendiente de Salud de la cuenta activa: al abrir y al volver a primer plano.
+    public func retryHealthWrites() async {
+        guard let persistence, let coordinator = healthWriteCoordinator(for: persistence) else { return }
+        do {
+            try await coordinator.retryPending()
+        } catch {
+            persistence.log.saveFailed(.workouts)
+        }
+    }
+
     /// Persistencia sin usuario (raíz). El historial de entrenamientos siempre se abre por
     /// `persistence`, que lo separa por cuenta (SCRUM-26).
     private let basePersistence: LocalPersistence?
@@ -307,7 +358,8 @@ public final class AppEnvironment {
                 restrictions: completedProfile?.restrictions ?? [],
                 gymID: gym.activeGym?.id,
                 celebrationPresenter: PRCelebrationPresenter(locale: Self.presentationLocale),
-                clock: clock
+                clock: clock,
+                onPersisted: healthWriteHook(for: persistence)
             ) {
             case .none: activeWorkout = nil
             case .restored(let coordinator): activeWorkout = coordinator
@@ -410,7 +462,8 @@ public final class AppEnvironment {
                     restrictions: completedProfile?.restrictions ?? [],
                     gymID: gym.activeGym?.id,
                     celebrationPresenter: presenter,
-                    clock: clock
+                    clock: clock,
+                    onPersisted: healthWriteHook(for: persistence)
                 )
             } catch {
                 persistence.log.saveFailed(.workouts)
@@ -475,6 +528,7 @@ public final class AppEnvironment {
             flags: featureFlags,
             provider: HealthSystemPermissionProvider(system: HealthKitPermissionProvider())
         )
+        self.healthWriter = nil
         let aiConnection: AIConnection
         if testOptions.isolatedPersistence {
             aiConnection = AIConnection(status: .offline(.uiTesting), provider: OfflineLLMProvider())

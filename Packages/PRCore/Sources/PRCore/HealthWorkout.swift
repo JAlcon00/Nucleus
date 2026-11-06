@@ -311,6 +311,39 @@ public protocol HealthWorkoutStore: Sendable {
     func recentWorkouts(in query: ExternalWorkoutQuery) async throws -> [ExternalWorkout]
 }
 
+/// Lo único que se manda a Salud de un entrenamiento terminado (SCRUM-246, DF-4): tipo,
+/// horas y el identificador que evita duplicar. Nunca series, peso, reps, ejercicios ni notas.
+public struct HealthWorkoutWrite: Sendable, Hashable {
+    /// Versión con la que se guarda: repetir la misma escritura no duplica.
+    public static let syncVersion = 1
+
+    /// Identificador estable en Salud: el id de la sesión.
+    public let syncIdentifier: String
+    public let start: Date
+    public let end: Date
+    public let activityType: HealthWorkoutActivityType
+
+    /// Sólo un entrenamiento completado con al menos una serie va a Salud (DF-4). Sin horas
+    /// válidas, por ejemplo con el reloj cambiado, no hay nada que escribir.
+    public init?(session: WorkoutSessionRecord) {
+        guard session.lifecycle == .completed,
+              let end = session.endedAt,
+              end > session.startedAt,
+              session.sets.contains(where: { $0.lifecycle == .completed })
+        else { return nil }
+        self.syncIdentifier = session.id.rawValue.uuidString
+        self.start = session.startedAt
+        self.end = end
+        self.activityType = .strengthTraining
+    }
+}
+
+/// Guarda en Salud un entrenamiento terminado (DF-1). La misma escritura repetida deja un
+/// solo entrenamiento. Devuelve la referencia del entrenamiento en Salud.
+public protocol HealthWorkoutWriting: Sendable {
+    func saveFinishedWorkout(_ write: HealthWorkoutWrite) async throws -> HealthWorkoutHandle.ID
+}
+
 /// Problemas del coordinador de workouts de HealthKit.
 public enum HealthWorkoutError: Error, Equatable, Sendable {
     case missingPermission
@@ -410,8 +443,13 @@ public nonisolated struct HealthWorkoutCoordinator: Sendable {
 }
 
 /// Fake in-memory de `HealthWorkoutStore` (tests/previews; §32.3 nunca HealthKit real).
-public actor FakeHealthWorkoutStore: HealthWorkoutStore {
+public actor FakeHealthWorkoutStore: HealthWorkoutStore, HealthWorkoutWriting {
     public let provider: any HealthKitProvider
+    /// Lo que Salud tiene guardado, por identificador de sincronización (SCRUM-246).
+    public private(set) var savedWorkouts: [String: HealthWorkoutWrite] = [:]
+    /// Veces que se llamó a guardar, aunque no haya creado nada nuevo.
+    public private(set) var saveAttempts = 0
+    public private(set) var failsOnSave = false
     public var startedHandles: [HealthWorkoutHandle] = []
     public var finishedSummaries: [HealthWorkoutSummary] = []
     public let failOnStart: Bool
@@ -437,6 +475,19 @@ public actor FakeHealthWorkoutStore: HealthWorkoutStore {
         self.heartRate = heartRate
         self.energyOrigin = energyOrigin
         self.externalWorkouts = externalWorkouts
+    }
+
+    public func setFailsOnSave(_ fails: Bool) {
+        failsOnSave = fails
+    }
+
+    public func saveFinishedWorkout(_ write: HealthWorkoutWrite) async throws -> HealthWorkoutHandle.ID {
+        saveAttempts += 1
+        if failsOnSave {
+            throw NSError(domain: "HealthKit", code: 1, userInfo: [NSLocalizedDescriptionKey: "save failed"])
+        }
+        savedWorkouts[write.syncIdentifier] = write
+        return HealthWorkoutHandle.ID(rawValue: UUID(uuidString: write.syncIdentifier) ?? UUID())
     }
 
     public func requestAuthorization() async throws -> HealthPermissionOutcome {

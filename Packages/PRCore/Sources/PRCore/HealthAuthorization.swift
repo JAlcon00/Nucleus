@@ -181,6 +181,11 @@ public struct HealthWorkoutsAccess: Sendable {
         return await provider.requestAuthorization(for: types)
     }
 
+    /// ¿Se puede escribir ahora? Sólo con el flag encendido y el permiso concedido.
+    public func canWrite() async -> Bool {
+        await writeStatus() == .granted
+    }
+
     /// Estado de escribir entrenamientos, sin pedirlo.
     public func writeStatus() async -> HealthAuthorizationStatus {
         guard isEnabled else { return .notDetermined }
