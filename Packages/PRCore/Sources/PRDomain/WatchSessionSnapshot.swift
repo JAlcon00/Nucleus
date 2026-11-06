@@ -77,6 +77,8 @@ public struct WatchSessionSnapshot: Codable, Sendable, Hashable {
     public let stage: WatchSessionStage
     /// Series ya guardadas en el iPhone. Al verlas, el reloj las puede soltar (SCRUM-256).
     public let confirmedSetIDs: [SetRecordID]
+    /// De ésas, las que ya tienen reporte guardado (SCRUM-260). Sólo ids: no lleva el reporte.
+    public let annotatedSetIDs: [SetRecordID]
     /// Fin del descanso en curso. Es una hora, no un contador: sobrevive a bajar la muñeca.
     public let restEndsAt: Date?
     /// Lo que falta, en el orden en que se va a hacer.
@@ -89,13 +91,15 @@ public struct WatchSessionSnapshot: Codable, Sendable, Hashable {
         stage: WatchSessionStage,
         confirmedSetIDs: [SetRecordID],
         restEndsAt: Date?,
-        remaining: [WatchPlannedSet]
+        remaining: [WatchPlannedSet],
+        annotatedSetIDs: [SetRecordID] = []
     ) {
         self.sessionID = sessionID
         self.revision = revision
         self.title = title
         self.stage = stage
         self.confirmedSetIDs = confirmedSetIDs
+        self.annotatedSetIDs = annotatedSetIDs
         self.restEndsAt = restEndsAt
         self.remaining = remaining
     }
@@ -106,7 +110,8 @@ public struct WatchSessionSnapshot: Codable, Sendable, Hashable {
     /// ¿Dicen lo mismo, sin contar la revisión? Si sí, no hace falta reenviarlo.
     public func hasSameContent(as other: WatchSessionSnapshot) -> Bool {
         sessionID == other.sessionID && title == other.title && stage == other.stage
-            && confirmedSetIDs == other.confirmedSetIDs && restEndsAt == other.restEndsAt
+            && confirmedSetIDs == other.confirmedSetIDs && annotatedSetIDs == other.annotatedSetIDs
+            && restEndsAt == other.restEndsAt
             && remaining == other.remaining
     }
 }
@@ -143,6 +148,10 @@ public enum WatchSessionSnapshotBuilder {
         let stage = stage(of: session.lifecycle)
         let confirmed = (session.sets.map(\.id) + (session.setConflicts ?? []).map(\.set.id))
             .sorted { $0.rawValue.uuidString < $1.rawValue.uuidString }
+        let annotated = (session.sets + (session.setConflicts ?? []).map(\.set))
+            .filter { $0.painFeedback != nil }
+            .map(\.id)
+            .sorted { $0.rawValue.uuidString < $1.rawValue.uuidString }
         return WatchSessionSnapshot(
             sessionID: session.id,
             revision: input.revision,
@@ -150,7 +159,8 @@ public enum WatchSessionSnapshotBuilder {
             stage: stage,
             confirmedSetIDs: confirmed,
             restEndsAt: stage == .finished ? nil : session.rest?.endDate,
-            remaining: stage == .finished ? [] : remaining(input)
+            remaining: stage == .finished ? [] : remaining(input),
+            annotatedSetIDs: annotated
         )
     }
 

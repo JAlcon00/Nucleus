@@ -359,12 +359,23 @@ public enum SessionSetMerger {
         return result
     }
 
-    /// Una serie ya guardada sólo puede cambiar en el dolor reportado después (SCRUM-260).
+    /// Una serie ya guardada sólo puede cambiar en el dolor reportado después (SCRUM-260),
+    /// también si quedó en conflicto: el reporte nunca se ignora.
     private static func updatingPain(of set: SetRecord, in session: WorkoutSessionRecord) -> WorkoutSessionRecord? {
-        guard let pain = set.painFeedback, let index = session.sets.firstIndex(where: { $0.id == set.id }),
-              session.sets[index].painFeedback != pain else { return nil }
+        guard let pain = set.painFeedback else { return nil }
         var updated = session
-        updated.sets[index].painFeedback = pain
+        if let index = session.sets.firstIndex(where: { $0.id == set.id }) {
+            guard session.sets[index].painFeedback != pain else { return nil }
+            updated.sets[index].painFeedback = pain
+            return updated
+        }
+        guard var conflicts = session.setConflicts,
+              let index = conflicts.firstIndex(where: { $0.set.id == set.id }),
+              conflicts[index].set.painFeedback != pain else { return nil }
+        var conflicted = conflicts[index].set
+        conflicted.painFeedback = pain
+        conflicts[index] = SessionSetConflict(set: conflicted, slot: conflicts[index].slot)
+        updated.setConflicts = conflicts
         return updated
     }
 

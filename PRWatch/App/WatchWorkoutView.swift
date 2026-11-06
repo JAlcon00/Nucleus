@@ -65,6 +65,7 @@ private struct WatchSetView: View {
     let restEndsAt: Date?
 
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
+    @State private var showsPain = false
 
     private var set: WatchPlannedSet { screen.set }
 
@@ -72,6 +73,7 @@ private struct WatchSetView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: WatchMetric.spacing) {
                 if let restEndsAt { restRow(restEndsAt) }
+                if controller.canReportPain { painButton }
                 header
                 weightRow
                 repsRow
@@ -81,6 +83,21 @@ private struct WatchSetView: View {
             }
             .padding(.horizontal, WatchMetric.spacing)
         }
+        .sheet(isPresented: $showsPain) {
+            WatchPainView(controller: controller)
+        }
+    }
+
+    /// Opcional y fuera del camino de "Completar": no agrega pasos a una serie normal.
+    private var painButton: some View {
+        Button {
+            showsPain = true
+        } label: {
+            Text(PainRecommendationPresenter().reportButtonTitle(for: controller.reportedPain))
+                .font(.footnote)
+                .frame(maxWidth: .infinity, minHeight: WatchMetric.touchTarget)
+        }
+        .buttonStyle(.bordered)
     }
 
     private var header: some View {
@@ -231,6 +248,54 @@ private struct WatchSetView: View {
             get: { controller.draftWeight ?? 0 },
             set: { controller.draftWeight = $0 }
         )
+    }
+}
+
+/// "¿Te dolió?": la misma escala que el iPhone. El reloj no decide ni diagnostica: muestra lo
+/// que dice el motor, y con moderado o alto manda a seguir en el iPhone.
+private struct WatchPainView: View {
+    @Bindable var controller: WatchSessionController
+    @Environment(\.dismiss) private var dismiss
+
+    private let presenter = PainRecommendationPresenter()
+    private static let levels: [PainLevel] = [.none, .mild, .moderate, .high]
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: WatchMetric.spacing) {
+                if let reported = controller.reportedPain, let recommendation = controller.painRecommendation {
+                    result(level: reported, recommendation: recommendation)
+                } else {
+                    Text("¿Te dolió?")
+                        .font(.headline)
+                    ForEach(Self.levels, id: \.self) { level in
+                        Button {
+                            Task { await controller.reportPain(level) }
+                        } label: {
+                            Text(presenter.levelName(level))
+                                .frame(maxWidth: .infinity, minHeight: WatchMetric.touchTarget)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, WatchMetric.spacing)
+        }
+    }
+
+    @ViewBuilder
+    private func result(level: PainLevel, recommendation: PainRecommendation) -> some View {
+        Text(presenter.levelName(level))
+            .font(.headline)
+        if let message = presenter.message(for: recommendation) {
+            Text(message)
+                .font(.footnote)
+        }
+        if level.isConservativeDisruptive {
+            Label("Sigue en el iPhone", systemImage: "iphone")
+                .font(.footnote)
+        }
+        Button("Listo") { dismiss() }
+            .frame(maxWidth: .infinity, minHeight: WatchMetric.touchTarget)
     }
 }
 

@@ -26,19 +26,23 @@ public struct WatchLocalState: Codable, Sendable, Equatable {
     public var restEndsAt: Date?
     /// Hora de la última serie: un doble toque no registra dos.
     public var lastCompletedAt: Date?
+    /// La última serie hecha aquí: sobre ella se reporta dolor (SCRUM-260).
+    public var lastSet: SetRecord?
 
     public init(
         snapshot: WatchSessionSnapshot? = nil,
         done: [WatchDoneSet] = [],
         outbox: [WatchMessage] = [],
         restEndsAt: Date? = nil,
-        lastCompletedAt: Date? = nil
+        lastCompletedAt: Date? = nil,
+        lastSet: SetRecord? = nil
     ) {
         self.snapshot = snapshot
         self.done = done
         self.outbox = outbox
         self.restEndsAt = restEndsAt
         self.lastCompletedAt = lastCompletedAt
+        self.lastSet = lastSet
     }
 
     public static let empty = WatchLocalState()
@@ -101,6 +105,29 @@ public enum WatchOutbox {
         next.outbox.append(message)
         next.restEndsAt = set.restSecondsAfter.map { now.addingTimeInterval(TimeInterval($0)) }
         next.lastCompletedAt = now
+        next.lastSet = record
+        return (next, message)
+    }
+
+    /// El estado con el dolor reportado en la última serie. Viaja como la misma serie: al
+    /// iPhone le llega el mismo id con el reporte, y gana el último nivel elegido.
+    public static func reportingPain(_ level: PainLevel, in state: WatchLocalState) throws -> (state: WatchLocalState, message: WatchMessage) {
+        guard let snapshot = state.snapshot, var set = state.lastSet else { throw WatchSessionError.noSession }
+        set.painFeedback = PainFeedback(level: level)
+        var slotOfSet: SetSlot?
+        for message in state.outbox {
+            if case .event(let event) = message, case .recorded(let record) = event.action, record.id == set.id {
+                slotOfSet = event.slot
+            }
+        }
+        let slot = slotOfSet ?? state.done.last?.slot
+        let message = WatchMessage.event(SetEvent(
+            device: WorkoutDevice.watch, emittedAt: set.performedAt, slot: slot,
+            action: .recorded(set), sessionID: snapshot.sessionID
+        ))
+        var next = state
+        next.lastSet = set
+        next.outbox.append(message)
         return (next, message)
     }
 
@@ -129,13 +156,16 @@ public enum WatchOutbox {
         state.snapshot?.stage == .finished && state.outbox.isEmpty
     }
 
+    /// Una serie con reporte de dolor sólo sale cuando el iPhone ya guardó ese reporte: estar
+    /// confirmada no basta, y perderlo dejaría subir la carga con dolor.
     private static func pruned(_ outbox: [WatchMessage], confirmedBy snapshot: WatchSessionSnapshot) -> [WatchMessage] {
         let confirmed = Set(snapshot.confirmedSetIDs)
+        let annotated = Set(snapshot.annotatedSetIDs)
         return outbox.filter { message in
             switch message {
             case .event(let event):
                 guard case .recorded(let record) = event.action else { return true }
-                return !confirmed.contains(record.id)
+                return !(record.painFeedback == nil ? confirmed : annotated).contains(record.id)
             }
         }
     }
@@ -185,6 +215,8 @@ public final class WatchSessionController {
     public private(set) var isPhoneReachable = false
     /// Sube con cada serie guardada: dispara el háptico de confirmación.
     public private(set) var confirmedTaps = 0
+    /// Qué recomienda el motor de dolor para lo último reportado (el mismo que el iPhone).
+    public private(set) var painRecommendation: PainRecommendation?
     /// Peso y reps en pantalla. Son de la persona: un estado nuevo no los pisa.
     public var draftWeight: Double?
     public var draftReps: Int = 0
@@ -286,6 +318,39 @@ public final class WatchSessionController {
         confirmedTaps += 1
         syncDraft()
         await link.send(result.message)
+    }
+
+    /// ¿Hay una serie sobre la cual reportar? Reportar es opcional: no estorba al completar.
+    public var canReportPain: Bool { state.lastSet != nil }
+
+    /// El nivel ya reportado en la última serie.
+    public var reportedPain: PainLevel? { state.lastSet?.painFeedback?.level }
+
+    /// Reporta el dolor de la última serie. Se guarda antes que nada, como una serie, y el
+    /// reloj no decide: la recomendación sale del mismo motor que usa el iPhone.
+    public func reportPain(_ level: PainLevel) async {
+        let result: (state: WatchLocalState, message: WatchMessage)
+        do {
+            result = try WatchOutbox.reportingPain(level, in: state)
+            try store.save(result.state)
+        } catch {
+            saveFailed = true
+            return
+        }
+        saveFailed = false
+        state = result.state
+        painRecommendation = recommendation(for: level)
+        await link.send(result.message)
+    }
+
+    /// Si el motor no pudiera responder, lo más seguro: moderado o alto se tratan como alto.
+    private func recommendation(for level: PainLevel) -> PainRecommendation {
+        do {
+            let engine = try PainFeedbackEngine(config: PainFeedbackConfig(rule: PainFeedbackPolicyDefaults.makeRule()))
+            return try engine.evaluate(PainFeedbackInput(level: level, exerciseName: nil)).recommendation
+        } catch {
+            return level.isConservativeDisruptive ? .stopAndRest : .continueNormal
+        }
     }
 
     public func skipRest() {
