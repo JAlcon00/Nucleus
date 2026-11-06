@@ -406,6 +406,18 @@ public struct SessionSubstitution: Codable, Sendable, Hashable {
     }
 }
 
+/// Una serie registrada en otro dispositivo sobre una serie que ya estaba hecha (DG-3). No se
+/// descarta nunca: se guarda aparte hasta que la persona elija (RNF-004, SCRUM-254).
+public struct SessionSetConflict: Codable, Sendable, Hashable {
+    public let set: SetRecord
+    public let slot: SetSlot
+
+    public init(set: SetRecord, slot: SetSlot) {
+        self.set = set
+        self.slot = slot
+    }
+}
+
 /// Registro de lo realmente realizado en una sesión. Nunca se muta para
 /// que coincida con el plan; guarda su propio lifecycle y set records.
 public struct WorkoutSessionRecord: Identifiable, Codable, Sendable, Hashable {
@@ -431,6 +443,8 @@ public struct WorkoutSessionRecord: Identifiable, Codable, Sendable, Hashable {
     public var template: SessionTemplate?
     /// Cambios de ejercicio de esta sesión (SCRUM-234). Campo opcional (ADR-0003).
     public var substitutions: [SessionSubstitution]?
+    /// Series en conflicto entre iPhone y reloj (SCRUM-254). Campo opcional (ADR-0003).
+    public var setConflicts: [SessionSetConflict]?
 
     public init(
         id: WorkoutID = WorkoutID(),
