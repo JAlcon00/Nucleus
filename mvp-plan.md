@@ -79,7 +79,7 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
 - **Decisiones DE-1 a DE-4:** en SCRUM-231. **DE-5** (planes guardados que dejan de cumplir una regla nueva): en SCRUM-239.
 - **Excepción de Jesús (2026-11-05):** toda la Fase E se trabajó en una rama y un PR, un commit por historia, aunque la cola 👤 pasa de 5 y el runbook se detiene en el paso 0. Antes ya había autorizado SCRUM-232 y SCRUM-240 por no agregar pantallas. Las verificaciones de la sección 2 siguen pendientes.
 
-**Fase F · HealthKit real (SCRUM-11, Should): historias escritas el 2026-11-05. Falta que Jesús autorice el epic.**
+**Fase F · HealthKit real (SCRUM-11, Should): autorizada por Jesús el 2026-11-05, como excepción a la cola 👤 (pasa de 5).**
 - **Decisiones DF-1 a DF-5:** en SCRUM-242. **Gate:** SCRUM-251, 👤 en dispositivo físico, con cuenta gratuita y SCRUM-262. `health.workouts.enabled` sigue apagado hasta pasarlo.
 
 | Orden | Historia | Depende de | Carril |
