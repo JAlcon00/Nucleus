@@ -78,15 +78,15 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
 **Fase E · gimnasio real (SCRUM-10, Should): en `main` por el PR #38 desde el 2026-11-05.**
 - **Decisiones DE-1 a DE-4:** en SCRUM-231. **DE-5** (planes guardados que dejan de cumplir una regla nueva): en SCRUM-239.
 - **Excepción de Jesús (2026-11-05):** toda la Fase E se trabajó en una rama y un PR, un commit por historia, aunque la cola 👤 pasa de 5 y el runbook se detiene en el paso 0. Antes ya había autorizado SCRUM-232 y SCRUM-240 por no agregar pantallas. Las verificaciones de la sección 2 siguen pendientes.
-- **Carril:** 🟡 amarillo, porque toca `LocalPersistence.swift` y `CodableRepositories.swift`. El PR se fusiona con merge commit, no squash, para conservar un commit por historia.
 
 **Fase F · HealthKit real (SCRUM-11, Should): historias escritas el 2026-11-05. Falta que Jesús autorice el epic.**
-- **Decisiones DF-1 a DF-5:** en SCRUM-242. **Gate:** SCRUM-251, 👤 en dispositivo físico, depende de SCRUM-188. `health.workouts.enabled` sigue apagado hasta pasarlo.
+- **Decisiones DF-1 a DF-5:** en SCRUM-242. **Gate:** SCRUM-251, 👤 en dispositivo físico, con cuenta gratuita y SCRUM-262. `health.workouts.enabled` sigue apagado hasta pasarlo.
 
 | Orden | Historia | Depende de | Carril |
 |---|---|---|---|
 | 1 | SCRUM-244 · PR-F001 Permisos de Salud reales (READY) | SCRUM-242 | 🟡 |
 | 1 | SCRUM-245 · PR-F002 La energía se cuenta una vez, motor (READY) | — | 🟢 |
+| 1 | SCRUM-262 · PR-F009 Build de prueba para iPhone con cuenta gratuita (READY) | — | 🟡 |
 | 2 | SCRUM-246 · PR-F003 Cola de escritura a Salud | 244 | 🟡 |
 | 3 | SCRUM-247 · PR-F004 Guardar en Salud de verdad | 246 | 🟡 |
 | 4 | SCRUM-248 · PR-F005 Pedir permiso en el momento correcto | 244, 246 | 🟡 |
