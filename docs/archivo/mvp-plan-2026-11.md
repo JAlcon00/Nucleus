@@ -345,7 +345,7 @@ Evidencia: `make ci` (2026-11-06) → `✔ Test run with 648 tests in 91 suites 
 ## Fase F en un solo PR (PR #42)
 
 - **Épica:** Fase F (SCRUM-11) · hito 1.0 · carril 🟡 amarillo. SCRUM-245 entró antes, por el PR #40.
-- **Estado:** PR #42, rama `SCRUM-11-fase-f`, 2026-11-06. Un commit por historia; lo fusiona Jesús con merge commit.
+- **Estado:** PR #42, rama `SCRUM-11-fase-f`, en `main` el 2026-11-06 con merge commit. Un commit por historia.
 - **Por qué en un PR:** Jesús lo pidió el 2026-11-05, igual que la Fase E.
 - **Decisiones que aplica:** DF-1 a DF-5 (SCRUM-242).
 - **También cierra:** los dos criterios de SCRUM-258 que dependían de esta fase.
@@ -459,5 +459,6 @@ Evidencia: rama `SCRUM-11-fase-f`, PR #42, sobre `main` @ `c011a98`.
 - **E2E:** `make test-ui` → 15 de 15 OK, entre ellas `testSummaryOffersHealthAndSavesTheWorkout`, `testRefusingTheSheetDoesNotInsist`, `testSummarySaysItWasSavedInHealth`, `testWatchEnergyShowsOnceAndActivityStaysApart` y `testHealthSwitchInProfile`.
 - **Fallas que encontró la E2E, ya arregladas:** la tarjeta pisaba los identificadores de sus botones, y Progreso no recibía las actividades, así que la fila nunca salía.
 - **Salud real en simulador:** la hoja pide lo correcto, con nuestros textos. Tarjeta, hoja y "Guardado en Salud" de punta a punta. iOS 27 agrega un segundo paso: cuántos datos históricos compartir.
-- **Firma real:** `xcodebuild` para el iPhone con cuenta gratuita, `BUILD SUCCEEDED`, sin instalar. `codesign` muestra HealthKit y no `applesignin`. Esa corrida fue antes de integrar la Fase G.
+- **Firma real:** `xcodebuild` con cuenta gratuita sobre `main` @ `e86b7ec`, con las opciones de `make install-iphone` y destino `generic/platform=iOS`: `BUILD SUCCEEDED`, sin instalar. `codesign` muestra HealthKit y no `applesignin` en `PR.app` ni en el `PRWatch.app` embebido.
+- **iPhone fuera de alcance, caso real:** `devicectl` reporta `connection.state` = `unavailable`, y `make install-iphone` responde `no hay ningún iPhone conectado` con código distinto de 0.
 
