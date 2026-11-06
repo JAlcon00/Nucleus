@@ -232,6 +232,8 @@ public final class WorkoutSessionCoordinator: Identifiable {
     /// Avisa cada cambio de estado que el reloj debe conocer (SCRUM-255): el mismo momento en
     /// que se guarda, así nunca se publica algo que no esté en disco.
     public var onWatchStateChange: ((WatchSessionSnapshot) -> Void)?
+    /// ¿El reloj debe abrir una sesión de Salud? (SCRUM-258). Lo decide la app.
+    public var watchRecordsHealth = false
 
     /// `true` si la última escritura a disco falló: la sesión sigue viva en memoria pero la
     /// UI debe avisar (nunca se traga el error de un dato de entrenamiento).
@@ -411,7 +413,8 @@ extension WorkoutSessionCoordinator {
             template: template,
             revision: Int(state.lastTransitionAt.timeIntervalSince1970 * 1_000),
             exerciseName: { id in names[id] ?? "Ejercicio \(id.rawValue.uuidString.prefix(8))" },
-            draft: { planned in drafts[planned] ?? completer.preload(for: planned) }
+            draft: { planned in drafts[planned] ?? completer.preload(for: planned) },
+            opensWorkoutSession: watchRecordsHealth
         ))
     }
 
@@ -716,6 +719,15 @@ extension WorkoutSessionCoordinator {
             persistLive()
         }
         return true
+    }
+
+    /// Guarda lo que el reloj avisa de su sesión de Salud (SCRUM-258). Idempotente.
+    public func applyHealthNotice(_ notice: WatchHealthNotice) {
+        guard let session = controller.current?.session, session.id == notice.sessionID else { return }
+        let updated = notice.applied(to: session)
+        guard updated != session else { return }
+        controller.replaceSession(updated, at: clock())
+        persistLive()
     }
 
     /// Las series en conflicto, para que la persona elija en el resumen (DG-3).

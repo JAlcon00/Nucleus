@@ -84,6 +84,8 @@ public struct WatchSessionSnapshot: Codable, Sendable, Hashable {
     /// Inicio y fin de la sesión, para el resumen corto del reloj.
     public let startedAt: Date?
     public let endedAt: Date?
+    /// ¿El reloj debe abrir su sesión de entrenamiento del sistema? (SCRUM-258).
+    public let opensWorkoutSession: Bool
     /// Fin del descanso en curso. Es una hora, no un contador: sobrevive a bajar la muñeca.
     public let restEndsAt: Date?
     /// Lo que falta, en el orden en que se va a hacer.
@@ -100,7 +102,8 @@ public struct WatchSessionSnapshot: Codable, Sendable, Hashable {
         annotatedSetIDs: [SetRecordID] = [],
         confirmedCommandIDs: [UUID] = [],
         startedAt: Date? = nil,
-        endedAt: Date? = nil
+        endedAt: Date? = nil,
+        opensWorkoutSession: Bool = false
     ) {
         self.sessionID = sessionID
         self.revision = revision
@@ -111,6 +114,7 @@ public struct WatchSessionSnapshot: Codable, Sendable, Hashable {
         self.confirmedCommandIDs = confirmedCommandIDs
         self.startedAt = startedAt
         self.endedAt = endedAt
+        self.opensWorkoutSession = opensWorkoutSession
         self.restEndsAt = restEndsAt
         self.remaining = remaining
     }
@@ -136,19 +140,22 @@ public struct WatchSessionSnapshotInput: Sendable {
     public let exerciseName: @Sendable (ExerciseID) -> String
     /// El mismo borrador que usa la pantalla del iPhone.
     public let draft: @Sendable (PlannedSet) -> SetCompletionDraft
+    public let opensWorkoutSession: Bool
 
     public init(
         session: WorkoutSessionRecord,
         template: SessionTemplate,
         revision: Int,
         exerciseName: @escaping @Sendable (ExerciseID) -> String,
-        draft: @escaping @Sendable (PlannedSet) -> SetCompletionDraft
+        draft: @escaping @Sendable (PlannedSet) -> SetCompletionDraft,
+        opensWorkoutSession: Bool = false
     ) {
         self.session = session
         self.template = template
         self.revision = revision
         self.exerciseName = exerciseName
         self.draft = draft
+        self.opensWorkoutSession = opensWorkoutSession
     }
 }
 
@@ -175,7 +182,8 @@ public enum WatchSessionSnapshotBuilder {
             annotatedSetIDs: annotated,
             confirmedCommandIDs: session.appliedCommandIDs ?? [],
             startedAt: session.startedAt,
-            endedAt: session.endedAt
+            endedAt: session.endedAt,
+            opensWorkoutSession: input.opensWorkoutSession
         )
     }
 

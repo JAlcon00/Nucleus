@@ -11,10 +11,8 @@ import PRCore
 import SwiftUI
 
 struct WatchContentView: View {
-    @State private var controller = WatchSessionModel.makeController()
-
     var body: some View {
-        if let controller {
+        if let controller = WatchSessionModel.shared {
             WatchWorkoutView(controller: controller)
                 .task { controller.start() }
         } else {

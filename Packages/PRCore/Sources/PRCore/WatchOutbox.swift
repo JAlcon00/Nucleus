@@ -14,6 +14,15 @@ import Foundation
 import Observation
 import PRDomain
 
+/// En qué va la sesión de Salud del reloj.
+public enum WatchHealthSessionState: String, Codable, Sendable, Equatable {
+    case running
+    case paused
+    case ended
+    /// Falló: las series siguen y el iPhone escribe por su cuenta.
+    case failed
+}
+
 /// Todo lo que el reloj guarda de la sesión en curso.
 public struct WatchLocalState: Codable, Sendable, Equatable {
     /// Lo último que publicó el iPhone.
@@ -32,6 +41,8 @@ public struct WatchLocalState: Codable, Sendable, Equatable {
     public var localStage: WatchSessionStage?
     /// Hora en que se terminó aquí.
     public var finishedAt: Date?
+    /// Sesión de Salud de este reloj: se recuerda para no abrir otra al reabrir la app.
+    public var healthSession: WatchHealthSessionState?
 
     public init(
         snapshot: WatchSessionSnapshot? = nil,
@@ -41,7 +52,8 @@ public struct WatchLocalState: Codable, Sendable, Equatable {
         lastCompletedAt: Date? = nil,
         lastSet: SetRecord? = nil,
         localStage: WatchSessionStage? = nil,
-        finishedAt: Date? = nil
+        finishedAt: Date? = nil,
+        healthSession: WatchHealthSessionState? = nil
     ) {
         self.snapshot = snapshot
         self.done = done
@@ -51,6 +63,7 @@ public struct WatchLocalState: Codable, Sendable, Equatable {
         self.lastSet = lastSet
         self.localStage = localStage
         self.finishedAt = finishedAt
+        self.healthSession = healthSession
     }
 
     public static let empty = WatchLocalState()
@@ -204,6 +217,8 @@ public enum WatchOutbox {
                 return !(record.painFeedback == nil ? confirmed : annotated).contains(record.id)
             case .command(let command):
                 return !commands.contains(command.id)
+            case .health(let notice):
+                return !commands.contains(notice.id)
             }
         }
     }
@@ -211,7 +226,7 @@ public enum WatchOutbox {
     private static func hasPendingCommand(_ outbox: [WatchMessage]) -> Bool {
         outbox.contains { message in
             switch message {
-            case .event: return false
+            case .event, .health: return false
             case .command: return true
             }
         }
@@ -284,6 +299,9 @@ public final class WatchSessionController {
 
     @ObservationIgnored private let store: WatchLocalStore
     @ObservationIgnored private let link: any WatchWorkoutLink
+    @ObservationIgnored private let health: HealthLiveWorkoutCoordinator?
+    @ObservationIgnored private var healthMachine = HealthLiveWorkoutStateMachine()
+    @ObservationIgnored private var isStartingHealth = false
     @ObservationIgnored private let clock: () -> Date
     @ObservationIgnored private let makeSetID: () -> SetRecordID
     @ObservationIgnored private var draftSlot: SetSlot?
@@ -293,11 +311,13 @@ public final class WatchSessionController {
     public init(
         store: WatchLocalStore,
         link: any WatchWorkoutLink,
+        health: HealthLiveWorkoutCoordinator? = nil,
         clock: @escaping () -> Date = { Date() },
         makeSetID: @escaping () -> SetRecordID = { SetRecordID() }
     ) {
         self.store = store
         self.link = link
+        self.health = health
         self.clock = clock
         self.makeSetID = makeSetID
         do {
@@ -415,6 +435,84 @@ public final class WatchSessionController {
         saveFailed = false
         state = result.state
         await link.send(result.message)
+        await syncHealth()
+    }
+
+    // MARK: - Sesión de Salud (SCRUM-258)
+
+    /// Deja la sesión de Salud como pide la sesión de entrenamiento. La abre el iPhone al
+    /// empezar, o el reloj si se abre con una sesión activa. Nada de esto toca las series: si
+    /// Salud falla, se sigue entrenando y el iPhone escribe por su cuenta.
+    public func syncHealth() async {
+        guard let health, let snapshot = state.snapshot, snapshot.opensWorkoutSession else { return }
+        switch (state.stage, healthMachine.state) {
+        case (.active?, .idle), (.paused?, .idle):
+            await startHealth(health, session: snapshot.sessionID)
+        case (.paused?, .running):
+            await changeHealth(.paused) { try await health.pause(stateMachine: $0) }
+        case (.active?, .paused):
+            await changeHealth(.running) { try await health.resume(stateMachine: $0) }
+        case (.finished?, .running), (.finished?, .paused):
+            await endHealth(health, session: snapshot.sessionID)
+        default:
+            break
+        }
+    }
+
+    private func startHealth(_ health: HealthLiveWorkoutCoordinator, session: WorkoutID) async {
+        guard !isStartingHealth, state.healthSession == nil || state.healthSession == .running else { return }
+        isStartingHealth = true
+        defer { isStartingHealth = false }
+        do {
+            await health.builder.tag(sessionID: session.rawValue)
+            healthMachine = try await health.recoverOrStart(stateMachine: healthMachine)
+            await record(.running, notify: SessionHealthRecording(state: .recording), session: session)
+        } catch {
+            await record(.failed, notify: SessionHealthRecording(state: .failed), session: session)
+        }
+    }
+
+    private func changeHealth(
+        _ next: WatchHealthSessionState,
+        _ change: (HealthLiveWorkoutStateMachine) async throws -> HealthLiveWorkoutStateMachine
+    ) async {
+        do {
+            healthMachine = try await change(healthMachine)
+            persistHealth(next)
+        } catch {
+            // Salud no pudo pausar o reanudar: el entrenamiento sigue igual.
+            persistHealth(next)
+        }
+    }
+
+    private func endHealth(_ health: HealthLiveWorkoutCoordinator, session: WorkoutID) async {
+        do {
+            let (metrics, machine) = try await health.end(stateMachine: healthMachine)
+            healthMachine = machine
+            let heartRate = await health.builder.averageHeartRate()
+            await record(.ended, notify: SessionHealthRecording(
+                state: .saved, activeKilocalories: metrics.activeKilocalories, averageHeartRateBPM: heartRate
+            ), session: session)
+        } catch {
+            healthMachine = HealthLiveWorkoutStateMachine(state: .failed(reason: "end"))
+            await record(.failed, notify: SessionHealthRecording(state: .failed), session: session)
+        }
+    }
+
+    private func persistHealth(_ value: WatchHealthSessionState) {
+        var next = state
+        next.healthSession = value
+        persist(next)
+    }
+
+    /// Avisa al iPhone quién escribe el entrenamiento. Viaja por el buzón: no se puede perder.
+    private func record(_ value: WatchHealthSessionState, notify recording: SessionHealthRecording, session: WorkoutID) async {
+        let message = WatchMessage.health(WatchHealthNotice(sessionID: session, recording: recording))
+        var next = state
+        next.healthSession = value
+        next.outbox.append(message)
+        persist(next)
+        await link.send(message)
     }
 
     /// ¿Hay una serie sobre la cual reportar? Reportar es opcional: no estorba al completar.
@@ -462,7 +560,8 @@ public final class WatchSessionController {
         let next = WatchOutbox.receiving(snapshot, in: state)
         guard next != state else { return }
         persist(next)
-        if WatchOutbox.isFinishedAndConfirmed(next) {
+        await syncHealth()
+        if WatchOutbox.isFinishedAndConfirmed(state) {
             do {
                 try store.clear()
             } catch {

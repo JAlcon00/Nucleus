@@ -32,6 +32,29 @@ public struct WatchSessionCommand: Codable, Sendable, Hashable, Identifiable {
     }
 }
 
+/// Lo que el reloj avisa de su sesión de Salud (SCRUM-258).
+public struct WatchHealthNotice: Codable, Sendable, Hashable, Identifiable {
+    public let id: UUID
+    public let sessionID: WorkoutID
+    public let recording: SessionHealthRecording
+
+    public init(id: UUID = UUID(), sessionID: WorkoutID, recording: SessionHealthRecording) {
+        self.id = id
+        self.sessionID = sessionID
+        self.recording = recording
+    }
+
+    /// La sesión con el aviso anotado. Lo guardado gana sobre "grabando": un aviso que llega
+    /// tarde no deshace que el entrenamiento ya esté en Salud. Idempotente.
+    public func applied(to session: WorkoutSessionRecord) -> WorkoutSessionRecord {
+        guard !(session.appliedCommandIDs ?? []).contains(id) else { return session }
+        var updated = session
+        updated.appliedCommandIDs = (session.appliedCommandIDs ?? []) + [id]
+        if session.healthRecording?.state != .saved { updated.healthRecording = recording }
+        return updated
+    }
+}
+
 /// Decide qué hacer con un comando: lo usan la sesión en pantalla y la sesión guardada.
 public enum SessionCommandPolicy {
 

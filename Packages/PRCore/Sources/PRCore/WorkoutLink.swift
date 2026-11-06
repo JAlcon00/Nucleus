@@ -16,6 +16,7 @@ import PRDomain
 public enum WatchMessage: Codable, Sendable, Hashable {
     case event(SetEvent)
     case command(WatchSessionCommand)
+    case health(WatchHealthNotice)
 }
 
 /// El lado del iPhone.
@@ -70,6 +71,8 @@ public enum WatchBridgeError: Error, Equatable, Sendable {
 public final class PhoneWatchBridge {
     private let link: any PhoneWorkoutLink
     private let storage: @MainActor () throws -> WatchBridgeStorage?
+    /// ¿El reloj debe abrir una sesión de Salud?
+    private let recordsHealth: Bool
     private let setGuard = SetPersistenceGuard()
     private let logger = PRLogger(category: .sync)
     private let clock: () -> Date
@@ -83,10 +86,12 @@ public final class PhoneWatchBridge {
     public init(
         link: any PhoneWorkoutLink,
         clock: @escaping () -> Date = { Date() },
+        recordsHealth: Bool = false,
         storage: @escaping @MainActor () throws -> WatchBridgeStorage?
     ) {
         self.link = link
         self.clock = clock
+        self.recordsHealth = recordsHealth
         self.storage = storage
     }
 
@@ -109,6 +114,7 @@ public final class PhoneWatchBridge {
     /// Conecta la sesión en pantalla: desde aquí, cada cambio se publica al reloj.
     public func attach(_ coordinator: WorkoutSessionCoordinator) {
         self.coordinator = coordinator
+        coordinator.watchRecordsHealth = recordsHealth
         coordinator.onWatchStateChange = { [weak self] snapshot in self?.publish(snapshot) }
         if let snapshot = coordinator.watchSnapshot() { publish(snapshot) }
     }
@@ -122,7 +128,26 @@ public final class PhoneWatchBridge {
             return try await handle(event)
         case .command(let command):
             return try await handle(command)
+        case .health(let notice):
+            return try await handle(notice)
         }
+    }
+
+    private func handle(_ notice: WatchHealthNotice) async throws -> WatchMessageOutcome {
+        if let coordinator, coordinator.isLive(session: notice.sessionID) {
+            coordinator.applyHealthNotice(notice)
+            if let snapshot = coordinator.watchSnapshot() { publish(snapshot) }
+            return .appliedLive
+        }
+        guard let storage = try storage() else { throw WatchBridgeError.storageUnavailable }
+        guard let session = try await storage.workouts.session(id: notice.sessionID) else {
+            throw WatchBridgeError.sessionNotFound
+        }
+        let updated = notice.applied(to: session)
+        guard updated != session else { return .noChange }
+        try await storage.workouts.save(updated)
+        await confirmStored(notice.sessionID, in: storage.workouts)
+        return .appliedStored
     }
 
     /// Un comando no pasa por la cola: se aplica directo a la sesión, en pantalla o en disco.

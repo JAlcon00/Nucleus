@@ -418,6 +418,38 @@ public struct SessionSetConflict: Codable, Sendable, Hashable {
     }
 }
 
+/// Lo que el reloj está registrando en Salud para esta sesión (SCRUM-258).
+public struct SessionHealthRecording: Codable, Sendable, Hashable {
+    public enum State: String, Codable, Sendable, Hashable {
+        /// El reloj tiene una sesión de Salud abierta.
+        case recording
+        /// El reloj ya guardó el entrenamiento en Salud.
+        case saved
+        /// Falló: el iPhone debe escribir por su cuenta (PR-F003).
+        case failed
+    }
+
+    public var state: State
+    /// Medidos por el reloj. `nil` si no hay dato o no hay permiso.
+    public var activeKilocalories: Double?
+    public var averageHeartRateBPM: Double?
+
+    public init(state: State, activeKilocalories: Double? = nil, averageHeartRateBPM: Double? = nil) {
+        self.state = state
+        self.activeKilocalories = activeKilocalories
+        self.averageHeartRateBPM = averageHeartRateBPM
+    }
+
+    /// ¿El reloj escribe el entrenamiento? Si sí, el iPhone no agrega otro: un entrenamiento,
+    /// una sola energía.
+    public var watchOwnsHealthWorkout: Bool {
+        switch state {
+        case .recording, .saved: return true
+        case .failed: return false
+        }
+    }
+}
+
 /// Registro de lo realmente realizado en una sesión. Nunca se muta para
 /// que coincida con el plan; guarda su propio lifecycle y set records.
 public struct WorkoutSessionRecord: Identifiable, Codable, Sendable, Hashable {
@@ -450,6 +482,8 @@ public struct WorkoutSessionRecord: Identifiable, Codable, Sendable, Hashable {
     public var appliedCommandIDs: [UUID]?
     /// Hora del último comando del reloj: uno más viejo no deshace uno nuevo. Campo opcional.
     public var lastRemoteCommandAt: Date?
+    /// Sesión de Salud en el reloj (SCRUM-258). Campo opcional (ADR-0003).
+    public var healthRecording: SessionHealthRecording?
 
     public init(
         id: WorkoutID = WorkoutID(),

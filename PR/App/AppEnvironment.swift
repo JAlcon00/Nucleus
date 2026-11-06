@@ -101,6 +101,7 @@ public final class AppEnvironment {
     /// Puente con el reloj (SCRUM-255). `nil` si este dispositivo no tiene WatchConnectivity.
     @ObservationIgnored private var watchBridge: PhoneWatchBridge?
     @ObservationIgnored private var simulatesSetConflict = false
+    @ObservationIgnored private var watchWorkoutLauncher: WatchWorkoutLauncher?
 
     /// Check-in diario de sueño (SCRUM-203).
     public let sleepCheckIns: SleepCheckInCoordinator
@@ -341,6 +342,11 @@ public final class AppEnvironment {
         }
     }
 
+    /// Abre el reloj al empezar (SCRUM-258). Si no responde, el iPhone sigue solo.
+    public func startWatchWorkout() async {
+        await watchWorkoutLauncher?.start()
+    }
+
     /// Sólo en pruebas de UI: la primera serie llega dos veces, como si iPhone y reloj la
     /// hubieran hecho sin conexión (SCRUM-259).
     public func seedSetConflictForUITest(in coordinator: WorkoutSessionCoordinator) {
@@ -579,7 +585,14 @@ public final class AppEnvironment {
         self.simulatesSetConflict = testOptions.simulatesSetConflict
         // SCRUM-255: el reloj sólo se conecta en la app de verdad, nunca en pruebas de UI.
         if !testOptions.isolatedPersistence, let link = WatchConnectivityLink() {
-            let bridge = PhoneWatchBridge(link: link) { [weak self] in
+            // SCRUM-258: apagado hasta pasar el gate. `make install-iphone` lo enciende para probarlo.
+            #if PR_DEVICE_TEST
+            let recordsHealth = true
+            #else
+            let recordsHealth = featureFlags.isEnabled(.watchHealthSessionEnabled)
+            #endif
+            self.watchWorkoutLauncher = recordsHealth ? WatchWorkoutLauncher() : nil
+            let bridge = PhoneWatchBridge(link: link, recordsHealth: recordsHealth) { [weak self] in
                 guard let persistence = self?.persistence else { return nil }
                 return WatchBridgeStorage(
                     queue: try persistence.pendingOperationQueue(),
