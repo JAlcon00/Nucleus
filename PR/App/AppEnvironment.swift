@@ -45,7 +45,8 @@ public final class AppEnvironment {
     public let onboarding: OnboardingCoordinator
 
     /// Modo de inicio de sesión resuelto al arrancar. `.simulated` sólo en Debug con
-    /// `-PRFakeSignIn` (para probar sin Sign in with Apple); en Release siempre `.appleID`.
+    /// `-PRFakeSignIn` (para probar sin Sign in with Apple) o en el build de prueba para
+    /// iPhone (`PR_DEVICE_TEST`, SCRUM-262); en Release siempre `.appleID`.
     public let authMode: AuthLaunchMode
 
     /// Intent de arranque: recupera la sesión y el plan guardados; en modo simulado inicia
@@ -440,7 +441,17 @@ public final class AppEnvironment {
         #else
         let isDebugBuild = false
         #endif
-        let mode = AuthLaunchMode.resolve(arguments: ProcessInfo.processInfo.arguments, isDebugBuild: isDebugBuild)
+        // Sólo `make install-iphone` pone esta condición (SCRUM-262).
+        #if PR_DEVICE_TEST
+        let isDeviceTestBuild = true
+        #else
+        let isDeviceTestBuild = false
+        #endif
+        let mode = AuthLaunchMode.resolve(
+            arguments: ProcessInfo.processInfo.arguments,
+            isDebugBuild: isDebugBuild,
+            isDeviceTestBuild: isDeviceTestBuild
+        )
         self.authMode = mode
         let testOptions = UITestLaunchOptions.resolve(
             arguments: ProcessInfo.processInfo.arguments, isDebugBuild: isDebugBuild

@@ -9,7 +9,9 @@
 //  de la app existe un inicio de sesión SIMULADO que:
 //  - sólo se activa en builds Debug Y con el launch argument `-PRFakeSignIn` (o con el
 //    del demo, `-PRDemoData`, SCRUM-188, que entra solo con este mismo usuario);
-//  - nunca en Release, aunque venga el argumento;
+//  - en el build de prueba para iPhone (SCRUM-262), que abre desde el ícono sin argumentos,
+//    se activa con la condición `PR_DEVICE_TEST`, y también exige build Debug;
+//  - nunca en Release, aunque venga el argumento o la condición;
 //  - entra solo (sin tocar el botón) con un identificador local fijo, sin tokens.
 //  La decisión es pura y testeable; la app sólo le pasa sus argumentos y si es Debug.
 //
@@ -28,10 +30,17 @@ public enum AuthLaunchMode: Equatable, Sendable {
     /// Identificador local del usuario simulado. No es un identificador de Apple.
     public static let simulatedUserIdentifier = "debug.simulated-user"
 
-    /// Resuelve el modo. En Release siempre es `.appleID`.
-    public static func resolve(arguments: [String], isDebugBuild: Bool) -> AuthLaunchMode {
+    /// Resuelve el modo. En Release siempre es `.appleID`. `isDeviceTestBuild` viene de la
+    /// condición `PR_DEVICE_TEST` que pone `make install-iphone` (SCRUM-262).
+    public static func resolve(
+        arguments: [String],
+        isDebugBuild: Bool,
+        isDeviceTestBuild: Bool = false
+    ) -> AuthLaunchMode {
         guard isDebugBuild,
-              arguments.contains(simulatedSignInArgument) || DemoDataLaunch.isRequested(arguments: arguments, isDebugBuild: isDebugBuild)
+              isDeviceTestBuild
+                || arguments.contains(simulatedSignInArgument)
+                || DemoDataLaunch.isRequested(arguments: arguments, isDebugBuild: isDebugBuild)
         else { return .appleID }
         return .simulated
     }

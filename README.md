@@ -564,6 +564,22 @@ era 24.8.
   simulador tardó 3 min 57 s, con carga máxima de 253. Recién borrado, el primer arranque es
   el más pesado.
 
+## Build de prueba en iPhone con cuenta gratuita (SCRUM-262)
+
+```bash
+make install-iphone                            # con un solo iPhone conectado
+make install-iphone DEVICE="Nombre del iPhone" # con varios
+```
+
+Compila Debug, firma sólo con HealthKit e instala en el iPhone. La app abre desde el ícono con el usuario simulado, sin pantalla de inicio de sesión.
+
+- **Caducidad:** el perfil de la cuenta gratuita dura 7 días. Al vencer, la app ya no abre; correr el comando otra vez lo renueva y reinstala sin borrar los datos.
+- **Primera vez:** en el iPhone, confiar en la cuenta en Ajustes › General › VPN y gestión de dispositivos, y tener activo el modo desarrollador.
+- **No sirve para TestFlight ni App Store:** no lleva Sign in with Apple, y usa la condición `PR_DEVICE_TEST`. Esos builds usan `PR/PR.entitlements`, que no cambia.
+- **Release nunca simula:** aunque traiga la condición o el argumento, el modo es `.appleID` (`AuthLaunchMode`).
+- **Datos:** los del usuario simulado se quedan en el iPhone si después se instala un build real.
+- **Si falla:** el comando dice el motivo y deja el log en `$TMPDIR/pr-device-build/install-iphone.log`.
+
 ## IA en desarrollo (SCRUM-204)
 
 La IA (NVIDIA) sólo se conecta en compilaciones **Debug** y con una llave que vive en tu
