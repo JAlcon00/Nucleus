@@ -35,7 +35,7 @@ struct ProgressTabView: View {
                 case .empty(let unreadable):
                     emptyState(unreadable: unreadable)
                 case .loaded(let overview, let unreadable):
-                    ProgressLogView(overview: overview, unreadable: unreadable)
+                    ProgressLogView(overview: overview, unreadable: unreadable, activities: activities)
                 case .failed:
                     failedState
                 }
