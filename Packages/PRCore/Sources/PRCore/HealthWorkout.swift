@@ -22,6 +22,8 @@ public enum HealthWorkoutActivityType: String, Codable, Sendable, CaseIterable, 
     case strengthTraining
     case functionalStrengthTraining
     case running
+    /// Cualquier otra actividad que traiga Salud (SCRUM-249).
+    case other
 }
 
 /// Configuración del workout HealthKit (forma transportable; no importa HealthKit).
@@ -178,6 +180,8 @@ public struct ExternalWorkout: Codable, Sendable, Hashable {
     /// Fuente (p. ej. "Apple Watch") y nombre del device cuando el store lo autorice.
     public var sourceName: String?
     public var deviceName: String?
+    /// Qué tan confiable es su energía (§15.3). Apple Watch nativo u otra app (SCRUM-249).
+    public var energySource: EnergySource
 
     public init(
         referenceID: HealthWorkoutHandle.ID,
@@ -187,7 +191,8 @@ public struct ExternalWorkout: Codable, Sendable, Hashable {
         activeKilocalories: Double? = nil,
         energyOrigin: MeasurementOrigin? = nil,
         sourceName: String? = nil,
-        deviceName: String? = nil
+        deviceName: String? = nil,
+        energySource: EnergySource = .externalHealthKitWorkout
     ) {
         self.referenceID = referenceID
         self.start = start
@@ -197,6 +202,7 @@ public struct ExternalWorkout: Codable, Sendable, Hashable {
         self.energyOrigin = energyOrigin ?? (activeKilocalories == nil ? .unavailable : .measured)
         self.sourceName = sourceName
         self.deviceName = deviceName
+        self.energySource = energySource
     }
 }
 
@@ -443,7 +449,7 @@ public nonisolated struct HealthWorkoutCoordinator: Sendable {
 }
 
 /// Fake in-memory de `HealthWorkoutStore` (tests/previews; §32.3 nunca HealthKit real).
-public actor FakeHealthWorkoutStore: HealthWorkoutStore, HealthWorkoutWriting {
+public actor FakeHealthWorkoutStore: HealthWorkoutStore, HealthWorkoutWriting, HealthWorkoutReading {
     public let provider: any HealthKitProvider
     /// Lo que Salud tiene guardado, por identificador de sincronización (SCRUM-246).
     public private(set) var savedWorkouts: [String: HealthWorkoutWrite] = [:]
@@ -475,6 +481,39 @@ public actor FakeHealthWorkoutStore: HealthWorkoutStore, HealthWorkoutWriting {
         self.heartRate = heartRate
         self.energyOrigin = energyOrigin
         self.externalWorkouts = externalWorkouts
+    }
+
+    /// Entrenamientos de otras fuentes que Salud devuelve (SCRUM-249).
+    public private(set) var otherSamples: [HealthWorkoutSample] = []
+    public private(set) var failsOnRead = false
+    /// Fuente con la que Salud marca lo que escribe esta app.
+    public static let ownBundleIdentifier = "creadevs.PR"
+
+    public func setOtherSamples(_ samples: [HealthWorkoutSample]) {
+        otherSamples = samples
+    }
+
+    public func setFailsOnRead(_ fails: Bool) {
+        failsOnRead = fails
+    }
+
+    /// Como Salud: lo que escribió esta app vuelve junto con lo de las demás.
+    public func recentWorkoutSamples(since: Date, until: Date) async throws -> [HealthWorkoutSample] {
+        if failsOnRead {
+            throw NSError(domain: "HealthKit", code: 5, userInfo: [NSLocalizedDescriptionKey: "not determined"])
+        }
+        let own = savedWorkouts.values.map { write in
+            HealthWorkoutSample(
+                uuid: UUID(uuidString: write.syncIdentifier) ?? UUID(),
+                start: write.start,
+                end: write.end,
+                activityType: write.activityType,
+                sourceBundleIdentifier: Self.ownBundleIdentifier,
+                sourceName: "Nucleus",
+                syncIdentifier: write.syncIdentifier
+            )
+        }
+        return (own + otherSamples).filter { $0.start >= since && $0.start <= until }
     }
 
     public func setFailsOnSave(_ fails: Bool) {

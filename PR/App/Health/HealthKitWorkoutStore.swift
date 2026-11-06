@@ -12,7 +12,7 @@ import Foundation
 import HealthKit
 import PRCore
 
-struct HealthKitWorkoutStore: HealthWorkoutWriting {
+struct HealthKitWorkoutStore: HealthWorkoutWriting, HealthWorkoutReading {
     private let store = HKHealthStore()
 
     enum WriteError: Error {
@@ -35,11 +35,45 @@ struct HealthKitWorkoutStore: HealthWorkoutWriting {
         return HealthWorkoutHandle.ID(rawValue: workout.uuid)
     }
 
+    /// SCRUM-249: sólo datos generales. Un `HKWorkout` no tiene series. La energía se pide en
+    /// kilocalorías, así que no importa en qué unidad la guardó la otra app.
+    func recentWorkoutSamples(since: Date, until: Date) async throws -> [HealthWorkoutSample] {
+        let predicate = HKQuery.predicateForSamples(withStart: since, end: until)
+        let descriptor = HKSampleQueryDescriptor(
+            predicates: [.workout(predicate)],
+            sortDescriptors: [SortDescriptor(\.startDate)]
+        )
+        let energy = HKQuantityType(.activeEnergyBurned)
+        return try await descriptor.result(for: store).map { workout in
+            HealthWorkoutSample(
+                uuid: workout.uuid,
+                start: workout.startDate,
+                end: workout.endDate,
+                activityType: Self.activityType(workout.workoutActivityType),
+                activeKilocalories: workout.statistics(for: energy)?.sumQuantity()?.doubleValue(for: .kilocalorie()),
+                sourceBundleIdentifier: workout.sourceRevision.source.bundleIdentifier,
+                sourceName: workout.sourceRevision.source.name,
+                deviceName: workout.device?.name,
+                syncIdentifier: workout.metadata?[HKMetadataKeySyncIdentifier] as? String
+            )
+        }
+    }
+
     private static func activityType(_ type: HealthWorkoutActivityType) -> HKWorkoutActivityType {
         switch type {
         case .strengthTraining: return .traditionalStrengthTraining
         case .functionalStrengthTraining: return .functionalStrengthTraining
         case .running: return .running
+        case .other: return .other
+        }
+    }
+
+    private static func activityType(_ type: HKWorkoutActivityType) -> HealthWorkoutActivityType {
+        switch type {
+        case .traditionalStrengthTraining: return .strengthTraining
+        case .functionalStrengthTraining: return .functionalStrengthTraining
+        case .running: return .running
+        default: return .other
         }
     }
 }

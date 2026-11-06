@@ -174,12 +174,14 @@ public struct WorkoutReconciliationEngine: Sendable {
     private enum ActivityFamily {
         case strength
         case running
+        case other
     }
 
     private func family(of type: HealthWorkoutActivityType) -> ActivityFamily {
         switch type {
         case .strengthTraining, .functionalStrengthTraining: return .strength
         case .running: return .running
+        case .other: return .other
         }
     }
 
