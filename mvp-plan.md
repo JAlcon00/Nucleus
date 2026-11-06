@@ -85,7 +85,6 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
 | Orden | Historia | Depende de | Carril |
 |---|---|---|---|
 | 1 | SCRUM-244 · PR-F001 Permisos de Salud reales (READY) | SCRUM-242 | 🟡 |
-| 1 | SCRUM-245 · PR-F002 La energía se cuenta una vez, motor (READY) | — | 🟢 |
 | 1 | SCRUM-262 · PR-F009 Build de prueba para iPhone con cuenta gratuita (READY) | — | 🟡 |
 | 2 | SCRUM-246 · PR-F003 Cola de escritura a Salud | 244 | 🟡 |
 | 3 | SCRUM-247 · PR-F004 Guardar en Salud de verdad | 246 | 🟡 |
@@ -137,6 +136,7 @@ Una línea por historia terminada después del 2026-11-02: `SCRUM-XX · título 
 - SCRUM-237 · PR-E006 Mis cargas por máquina concreta · PR #38 · 2026-11-05 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-e-en-un-solo-pr-pr-38))
 - SCRUM-236 · PR-E005 "No hay esta máquina aquí", recordado y reversible · PR #38 · 2026-11-05 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-e-en-un-solo-pr-pr-38))
 - SCRUM-238 · PR-E007 Varios gimnasios · PR #38 · 2026-11-05 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-e-en-un-solo-pr-pr-38))
+- SCRUM-245 · PR-F002 La energía del mismo entrenamiento se cuenta una vez (motor) · PR #40 · 2026-11-05 ([detalle](docs/archivo/mvp-plan-2026-11.md#scrum-245--pr-f002-la-energía-del-mismo-entrenamiento-se-cuenta-una-vez-motor))
 
 ---
 
