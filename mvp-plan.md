@@ -1,7 +1,7 @@
 # mvp-plan.md — Tablero activo de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica del POC: SCRUM-180).
-> **Actualizado:** 2026-11-05 (SCRUM-240 terminada: la IA usa la misma regla de equivalencia que el motor).
+> **Actualizado:** 2026-11-05 (Fase E terminada en el PR #38: máquina ocupada, sustitutos, Mi gimnasio, cargas por máquina y varios gimnasios).
 > **Lo terminado** hasta el 2026-11-02 está congelado en [`docs/archivo/mvp-plan-2026-10.md`](docs/archivo/mvp-plan-2026-10.md): el POC (F-01 a F-07, bloques 0 a 13), UX, IA, feedback y las Fases B, C y D, más la deuda. Ahí siguen la evidencia y los criterios de cada historia. No se edita: se cita.
 > **Regla:** mientras quede un `[ ]` en la sección 1, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
 
@@ -66,23 +66,19 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
 | SCRUM-35 | En un dispositivo físico, cuando exista HealthKit real (EPIC-25, Fase F). |
 | SCRUM-241 | Con la IA real (SCRUM-201), un plan de 30 min con superset: si la IA cambia un ejercicio del par, Hoy y "Por qué tu plan es así" nombran al sustituto. |
 | SCRUM-240 | Con la IA real (SCRUM-201), que cada ejercicio que cambie en el plan haga el mismo movimiento que el original. |
+| SCRUM-233 | En el iPhone: en el descanso "Máquina ocupada" está sobre "Sigue: X"; con letra grande no tapa "Completar serie" y el aviso dice dónde quedó el ejercicio. |
+| SCRUM-234 | En el iPhone, la hoja de sustitutos con una mano, en claro y oscuro, con Reduce Transparency e Increase Contrast. |
+| SCRUM-235 | Perfil › Mi gimnasio con VoiceOver y letra grande; renombrar en el iPhone. |
+| SCRUM-236 | Marcar "No hay esta máquina aquí" en un gimnasio real, ver la nota en Hoy y en Semana, y quitarla desde Perfil. |
+| SCRUM-237 | En el iPhone, que la etiqueta "Tu último peso en esta máquina" se lea entre series, y medir cuánto tarda en abrir el entrenamiento con historial real. |
+| SCRUM-238 | Dos gimnasios en el iPhone: "En: Oficina" legible en Hoy con Reduce Transparency e Increase Contrast; VoiceOver dice "Gimnasio activo: Oficina"; letra grande sin cortes y áreas de toque de 44 × 44 pt en Perfil. |
 
 ## 3. Lo que sigue
 
-**Fase E · gimnasio real (SCRUM-10, Should): historias READY desde el 2026-11-03.**
+**Fase E · gimnasio real (SCRUM-10, Should): terminada en el PR #38, a la espera de la fusión de Jesús.**
 - **Decisiones DE-1 a DE-4:** en SCRUM-231. **DE-5** (planes guardados que dejan de cumplir una regla nueva): en SCRUM-239.
-- **Criterios, pruebas y rutas:** en cada tarjeta de Jira.
-- **Cuándo las toma el agente:** cuando Jesús autorice el epic. Hoy la cola 👤 pasa de 5 y el runbook se detiene en el paso 0.
-- **Excepción de Jesús (2026-11-05):** SCRUM-232 y SCRUM-240 se trabajaron antes de autorizar el epic porque no agregan pantallas. Antes de SCRUM-233 va su sesión con el iPhone.
-
-| Orden | Historia | Depende de | Carril |
-|---|---|---|---|
-| 1 | SCRUM-233 · PR-E002 Máquina ocupada: adelantar sin romper la sesión | SCRUM-231 | 🟢 |
-| 1 | SCRUM-235 · PR-E004 Mi gimnasio: el gimnasio activo se guarda | SCRUM-231 | 🟡 |
-| 2 | SCRUM-234 · PR-E003 Sustituto equivalente durante el entrenamiento | 232, 233 | 🟢 |
-| 3 | SCRUM-236 · PR-E005 "No hay esta máquina aquí", recordado y reversible | 232, 234, 235 | 🟢 (🟡 si toca persistencia) |
-| 3 | SCRUM-237 · PR-E006 Mis cargas por máquina concreta | 235 (234 para un criterio) | 🟡 |
-| 4 | SCRUM-238 · PR-E007 Varios gimnasios (Could) | 235, 236 | 🟢 |
+- **Excepción de Jesús (2026-11-05):** toda la Fase E se trabajó en una rama y un PR, un commit por historia, aunque la cola 👤 pasa de 5 y el runbook se detiene en el paso 0. Antes ya había autorizado SCRUM-232 y SCRUM-240 por no agregar pantallas. Las verificaciones de la sección 2 siguen pendientes.
+- **Carril:** 🟡 amarillo, porque toca `LocalPersistence.swift` y `CodableRepositories.swift`. El PR se fusiona con merge commit, no squash, para conservar un commit por historia.
 
 - **Antes de TestFlight:** mover la llave de la IA a un backend. La historia está por crear (SCRUM-201, SCRUM-204).
 - **Fases de 1.0, sin historias escritas todavía** (prioridad MoSCoW del 2026-10-25, `docs/product/estado-y-prioridades-2026-10-25.md`):
@@ -109,6 +105,12 @@ Una línea por historia terminada después del 2026-11-02: `SCRUM-XX · título 
 - SCRUM-241 · PR-E009 Cambiar un ejercicio con IA no deshace su superset · PR #35 · 2026-11-03 ([detalle](docs/archivo/mvp-plan-2026-11.md#scrum-241--pr-e009-cambiar-un-ejercicio-con-ia-no-deshace-su-superset))
 - SCRUM-232 · PR-E001 Sustituto equivalente de verdad (motor) · PR #36 · 2026-11-05 ([detalle](docs/archivo/mvp-plan-2026-11.md#scrum-232--pr-e001-sustituto-equivalente-de-verdad-motor))
 - SCRUM-240 · PR-E008 La IA sólo propone sustitutos equivalentes de verdad · PR #37 · 2026-11-05 ([detalle](docs/archivo/mvp-plan-2026-11.md#scrum-240--pr-e008-la-ia-sólo-propone-sustitutos-equivalentes-de-verdad))
+- SCRUM-235 · PR-E004 Mi gimnasio: el gimnasio activo se guarda por usuario · PR #38 · 2026-11-05 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-e-en-un-solo-pr-pr-38))
+- SCRUM-233 · PR-E002 Máquina ocupada: adelantar sin romper la sesión · PR #38 · 2026-11-05 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-e-en-un-solo-pr-pr-38))
+- SCRUM-234 · PR-E003 Sustituto equivalente durante el entrenamiento · PR #38 · 2026-11-05 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-e-en-un-solo-pr-pr-38))
+- SCRUM-237 · PR-E006 Mis cargas por máquina concreta · PR #38 · 2026-11-05 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-e-en-un-solo-pr-pr-38))
+- SCRUM-236 · PR-E005 "No hay esta máquina aquí", recordado y reversible · PR #38 · 2026-11-05 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-e-en-un-solo-pr-pr-38))
+- SCRUM-238 · PR-E007 Varios gimnasios · PR #38 · 2026-11-05 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-e-en-un-solo-pr-pr-38))
 
 ---
 
