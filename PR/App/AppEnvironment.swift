@@ -94,6 +94,8 @@ public final class AppEnvironment {
 
     /// Consentimiento para compartir el perfil con la IA (SCRUM-202).
     public let aiConsent: AIConsentCoordinator
+    /// Si la persona quiere guardar en Salud (SCRUM-248).
+    public let healthPreference: HealthPreferenceCoordinator
 
     /// El gimnasio del usuario (SCRUM-235). Sin pasos nuevos: se crea solo al entrar.
     public let gym: GymCoordinator
@@ -191,17 +193,25 @@ public final class AppEnvironment {
     @ObservationIgnored private var healthWriteCoordinators: [String: HealthWriteCoordinator] = [:]
     /// Qué dice el resumen del último entrenamiento sobre Salud (SCRUM-247).
     public private(set) var healthSaveDisplay: HealthSaveDisplay = .hidden
+    /// ¿El resumen propone guardar en Salud? (SCRUM-248)
+    public private(set) var healthOfferVisible = false
+    /// Estado del interruptor de Perfil (SCRUM-248).
+    public private(set) var healthWriteSetting: HealthWriteSetting = .off
+    /// El último entrenamiento terminado: se guarda si se acepta la tarjeta del resumen.
+    @ObservationIgnored private var lastFinishedWorkoutID: WorkoutID?
+
+    /// ¿La app ofrece guardar en Salud?
+    public var offersHealthWrites: Bool { healthWorkouts.isEnabled && healthWorkouts.isAvailable }
 
     private func healthWriteCoordinator(for persistence: LocalPersistence) -> HealthWriteCoordinator? {
         guard healthWorkouts.isEnabled,
               let userID = onboarding.auth.profile?.userIdentifier else { return nil }
         if let existing = healthWriteCoordinators[userID] { return existing }
         do {
-            let access = healthWorkouts
             let coordinator = HealthWriteCoordinator(
                 repository: try persistence.workoutRepository(),
                 writer: healthWriter,
-                canWrite: { await access.canWrite() }
+                canWrite: { [weak self] in await self?.canWriteToHealth() ?? false }
             )
             healthWriteCoordinators[userID] = coordinator
             return coordinator
@@ -222,7 +232,8 @@ public final class AppEnvironment {
             guard case .success(let id) = result, let coordinator else { return }
             do {
                 let status = try await coordinator.sessionFinished(id: id)
-                await self?.showHealthSave(status)
+                let goesToHealth = try await coordinator.goesToHealth(id: id)
+                await self?.sessionReachedSummary(id: id, status: status, goesToHealth: goesToHealth)
             } catch {
                 log.saveFailed(.workouts)
             }
@@ -233,11 +244,78 @@ public final class AppEnvironment {
     private static func fakeHealthProvider(_ mode: UITestFakeHealth) -> any HealthKitProvider {
         switch mode {
         case .granted: return InMemoryHealthKitProvider(initialStatus: [.workout: .granted])
+        case .undecided: return InMemoryHealthKitProvider()
+        case .refuses: return InMemoryHealthKitProvider(grantBehavior: .denyAll)
         }
     }
 
-    private func showHealthSave(_ status: HealthWriteStatus?) async {
-        healthSaveDisplay = HealthSaveDisplay(status: status, canWrite: await healthWorkouts.canWrite())
+    private func canWriteToHealth() async -> Bool {
+        guard healthPreference.allowsWriting else { return false }
+        return await healthWorkouts.canWrite()
+    }
+
+    private func sessionReachedSummary(id: WorkoutID, status: HealthWriteStatus?, goesToHealth: Bool) async {
+        lastFinishedWorkoutID = id
+        healthSaveDisplay = HealthSaveDisplay(status: status, canWrite: await canWriteToHealth())
+        healthOfferVisible = HealthPermissionOffer.shouldShow(
+            isEnabled: healthWorkouts.isEnabled,
+            isAvailable: healthWorkouts.isAvailable,
+            preference: healthPreference.preference,
+            writeStatus: await healthWorkouts.writeStatus(),
+            sessionGoesToHealth: goesToHealth
+        )
+    }
+
+    /// Lee la decisión de la cuenta activa, al entrar (SCRUM-248).
+    public func loadHealthPreference() async {
+        healthPreference.load(userID: onboarding.auth.profile?.userIdentifier)
+        await refreshHealthSetting()
+    }
+
+    /// El permiso se puede cambiar en Ajustes: se relee al volver a primer plano.
+    public func refreshHealthSetting() async {
+        healthWriteSetting = HealthWriteSetting(
+            preference: healthPreference.preference,
+            writeStatus: await healthWorkouts.writeStatus()
+        )
+    }
+
+    /// "Guardar en Salud" del resumen: pide el permiso y, si se concede, guarda este entrenamiento.
+    public func acceptHealthOffer() async {
+        healthOfferVisible = false
+        await enableHealthWrites()
+        guard let id = lastFinishedWorkoutID, let persistence,
+              let coordinator = healthWriteCoordinator(for: persistence) else { return }
+        do {
+            let status = try await coordinator.sessionFinished(id: id)
+            healthSaveDisplay = HealthSaveDisplay(status: status, canWrite: await canWriteToHealth())
+        } catch {
+            persistence.log.saveFailed(.workouts)
+        }
+    }
+
+    /// "Ahora no" del resumen: no vuelve a salir y Perfil sigue ofreciendo la opción.
+    public func declineHealthOffer() async {
+        healthOfferVisible = false
+        healthPreference.set(.disabled)
+        await refreshHealthSetting()
+    }
+
+    /// El interruptor de Perfil. Apagar no borra lo que ya está en Salud.
+    public func setHealthWrites(_ enabled: Bool) async {
+        if enabled {
+            await enableHealthWrites()
+            await retryHealthWrites()
+        } else {
+            healthPreference.set(.disabled)
+            await refreshHealthSetting()
+        }
+    }
+
+    private func enableHealthWrites() async {
+        healthPreference.set(.enabled)
+        _ = await healthWorkouts.requestPermissions()
+        await refreshHealthSetting()
     }
 
     /// Reintenta lo pendiente de Salud de la cuenta activa: al abrir y al volver a primer plano.
@@ -473,6 +551,7 @@ public final class AppEnvironment {
         }
         guard let template = todayPlan.plan?.todayTemplate else { return nil }
         healthSaveDisplay = .hidden
+        healthOfferVisible = false
         let presenter = PRCelebrationPresenter(locale: Self.presentationLocale)
         let coordinator: WorkoutSessionCoordinator
         if let persistence {
@@ -549,9 +628,12 @@ public final class AppEnvironment {
             isDeviceTestBuild: isDeviceTestBuild
         )
         let healthProvider: any HealthKitProvider
+        var healthIsAvailable = true
         switch testOptions.fakeHealth {
         case .none:
-            healthProvider = HealthSystemPermissionProvider(system: HealthKitPermissionProvider())
+            let system = HealthKitPermissionProvider()
+            healthIsAvailable = system.isHealthDataAvailable
+            healthProvider = HealthSystemPermissionProvider(system: system)
             self.healthWriter = HealthKitWorkoutStore()
         case .some(let mode):
             featureFlags = featureFlags.setting(.healthWorkoutsEnabled, to: true)
@@ -559,7 +641,9 @@ public final class AppEnvironment {
             self.healthWriter = FakeHealthWorkoutStore()
         }
         self.featureFlags = featureFlags
-        self.healthWorkouts = HealthWorkoutsAccess(flags: featureFlags, provider: healthProvider)
+        self.healthWorkouts = HealthWorkoutsAccess(
+            flags: featureFlags, provider: healthProvider, isAvailable: healthIsAvailable
+        )
         let aiConnection: AIConnection
         if testOptions.isolatedPersistence {
             aiConnection = AIConnection(status: .offline(.uiTesting), provider: OfflineLLMProvider())
@@ -623,6 +707,17 @@ public final class AppEnvironment {
             clock: { fixedDate ?? Date() }
         )
         self.aiConsent = aiConsent
+        var healthPreferenceStore: HealthPreferenceStore?
+        if let persistence = self.basePersistence {
+            do {
+                healthPreferenceStore = try persistence.healthPreferenceStore()
+            } catch {
+                persistence.log.saveFailed(.healthPreference)
+            }
+        }
+        self.healthPreference = HealthPreferenceCoordinator(
+            store: healthPreferenceStore, clock: { fixedDate ?? Date() }
+        )
         self.gym = GymCoordinator(defaultName: String(localized: "Mi gimnasio"), clock: { fixedDate ?? Date() })
         var checkInStore: SleepCheckInStore?
         if let persistence = self.basePersistence {

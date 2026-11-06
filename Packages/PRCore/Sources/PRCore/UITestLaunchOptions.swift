@@ -18,7 +18,7 @@
 //    cuestionario ya contestado con ese perfil (`UITestProfileSeeder`), para que sólo los
 //    recorridos del cuestionario lo contesten a mano. Sólo junto con `-PRUITestReset`: nunca
 //    sobre los datos reales. Un perfil desconocido se ignora.
-//  - `-PRUITestFakeHealth <modo>` (SCRUM-247; `granted`): Salud falsa en memoria, con el flag
+//  - `-PRUITestFakeHealth <modo>` (SCRUM-247; `granted`, `undecided` o `refuses`): Salud falsa en memoria, con el flag
 //    de entrenamientos encendido. Sólo junto con `-PRUITestReset`. Un modo desconocido se ignora.
 //  La decisión es pura y testeable; la app sólo pasa sus argumentos y si es Debug.
 //
@@ -29,6 +29,10 @@ import Foundation
 public enum UITestFakeHealth: String, Equatable, Sendable {
     /// El permiso de escribir ya está concedido.
     case granted
+    /// Sin decidir; la hoja lo concede.
+    case undecided
+    /// Sin decidir; la hoja lo niega.
+    case refuses
 }
 
 public struct UITestLaunchOptions: Equatable, Sendable {

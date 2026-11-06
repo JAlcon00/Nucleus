@@ -143,6 +143,37 @@ final class ProfileJourney: PRUITestCase {
             XCTAssertTrue(scrollTo(app, "profile.redo").appears(within: 10))
             XCTAssertFalse(app.switches["profile.aiConsent"].exists, "Perfil no muestra la IA")
             XCTAssertFalse(element(app, "profile.aiStatus").exists)
+            XCTAssertFalse(app.switches["profile.healthWrites"].exists, "Con el flag apagado no hay Salud")
         }
+    }
+
+    /// SCRUM-248: "Ahora no" no vuelve a salir y Perfil sigue ofreciendo la opción.
+    func testHealthSwitchInProfile() {
+        let app = launch(profile: Self.seededProfile, extraArguments: ["-PRUITestFakeHealth", "undecided"])
+
+        step("\"Ahora no\" deja el interruptor apagado y se puede encender en Perfil") {
+            XCTAssertTrue(element(app, "today.start").appears(within: 15))
+            tap(app, "today.start")
+            finishWorkoutAfterOneSet(app)
+            XCTAssertTrue(scrollTo(app, "summary.healthOffer.decline").appears(within: 10))
+            tap(app, "summary.healthOffer.decline")
+            XCTAssertFalse(element(app, "summary.healthOffer").exists)
+            tap(app, "summary.done")
+
+            openTab(app, "Perfil")
+            let toggle = app.switches["profile.healthWrites"]
+            XCTAssertTrue(scrollTo(app, "profile.healthWrites").appears(within: 10), "Perfil ofrece Salud")
+            XCTAssertEqual(toggle.value as? String, "0")
+            toggle.switches.firstMatch.tap()
+            XCTAssertTrue(NSPredicate(format: "value == '1'").evaluate(with: toggle) || toggle.waitForValue("1"))
+        }
+    }
+}
+
+private extension XCUIElement {
+    func waitForValue(_ expected: String) -> Bool {
+        let predicate = NSPredicate(format: "value == %@", expected)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: self)
+        return XCTWaiter.wait(for: [expectation], timeout: 5) == .completed
     }
 }

@@ -161,15 +161,19 @@ public struct HealthSystemPermissionProvider: HealthKitProvider {
 /// no se pide ni se lee nada (SCRUM-244). Denegar o fallar nunca bloquea la app (RF-002).
 public struct HealthWorkoutsAccess: Sendable {
     public let isEnabled: Bool
+    /// ¿Este dispositivo tiene Salud?
+    public let isAvailable: Bool
     private let provider: any HealthKitProvider
     private let request: HealthAccessRequest
 
     public init(
         flags: FeatureFlags,
         provider: any HealthKitProvider,
+        isAvailable: Bool = true,
         request: HealthAccessRequest = .workouts
     ) {
         self.isEnabled = flags.isEnabled(.healthWorkoutsEnabled)
+        self.isAvailable = isAvailable
         self.provider = provider
         self.request = request
     }

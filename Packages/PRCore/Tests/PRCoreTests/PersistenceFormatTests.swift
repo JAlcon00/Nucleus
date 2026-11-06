@@ -21,7 +21,7 @@ import PRDomain
 
 /// Colecciones que la app escribe hoy (las demás existen en el enum pero nadie las abre).
 private let writtenCollections: [PersistenceCollection] = [
-    .workouts, .pendingOperations, .plans, .blocks, .session, .aiConsent, .checkIns,
+    .workouts, .pendingOperations, .plans, .blocks, .session, .aiConsent, .checkIns, .healthPreference,
 ]
 
 private func fixture(_ collection: PersistenceCollection, version: SchemaVersion) -> Data? {
@@ -49,6 +49,7 @@ private func reencode(_ data: Data, as collection: PersistenceCollection) throws
     case .session: return try roundTrip(StoredSession.self)
     case .aiConsent: return try roundTrip(StoredAIConsent.self)
     case .checkIns: return try roundTrip(SleepCheckIn.self)
+    case .healthPreference: return try roundTrip(StoredHealthPreference.self)
     }
 }
 
@@ -135,6 +136,7 @@ struct PersistenceFormatTests {
         try persistence.planStore().saveSession(userID: userID)
         try persistence.aiConsentStore().save(.granted(at: now), userID: userID, at: now)
         try persistence.sleepCheckInStore().save(SleepCheckIn(day: "2026-10-26", hours: 6.5, quality: .poor), userID: userID)
+        try persistence.healthPreferenceStore().save(.enabled, userID: userID, at: now)
         // El entrenamiento de la muestra trae dolor reportado en dos series (SCRUM-32).
         let firstWorkout = try #require(try persistence.store(for: .workouts).readAllEntries().entries.first)
         var workout = try JSONDecoder().decode(WorkoutSessionRecord.self, from: firstWorkout.data)

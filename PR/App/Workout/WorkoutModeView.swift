@@ -25,6 +25,10 @@ struct WorkoutModeView: View {
     var coachingLevel: CoachingDetailLevel = .guided
     /// Qué dice el resumen sobre Salud (SCRUM-247).
     var healthSave: HealthSaveDisplay = .hidden
+    /// ¿El resumen propone guardar en Salud? (SCRUM-248)
+    var showsHealthOffer = false
+    var onAcceptHealthOffer: () -> Void = {}
+    var onDeclineHealthOffer: () -> Void = {}
 
     @State private var weight: Double = 0
     @State private var reps: Int = 0
@@ -56,6 +60,9 @@ struct WorkoutModeView: View {
                     skipped: coordinator.skippedExercises.map(\.name),
                     substitutions: coordinator.substitutionSummaries.map { "\($0.from) → \($0.to)" },
                     healthSave: healthSave,
+                    showsHealthOffer: showsHealthOffer,
+                    onAcceptHealthOffer: onAcceptHealthOffer,
+                    onDeclineHealthOffer: onDeclineHealthOffer,
                     onDone: onDone
                 )
             }

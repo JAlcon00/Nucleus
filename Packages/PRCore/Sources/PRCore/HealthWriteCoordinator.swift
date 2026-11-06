@@ -49,6 +49,12 @@ public actor HealthWriteCoordinator {
         return try await repository.session(id: id)?.healthWriteStatus
     }
 
+    /// ¿Esta sesión iría a Salud? (completada, con series y con horas válidas).
+    public func goesToHealth(id: WorkoutID) async throws -> Bool {
+        guard let session = try await repository.session(id: id) else { return false }
+        return HealthWorkoutWrite(session: session) != nil
+    }
+
     /// Reintenta lo pendiente de esta cuenta. Sin permiso no hace nada ni pierde nada: se
     /// queda pendiente para cuando vuelva.
     public func retryPending() async throws {

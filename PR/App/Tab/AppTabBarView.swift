@@ -74,6 +74,11 @@ struct AppTabBarView: View {
                     if granted { environment.aiConsent.grant() } else { environment.aiConsent.decline() }
                 },
                 aiStatus: environment.aiConnection.status,
+                showsHealth: environment.offersHealthWrites,
+                healthSetting: environment.healthWriteSetting,
+                onSetHealth: { enabled in
+                    Task { await environment.setHealthWrites(enabled) }
+                },
                 hasActiveWorkout: environment.activeWorkout != nil,
                 onSignOut: { environment.signOut() }
             )

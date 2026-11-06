@@ -26,6 +26,10 @@ struct WorkoutSummaryView: View {
     var substitutions: [String] = []
     /// Qué decir de Salud, ya decidido en PRCore (SCRUM-247).
     var healthSave: HealthSaveDisplay = .hidden
+    /// ¿Se propone guardar en Salud? La regla vive en PRCore (SCRUM-248).
+    var showsHealthOffer = false
+    var onAcceptHealthOffer: () -> Void = {}
+    var onDeclineHealthOffer: () -> Void = {}
     let onDone: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -39,6 +43,40 @@ struct WorkoutSummaryView: View {
             return "\(m / 60) h \(m % 60) min"
         }
         return "\(m) min \(s) s"
+    }
+
+    /// SCRUM-248: la razón va a la vista antes de la hoja del sistema (RC-009).
+    private var healthOfferCard: some View {
+        VStack(alignment: .leading, spacing: DSpace.s) {
+            Label {
+                Text("¿Guardar tus entrenamientos en Salud?")
+                    .font(.headline)
+                    .foregroundStyle(Color.textPrimary)
+            } icon: {
+                Image(systemName: "heart.fill").foregroundStyle(Color.primaryAction)
+            }
+            Text("Se guarda el tipo de entrenamiento y sus horas. Nunca series, peso ni notas.")
+                .font(.subheadline)
+                .foregroundStyle(Color.textSecondary)
+            Text("Para ver tu energía, inicia también un entrenamiento en tu Apple Watch.")
+                .font(.subheadline)
+                .foregroundStyle(Color.textSecondary)
+            PrimaryActionButton(
+                String(localized: "Guardar en Salud"),
+                systemImage: "heart",
+                identifier: "summary.healthOffer.accept",
+                action: onAcceptHealthOffer
+            )
+            Button(action: onDeclineHealthOffer) {
+                Text("Ahora no")
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .accessibilityIdentifier("summary.healthOffer.decline")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(DSpace.m)
+        .cardSurface(cornerRadius: DRadius.medium)
+        .accessibilityIdentifier("summary.healthOffer")
     }
 
     private var volumeText: String {
@@ -108,6 +146,10 @@ struct WorkoutSummaryView: View {
                     .cardSurface(cornerRadius: DRadius.medium)
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("summary.health")
+                }
+
+                if showsHealthOffer {
+                    healthOfferCard
                 }
 
                 if summary.nextAction == .completed {
@@ -288,6 +330,16 @@ private func previewSummaryView(
     .ironEnergyTheme()
 }
 
+#Preview("Salud · tarjeta") {
+    previewHealthSummary(.hidden, offer: true)
+}
+
+#Preview("Salud · tarjeta · oscuro · accessibility3") {
+    previewHealthSummary(.hidden, offer: true)
+        .preferredColorScheme(.dark)
+        .dynamicTypeSize(.accessibility3)
+}
+
 #Preview("Salud · guardado") {
     previewHealthSummary(.saved)
 }
@@ -303,7 +355,7 @@ private func previewSummaryView(
 }
 
 @MainActor
-private func previewHealthSummary(_ display: HealthSaveDisplay) -> some View {
+private func previewHealthSummary(_ display: HealthSaveDisplay, offer: Bool = false) -> some View {
     NavigationStack {
         WorkoutSummaryView(
             summary: WorkoutSummary(
@@ -315,6 +367,7 @@ private func previewHealthSummary(_ display: HealthSaveDisplay) -> some View {
                 nextAction: .completed
             ),
             healthSave: display,
+            showsHealthOffer: offer,
             onDone: {}
         )
     }
