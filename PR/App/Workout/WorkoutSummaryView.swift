@@ -24,6 +24,8 @@ struct WorkoutSummaryView: View {
     var skipped: [String] = []
     /// Cambios de ejercicio de la sesión, como "A → B" (SCRUM-234).
     var substitutions: [String] = []
+    /// Qué decir de Salud, ya decidido en PRCore (SCRUM-247).
+    var healthSave: HealthSaveDisplay = .hidden
     let onDone: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -91,6 +93,21 @@ struct WorkoutSummaryView: View {
                     .cardSurface(cornerRadius: DRadius.medium)
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("summary.substitution")
+                }
+
+                if let healthText = healthSave.text(locale: AppEnvironment.presentationLocale) {
+                    Label {
+                        Text(healthText)
+                    } icon: {
+                        Image(systemName: healthSave == .saved ? "heart.fill" : "clock")
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(Color.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(DSpace.m)
+                    .cardSurface(cornerRadius: DRadius.medium)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("summary.health")
                 }
 
                 if summary.nextAction == .completed {
@@ -265,6 +282,39 @@ private func previewSummaryView(
                 records: [],
                 nextAction: .completed
             ),
+            onDone: {}
+        )
+    }
+    .ironEnergyTheme()
+}
+
+#Preview("Salud · guardado") {
+    previewHealthSummary(.saved)
+}
+
+#Preview("Salud · pendiente · oscuro") {
+    previewHealthSummary(.pending)
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Salud · pendiente · accessibility3") {
+    previewHealthSummary(.pending)
+        .dynamicTypeSize(.accessibility3)
+}
+
+@MainActor
+private func previewHealthSummary(_ display: HealthSaveDisplay) -> some View {
+    NavigationStack {
+        WorkoutSummaryView(
+            summary: WorkoutSummary(
+                durationSeconds: 30 * 60,
+                workingSets: 9,
+                volume: 9400,
+                energyKcal: nil,
+                records: [],
+                nextAction: .completed
+            ),
+            healthSave: display,
             onDone: {}
         )
     }

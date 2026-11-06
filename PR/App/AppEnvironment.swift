@@ -185,13 +185,15 @@ public final class AppEnvironment {
         }
     }
 
-    /// Escribe en Salud los entrenamientos terminados (SCRUM-246). `nil` sin adaptador real.
-    private let healthWriter: (any HealthWorkoutWriting)?
+    /// Escribe en Salud los entrenamientos terminados (SCRUM-246, SCRUM-247).
+    private let healthWriter: any HealthWorkoutWriting
     /// Una cola por cuenta: sólo ve las sesiones de esa cuenta.
-    private var healthWriteCoordinators: [String: HealthWriteCoordinator] = [:]
+    @ObservationIgnored private var healthWriteCoordinators: [String: HealthWriteCoordinator] = [:]
+    /// Qué dice el resumen del último entrenamiento sobre Salud (SCRUM-247).
+    public private(set) var healthSaveDisplay: HealthSaveDisplay = .hidden
 
     private func healthWriteCoordinator(for persistence: LocalPersistence) -> HealthWriteCoordinator? {
-        guard let healthWriter, healthWorkouts.isEnabled,
+        guard healthWorkouts.isEnabled,
               let userID = onboarding.auth.profile?.userIdentifier else { return nil }
         if let existing = healthWriteCoordinators[userID] { return existing }
         do {
@@ -216,14 +218,26 @@ public final class AppEnvironment {
     ) -> @Sendable (Result<WorkoutID, any Error>) async -> Void {
         let coordinator = healthWriteCoordinator(for: persistence)
         let log = persistence.log
-        return { result in
+        return { [weak self] result in
             guard case .success(let id) = result, let coordinator else { return }
             do {
-                try await coordinator.sessionFinished(id: id)
+                let status = try await coordinator.sessionFinished(id: id)
+                await self?.showHealthSave(status)
             } catch {
                 log.saveFailed(.workouts)
             }
         }
+    }
+
+    /// Salud falsa de las pruebas de UI.
+    private static func fakeHealthProvider(_ mode: UITestFakeHealth) -> any HealthKitProvider {
+        switch mode {
+        case .granted: return InMemoryHealthKitProvider(initialStatus: [.workout: .granted])
+        }
+    }
+
+    private func showHealthSave(_ status: HealthWriteStatus?) async {
+        healthSaveDisplay = HealthSaveDisplay(status: status, canWrite: await healthWorkouts.canWrite())
     }
 
     /// Reintenta lo pendiente de Salud de la cuenta activa: al abrir y al volver a primer plano.
@@ -242,6 +256,8 @@ public final class AppEnvironment {
 
     /// "Hoy" fijo para las pruebas de UI (sólo Debug); `nil` = reloj real.
     private let fixedDate: Date?
+    /// Desde cuándo avanza el reloj fijo; `nil` = no avanza (pruebas de UI, SCRUM-247).
+    private let fixedClockStart: Date?
 
     /// Demora de la activación del plan para las pruebas de UI (sólo Debug, SCRUM-193).
     public let uiTestPlanDelay: Duration?
@@ -431,7 +447,14 @@ public final class AppEnvironment {
 
     private var clock: () -> Date {
         let fixed = fixedDate
-        return { fixed ?? Date() }
+        let launchedAt = fixedClockStart
+        return {
+            guard let fixed else { return Date() }
+            // Con Salud falsa el reloj avanza desde el arranque: un entrenamiento sin duración
+            // no va a Salud (SCRUM-247).
+            guard let launchedAt else { return fixed }
+            return fixed.addingTimeInterval(Date().timeIntervalSince(launchedAt))
+        }
     }
 
     /// Construye un coordinador de WORKOUT MODE para la sesión planeada hoy.
@@ -449,6 +472,7 @@ public final class AppEnvironment {
             }
         }
         guard let template = todayPlan.plan?.todayTemplate else { return nil }
+        healthSaveDisplay = .hidden
         let presenter = PRCelebrationPresenter(locale: Self.presentationLocale)
         let coordinator: WorkoutSessionCoordinator
         if let persistence {
@@ -516,19 +540,26 @@ public final class AppEnvironment {
         // Con `-PRFixedDate` (sólo Debug) "hoy" es ese día; si no, el reloj real.
         let fixedDate = testOptions.fixedDate(timeZone: .current)
         self.fixedDate = fixedDate
+        self.fixedClockStart = testOptions.fakeHealth == nil ? nil : Date()
         self.uiTestPlanDelay = testOptions.planDelay
         self.uiTestSeededProfile = testOptions.seededProfile
-        let featureFlags = FeatureFlags.forApp(
+        var featureFlags = FeatureFlags.forApp(
             arguments: ProcessInfo.processInfo.arguments,
             isDebugBuild: isDebugBuild,
             isDeviceTestBuild: isDeviceTestBuild
         )
+        let healthProvider: any HealthKitProvider
+        switch testOptions.fakeHealth {
+        case .none:
+            healthProvider = HealthSystemPermissionProvider(system: HealthKitPermissionProvider())
+            self.healthWriter = HealthKitWorkoutStore()
+        case .some(let mode):
+            featureFlags = featureFlags.setting(.healthWorkoutsEnabled, to: true)
+            healthProvider = Self.fakeHealthProvider(mode)
+            self.healthWriter = FakeHealthWorkoutStore()
+        }
         self.featureFlags = featureFlags
-        self.healthWorkouts = HealthWorkoutsAccess(
-            flags: featureFlags,
-            provider: HealthSystemPermissionProvider(system: HealthKitPermissionProvider())
-        )
-        self.healthWriter = nil
+        self.healthWorkouts = HealthWorkoutsAccess(flags: featureFlags, provider: healthProvider)
         let aiConnection: AIConnection
         if testOptions.isolatedPersistence {
             aiConnection = AIConnection(status: .offline(.uiTesting), provider: OfflineLLMProvider())

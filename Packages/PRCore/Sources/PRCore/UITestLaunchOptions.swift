@@ -18,10 +18,18 @@
 //    cuestionario ya contestado con ese perfil (`UITestProfileSeeder`), para que sólo los
 //    recorridos del cuestionario lo contesten a mano. Sólo junto con `-PRUITestReset`: nunca
 //    sobre los datos reales. Un perfil desconocido se ignora.
+//  - `-PRUITestFakeHealth <modo>` (SCRUM-247; `granted`): Salud falsa en memoria, con el flag
+//    de entrenamientos encendido. Sólo junto con `-PRUITestReset`. Un modo desconocido se ignora.
 //  La decisión es pura y testeable; la app sólo pasa sus argumentos y si es Debug.
 //
 
 import Foundation
+
+/// Cómo responde la Salud falsa de las pruebas de UI.
+public enum UITestFakeHealth: String, Equatable, Sendable {
+    /// El permiso de escribir ya está concedido.
+    case granted
+}
 
 public struct UITestLaunchOptions: Equatable, Sendable {
     public static let resetArgument = "-PRUITestReset"
@@ -29,6 +37,7 @@ public struct UITestLaunchOptions: Equatable, Sendable {
     public static let storeIDArgument = "-PRUITestStoreID"
     public static let planDelayArgument = "-PRUITestPlanDelay"
     public static let profileArgument = "-PRUITestProfile"
+    public static let fakeHealthArgument = "-PRUITestFakeHealth"
     /// Demoras aceptadas, en segundos (fuera de este rango se ignora).
     public static let allowedPlanDelaySeconds: ClosedRange<Int> = 1...10
 
@@ -43,19 +52,23 @@ public struct UITestLaunchOptions: Equatable, Sendable {
     public let planDelay: Duration?
     /// Perfil con el que el cuestionario se contesta solo; `nil` = se contesta a mano.
     public let seededProfile: UITestSeededProfile?
+    /// Salud falsa; `nil` = la de verdad.
+    public let fakeHealth: UITestFakeHealth?
 
     public init(
         isolatedPersistence: Bool = false,
         fixedDay: DateComponents? = nil,
         storeID: String? = nil,
         planDelay: Duration? = nil,
-        seededProfile: UITestSeededProfile? = nil
+        seededProfile: UITestSeededProfile? = nil,
+        fakeHealth: UITestFakeHealth? = nil
     ) {
         self.isolatedPersistence = isolatedPersistence
         self.fixedDay = fixedDay
         self.storeID = storeID
         self.planDelay = planDelay
         self.seededProfile = seededProfile
+        self.fakeHealth = fakeHealth
     }
 
     /// Nombre del directorio temporal aislado: estable con `storeID`, nuevo si no hay.
@@ -77,7 +90,8 @@ public struct UITestLaunchOptions: Equatable, Sendable {
             storeID: storeID(in: arguments),
             planDelay: planDelay(in: arguments),
             // Sin datos temporales el perfil se ignora: nunca se contesta sobre los reales.
-            seededProfile: isolated ? seededProfile(in: arguments) : nil
+            seededProfile: isolated ? seededProfile(in: arguments) : nil,
+            fakeHealth: isolated ? fakeHealth(in: arguments) : nil
         )
     }
 
@@ -104,6 +118,13 @@ public struct UITestLaunchOptions: Equatable, Sendable {
               let seconds = Int(arguments[index + 1]),
               allowedPlanDelaySeconds.contains(seconds) else { return nil }
         return .seconds(seconds)
+    }
+
+    /// Uno de los modos conocidos; cualquier otro valor se ignora.
+    private static func fakeHealth(in arguments: [String]) -> UITestFakeHealth? {
+        guard let index = arguments.firstIndex(of: fakeHealthArgument),
+              arguments.indices.contains(index + 1) else { return nil }
+        return UITestFakeHealth(rawValue: arguments[index + 1])
     }
 
     /// Uno de los perfiles conocidos; cualquier otro valor se ignora.

@@ -393,3 +393,75 @@ struct HealthWriteTests {
         #expect(decoded.healthWriteStatus == nil)
     }
 }
+
+@Suite("Lo que dice el resumen sobre Salud (SCRUM-247)")
+struct HealthSaveDisplayTests {
+
+    private let spanish = Locale(identifier: "es_MX")
+
+    @Test("Guardado dice \"Guardado en Salud\"")
+    func saved() {
+        let display = HealthSaveDisplay(status: .saved, canWrite: true)
+        #expect(display == .saved)
+        #expect(display.text(locale: spanish) == "Guardado en Salud")
+    }
+
+    @Test("Pendiente dice \"Se guardará en Salud\" y no parece un error")
+    func pending() throws {
+        let display = HealthSaveDisplay(status: .pending, canWrite: true)
+        #expect(display == .pending)
+        let text = try #require(display.text(locale: spanish))
+        #expect(text == "Se guardará en Salud")
+        #expect(!text.localizedCaseInsensitiveContains("error"))
+        #expect(!text.localizedCaseInsensitiveContains("falló"))
+    }
+
+    @Test("Apagada, negada o sin escritura, el resumen no dice nada", arguments: [
+        (HealthWriteStatus?.some(.saved), false),
+        (.some(.pending), false),
+        (.none, true),
+        (.none, false),
+    ])
+    func hidden(status: HealthWriteStatus?, canWrite: Bool) {
+        let display = HealthSaveDisplay(status: status, canWrite: canWrite)
+        #expect(display == .hidden)
+        #expect(display.text(locale: spanish) == nil)
+    }
+
+    @Test("Los textos están traducidos al inglés")
+    func english() {
+        let english = Locale(identifier: "en_US")
+        #expect(HealthSaveDisplay.saved.text(locale: english) == "Saved to Health")
+        #expect(HealthSaveDisplay.pending.text(locale: english) == "Will be saved to Health")
+    }
+
+    @Test("sessionFinished dice cómo quedó la sesión")
+    func finishReturnsStatus() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("scrum247-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let repository = try LocalPersistence(rootURL: root, log: PersistenceLog { _ in }).workoutRepository()
+        let health = FakeHealthWorkoutStore()
+        let start = Date(timeIntervalSince1970: 1_000_000)
+        let session = WorkoutSessionRecord(
+            startedAt: start,
+            endedAt: start.addingTimeInterval(60),
+            lifecycle: .completed,
+            sets: [try SetRecord(exerciseID: ExerciseID(), weight: 80, unit: .kilograms, reps: 8, lifecycle: .completed)]
+        )
+        try await repository.save(session)
+        let coordinator = HealthWriteCoordinator(repository: repository, writer: health, canWrite: { true })
+
+        #expect(try await coordinator.sessionFinished(id: session.id) == .saved)
+        #expect(try await coordinator.sessionFinished(id: WorkoutID()) == nil)
+    }
+
+    @Test("La Salud falsa sólo existe en Debug y con datos temporales")
+    func fakeHealthOption() {
+        let arguments = ["-PRUITestReset", "-PRUITestFakeHealth", "granted"]
+
+        #expect(UITestLaunchOptions.resolve(arguments: arguments, isDebugBuild: true).fakeHealth == .granted)
+        #expect(UITestLaunchOptions.resolve(arguments: arguments, isDebugBuild: false).fakeHealth == nil)
+        #expect(UITestLaunchOptions.resolve(arguments: Array(arguments.dropFirst()), isDebugBuild: true).fakeHealth == nil)
+        #expect(UITestLaunchOptions.resolve(arguments: ["-PRUITestReset", "-PRUITestFakeHealth", "x"], isDebugBuild: true).fakeHealth == nil)
+    }
+}

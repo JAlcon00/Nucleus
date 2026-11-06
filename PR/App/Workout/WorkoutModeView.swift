@@ -23,6 +23,8 @@ struct WorkoutModeView: View {
     var onMissingMachine: (ExerciseID?) -> Void = { _ in }
     /// Nivel de detalle de coaching (PR-1501); derivado del perfil, nunca inventado.
     var coachingLevel: CoachingDetailLevel = .guided
+    /// Qué dice el resumen sobre Salud (SCRUM-247).
+    var healthSave: HealthSaveDisplay = .hidden
 
     @State private var weight: Double = 0
     @State private var reps: Int = 0
@@ -53,6 +55,7 @@ struct WorkoutModeView: View {
                     celebration: coordinator.celebration(for: summary, level: coachingLevel),
                     skipped: coordinator.skippedExercises.map(\.name),
                     substitutions: coordinator.substitutionSummaries.map { "\($0.from) → \($0.to)" },
+                    healthSave: healthSave,
                     onDone: onDone
                 )
             }

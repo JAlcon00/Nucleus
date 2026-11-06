@@ -194,7 +194,8 @@ struct AppRootView: View {
                     onMissingMachine: { replacement in
                         Task { await environment.markMissing(replacement: replacement) }
                     },
-                    coachingLevel: coachingLevel
+                    coachingLevel: coachingLevel,
+                    healthSave: environment.healthSaveDisplay
                 )
             }
         }

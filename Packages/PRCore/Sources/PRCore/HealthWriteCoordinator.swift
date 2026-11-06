@@ -35,15 +35,18 @@ public actor HealthWriteCoordinator {
 
     /// Una sesión acaba de terminar: si va a Salud, queda pendiente y se intenta escribir.
     /// Lanza si no se pudo guardar el estado; un fallo de Salud no lanza, queda pendiente.
-    public func sessionFinished(id: WorkoutID) async throws {
-        guard var session = try await repository.session(id: id),
-              session.healthWriteStatus == nil,
+    /// Devuelve cómo quedó la sesión: `nil` si no va a Salud.
+    @discardableResult
+    public func sessionFinished(id: WorkoutID) async throws -> HealthWriteStatus? {
+        guard var session = try await repository.session(id: id) else { return nil }
+        guard session.healthWriteStatus == nil,
               HealthWorkoutWrite(session: session) != nil,
               await canWrite()
-        else { return }
+        else { return session.healthWriteStatus }
         session.healthWriteStatus = .pending
         try await repository.save(session)
         try await write(id: id)
+        return try await repository.session(id: id)?.healthWriteStatus
     }
 
     /// Reintenta lo pendiente de esta cuenta. Sin permiso no hace nada ni pierde nada: se

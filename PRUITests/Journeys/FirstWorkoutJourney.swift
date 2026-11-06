@@ -35,6 +35,8 @@ final class FirstWorkoutJourney: PRUITestCase {
             openTab(app, "Hoy")
             tap(app, "today.start")
             finishWorkoutAfterOneSet(app)
+            // Sin escritura a Salud, el resumen no habla de Salud (SCRUM-247).
+            XCTAssertFalse(element(app, "summary.health").exists)
             tap(app, "summary.done")
 
             openTab(app, "Progreso")
@@ -62,6 +64,20 @@ final class FirstWorkoutJourney: PRUITestCase {
             XCTAssertTrue(reopened.staticTexts["1 sesión"].appears(within: 10), "Exportar debe contar el entrenamiento una sola vez")
             XCTAssertTrue(reopened.buttons["JSON completo"].appears(within: 10), "Debe ofrecer el JSON")
             XCTAssertTrue(reopened.buttons["Series (CSV)"].exists, "Debe ofrecer el CSV")
+        }
+    }
+
+    /// SCRUM-247: con permiso, el resumen dice que el entrenamiento quedó en Salud (Salud falsa).
+    func testSummarySaysItWasSavedInHealth() {
+        let app = launch(profile: Self.seededProfile, extraArguments: ["-PRUITestFakeHealth", "granted"])
+
+        step("El resumen dice \"Guardado en Salud\"") {
+            XCTAssertTrue(element(app, "today.start").appears(within: 15))
+            tap(app, "today.start")
+            finishWorkoutAfterOneSet(app)
+            let status = element(app, "summary.health")
+            XCTAssertTrue(status.appears(within: 10), "El resumen debe decir qué pasó con Salud")
+            XCTAssertTrue(status.label.contains("Guardado en Salud"), "Dijo: \(status.label)")
         }
     }
 }
