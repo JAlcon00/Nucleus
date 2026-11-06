@@ -109,6 +109,12 @@ class InstallIPhoneTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("no hay ningún iPhone conectado", result.stderr)
 
+    def test_iphone_recien_conectado_sin_reality_cuenta(self):
+        result = self.run_script([device("Nuevo", "U9", reality=None)], DEVICE="Nuevo")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("-destination id=U9", self.build_line())
+
     def test_iphone_recordado_pero_fuera_de_alcance_no_cuenta(self):
         result = self.run_script([device("Lejos", "FAR", connection="unavailable")])
 
@@ -167,11 +173,31 @@ class InstallIPhoneTests(unittest.TestCase):
         self.assert_nothing_built()
 
     def test_modo_desarrollador_apagado_lo_dice(self):
-        result = self.run_script([device("Uno", "U1", developer_mode={"disabled": {"mode": 0}})])
+        result = self.run_script([
+            device("Uno", "U1", connection="connected", developer_mode={"disabled": {"mode": 0}})
+        ])
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("modo desarrollador", result.stderr)
         self.assert_nothing_built()
+
+    def test_modo_desarrollador_guardado_sin_conexion_no_detiene(self):
+        result = self.run_script([
+            device("Uno", "U1", connection="disconnected", developer_mode={"disabled": {"mode": 0}})
+        ])
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("-destination id=U1", self.build_line())
+
+    def test_modo_desarrollador_apagado_sin_conexion_lo_explica_xcodebuild(self):
+        result = self.run_script(
+            [device("Uno", "U1", connection="disconnected", developer_mode={"disabled": {"mode": 0}})],
+            FAKE_BUILD_EXIT="70",
+            FAKE_BUILD_OUTPUT="error: Developer Mode disabled",
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("modo desarrollador", result.stderr)
 
     def test_cuenta_sin_sesion_lo_explica_y_no_instala(self):
         result = self.run_script(
