@@ -235,6 +235,47 @@ struct GymAdaptationFlowTests {
         #expect(second.plan.plan?.todayTemplate?.plannedSets.contains { $0.exerciseID == original } == true, "Vuelve")
     }
 
+    @Test("SCRUM-238: dos gimnasios, cambiar arma Hoy con lo de ese lugar y sobrevive a reabrir")
+    func twoGymsChangeToday() async throws {
+        let root = try makeRoot()
+        let first = try coordinator(root: root)
+        await first.plan.activate(profile: profile(), userID: "u1")
+        guard case .loaded(let stored, let savedBlock) = await first.store.loadPlan(userID: "u1") else {
+            Issue.record("no hay plan"); return
+        }
+        let original = try #require(first.plan.plan?.todayTemplate?.plannedSets.first?.exerciseID)
+
+        let repository = try first.persistence.scoped(toUser: "u1").gymRepository()
+        let gyms = GymCoordinator(defaultName: "Mi gimnasio", clock: { now }, log: PersistenceLog { _ in })
+        await gyms.load(repository: repository)
+        #expect(await gyms.addGym(named: "Oficina") == .saved)
+        let office = try #require(gyms.gyms.first { $0.name == "Oficina" })
+        #expect(await gyms.select(office.id, duringWorkout: false))
+        #expect(await gyms.markMissing(original, replacement: nil), "En Oficina no hay")
+        first.plan.applyGym(gyms.activeGym)
+        #expect(first.plan.plan?.todayTemplate?.plannedSets.contains { $0.exerciseID == original } == false)
+
+        // Reabrir: sigue en Oficina y Hoy sigue armado con lo de Oficina.
+        let second = try coordinator(root: root)
+        #expect(await second.plan.restore(userID: "u1") == .restored(profile()))
+        let reopened = GymCoordinator(defaultName: "Mi gimnasio", clock: { now }, log: PersistenceLog { _ in })
+        await reopened.load(repository: repository)
+        second.plan.applyGym(reopened.activeGym)
+        #expect(reopened.activeGym?.name == "Oficina")
+        #expect(second.plan.plan?.todayTemplate?.plannedSets.contains { $0.exerciseID == original } == false)
+
+        // Volver a Mi gimnasio: ahí sí hay, y el plan guardado nunca cambió.
+        let home = try #require(reopened.gyms.first { $0.name == "Mi gimnasio" })
+        #expect(await reopened.select(home.id, duringWorkout: false))
+        second.plan.applyGym(reopened.activeGym)
+        #expect(second.plan.plan?.todayTemplate?.plannedSets.contains { $0.exerciseID == original } == true)
+        guard case .loaded(let after, let afterBlock) = await second.store.loadPlan(userID: "u1") else {
+            Issue.record("no hay plan"); return
+        }
+        #expect(afterBlock == savedBlock, "El bloque guardado no cambia")
+        #expect(after.updatedAt == stored.updatedAt, "Cambiar de gimnasio no regenera ni guarda el plan")
+    }
+
     @Test("Un error al guardar el gimnasio no lo marca y avisa")
     func saveFailure() async throws {
         struct ReadOnly: RepositoryStore {

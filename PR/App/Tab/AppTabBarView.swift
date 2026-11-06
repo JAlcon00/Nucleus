@@ -66,6 +66,8 @@ struct AppTabBarView: View {
                 gyms: environment.gym,
                 exerciseName: { environment.exerciseName($0) },
                 onRemoveMissing: { exercise in Task { await environment.removeMissing(exercise) } },
+                canSelectGym: environment.canChangeGym,
+                onSelectGym: { id in Task { await environment.selectGym(id) } },
                 showsAI: environment.aiConsent.isOffered,
                 aiConsentGranted: environment.aiConsent.consent.allowsSharing,
                 onSetAIConsent: { granted in
@@ -132,6 +134,7 @@ struct AppTabBarView: View {
                 timeRemovedExercises: !(environment.todayPlan.plan?.timeAdjustment?.removed.isEmpty ?? true),
                 supersetNote: environment.supersetNote,
                 gymNote: environment.gymNote,
+                activeGymLabel: environment.activeGymLabel,
                 onChooseTime: { minutes in Task { await environment.setTimeBudget(minutes) } }
             )
             .navigationTitle(AppTab.today.title)

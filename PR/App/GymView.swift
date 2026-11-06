@@ -17,10 +17,15 @@ struct GymView: View {
     var exerciseName: (ExerciseID) -> String = { _ in "" }
     /// Intento: quitar la marca "no hay" (SCRUM-236).
     var onRemoveMissing: (ExerciseID) -> Void = { _ in }
+    /// ¿Se puede cambiar de gimnasio? No con un entrenamiento en curso (SCRUM-238).
+    var canSelect = true
+    /// Intento: elegir el gimnasio activo.
+    var onSelect: (GymID) -> Void = { _ in }
 
     @State private var editing = false
+    @State private var adding = false
     @State private var draft = ""
-    @State private var nameError = false
+    @State private var nameError: LocalizedStringKey?
 
     var body: some View {
         List {
@@ -42,8 +47,10 @@ struct GymView: View {
 
             missingSection
 
-            if nameError {
-                noticeRow("Escribe un nombre para tu gimnasio.")
+            gymsSection
+
+            if let nameError {
+                noticeRow(nameError)
             }
             switch gyms.notice {
             case .saveFailed:
@@ -61,10 +68,65 @@ struct GymView: View {
             TextField(gyms.activeGym?.name ?? "", text: $draft)
                 .accessibilityIdentifier("gym.rename.field")
             Button("Guardar") {
-                Task { nameError = await gyms.renameActive(to: draft) == .emptyName }
+                Task { nameError = message(for: await gyms.renameActive(to: draft)) }
             }
             Button("Cancelar", role: .cancel) {}
         }
+        .alert("Nuevo gimnasio", isPresented: $adding) {
+            TextField("Nombre", text: $draft)
+            Button("Agregar") {
+                Task { nameError = message(for: await gyms.addGym(named: draft)) }
+            }
+            Button("Cancelar", role: .cancel) {}
+        }
+    }
+
+    private func message(for outcome: GymCoordinator.RenameOutcome) -> LocalizedStringKey? {
+        switch outcome {
+        case .saved, .notSaved: return nil
+        case .emptyName: return "Escribe un nombre para tu gimnasio."
+        case .repeatedName: return "Ya tienes un gimnasio con ese nombre."
+        }
+    }
+
+    /// SCRUM-238: agregar y elegir en cuál estoy hoy.
+    private var gymsSection: some View {
+        Section {
+            ForEach(Array(gyms.gyms.sorted { $0.name < $1.name }.enumerated()), id: \.element.id) { index, gym in
+                Button {
+                    onSelect(gym.id)
+                } label: {
+                    HStack {
+                        Text(gym.name).foregroundStyle(Color.textPrimary)
+                        Spacer()
+                        if gym.id == gyms.activeGym?.id {
+                            Image(systemName: "checkmark").foregroundStyle(Color.primaryAction)
+                        }
+                    }
+                    .frame(minHeight: DSize.dayChip)
+                }
+                .disabled(!canSelect)
+                .accessibilityLabel(gym.id == gyms.activeGym?.id ? "Gimnasio activo: \(gym.name)" : gym.name)
+                .accessibilityIdentifier("gym.row.\(index)")
+            }
+            Button {
+                draft = ""
+                adding = true
+            } label: {
+                Label("Agregar gimnasio", systemImage: "plus")
+            }
+            .frame(minHeight: DSize.dayChip)
+            .accessibilityIdentifier("gym.add")
+        } header: {
+            Text("Mis gimnasios")
+        } footer: {
+            if !canSelect {
+                Text("No se puede cambiar de gimnasio durante un entrenamiento.")
+                    .foregroundStyle(Color.textSecondary)
+                    .accessibilityIdentifier("gym.locked")
+            }
+        }
+        .listRowBackground(Color.surface)
     }
 
     /// SCRUM-236: lo que no hay en este gimnasio. Quitarlo devuelve el ejercicio a la siguiente

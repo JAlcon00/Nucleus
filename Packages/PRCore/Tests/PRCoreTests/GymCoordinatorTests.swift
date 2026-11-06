@@ -150,6 +150,116 @@ struct GymCoordinatorTests {
         #expect(GymProfile.active(in: []) == nil)
     }
 
+    @Test("SCRUM-238: agregar rechaza nombres vacíos o repetidos, sin importar mayúsculas")
+    func addGym() async throws {
+        let gyms = try await coordinator(try makeRoot())
+
+        #expect(await gyms.addGym(named: "  ") == .emptyName)
+        #expect(await gyms.addGym(named: "mi GIMNASIO") == .repeatedName)
+        #expect(await gyms.addGym(named: " Oficina ") == .saved)
+        #expect(await gyms.addGym(named: "oficina") == .repeatedName)
+        #expect(gyms.gyms.map(\.name).sorted() == ["Mi gimnasio", "Oficina"])
+        #expect(gyms.activeGym?.name == "Mi gimnasio", "Agregar no lo vuelve activo")
+    }
+
+    @Test("SCRUM-238: el activo sobrevive a cerrar y abrir, y es por usuario")
+    func selectSurvivesReopening() async throws {
+        let root = try makeRoot()
+        let gyms = try await coordinator(root)
+        await gyms.addGym(named: "Oficina")
+        let office = try #require(gyms.gyms.first { $0.name == "Oficina" })
+
+        #expect(await gyms.select(office.id, duringWorkout: false))
+        #expect(gyms.activeGym?.id == office.id, "Aunque el reloj no haya avanzado")
+
+        let reopened = try await coordinator(root)
+        #expect(reopened.activeGym?.id == office.id)
+        #expect(try await coordinator(root, user: "u2").activeGym?.name == "Mi gimnasio")
+    }
+
+    @Test("SCRUM-238: volver al primero también queda guardado")
+    func selectBack() async throws {
+        let root = try makeRoot()
+        let gyms = try await coordinator(root)
+        let first = try #require(gyms.activeGym)
+        await gyms.addGym(named: "Oficina")
+        let office = try #require(gyms.gyms.first { $0.name == "Oficina" })
+        await gyms.select(office.id, duringWorkout: false)
+        await gyms.select(first.id, duringWorkout: false)
+
+        #expect(try await coordinator(root).activeGym?.id == first.id)
+    }
+
+    @Test("SCRUM-238: cada gimnasio arma el día con lo suyo")
+    func eachGymHasItsMarks() async throws {
+        let gyms = try await coordinator(try makeRoot())
+        let exercise = ExerciseID()
+        await gyms.markMissing(exercise, replacement: nil)
+        await gyms.addGym(named: "Oficina")
+        let office = try #require(gyms.gyms.first { $0.name == "Oficina" })
+
+        await gyms.select(office.id, duringWorkout: false)
+
+        #expect(gyms.activeGym?.missingExercises == nil, "Lo que no hay en Mi gimnasio no pasa a Oficina")
+    }
+
+    @Test("SCRUM-238: renombrar tampoco deja dos gimnasios iguales, pero sí cambia sus mayúsculas")
+    func renameCannotRepeat() async throws {
+        let gyms = try await coordinator(try makeRoot())
+        await gyms.addGym(named: "Oficina")
+
+        #expect(await gyms.renameActive(to: "OFICINA") == .repeatedName)
+        #expect(gyms.activeGym?.name == "Mi gimnasio")
+        #expect(await gyms.renameActive(to: "MI GIMNASIO") == .saved)
+        #expect(gyms.activeGym?.name == "MI GIMNASIO")
+    }
+
+    @Test("SCRUM-238: con un entrenamiento en curso no se cambia de gimnasio")
+    func selectIsBlockedDuringWorkout() async throws {
+        let root = try makeRoot()
+        let gyms = try await coordinator(root)
+        await gyms.addGym(named: "Oficina")
+        let office = try #require(gyms.gyms.first { $0.name == "Oficina" })
+
+        #expect(await gyms.select(office.id, duringWorkout: true) == false)
+        #expect(gyms.activeGym?.name == "Mi gimnasio")
+        #expect(try await coordinator(root).activeGym?.name == "Mi gimnasio", "Tampoco se guardó")
+    }
+
+    @Test("SCRUM-238: un error al elegir avisa y deja el activo de antes")
+    func selectWriteFailure() async throws {
+        let root = try makeRoot()
+        let saved = try await coordinator(root)
+        await saved.addGym(named: "Oficina")
+        let office = try #require(saved.gyms.first { $0.name == "Oficina" })
+        let silent = PersistenceLog { _ in }
+        let gyms = GymCoordinator(defaultName: "Mi gimnasio", clock: { now }, log: silent)
+        let store = try persistence(root).store(for: .gyms)
+        await gyms.load(repository: FileGymRepository(store: ReadOnlyStore(base: store), log: silent))
+
+        #expect(await gyms.select(office.id, duringWorkout: false) == false)
+        #expect(gyms.notice == .saveFailed)
+        #expect(gyms.activeGym?.name == "Mi gimnasio")
+    }
+
+    @Test("SCRUM-238: elegir gimnasio no toca el plan ni el historial")
+    func selectLeavesPlanAndHistory() async throws {
+        let root = try makeRoot()
+        let scoped = try persistence(root)
+        let workouts = try scoped.workoutRepository()
+        let session = WorkoutSessionRecord(templateID: UUID(), startedAt: now)
+        try workouts.persist(session)
+        let plans = try scoped.store(for: .plans).readAll()
+
+        let gyms = try await coordinator(root)
+        await gyms.addGym(named: "Oficina")
+        let office = try #require(gyms.gyms.first { $0.name == "Oficina" })
+        await gyms.select(office.id, duringWorkout: false)
+
+        #expect(try await workouts.allSessions().map(\.id) == [session.id])
+        #expect(try scoped.store(for: .plans).readAll() == plans)
+    }
+
     @Test("El export incluye los gimnasios del usuario")
     func exportIncludesGyms() async throws {
         let gyms = try await coordinator(try makeRoot())

@@ -48,6 +48,14 @@ final class WorkoutRecoveryJourney: PRUITestCase {
             let reopened = launch(storeID: forceQuitStore)
             XCTAssertTrue(element(reopened, "today.activeBanner").appears(within: 20),
                           "Debe decir 'Tienes un entrenamiento en curso'")
+
+            // SCRUM-238: con el entrenamiento en curso no se cambia de gimnasio y dice por qué.
+            openTab(reopened, "Perfil")
+            tap(reopened, "profile.gym")
+            XCTAssertTrue(element(reopened, "gym.locked").appears(within: 5), "Dice por qué")
+            XCTAssertFalse(element(reopened, "gym.row.0").isEnabled, "La opción está desactivada")
+            openTab(reopened, "Hoy")
+
             tap(reopened, "today.resume")
             let resumed = reopened.descendants(matching: .any).matching(
                 NSPredicate(format: "label CONTAINS 'Serie 4 de'")

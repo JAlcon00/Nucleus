@@ -64,6 +64,8 @@ struct TodayView: View {
     var supersetNote: String?
     /// SCRUM-236: lo que el gimnasio cambió en la sesión de hoy; `nil` si nada.
     var gymNote: String?
+    /// SCRUM-238: en qué gimnasio estoy; `nil` con uno solo.
+    var activeGymLabel: String?
     /// Intento: ajustar la sesión a esos minutos (`nil` = quitar el ajuste).
     var onChooseTime: (Int?) -> Void = { _ in }
     @Environment(\.sessionOrderActions) private var orderActions
@@ -357,6 +359,19 @@ struct TodayView: View {
             }
             if let timeNote {
                 timeNoteCard(timeNote)
+            }
+            if let activeGymLabel {
+                Label {
+                    Text("En: \(activeGymLabel)")
+                } icon: {
+                    Image(systemName: "mappin.and.ellipse")
+                }
+                .font(.footnote)
+                .foregroundStyle(Color.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Gimnasio activo: \(activeGymLabel)")
+                .accessibilityIdentifier("today.activeGym")
             }
             if let gymNote {
                 gymNoteCard(gymNote)

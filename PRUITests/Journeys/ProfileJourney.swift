@@ -78,6 +78,27 @@ final class ProfileJourney: PRUITestCase {
             XCTAssertTrue(renamed.appears(within: 10), "El nombre nuevo se ve")
         }
 
+        // SCRUM-238: agregar un gimnasio y elegirlo. Lo que dice Hoy está en TodayJourney.
+        step("Agregar un gimnasio y elegirlo (SCRUM-238)") {
+            let app = launchWithPlan()
+            XCTAssertTrue(element(app, "today.start").appears(within: 15))
+            openTab(app, "Perfil")
+            tap(app, "profile.gym")
+            tap(app, "gym.add")
+            let field = app.alerts.textFields.firstMatch
+            XCTAssertTrue(field.appears(within: 5), "Pide el nombre")
+            field.tap()
+            field.typeText("Casa")
+            app.alerts.buttons["Agregar"].firstMatch.tap()
+            let row = element(app, "gym.row.0")
+            XCTAssertTrue(row.appears(within: 5), "Aparece en la lista")
+            row.tap()       // "Casa" va primero por orden alfabético
+            let chosen = app.descendants(matching: .any).matching(
+                NSPredicate(format: "label == 'Gimnasio activo: Casa'")
+            ).firstMatch
+            XCTAssertTrue(chosen.appears(within: 5), "VoiceOver dice cuál es el activo")
+        }
+
         // SCRUM-208: "Cerrar sesión" pide confirmación, vuelve al login y, al entrar con la
         // misma cuenta, el plan sigue ahí (no se borró nada).
         step("Cerrar sesión pide confirmación y la misma cuenta recupera su plan (testSignOutAsksAndKeepsThePlan)") {

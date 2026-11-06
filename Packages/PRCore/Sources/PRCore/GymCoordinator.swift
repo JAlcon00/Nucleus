@@ -26,6 +26,8 @@ public final class GymCoordinator {
     public enum RenameOutcome: Equatable, Sendable {
         case saved
         case emptyName
+        /// Ya hay un gimnasio con ese nombre, sin importar mayúsculas (SCRUM-238).
+        case repeatedName
         case notSaved
     }
 
@@ -85,9 +87,36 @@ public final class GymCoordinator {
         guard let active = activeGym else { return .notSaved }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let renamed = try? manager.rename(active, to: trimmed) else { return .emptyName }
+        guard !isTaken(trimmed, except: active.id) else { return .repeatedName }
         guard await save(renamed) else { return .notSaved }
         replace(renamed)
         return .saved
+    }
+
+    /// SCRUM-238: agrega un gimnasio. No lo vuelve activo: eso se elige aparte.
+    @discardableResult
+    public func addGym(named name: String) async -> RenameOutcome {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let gym = try? manager.create(name: trimmed) else { return .emptyName }
+        guard !isTaken(trimmed, except: nil) else { return .repeatedName }
+        guard await save(gym) else { return .notSaved }
+        gyms.append(gym)
+        return .saved
+    }
+
+    /// SCRUM-238: elige el gimnasio activo. No toca el plan guardado, el historial ni la racha.
+    /// Con un entrenamiento en curso no cambia: esa sesión sigue en el gimnasio donde empezó.
+    @discardableResult
+    public func select(_ id: GymID, duringWorkout: Bool) async -> Bool {
+        guard !duringWorkout else { return false }
+        guard var gym = gyms.first(where: { $0.id == id }) else { return false }
+        guard gym.id != activeGym?.id else { return true }
+        // Siempre después del activo actual, aunque el reloj no haya avanzado.
+        let latest = activeGym?.lastSelectedAt ?? .distantPast
+        gym.lastSelectedAt = max(clock(), latest.addingTimeInterval(1))
+        guard await save(gym) else { return false }
+        replace(gym)
+        return true
     }
 
     /// SCRUM-236: "en este gimnasio no hay `exercise`; se hace `replacement`". Sólo afecta al
@@ -120,6 +149,11 @@ public final class GymCoordinator {
 
     private func implicitGym() -> GymProfile {
         GymProfile(name: defaultName, lastSelectedAt: clock())
+    }
+
+    /// ¿Otro gimnasio ya se llama así? Sin importar mayúsculas (SCRUM-238).
+    private func isTaken(_ name: String, except id: GymID?) -> Bool {
+        gyms.contains { $0.id != id && $0.name.caseInsensitiveCompare(name) == .orderedSame }
     }
 
     private func replace(_ gym: GymProfile) {

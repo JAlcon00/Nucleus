@@ -239,6 +239,24 @@ public final class AppEnvironment {
         applyGym()
     }
 
+    /// SCRUM-238: con un entrenamiento en curso no se cambia de gimnasio.
+    public var canChangeGym: Bool {
+        guard let activeWorkout else { return true }
+        if case .finished = activeWorkout.phase { return true }
+        return false
+    }
+
+    /// SCRUM-238: elige el gimnasio activo; Hoy y Semana se arman con lo suyo.
+    public func selectGym(_ id: GymID) async {
+        guard await gym.select(id, duringWorkout: !canChangeGym) else { return }
+        applyGym()
+    }
+
+    /// SCRUM-238: "En: Oficina" en Hoy; con un solo gimnasio no se muestra.
+    public var activeGymLabel: String? {
+        gym.gyms.count > 1 ? gym.activeGym?.name : nil
+    }
+
     /// SCRUM-236: la nota de Hoy sobre lo que el gimnasio cambió; `nil` si nada.
     public var gymNote: String? {
         guard let today = todayPlan.plan?.todayTemplate, let name = gym.activeGym?.name,
