@@ -722,7 +722,10 @@ extension WorkoutSessionCoordinator {
     /// Tiene que ser uno de los sustitutos que se ofrecen: la regla se aplica otra vez aquí.
     /// Lo hecho se queda como está y se guarda antes de cambiar la pantalla.
     @discardableResult
-    public func substituteCurrentExercise(with replacement: ExerciseID) throws -> WorkoutSessionPhase {
+    public func substituteCurrentExercise(
+        with replacement: ExerciseID,
+        reason: SessionSubstitution.Reason = .occupied
+    ) throws -> WorkoutSessionPhase {
         var session = try activeSessionForSet()
         let wasResting: Bool
         switch phase {
@@ -741,7 +744,7 @@ extension WorkoutSessionCoordinator {
         session.queue = WorkoutQueue.replacing(exercise, with: replacement, in: state, template: adapted)
         session.template = adapted
         session.substitutions = (session.substitutions ?? []) + [SessionSubstitution(
-            original: exercise, replacement: replacement, reason: .occupied,
+            original: exercise, replacement: replacement, reason: reason,
             score: chosen.totalScore, rule: chosen.ruleReference, date: clock()
         )]
         template = adapted
@@ -751,6 +754,11 @@ extension WorkoutSessionCoordinator {
         let result: WorkoutSessionPhase = wasResting && rest.isActive ? .resting(upcoming, rest: rest) : .active(upcoming)
         phase = result
         return result
+    }
+
+    /// El ejercicio de la serie actual.
+    public var currentExerciseID: ExerciseID? {
+        currentSet().map { template.plannedSets[$0.index].exerciseID }
     }
 
     /// "A → B" de cada sustitución de la sesión, para el resumen.

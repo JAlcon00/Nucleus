@@ -52,7 +52,8 @@ struct AppTabBarView: View {
                 isStartingWorkout: isStartingWorkout,
                 onStart: canStartToday ? onStart : nil,
                 onRedoQuestionnaire: onRedoQuestionnaire,
-                rationale: environment.todayPlan.personalization
+                rationale: environment.todayPlan.personalization,
+                gymNotes: environment.gymWeekNotes
             )
                 .tabItem { tabLabel(.plan) }
                 .tag(AppTab.plan)
@@ -63,6 +64,8 @@ struct AppTabBarView: View {
                 onRedoQuestionnaire: onRedoQuestionnaire,
                 restrictionScreen: environment.restrictionScreen,
                 gyms: environment.gym,
+                exerciseName: { environment.exerciseName($0) },
+                onRemoveMissing: { exercise in Task { await environment.removeMissing(exercise) } },
                 showsAI: environment.aiConsent.isOffered,
                 aiConsentGranted: environment.aiConsent.consent.allowsSharing,
                 onSetAIConsent: { granted in
@@ -128,6 +131,7 @@ struct AppTabBarView: View {
                 timeFits: environment.todayPlan.plan?.timeAdjustment?.fitsBudget ?? true,
                 timeRemovedExercises: !(environment.todayPlan.plan?.timeAdjustment?.removed.isEmpty ?? true),
                 supersetNote: environment.supersetNote,
+                gymNote: environment.gymNote,
                 onChooseTime: { minutes in Task { await environment.setTimeBudget(minutes) } }
             )
             .navigationTitle(AppTab.today.title)

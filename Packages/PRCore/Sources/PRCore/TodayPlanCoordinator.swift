@@ -103,6 +103,8 @@ public struct TodayPlan: Equatable, Sendable {
     /// Ajuste de hoy al tiempo que la persona dijo tener (SCRUM-30); ya aplicado a
     /// `todayTemplate`. `nil` sin tiempo elegido.
     public let timeAdjustment: SessionTimeAdjustment?
+    /// Qué cambió el gimnasio activo en cada sesión (SCRUM-236); ya aplicado a `sessions`.
+    public let gymNotes: [SessionTemplate.ID: [GymAdaptationNote]]
 
     public init(
         block: TrainingBlock,
@@ -116,7 +118,8 @@ public struct TodayPlan: Equatable, Sendable {
         explanation: BlockExplanation? = nil,
         readiness: ReadinessAdjustment = .none,
         todayOrderIsCustom: Bool = false,
-        timeAdjustment: SessionTimeAdjustment? = nil
+        timeAdjustment: SessionTimeAdjustment? = nil,
+        gymNotes: [SessionTemplate.ID: [GymAdaptationNote]] = [:]
     ) {
         self.block = block
         self.sessions = sessions
@@ -130,6 +133,7 @@ public struct TodayPlan: Equatable, Sendable {
         self.readiness = readiness
         self.todayOrderIsCustom = todayOrderIsCustom
         self.timeAdjustment = timeAdjustment
+        self.gymNotes = gymNotes
     }
 }
 
@@ -215,10 +219,16 @@ public struct TodayPlanBuilder: Sendable {
         readiness: ReadinessAdjustment = .none,
         customOrders: [SessionTemplate.ID: [ExerciseID]] = [:],
         timeBudget: Int? = nil,
-        planner: BlockPlanner? = nil
+        planner: BlockPlanner? = nil,
+        gym: GymProfile? = nil
     ) throws -> TodayPlan {
         // SCRUM-211: el orden propio de cada sesión se aplica encima del bloque del motor.
-        let block = SessionOrderOverride.apply(customOrders, to: block)
+        let ordered = SessionOrderOverride.apply(customOrders, to: block)
+        // SCRUM-236: y encima, lo que no hay en el gimnasio activo. El bloque guardado no cambia.
+        let adaptation = try GymSessionAdapter.standard().adapt(
+            ordered, gym: gym, catalog: catalog.exercises, restrictions: profile.restrictions, now: date
+        )
+        let block = adaptation.block
         let jointClasses = Dictionary(catalog.exercises.map { ($0.id, $0.jointClass) }, uniquingKeysWith: { first, _ in first })
         // SCRUM-203: el check-in de sueño sólo aligera la sesión de hoy (mismo ID).
         let lightened = try todaySession(
@@ -266,7 +276,8 @@ public struct TodayPlanBuilder: Sendable {
             explanation: explanation,
             readiness: readiness,
             todayOrderIsCustom: todayTemplate.map { customOrders[$0.id] != nil } ?? false,
-            timeAdjustment: timeAdjustment
+            timeAdjustment: timeAdjustment,
+            gymNotes: adaptation.notes
         )
     }
 
@@ -582,6 +593,8 @@ public final class TodayPlanCoordinator {
     private var customOrders: [SessionTemplate.ID: [ExerciseID]] = [:]
     /// Bloque tal como lo armó el motor (sin órdenes propios): base para restablecer.
     private var engineBlock: TrainingBlock?
+    /// Gimnasio activo: lo que no hay se aplica al armar "Hoy" (SCRUM-236).
+    private var activeGym: GymProfile?
     /// Tiempo que la persona eligió para hoy (SCRUM-30). Se guarda con el plan; sólo
     /// aplica el día en que se eligió.
     public private(set) var timeChoice: SessionTimeChoice?
@@ -704,7 +717,8 @@ public final class TodayPlanCoordinator {
             explanation: current.explanation,
             readiness: current.readiness,
             todayOrderIsCustom: current.todayOrderIsCustom,
-            timeAdjustment: current.timeAdjustment
+            timeAdjustment: current.timeAdjustment,
+            gymNotes: current.gymNotes
         )
     }
 
@@ -992,8 +1006,16 @@ public final class TodayPlanCoordinator {
             profile: profile, block: block, explanation: explanation,
             catalog: catalog, driver: driver, date: now, timeZone: zone, readiness: readiness, customOrders: customOrders,
             timeBudget: timeChoice.flatMap { $0.applies(on: now, timeZone: zone) ? $0.minutes : nil },
-            planner: planner
+            planner: planner,
+            gym: activeGym
         )
+    }
+
+    /// SCRUM-236: el gimnasio activo cambió. Vuelve a armar "Hoy" sobre el mismo bloque: marcar
+    /// o quitar no regenera ni guarda el plan.
+    public func applyGym(_ gym: GymProfile?) {
+        activeGym = gym
+        rebuildToday()
     }
 
     /// Vuelve a armar "Hoy" sobre el mismo bloque (el bloque guardado no cambia).

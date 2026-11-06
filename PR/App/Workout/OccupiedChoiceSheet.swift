@@ -17,7 +17,11 @@ struct OccupiedChoiceSheet: View {
     var onChoose: (ExerciseID) -> Void = { _ in }
     var onWait: () -> Void = {}
     var onSkip: () -> Void = {}
+    /// "No hay esta máquina aquí" con su sustituto, o sin ninguno (SCRUM-236).
+    var onMissing: (ExerciseID?) -> Void = { _ in }
 
+    /// Eligiendo el sustituto para "No hay esta máquina aquí".
+    @State private var markingMissing = false
     private let painPresenter = PainRecommendationPresenter(locale: AppEnvironment.presentationLocale)
 
     var body: some View {
@@ -49,6 +53,15 @@ struct OccupiedChoiceSheet: View {
                     }
                     .frame(minHeight: DSize.dayChip)
                     .accessibilityIdentifier("occupied.skip")
+                    if choice.painRecommendation == nil {
+                        Button {
+                            if choice.options.isEmpty { onMissing(nil) } else { markingMissing = true }
+                        } label: {
+                            Label("No hay esta máquina aquí", systemImage: "xmark.circle")
+                        }
+                        .frame(minHeight: DSize.dayChip)
+                        .accessibilityIdentifier("occupied.missing")
+                    }
                 }
                 .listRowBackground(Color.surface)
             }
@@ -61,7 +74,7 @@ struct OccupiedChoiceSheet: View {
 
     @ViewBuilder
     private var substitutes: some View {
-        Section("Cambiar por") {
+        Section(markingMissing ? "¿Qué haces aquí en su lugar?" : "Cambiar por") {
             if choice.options.isEmpty {
                 Text("No hay un sustituto equivalente y seguro.")
                     .foregroundStyle(Color.textSecondary)
@@ -69,7 +82,7 @@ struct OccupiedChoiceSheet: View {
             }
             ForEach(Array(choice.options.enumerated()), id: \.element.id) { index, option in
                 Button {
-                    onChoose(option.id)
+                    if markingMissing { onMissing(option.id) } else { onChoose(option.id) }
                 } label: {
                     VStack(alignment: .leading, spacing: DSpace.xs) {
                         Text(option.name).foregroundStyle(Color.textPrimary)

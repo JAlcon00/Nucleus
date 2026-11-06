@@ -90,6 +90,30 @@ public final class GymCoordinator {
         return .saved
     }
 
+    /// SCRUM-236: "en este gimnasio no hay `exercise`; se hace `replacement`". Sólo afecta al
+    /// activo. `false` si no se pudo guardar: el gimnasio no queda marcado y se avisa.
+    @discardableResult
+    public func markMissing(_ exercise: ExerciseID, replacement: ExerciseID?) async -> Bool {
+        guard var active = activeGym else { return false }
+        var marks = (active.missingExercises ?? []).filter { $0.exercise != exercise }
+        marks.append(MissingExercise(exercise: exercise, replacement: replacement))
+        active.missingExercises = marks
+        guard await save(active) else { return false }
+        replace(active)
+        return true
+    }
+
+    /// Quita la marca: la siguiente sesión vuelve a tener el ejercicio.
+    @discardableResult
+    public func removeMissing(_ exercise: ExerciseID) async -> Bool {
+        guard var active = activeGym else { return false }
+        let marks = (active.missingExercises ?? []).filter { $0.exercise != exercise }
+        active.missingExercises = marks.isEmpty ? nil : marks
+        guard await save(active) else { return false }
+        replace(active)
+        return true
+    }
+
     public func dismissNotice() {
         notice = nil
     }

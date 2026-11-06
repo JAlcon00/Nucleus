@@ -135,6 +135,9 @@ public struct GymProfile: Identifiable, Codable, Sendable, Hashable {
     /// Cuándo se eligió este gimnasio por última vez: el activo es el más reciente (SCRUM-235).
     /// Así elegir es una sola escritura atómica. Campo opcional (ADR-0003).
     public var lastSelectedAt: Date?
+    /// Ejercicios que no hay en este gimnasio y su sustituto (SCRUM-236, DE-1: por ejercicio,
+    /// no por tipo de equipo). Se aplica encima del plan. Campo opcional (ADR-0003).
+    public var missingExercises: [MissingExercise]?
 
     public init(
         id: GymID = GymID(),
@@ -143,7 +146,8 @@ public struct GymProfile: Identifiable, Codable, Sendable, Hashable {
         machineInstances: [MachineProfile] = [],
         learnedBusyPatterns: [BusyPattern] = [],
         occupiedDuringSession: [EquipmentType] = [],
-        lastSelectedAt: Date? = nil
+        lastSelectedAt: Date? = nil,
+        missingExercises: [MissingExercise]? = nil
     ) {
         self.id = id
         self.name = name
@@ -152,6 +156,7 @@ public struct GymProfile: Identifiable, Codable, Sendable, Hashable {
         self.learnedBusyPatterns = learnedBusyPatterns
         self.occupiedDuringSession = occupiedDuringSession
         self.lastSelectedAt = lastSelectedAt
+        self.missingExercises = missingExercises
     }
 
     /// El gimnasio activo: el elegido más recientemente; si empatan, por ID (determinista).

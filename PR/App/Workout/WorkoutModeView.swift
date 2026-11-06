@@ -19,6 +19,8 @@ struct WorkoutModeView: View {
     @Bindable var coordinator: WorkoutSessionCoordinator
     /// Intento: tras terminar la sesión, volver al plan (cierra el fullScreenCover).
     var onDone: () -> Void = {}
+    /// Intento: "No hay esta máquina aquí", con su sustituto o sin ninguno (SCRUM-236).
+    var onMissingMachine: (ExerciseID?) -> Void = { _ in }
     /// Nivel de detalle de coaching (PR-1501); derivado del perfil, nunca inventado.
     var coachingLevel: CoachingDetailLevel = .guided
 
@@ -105,6 +107,10 @@ struct WorkoutModeView: View {
                 onSkip: {
                     occupiedChoice = nil
                     _ = try? coordinator.skipCurrentExercise()
+                },
+                onMissing: { replacement in
+                    occupiedChoice = nil
+                    onMissingMachine(replacement)
                 }
             )
             .presentationDetents([.medium, .large])

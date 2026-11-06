@@ -188,6 +188,9 @@ struct AppRootView: View {
                         // La semana marca el día como hecho.
                         Task { await environment.refreshHistory() }
                     },
+                    onMissingMachine: { replacement in
+                        Task { await environment.markMissing(replacement: replacement) }
+                    },
                     coachingLevel: coachingLevel
                 )
             }

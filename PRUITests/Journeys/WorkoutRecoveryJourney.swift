@@ -130,6 +130,34 @@ final class WorkoutRecoveryJourney: PRUITestCase {
             tap(app, "workout.completeSet")
         }
 
+        // SCRUM-236: "No hay esta máquina aquí" se recuerda, Semana lo dice y se puede quitar.
+        step("No hay esta máquina: se recuerda y se quita desde Perfil (SCRUM-236)") {
+            let storeID = newStoreID()
+            let app = launchWithPlan(storeID: storeID)
+            tap(app, "today.start")
+            XCTAssertTrue(element(app, "workout.completeSet").appears(within: 10))
+            let sheet = element(app, "occupied.option.0")
+            for _ in 0..<12 where !sheet.exists {
+                tap(app, "workout.occupied")
+                _ = sheet.appears(within: 2)
+            }
+            let missing = scrollTo(app, "occupied.missing")
+            XCTAssertTrue(missing.appears(within: 5), "La hoja ofrece decir que no hay la máquina")
+            missing.tap()
+            tap(app, "occupied.option.0")
+            XCTAssertTrue(element(app, "workout.completeSet").appears(within: 5), "Sigue con el sustituto")
+
+            app.terminate()
+            let reopened = launch(storeID: storeID)
+            XCTAssertTrue(element(reopened, "today.activeBanner").appears(within: 20))
+            openTab(reopened, "Plan")
+            XCTAssertTrue(element(reopened, "plan.gymNote").appears(within: 10), "La semana dice qué cambió")
+            openTab(reopened, "Perfil")
+            tap(reopened, "profile.gym")
+            tap(reopened, "gym.missing.remove.0")
+            XCTAssertFalse(element(reopened, "gym.missing.0").waitForExistence(timeout: 3), "La marca se quitó")
+        }
+
         // SCRUM-212 y SCRUM-233: "Máquina ocupada" dice qué sigue, se salta (con confirmación),
         // se retoma, y al terminar el resumen dice qué se saltó.
         step("Dejar para después, saltar y retomar; el resumen dice qué se saltó (testDeferSkipAndResumeInWorkout)") {

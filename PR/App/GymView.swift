@@ -13,6 +13,10 @@ import PRDomain
 
 struct GymView: View {
     let gyms: GymCoordinator
+    /// Nombre visible de un ejercicio.
+    var exerciseName: (ExerciseID) -> String = { _ in "" }
+    /// Intento: quitar la marca "no hay" (SCRUM-236).
+    var onRemoveMissing: (ExerciseID) -> Void = { _ in }
 
     @State private var editing = false
     @State private var draft = ""
@@ -36,6 +40,8 @@ struct GymView: View {
             }
             .listRowBackground(Color.surface)
 
+            missingSection
+
             if nameError {
                 noticeRow("Escribe un nombre para tu gimnasio.")
             }
@@ -58,6 +64,35 @@ struct GymView: View {
                 Task { nameError = await gyms.renameActive(to: draft) == .emptyName }
             }
             Button("Cancelar", role: .cancel) {}
+        }
+    }
+
+    /// SCRUM-236: lo que no hay en este gimnasio. Quitarlo devuelve el ejercicio a la siguiente
+    /// sesión; el entrenamiento en curso no cambia.
+    @ViewBuilder
+    private var missingSection: some View {
+        let marks = gyms.activeGym?.missingExercises ?? []
+        if !marks.isEmpty {
+            Section("Máquinas que no hay") {
+                ForEach(Array(marks.enumerated()), id: \.element.exercise) { index, mark in
+                    HStack {
+                        VStack(alignment: .leading, spacing: DSpace.xs) {
+                            Text(exerciseName(mark.exercise))
+                                .accessibilityIdentifier("gym.missing.\(index)")
+                            if let replacement = mark.replacement {
+                                Text("Se hace \(exerciseName(replacement))")
+                                    .font(.footnote)
+                                    .foregroundStyle(Color.textSecondary)
+                            }
+                        }
+                        Spacer()
+                        Button("Quitar") { onRemoveMissing(mark.exercise) }
+                            .frame(minHeight: DSize.dayChip)
+                            .accessibilityIdentifier("gym.missing.remove.\(index)")
+                    }
+                }
+            }
+            .listRowBackground(Color.surface)
         }
     }
 

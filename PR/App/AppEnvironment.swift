@@ -209,6 +209,65 @@ public final class AppEnvironment {
             basePersistence?.log.saveFailed(.gyms)
         }
         await gym.load(repository: repository)
+        applyGym()
+    }
+
+    /// SCRUM-236: lo que no hay en el gimnasio activo se aplica a Hoy y a Semana. La sesión en
+    /// curso sigue con su plantilla.
+    public func applyGym() {
+        todayPlan.applyGym(gym.activeGym)
+        refreshTodayState()
+    }
+
+    /// "No hay esta máquina aquí": se guarda antes de cambiar la pantalla. Si no se pudo
+    /// guardar, hoy se sigue con el sustituto, el gimnasio no queda marcado y `gym.notice`
+    /// avisa. Sin sustituto, hoy se salta.
+    public func markMissing(replacement: ExerciseID?) async {
+        guard let workout = activeWorkout, let exercise = workout.currentExerciseID else { return }
+        await gym.markMissing(exercise, replacement: replacement)
+        if let replacement {
+            _ = try? workout.substituteCurrentExercise(with: replacement, reason: .notAvailable)
+        } else {
+            _ = try? workout.skipCurrentExercise()
+        }
+        applyGym()
+    }
+
+    /// Perfil › Gimnasio: quita la marca. La sesión activa no cambia.
+    public func removeMissing(_ exercise: ExerciseID) async {
+        await gym.removeMissing(exercise)
+        applyGym()
+    }
+
+    /// SCRUM-236: la nota de Hoy sobre lo que el gimnasio cambió; `nil` si nada.
+    public var gymNote: String? {
+        guard let today = todayPlan.plan?.todayTemplate, let name = gym.activeGym?.name,
+              let notes = todayPlan.plan?.gymNotes[today.id], !notes.isEmpty else { return nil }
+        return Self.gymSentences(notes, gym: name, exerciseName: { exerciseNames[$0] ?? "" }).joined(separator: " ")
+    }
+
+    /// Lo que el gimnasio cambió en toda la semana, sin repetir (SCRUM-236).
+    public var gymWeekNotes: [String] {
+        guard let name = gym.activeGym?.name, let plan = todayPlan.plan else { return [] }
+        let notes = plan.sessions.flatMap { plan.gymNotes[$0.id] ?? [] }
+        var seen: Set<String> = []
+        return Self.gymSentences(notes, gym: name, exerciseName: { exerciseNames[$0] ?? "" }).filter { seen.insert($0).inserted }
+    }
+
+    private static func gymSentences(_ notes: [GymAdaptationNote], gym: String, exerciseName: (ExerciseID) -> String) -> [String] {
+        notes.map { note in
+            switch note {
+            case .replaced(let original, let replacement):
+                return String(localized: "En \(gym) no hay \(exerciseName(original)): haces \(exerciseName(replacement)).")
+            case .omitted(let original):
+                return String(localized: "\(exerciseName(original)) no va hoy: no hay un sustituto equivalente y seguro en este gimnasio.")
+            }
+        }
+    }
+
+    /// Nombre visible de un ejercicio (lista de Perfil › Gimnasio).
+    public func exerciseName(_ id: ExerciseID) -> String {
+        exerciseNames[id] ?? ""
     }
 
     /// Al abrir: drena la cola de pendientes y retoma el entrenamiento que quedó abierto
