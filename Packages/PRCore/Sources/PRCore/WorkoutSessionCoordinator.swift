@@ -404,10 +404,10 @@ extension WorkoutSessionCoordinator {
         guard let state = controller.current else { return nil }
         let session = state.session
         let names = exerciseNames
+        let completer = self.completer
         let drafts = template.plannedSets.reduce(into: [PlannedSet: SetCompletionDraft]()) { result, planned in
             result[planned] = completer.preload(for: planned, lastPerformedWeight: lastWeight(for: planned, session: session))
         }
-        let completer = self.completer
         return WatchSessionSnapshotBuilder.snapshot(WatchSessionSnapshotInput(
             session: session,
             template: template,
