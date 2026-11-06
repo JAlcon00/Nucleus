@@ -8,8 +8,8 @@
 //  - Sin consentimiento (contexto `nil`) o sin conexión: no se manda nada y el plan es
 //    el del motor con la explicación local.
 //  - La IA sólo elige de listas cerradas: músculos de las prioridades y alternativas ya
-//    filtradas por el motor (mismo músculo, misma clase, equipo, restricciones y, si va en
-//    superset, compatible con su pareja). Los
+//    filtradas por el motor (sustitutos equivalentes de DE-3, equipo, restricciones y, si va
+//    en superset, compatible con su pareja). Los
 //    ejercicios viajan con claves cortas (`e1`, `e2`…), nunca con IDs ni nombres del
 //    usuario, y la respuesta se revisa de nuevo con `PlanPersonalizationValidator`.
 //  - Toda falla (red, JSON inválido, explicación con números inventados) cae al plan y
@@ -421,20 +421,8 @@ public struct PlanPersonalizationFlow: Sendable {
         )
         let accepted = substitutionReview.acceptedSubstitutions
         let block = PlanPersonalizationApplier.substituting(accepted, in: result.block)
-        let names = Dictionary(catalog.map { ($0.id, $0.canonicalName) }, uniquingKeysWith: { first, _ in first })
-        let swaps = accepted.compactMap { substitution -> (from: String, to: String)? in
-            guard let from = names[substitution.replace], let to = names[substitution.with] else { return nil }
-            return (from, to)
-        }
-        // SCRUM-241: un par que se quedó con el sustituto se nombra con él.
-        var facts = PlanPersonalizationApplier.supersetFacts(result.explanation.facts, after: accepted, in: block, names: names)
         let emphasis = emphasisReview.acceptedEmphasis
-        if !emphasis.isEmpty {
-            facts.append(DecisionFact(key: "emphasizedMuscles", value: emphasis.map(\.rawValue).joined(separator: ", ")))
-        }
-        for swap in swaps {
-            facts.append(DecisionFact(key: "substitution", value: "\(swap.from) → \(swap.to)"))
-        }
+        let (facts, swaps) = finalFacts(of: result, block: block, accepted: accepted, emphasis: emphasis, catalog: catalog)
         let explanation = BlockExplanation(
             facts: facts, ruleReferences: result.explanation.ruleReferences, sessionOrder: result.explanation.sessionOrder
         )
@@ -468,5 +456,75 @@ public struct PlanPersonalizationFlow: Sendable {
             ),
             rationaleFallback: fallback
         )
+    }
+
+    /// Migración de un plan guardado: revisa de nuevo sus sustituciones aceptadas sobre el
+    /// bloque regenerado, con la regla vigente (SCRUM-240). La que ya no pasa vuelve al ejercicio
+    /// del motor y queda rechazada con su motivo; si se quitó alguna, la explicación pasa a la
+    /// local, porque la guardada puede mencionarla. No usa la IA: funciona sin red.
+    public func reapply(
+        _ record: PlanPersonalizationRecord,
+        on regenerated: BlockPlanningResult,
+        catalog: [Exercise],
+        restrictions: [TrainingRestriction],
+        equipment: EquipmentKnownness,
+        conversationID: UUID,
+        now: Date
+    ) throws -> PersonalizedPlan {
+        let kept = record.decisions.filter(\.isAccepted)
+        let emphasis = kept.compactMap { decision -> MuscleGroup? in
+            guard case .emphasize(let muscle) = decision.adjustment else { return nil }
+            return muscle
+        }
+        let substitutions = kept.compactMap { decision -> ProposedSubstitution? in
+            guard case .substitute(let substitution) = decision.adjustment else { return nil }
+            return substitution
+        }
+        let review = try validator.reviewSubstitutions(
+            substitutions, block: regenerated.block, catalog: catalog, activeRestrictions: restrictions,
+            equipment: equipment, conversationID: conversationID, now: now
+        )
+        let accepted = review.acceptedSubstitutions
+        let block = PlanPersonalizationApplier.substituting(accepted, in: regenerated.block)
+        let (facts, swaps) = finalFacts(of: regenerated, block: block, accepted: accepted, emphasis: emphasis, catalog: catalog)
+        let explanation = BlockExplanation(
+            facts: facts, ruleReferences: regenerated.explanation.ruleReferences, sessionOrder: regenerated.explanation.sessionOrder
+        )
+        let reviewed = Dictionary(review.decisions.map { ($0.adjustment, $0) }, uniquingKeysWith: { first, _ in first })
+        let dropped = accepted.count < substitutions.count
+        return PersonalizedPlan(
+            result: BlockPlanningResult(block: block, explanation: explanation, split: regenerated.split),
+            record: PlanPersonalizationRecord(
+                decisions: record.decisions.map { $0.isAccepted ? reviewed[$0.adjustment] ?? $0 : $0 },
+                rationale: dropped ? presenter.lines(facts: facts, emphasis: emphasis, substitutions: swaps) : record.rationale,
+                rationaleSource: dropped ? .local : record.rationaleSource,
+                audit: record.audit + review.audit
+            ),
+            rationaleFallback: nil
+        )
+    }
+
+    /// Los hechos del plan final: los pares con el sustituto (SCRUM-241), el énfasis y cada
+    /// cambio de ejercicio, y esos cambios con sus nombres para la explicación local.
+    private func finalFacts(
+        of result: BlockPlanningResult,
+        block: TrainingBlock,
+        accepted: [ProposedSubstitution],
+        emphasis: [MuscleGroup],
+        catalog: [Exercise]
+    ) -> (facts: [DecisionFact], swaps: [(from: String, to: String)]) {
+        let names = Dictionary(catalog.map { ($0.id, $0.canonicalName) }, uniquingKeysWith: { first, _ in first })
+        let swaps = accepted.compactMap { substitution -> (from: String, to: String)? in
+            guard let from = names[substitution.replace], let to = names[substitution.with] else { return nil }
+            return (from, to)
+        }
+        var facts = PlanPersonalizationApplier.supersetFacts(result.explanation.facts, after: accepted, in: block, names: names)
+        if !emphasis.isEmpty {
+            facts.append(DecisionFact(key: "emphasizedMuscles", value: emphasis.map(\.rawValue).joined(separator: ", ")))
+        }
+        for swap in swaps {
+            facts.append(DecisionFact(key: "substitution", value: "\(swap.from) → \(swap.to)"))
+        }
+        return (facts, swaps)
     }
 }

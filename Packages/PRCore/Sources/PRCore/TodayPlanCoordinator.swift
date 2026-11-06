@@ -747,13 +747,14 @@ public final class TodayPlanCoordinator {
                 // si siguen siendo válidas sobre el bloque regenerado.
                 guard let regenerated = try? regenerateKeepingPersonalization(stored, blockID: block.id)
                 else { return .unreadable }
-                var migrated = regenerated.block
+                var migrated = regenerated.result.block
                 migrated.startDate = block.startDate
                 migrated.status = block.status
                 block = migrated
-                explanation = regenerated.explanation
+                explanation = regenerated.result.explanation
                 stored.generatorVersion = StoredPlan.currentGeneratorVersion
                 stored.explanation = explanation
+                stored.personalization = regenerated.record
                 // Sesiones nuevas: los órdenes propios de las anteriores ya no aplican.
                 stored.customOrders = nil
                 stored.updatedAt = saveClock()
@@ -938,37 +939,32 @@ public final class TodayPlanCoordinator {
         )
     }
 
-    /// Regenera un plan guardado (migración) conservando lo que la IA personalizó y se aceptó.
-    private func regenerateKeepingPersonalization(_ stored: StoredPlan, blockID: TrainingBlockID) throws -> BlockPlanningResult {
+    /// Regenera un plan guardado (migración) conservando lo que la IA personalizó y se aceptó,
+    /// si sigue pasando la regla vigente. Devuelve también el registro al día (SCRUM-240).
+    private func regenerateKeepingPersonalization(
+        _ stored: StoredPlan, blockID: TrainingBlockID
+    ) throws -> (result: BlockPlanningResult, record: PlanPersonalizationRecord?) {
         let decisions = stored.personalization?.decisions.filter(\.isAccepted) ?? []
         let emphasis = decisions.compactMap { decision -> MuscleGroup? in
             guard case .emphasize(let muscle) = decision.adjustment else { return nil }
             return muscle
         }
-        let substitutions = decisions.compactMap { decision -> ProposedSubstitution? in
-            guard case .substitute(let substitution) = decision.adjustment else { return nil }
-            return substitution
-        }
         let regenerated = try builder.generate(
             profile: stored.profile, catalog: catalog, planner: planner, blockID: blockID,
             blockSequence: stored.blockSequence(of: blockID), emphasis: emphasis
         )
-        guard !substitutions.isEmpty, let flow else { return regenerated }
-        let review = try flow.validator.reviewSubstitutions(
-            substitutions, block: regenerated.block, catalog: catalog.exercises,
-            activeRestrictions: stored.profile.restrictions, equipment: builder.defaultEquipmentKnownness(),
-            conversationID: newConversationID(), now: saveClock()
+        let hasSubstitutions = decisions.contains { decision in
+            if case .substitute = decision.adjustment { return true }
+            return false
+        }
+        guard hasSubstitutions, let flow, let record = stored.personalization else {
+            return (regenerated, stored.personalization)
+        }
+        let reapplied = try flow.reapply(
+            record, on: regenerated, catalog: catalog.exercises, restrictions: stored.profile.restrictions,
+            equipment: builder.defaultEquipmentKnownness(), conversationID: newConversationID(), now: saveClock()
         )
-        let accepted = review.acceptedSubstitutions
-        let block = PlanPersonalizationApplier.substituting(accepted, in: regenerated.block)
-        // SCRUM-241: los pares que se quedaron con el sustituto se nombran con él.
-        let names = Dictionary(catalog.exercises.map { ($0.id, $0.canonicalName) }, uniquingKeysWith: { first, _ in first })
-        let explanation = BlockExplanation(
-            facts: PlanPersonalizationApplier.supersetFacts(regenerated.explanation.facts, after: accepted, in: block, names: names),
-            ruleReferences: regenerated.explanation.ruleReferences,
-            sessionOrder: regenerated.explanation.sessionOrder
-        )
-        return BlockPlanningResult(block: block, explanation: explanation, split: regenerated.split)
+        return (reapplied.result, reapplied.record)
     }
 
     private func localPersonalization(facts: [DecisionFact]) -> PlanPersonalizationRecord {

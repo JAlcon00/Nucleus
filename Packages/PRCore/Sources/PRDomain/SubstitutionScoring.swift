@@ -266,6 +266,13 @@ public enum NoEquivalentReason: String, Sendable, CaseIterable {
     case allBelowMinimum
 }
 
+/// Por qué una candidata no hace el mismo movimiento que el objetivo.
+public enum MovementMismatch: Sendable, Equatable {
+    case differentMuscle
+    case differentPattern
+    case differentJointClass
+}
+
 /// Veredicto de la sustitución (PR-0904 AC: "devuelve no safe substitute si corresponde").
 public enum SubstitutionVerdict: Equatable, Sendable {
     /// Sustitutos equivalentes rankeados (mejor primero), `maxOptions` como máximo.
@@ -313,7 +320,7 @@ public struct SubstitutionScoringEngine: Sendable {
         let equivalent = request.candidates.filter { candidate in
             candidate.id != request.target.id
                 && !request.sessionExerciseIDs.contains(candidate.id)
-                && isSameMovement(candidate, as: request.target)
+                && Self.movementMismatch(candidate, target: request.target) == nil
         }
         guard !equivalent.isEmpty else { return .noEquivalent(.noCandidates) }
 
@@ -342,11 +349,14 @@ public struct SubstitutionScoringEngine: Sendable {
         return .safe(Array(ranked.prefix(config.maxOptions)))
     }
 
-    private func isSameMovement(_ candidate: Exercise, as target: Exercise) -> Bool {
+    /// La primera parte de "mismo movimiento" que falla (DE-3); `nil` si lo es. Es la única
+    /// definición: la personalización con IA también la usa (SCRUM-240).
+    public static func movementMismatch(_ candidate: Exercise, target: Exercise) -> MovementMismatch? {
         let targetMuscles = Set(target.primaryMuscles.map(\.muscleGroupID))
-        return candidate.movementPattern == target.movementPattern
-            && candidate.jointClass == target.jointClass
-            && !targetMuscles.isDisjoint(with: candidate.primaryMuscles.map(\.muscleGroupID))
+        if targetMuscles.isDisjoint(with: candidate.primaryMuscles.map(\.muscleGroupID)) { return .differentMuscle }
+        if candidate.movementPattern != target.movementPattern { return .differentPattern }
+        if candidate.jointClass != target.jointClass { return .differentJointClass }
+        return nil
     }
 
     // MARK: - Safety gate

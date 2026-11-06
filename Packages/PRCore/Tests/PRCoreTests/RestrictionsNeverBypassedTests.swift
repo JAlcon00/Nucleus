@@ -139,15 +139,18 @@ struct RestrictionsNeverBypassedTests {
         #expect(offeredForbidden.isEmpty, "Alternativas prohibidas ofrecidas a la IA: \(offeredForbidden.map(\.canonicalName))")
 
         // Una propuesta con forma válida pero prohibida (sólo "permitida" por la otra zona) se rechaza.
+        // Desde SCRUM-240 el sustituto hace el mismo movimiento que el original, así que en el plan
+        // restringido no hay tal par: se arma sobre el plan del mismo perfil sin restricciones.
+        let free = try builder.generate(profile: try profile([]), catalog: catalog, planner: TodayPlanBuilder.defaultPlanner()).block
         let unrestricted = try validator.alternatives(
-            block: result.block, catalog: catalog.exercises, activeRestrictions: [], equipment: equipment, now: now
+            block: free, catalog: catalog.exercises, activeRestrictions: [], equipment: equipment, now: now
         )
         let proposal = unrestricted.sorted { $0.key.rawValue.uuidString < $1.key.rawValue.uuidString }.lazy.compactMap { replace, options in
             options.first { byID[$0].map { isForbidden($0, by: restrictions) } ?? false }.map { ProposedSubstitution(replace: replace, with: $0) }
         }.first
         let forbiddenProposal = try #require(proposal, "El catálogo real tiene alguna alternativa que sólo la otra zona permite")
         let review = try validator.reviewSubstitutions(
-            [forbiddenProposal], block: result.block, catalog: catalog.exercises, activeRestrictions: restrictions,
+            [forbiddenProposal], block: free, catalog: catalog.exercises, activeRestrictions: restrictions,
             equipment: equipment, conversationID: UUID(), now: now
         )
         #expect(review.decisions.map(\.outcome) == [.rejected(.rejectedByPolicy)])

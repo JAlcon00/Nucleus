@@ -7,9 +7,10 @@
 //  Contrato:
 //  - El motor genera el bloque con todo el perfil. La IA sólo PROPONE ajustes
 //    estructurados: músculos a enfatizar y sustituciones de ejercicio.
-//  - Cada ajuste pasa por reglas de forma (existe, está en el plan, mismo músculo y
-//    misma clase articular, equipo disponible y, si va en superset, sin músculos en común
-//    con su pareja: SCRUM-241) y por `ActionPolicyValidator`
+//  - Cada ajuste pasa por reglas de forma (existe, está en el plan, es equivalente según la
+//    regla del motor de sustitutos: mismo movimiento y puntaje mínimo, SCRUM-240; equipo
+//    disponible y, si va en superset, sin músculos en común con su pareja: SCRUM-241) y por
+//    `ActionPolicyValidator`
 //    (`adjustVolume` / `replaceExercise`, que rechaza sustitutos prohibidos por una
 //    restricción). Sólo lo aceptado cambia el plan; todo queda en `AgentAuditRecord`.
 //  - El énfasis no fija números: el motor vuelve a repartir el volumen con la
@@ -117,10 +118,14 @@ public enum PersonalizationRejection: String, Codable, Sendable, Hashable, CaseI
     case limitReached
     /// El sustituto no trabaja el mismo músculo principal.
     case differentMuscle
+    /// El sustituto hace otro movimiento: mismo músculo no es ejercicio equivalente (DE-3).
+    case differentPattern
     /// El sustituto es de otra clase (compuesto/aislado): cambiaría la prescripción.
     case differentJointClass
     /// El equipo del sustituto no está disponible.
     case equipmentUnavailable
+    /// No llega al puntaje mínimo de `safety.substitutionScoring` (DE-3).
+    case belowMinimumScore
     /// El ejercicio va en superset y el sustituto comparte músculo con su pareja: el par se
     /// desharía y la sesión dejaría de caber en el tiempo (SCRUM-241).
     case breaksSuperset
@@ -179,15 +184,19 @@ public struct PersonalizationReview: Sendable, Equatable {
 public struct PlanPersonalizationValidator: Sendable {
     public let policy: ActionPolicyValidator
     public let restrictions: RestrictionPolicyEngine
+    /// La regla de equivalencia de DE-3: la misma del motor de sustitutos (SCRUM-240).
+    public let equivalence: SubstitutionScoringEngine
     public let config: PlanPersonalizationPolicyConfig
 
     public init(
         policy: ActionPolicyValidator,
         restrictions: RestrictionPolicyEngine,
+        equivalence: SubstitutionScoringEngine,
         config: PlanPersonalizationPolicyConfig = .standard
     ) {
         self.policy = policy
         self.restrictions = restrictions
+        self.equivalence = equivalence
         self.config = config
     }
 
@@ -195,7 +204,8 @@ public struct PlanPersonalizationValidator: Sendable {
     public static func standard() throws -> PlanPersonalizationValidator {
         PlanPersonalizationValidator(
             policy: try ActionPolicyValidator(config: ActionPolicyConfig(rule: ActionPolicyDefaults.makeRule())),
-            restrictions: try RestrictionPolicyEngine(config: RestrictionPolicyConfig(rule: RestrictionPolicyDefaults.makeRule()))
+            restrictions: try RestrictionPolicyEngine(config: RestrictionPolicyConfig(rule: RestrictionPolicyDefaults.makeRule())),
+            equivalence: SubstitutionScoringEngine(config: try SubstitutionScoringConfig(rule: SubstitutionScoringDefaults.makeRule()))
         )
     }
 
@@ -232,7 +242,7 @@ public struct PlanPersonalizationValidator: Sendable {
             seen.insert(muscle)
             if let shapeProblem {
                 decisions.append(PersonalizationDecision(adjustment: adjustment, outcome: .rejected(shapeProblem)))
-                audit.append(rejection(shapeProblem, action: .adjustVolume, conversationID: conversationID, now: now))
+                audit.append(try rejection(shapeProblem, action: .adjustVolume, conversationID: conversationID, now: now))
                 continue
             }
             let verdict = try policy.validate(
@@ -252,11 +262,11 @@ public struct PlanPersonalizationValidator: Sendable {
     }
 
     /// Sustituciones contra el bloque final del motor. El sustituto debe existir, no estar
-    /// ya en el plan, trabajar el mismo músculo principal, ser de la misma clase
-    /// articular, tener equipo disponible y, si el ejercicio va en superset, no compartir
-    /// músculo con su pareja (ya cambiada si también se sustituyó); luego
-    /// `ActionPolicyValidator` decide con el veredicto de restricciones (nunca se evade una
-    /// restricción activa).
+    /// ya en el plan, hacer el mismo movimiento (DE-3), tener equipo disponible, llegar al
+    /// puntaje mínimo y, si el ejercicio va en superset, no compartir músculo con su pareja
+    /// (ya cambiada si también se sustituyó); luego `ActionPolicyValidator` decide con el
+    /// veredicto de restricciones (nunca se evade una restricción activa). El motivo es el
+    /// primero que falla, en ese orden.
     public func reviewSubstitutions(
         _ substitutions: [ProposedSubstitution],
         block: TrainingBlock,
@@ -277,12 +287,12 @@ public struct PlanPersonalizationValidator: Sendable {
         for substitution in substitutions {
             let adjustment = PersonalizationAdjustment.substitute(substitution)
             audit.append(.intent(.requestExerciseSwap(substitution.replace), conversationID: conversationID, date: now))
-            let shapeProblem = shapeProblem(
+            let shapeProblem = try shapeProblem(
                 substitution, byID: byID, inPlan: inPlan, accepted: accepted, partners: partners, equipment: equipment
             )
             if let shapeProblem {
                 decisions.append(PersonalizationDecision(adjustment: adjustment, outcome: .rejected(shapeProblem)))
-                audit.append(rejection(shapeProblem, action: .replaceExercise, conversationID: conversationID, now: now))
+                audit.append(try rejection(shapeProblem, action: .replaceExercise, conversationID: conversationID, now: now))
                 continue
             }
             guard let substitute = byID[substitution.with] else { continue }
@@ -305,9 +315,9 @@ public struct PlanPersonalizationValidator: Sendable {
         return PersonalizationReview(decisions: decisions, audit: audit)
     }
 
-    /// Alternativas que pasarían la revisión para cada ejercicio del plan (en orden de
-    /// aparición). Se le ofrecen a la IA para que no proponga a ciegas; la revisión se
-    /// repite igual al recibir la propuesta.
+    /// Alternativas que pasarían la revisión para cada ejercicio del plan: las mejores del
+    /// motor de sustitutos, en su orden. Se le ofrecen a la IA para que no proponga a ciegas;
+    /// la revisión se repite igual al recibir la propuesta.
     public func alternatives(
         block: TrainingBlock,
         catalog: [Exercise],
@@ -319,19 +329,17 @@ public struct PlanPersonalizationValidator: Sendable {
         let inPlan = Set(block.sessions.flatMap { $0.plannedSets.map(\.exerciseID) })
         let relevant = restrictions.relevantRestrictions(activeRestrictions, asOf: now)
         let partners = supersetPartners(in: block)
+        let usable = catalog.filter { isAvailable($0, in: equipment) }
         var result: [ExerciseID: [ExerciseID]] = [:]
         for exerciseID in inPlan {
-            var options: [ExerciseID] = []
-            for candidate in catalog where options.count < config.maxAlternativesPerExercise {
-                let substitution = ProposedSubstitution(replace: exerciseID, with: candidate.id)
-                guard shapeProblem(
-                    substitution, byID: byID, inPlan: inPlan, accepted: [:], partners: partners, equipment: equipment
-                ) == nil else { continue }
-                let verdict = try restrictions.evaluate(
-                    RestrictionPolicyInput(exercise: candidate, activeRestrictions: relevant, asOf: now)
-                ).verdict
-                if verdict == .allowed { options.append(candidate.id) }
+            guard let target = byID[exerciseID] else { continue }
+            let candidates = usable.filter {
+                keepsSupersets(replacing: exerciseID, with: $0, byID: byID, accepted: [:], partners: partners)
             }
+            let options = try equivalence.substitutes(for: SubstitutionRequest(
+                target: target, candidates: candidates, sessionExerciseIDs: inPlan,
+                activeRestrictions: relevant, asOf: now, restrictionPolicyConfig: restrictions.config
+            )).ranked.prefix(config.maxAlternativesPerExercise).map(\.exercise.id)
             if !options.isEmpty { result[exerciseID] = options }
         }
         return result
@@ -346,7 +354,7 @@ public struct PlanPersonalizationValidator: Sendable {
         accepted: [ExerciseID: ExerciseID],
         partners: [ExerciseID: [ExerciseID]],
         equipment: EquipmentKnownness
-    ) -> PersonalizationRejection? {
+    ) throws -> PersonalizationRejection? {
         guard let original = byID[substitution.replace], let substitute = byID[substitution.with] else {
             return .unknownExercise
         }
@@ -354,22 +362,43 @@ public struct PlanPersonalizationValidator: Sendable {
         if !inPlan.contains(substitution.replace) { return .exerciseNotInPlan }
         if inPlan.contains(substitution.with) { return .alreadyInPlan }
         if accepted.count >= config.maxSubstitutions { return .limitReached }
-        let originalMuscles = Set(original.primaryMuscles.map(\.muscleGroupID))
-        if originalMuscles.isDisjoint(with: substitute.primaryMuscles.map(\.muscleGroupID)) { return .differentMuscle }
-        if original.jointClass != substitute.jointClass { return .differentJointClass }
+        switch SubstitutionScoringEngine.movementMismatch(substitute, target: original) {
+        case .differentMuscle: return .differentMuscle
+        case .differentPattern: return .differentPattern
+        case .differentJointClass: return .differentJointClass
+        case nil: break
+        }
+        if !isAvailable(substitute, in: equipment) { return .equipmentUnavailable }
+        // Sin restricciones ni disponibilidad aquí: lo único que puede dejarla fuera es el
+        // mínimo. La personalización puntúa sin historial, preferencias ni gimnasio, para que
+        // el mismo plan dé lo mismo al migrarlo.
+        let verdict = try equivalence.substitutes(for: SubstitutionRequest(target: original, candidates: [substitute]))
+        if verdict.ranked.isEmpty { return .belowMinimumScore }
+        let keepsPairs = keepsSupersets(
+            replacing: substitution.replace, with: substitute, byID: byID, accepted: accepted, partners: partners
+        )
+        return keepsPairs ? nil : .breaksSuperset
+    }
+
+    private func isAvailable(_ exercise: Exercise, in equipment: EquipmentKnownness) -> Bool {
         switch equipment {
-        case .knownAvailable(let available):
-            if !available.contains(substitute.equipment) { return .equipmentUnavailable }
-        case .unknown:
-            break
+        case .knownAvailable(let available): return available.contains(exercise.equipment)
+        case .unknown: return true
         }
-        // SCRUM-241: el par se queda con el sustituto sólo si no comparte músculo con la
-        // pareja de cada sesión (la pareja ya cambiada si la IA también la sustituyó).
-        for partner in partners[substitution.replace] ?? [] {
-            guard let current = byID[accepted[partner] ?? partner],
-                  SupersetPairing.areCompatible(substitute, current) else { return .breaksSuperset }
+    }
+
+    /// SCRUM-241: el par se queda con el sustituto sólo si no comparte músculo con la pareja
+    /// de cada sesión (la pareja ya cambiada si la IA también la sustituyó).
+    private func keepsSupersets(
+        replacing exerciseID: ExerciseID,
+        with substitute: Exercise,
+        byID: [ExerciseID: Exercise],
+        accepted: [ExerciseID: ExerciseID],
+        partners: [ExerciseID: [ExerciseID]]
+    ) -> Bool {
+        (partners[exerciseID] ?? []).allSatisfy { partner in
+            byID[accepted[partner] ?? partner].map { SupersetPairing.areCompatible(substitute, $0) } ?? false
         }
-        return nil
     }
 
     /// Parejas de superset de cada ejercicio, en todas las sesiones del bloque.
@@ -382,18 +411,23 @@ public struct PlanPersonalizationValidator: Sendable {
         return partners
     }
 
+    /// Los rechazos de la regla de equivalencia llevan su versión (RD-007).
     private func rejection(
         _ reason: PersonalizationRejection,
         action: AgentAction,
         conversationID: UUID,
         now: Date
-    ) -> AgentAuditRecord {
-        AgentAuditRecord(
+    ) throws -> AgentAuditRecord {
+        let equivalenceReasons: Set<PersonalizationRejection> = [
+            .differentMuscle, .differentPattern, .differentJointClass, .belowMinimumScore,
+        ]
+        return AgentAuditRecord(
             date: now,
             conversationID: conversationID,
             stage: .actionValidation,
             actionName: action.displayName,
             outcome: "rejected",
+            ruleReference: equivalenceReasons.contains(reason) ? try equivalence.config.reference() : nil,
             notes: [reason.rawValue]
         )
     }
