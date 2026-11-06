@@ -31,6 +31,8 @@ public protocol WatchWorkoutLink: Sendable {
     func send(_ message: WatchMessage) async
     /// Los estados que publica el iPhone.
     var snapshots: AsyncStream<WatchSessionSnapshot> { get }
+    /// Si el iPhone está al alcance. Al volver se reenvía lo pendiente.
+    var reachability: AsyncStream<Bool> { get }
 }
 
 /// Qué hizo el iPhone con un mensaje del reloj.
@@ -166,14 +168,22 @@ public final class FakeWorkoutLink: PhoneWorkoutLink, WatchWorkoutLink, @uncheck
     private let messageContinuation: AsyncStream<WatchMessage>.Continuation
     private let snapshotStream: AsyncStream<WatchSessionSnapshot>
     private let snapshotContinuation: AsyncStream<WatchSessionSnapshot>.Continuation
+    private let reachabilityStream: AsyncStream<Bool>
+    private let reachabilityContinuation: AsyncStream<Bool>.Continuation
 
     public init() {
         (messageStream, messageContinuation) = AsyncStream.makeStream(of: WatchMessage.self)
         (snapshotStream, snapshotContinuation) = AsyncStream.makeStream(of: WatchSessionSnapshot.self)
+        (reachabilityStream, reachabilityContinuation) = AsyncStream.makeStream(of: Bool.self)
     }
 
     public var messages: AsyncStream<WatchMessage> { messageStream }
     public var snapshots: AsyncStream<WatchSessionSnapshot> { snapshotStream }
+    public var reachability: AsyncStream<Bool> { reachabilityStream }
+
+    public func setReachable(_ reachable: Bool) {
+        reachabilityContinuation.yield(reachable)
+    }
 
     public func publish(_ snapshot: WatchSessionSnapshot) async {
         lock.withLock { published.append(snapshot) }

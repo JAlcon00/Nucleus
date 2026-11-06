@@ -18,13 +18,16 @@ nonisolated final class PhoneConnectivityLink: NSObject, WatchWorkoutLink, WCSes
     private static let payloadKey = "payload"
 
     let snapshots: AsyncStream<WatchSessionSnapshot>
+    let reachability: AsyncStream<Bool>
     private let continuation: AsyncStream<WatchSessionSnapshot>.Continuation
+    private let reachabilityContinuation: AsyncStream<Bool>.Continuation
     private let session: WCSession
     private let logger = PRLogger(category: .sync)
 
     init(session: WCSession = .default) {
         self.session = session
         (snapshots, continuation) = AsyncStream.makeStream(of: WatchSessionSnapshot.self)
+        (reachability, reachabilityContinuation) = AsyncStream.makeStream(of: Bool.self)
         super.init()
         session.delegate = self
         session.activate()
@@ -43,6 +46,11 @@ nonisolated final class PhoneConnectivityLink: NSObject, WatchWorkoutLink, WCSes
     /// Al activarse trae el último estado que el iPhone publicó mientras no había conexión.
     func session(_ session: WCSession, activationDidCompleteWith state: WCSessionActivationState, error: (any Error)?) {
         receive(session.receivedApplicationContext)
+        reachabilityContinuation.yield(session.isReachable)
+    }
+
+    func sessionReachabilityDidChange(_ session: WCSession) {
+        reachabilityContinuation.yield(session.isReachable)
     }
 
     func session(_ session: WCSession, didReceiveApplicationContext context: [String: Any]) {
