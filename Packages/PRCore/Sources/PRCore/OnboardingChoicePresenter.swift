@@ -56,6 +56,12 @@ public struct OnboardingChoicePresenter: Sendable {
         }
     }
 
+    /// Texto del objetivo, el mismo del cuestionario ("Tu bloque", SCRUM-266).
+    public func goalLabel(_ goal: TrainingGoal) -> String { label(goal) }
+
+    /// Texto de la fase, el mismo del cuestionario ("Tu bloque", SCRUM-266).
+    public func phaseLabel(_ phase: BodyCompositionPhase) -> String { label(phase) }
+
     // MARK: - Textos (clave = español; el catálogo trae es/en)
 
     private func text(_ resource: LocalizedStringResource) -> String {

@@ -534,12 +534,30 @@ public final class TodayPlanCoordinator {
                 plannedPerWeek: activeProfile?.trainingDaysPerWeek,
                 blockStart: plan?.block.startDate,
                 date: clock(),
-                timeZone: timeZone()
+                timeZone: timeZone(),
+                musclePlan: musclePlan
             )
             return overview.entries.isEmpty
                 ? .empty(unreadable: unreadable)
                 : .loaded(overview, unreadable: unreadable)
         }
+    }
+
+    /// Lo que pide el bloque activo por músculo, para contar las series de la semana
+    /// (SCRUM-268). Sin plan, o si la regla de volumen no se puede leer, no hay lista.
+    private var musclePlan: MuscleVolumePlan? {
+        guard let block = plan?.block,
+              let config = try? VolumeConfig(rule: VolumeDefaults.makeRule()) else { return nil }
+        return MuscleVolumePlan(
+            rule: WeeklyMuscleVolumeRule(config: config, resolver: CatalogExercisePrimaryResolver(catalog: catalog.exercises)),
+            targets: block.muscleTargets,
+            priorities: block.priorities
+        )
+    }
+
+    /// "Tu bloque" del plan activo: objetivo, fase y semana (SCRUM-266); `nil` sin plan.
+    public var blockOverview: BlockOverview? {
+        plan.map { BlockOverviewBuilder().overview(block: $0.block, date: clock(), timeZone: timeZone()) }
     }
 
     /// "Tu semana" del plan activo (lunes a domingo); `nil` sin plan.

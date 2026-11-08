@@ -2,10 +2,11 @@
 //  ProgressInsightsViews.swift
 //  PR
 //
-//  SCRUM-213 (FB-6): 4 KPIs y una gráfica de progreso en la pestaña Progreso. Los
-//  números y las series los calcula `ProgressInsightsBuilder` (PRCore); aquí sólo se
-//  pintan. Cada número lleva icono y texto (el color nunca es el único significado) y
-//  las cifras usan `.monospacedDigit()`. La gráfica tiene descripción para VoiceOver y
+//  SCRUM-213 (FB-6): 4 KPIs y una gráfica de progreso en la pestaña Progreso; "Series esta
+//  semana" abre las series por músculo (SCRUM-268) y "Récords del bloque", cuáles son
+//  (SCRUM-265). Los números y las series los calcula `ProgressInsightsBuilder` (PRCore);
+//  aquí sólo se pintan. Cada número lleva icono y texto (el color nunca es el único
+//  significado) y las cifras usan `.monospacedDigit()`. La gráfica tiene descripción para VoiceOver y
 //  estado vacío propio. Nunca aparece dentro del entrenamiento activo.
 //
 
@@ -14,7 +15,16 @@ import SwiftUI
 import PRCore
 import PRDomain
 
-/// Los 4 KPIs en una cuadrícula de 2 × 2.
+/// Pantallas que se abren desde Progreso (además del detalle de un entrenamiento).
+enum ProgressRoute: Hashable {
+    /// SCRUM-265: cuáles son los récords del bloque.
+    case blockRecords
+    /// SCRUM-268: series por músculo de esta semana contra su rango.
+    case muscleVolume
+}
+
+/// Los 4 KPIs en una cuadrícula de 2 × 2. "Series esta semana" abre las series por músculo
+/// (SCRUM-268) y "Récords del bloque", la lista de récords (SCRUM-265).
 struct ProgressKPIGrid: View {
     let insights: ProgressInsights
 
@@ -27,11 +37,29 @@ struct ProgressKPIGrid: View {
         Grid(horizontalSpacing: DSpace.s, verticalSpacing: DSpace.s) {
             GridRow {
                 kpi(value: adherence, label: "Entrenamientos esta semana", symbol: "calendar", tint: Color.primaryAction, id: 0)
-                kpi(value: "\(insights.setsThisWeek)", label: "Series esta semana", symbol: "list.bullet", tint: Color.primaryAction, id: 1)
+                if insights.muscleVolume != nil {
+                    NavigationLink(value: ProgressRoute.muscleVolume) {
+                        kpi(
+                            value: "\(insights.setsThisWeek)", label: "Series esta semana", symbol: "list.bullet",
+                            tint: Color.primaryAction, id: 1, opensDetail: true
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(Text("Muestra cuántas lleva cada músculo"))
+                } else {
+                    kpi(value: "\(insights.setsThisWeek)", label: "Series esta semana", symbol: "list.bullet", tint: Color.primaryAction, id: 1)
+                }
             }
             GridRow {
                 kpi(value: streakText, label: "Racha", symbol: "flame.fill", tint: Color.accentSecondary, id: 2)
-                kpi(value: "\(insights.recordsInBlock)", label: "Récords del bloque", symbol: "trophy.fill", tint: Color.accentSecondary, id: 3)
+                NavigationLink(value: ProgressRoute.blockRecords) {
+                    kpi(
+                        value: "\(insights.recordsInBlock)", label: "Récords del bloque", symbol: "trophy.fill",
+                        tint: Color.accentSecondary, id: 3, opensDetail: true
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint(Text("Muestra cuáles son"))
             }
         }
         .accessibilityElement(children: .contain)
@@ -44,14 +72,25 @@ struct ProgressKPIGrid: View {
             : String(localized: "\(insights.weekStreak) semanas")
     }
 
-    private func kpi(value: String, label: LocalizedStringKey, symbol: String, tint: Color, id: Int) -> some View {
+    private func kpi(
+        value: String, label: LocalizedStringKey, symbol: String, tint: Color, id: Int, opensDetail: Bool = false
+    ) -> some View {
         VStack(alignment: .leading, spacing: DSpace.xs) {
-            Image(systemName: symbol)
-                .font(.headline)
-                .foregroundStyle(tint)
-                .frame(width: DSize.iconBadge, height: DSize.iconBadge)
-                .background(Color.surfaceElevated, in: Circle())
-                .accessibilityHidden(true)
+            HStack(alignment: .top) {
+                Image(systemName: symbol)
+                    .font(.headline)
+                    .foregroundStyle(tint)
+                    .frame(width: DSize.iconBadge, height: DSize.iconBadge)
+                    .background(Color.surfaceElevated, in: Circle())
+                    .accessibilityHidden(true)
+                if opensDetail {
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Color.textSecondary)
+                        .accessibilityHidden(true)
+                }
+            }
             Text(value)
                 .font(.title2.bold())
                 .numericStyle()
@@ -65,6 +104,7 @@ struct ProgressKPIGrid: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(DSpace.m)
         .cardSurface(cornerRadius: DRadius.medium)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("progress.kpi.\(id)")
     }

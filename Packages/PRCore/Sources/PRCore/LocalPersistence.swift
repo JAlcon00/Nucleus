@@ -39,6 +39,8 @@ public enum PersistenceCollection: String, CaseIterable, Sendable, Hashable {
     case checkIns = "check-ins"
     /// Si la persona quiere guardar sus entrenamientos en Salud, por usuario. SCRUM-248.
     case healthPreference = "health-preference"
+    /// Cuánto le explica la app, si lo eligió en Perfil, por usuario. SCRUM-267.
+    case coachingPreference = "coaching-preference"
 }
 
 /// Registro de eventos de persistencia SIN datos personales: sólo colección y

@@ -11,7 +11,11 @@
 //  2. Series efectivas de esta semana (series de trabajo completadas).
 //  3. Racha: semanas seguidas cumpliendo lo planeado (1 por semana sin plan). La semana
 //     en curso suma si ya se cumplió; si todavía no, no rompe la racha.
-//  4. Récords personales desde el inicio del bloque (o de todo el historial sin bloque).
+//  4. Récords personales desde el inicio del bloque (o de todo el historial sin bloque):
+//     uno por ejercicio por entrenamiento, y la lista de cuáles son (SCRUM-264, SCRUM-265).
+//
+//  Series por músculo de esta semana contra su rango, con la regla del dominio
+//  (`WeeklyMuscleVolumeRule`, SCRUM-268).
 //
 //  Gráficas: series por semana de las últimas `weeks` semanas (las vacías en 0) y la
 //  carga máxima por sesión de cada ejercicio con al menos 2 sesiones (sólo una unidad:
@@ -45,6 +49,20 @@ public struct ExerciseLoadTrend: Equatable, Sendable, Identifiable {
     public var id: ExerciseID { exerciseID }
 }
 
+/// Lo que hace falta para contar las series por músculo (SCRUM-268): la regla y lo que pide
+/// el bloque activo.
+public struct MuscleVolumePlan: Sendable {
+    public let rule: WeeklyMuscleVolumeRule
+    public let targets: [MuscleVolumeTarget]
+    public let priorities: [MusclePriority]
+
+    public init(rule: WeeklyMuscleVolumeRule, targets: [MuscleVolumeTarget], priorities: [MusclePriority]) {
+        self.rule = rule
+        self.targets = targets
+        self.priorities = priorities
+    }
+}
+
 /// KPIs y gráficas de Progreso.
 public struct ProgressInsights: Equatable, Sendable {
     public let completedThisWeek: Int
@@ -52,12 +70,19 @@ public struct ProgressInsights: Equatable, Sendable {
     public let setsThisWeek: Int
     /// Semanas seguidas cumpliendo lo planeado.
     public let weekStreak: Int
-    public let recordsInBlock: Int
+    /// Récords del bloque (o de todo el historial sin bloque), del más reciente al más
+    /// antiguo (SCRUM-265). La KPI cuenta exactamente estos.
+    public let blockRecords: [WorkoutLogRecord]
     public let weeklySets: [WeeklySetsPoint]
     public let loadTrends: [ExerciseLoadTrend]
+    /// Series por músculo de esta semana contra su rango (SCRUM-268); `nil` sin plan.
+    public let muscleVolume: [MuscleWeekVolume]?
 
     /// ¿Hay algo que graficar? (al menos una semana con series).
     public var hasWeeklyData: Bool { weeklySets.contains { $0.sets > 0 } }
+
+    /// KPI "Récords del bloque": las filas de `blockRecords`.
+    public var recordsInBlock: Int { blockRecords.count }
 }
 
 public struct ProgressInsightsBuilder: Sendable {
@@ -74,7 +99,8 @@ public struct ProgressInsightsBuilder: Sendable {
         blockStart: Date?,
         date: Date,
         timeZone: TimeZone,
-        weeks: Int = ProgressInsightsBuilder.chartWeeks
+        weeks: Int = ProgressInsightsBuilder.chartWeeks,
+        musclePlan: MuscleVolumePlan? = nil
     ) -> ProgressInsights {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
@@ -96,15 +122,36 @@ public struct ProgressInsightsBuilder: Sendable {
             plannedPerWeek: plannedPerWeek,
             setsThisWeek: thisWeek.reduce(0) { $0 + $1.workingSets },
             weekStreak: streak(byWeek: byWeek, from: thisMonday, goal: plannedPerWeek ?? 1, calendar: calendar),
-            recordsInBlock: entries
-                .filter { entry in blockStart.map { entry.startedAt >= $0 } ?? true }
-                .reduce(0) { $0 + $1.recordCount },
+            blockRecords: blockRecords(entries, since: blockStart),
             weeklySets: weeklySets,
-            loadTrends: loadTrends(entries)
+            loadTrends: loadTrends(entries),
+            muscleVolume: musclePlan.map { plan in
+                plan.rule.volume(completedSets: completedSets(thisWeek), targets: plan.targets, priorities: plan.priorities)
+            }
         )
     }
 
+    /// Series completadas de la semana, por ejercicio (las mismas que "Series esta semana").
+    private func completedSets(_ entries: [WorkoutLogEntry]) -> [ExerciseID: Int] {
+        var counts: [ExerciseID: Int] = [:]
+        for entry in entries {
+            for exercise in entry.exercises {
+                counts[exercise.exerciseID, default: 0] += exercise.sets.count
+            }
+        }
+        return counts
+    }
+
     // MARK: - Privado
+
+    /// Récords desde el inicio del bloque, del más reciente al más antiguo; en empate de
+    /// momento, por id (estable).
+    private func blockRecords(_ entries: [WorkoutLogEntry], since blockStart: Date?) -> [WorkoutLogRecord] {
+        entries
+            .filter { entry in blockStart.map { entry.startedAt >= $0 } ?? true }
+            .flatMap(\.records)
+            .sorted { $0.achievedAt == $1.achievedAt ? $0.id < $1.id : $0.achievedAt > $1.achievedAt }
+    }
 
     private func monday(of date: Date, calendar: Calendar, timeZone: TimeZone) -> Date {
         let index = TrainingWeek.dayIndex(for: date, timeZone: timeZone)

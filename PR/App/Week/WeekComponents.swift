@@ -99,12 +99,19 @@ struct WeekListView: View {
     var onStart: (() -> Void)?
     /// "Por qué tu plan es así" (SCRUM-205); `nil` = no se muestra.
     var rationale: PlanPersonalizationRecord?
+    /// "Tu bloque" (SCRUM-266); `nil` = no se muestra (p. ej. tras el cuestionario).
+    var block: BlockOverview?
+    /// Intento: cambiar objetivo o fase desde "Tu bloque".
+    var onChangeGoal: (() -> Void)?
 
     private let vocabulary = TrainingVocabularyPresenter(locale: AppEnvironment.presentationLocale)
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: DSpace.m) {
+                if let block {
+                    BlockCard(block: block, onChangeGoal: onChangeGoal)
+                }
                 if let rationale, !rationale.rationale.isEmpty {
                     PlanRationaleCard(record: rationale)
                 }

@@ -5,8 +5,9 @@
 //  Recorrido 6 · Perfil (SCRUM-228). Arranca con el perfil ya contestado. Una restricción se
 //  agrega y se resuelve desde Perfil y el plan la cuida mientras está vigente (SCRUM-36);
 //  "Cerrar sesión" pide confirmación y la misma cuenta recupera su plan (SCRUM-208); "Rehacer
-//  cuestionario" lo abre (SCRUM-26). Cada tramo arranca con un perfil recién sembrado, como
-//  las pruebas de antes arrancaban con el cuestionario recién contestado.
+//  cuestionario" lo abre (SCRUM-26), también desde "Tu bloque" en Plan (SCRUM-266). Cada tramo
+//  arranca con un perfil recién sembrado, como las pruebas de antes arrancaban con el
+//  cuestionario recién contestado.
 //
 
 import XCTest
@@ -128,6 +129,42 @@ final class ProfileJourney: PRUITestCase {
             // SCRUM-210: el cuestionario empieza por la experiencia.
             XCTAssertTrue(element(app, "onboarding.option.intermediate").appears(within: 10),
                           "Rehacer debe abrir el cuestionario")
+        }
+
+        // SCRUM-266: Plan muestra "Tu bloque" en la semana 1 y "Cambiar objetivo o fase" pide la
+        // misma confirmación que Perfil y abre el cuestionario.
+        step("Plan muestra tu bloque y ofrece cambiar objetivo o fase (SCRUM-266)") {
+            let app = launchWithPlan()
+            XCTAssertTrue(element(app, "today.start").appears(within: 15))
+            openTab(app, "Plan")
+            let block = scrollTo(app, "plan.block", upwards: true)
+            XCTAssertTrue(block.appears(within: 15), "Plan muestra tu bloque")
+            XCTAssertTrue(block.label.contains("Semana 1 de"), "El bloque recién creado va en la semana 1: \(block.label)")
+            tap(app, "plan.block.change")
+            let confirm = app.buttons["Sí, rehacer"].firstMatch
+            XCTAssertTrue(confirm.appears(within: 5), "Pide la misma confirmación que Perfil")
+            confirm.tap()
+            XCTAssertTrue(element(app, "onboarding.option.intermediate").appears(within: 10),
+                          "Cambiar objetivo o fase abre el cuestionario")
+        }
+
+        // SCRUM-267: Perfil › Explicaciones arranca en el nivel de la experiencia (intermedio →
+        // Equilibrado) y se puede elegir otro, con la opción de volver al de la experiencia.
+        step("Elegir cuánto explica la app (SCRUM-267)") {
+            let app = launchWithPlan()
+            XCTAssertTrue(element(app, "today.start").appears(within: 15))
+            openTab(app, "Perfil")
+            let row = scrollTo(app, "profile.coaching")
+            XCTAssertTrue(row.appears(within: 10), "Perfil ofrece Explicaciones")
+            XCTAssertTrue(row.label.contains("Equilibrado"), "Intermedio: Equilibrado por defecto: \(row.label)")
+            row.tap()
+            XCTAssertFalse(element(app, "coaching.byExperience").exists, "Sin elección no hay nada que quitar")
+            tap(app, "coaching.option.advanced")
+            XCTAssertTrue(element(app, "coaching.byExperience").appears(within: 5), "Ofrece volver al de la experiencia")
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+            let chosen = element(app, "profile.coaching")
+            XCTAssertTrue(chosen.appears(within: 5))
+            XCTAssertTrue(chosen.label.contains("Avanzado"), "Perfil muestra el elegido: \(chosen.label)")
         }
 
         // SCRUM-39: con la flag de la IA apagada, la IA no aparece: no se pide el consentimiento

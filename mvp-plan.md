@@ -1,7 +1,7 @@
 # mvp-plan.md — Tablero activo de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica del POC: SCRUM-180).
-> **Actualizado:** 2026-11-06 (Fases F y G en `main` por los PR #42 y #41; faltan los gates en dispositivo, SCRUM-251 y SCRUM-261).
+> **Actualizado:** 2026-11-07 (Fase H en revisión por el PR #48; Fases F y G en `main` por los PR #42 y #41, con los gates en dispositivo pendientes, SCRUM-251 y SCRUM-261).
 > **Lo terminado** hasta el 2026-11-02 está congelado en [`docs/archivo/mvp-plan-2026-10.md`](docs/archivo/mvp-plan-2026-10.md): el POC (F-01 a F-07, bloques 0 a 13), UX, IA, feedback y las Fases B, C y D, más la deuda. Ahí siguen la evidencia y los criterios de cada historia. No se edita: se cita.
 > **Regla:** mientras quede un `[ ]` en la sección 1, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
 
@@ -74,6 +74,10 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
 | SCRUM-236 | Marcar "No hay esta máquina aquí" en un gimnasio real, ver la nota en Hoy y en Semana, y quitarla desde Perfil. |
 | SCRUM-237 | En el iPhone, que la etiqueta "Tu último peso en esta máquina" se lea entre series, y medir cuánto tarda en abrir el entrenamiento con historial real. |
 | SCRUM-238 | Dos gimnasios en el iPhone: "En: Oficina" legible en Hoy con Reduce Transparency e Increase Contrast; VoiceOver dice "Gimnasio activo: Oficina"; letra grande sin cortes y áreas de toque de 44 × 44 pt en Perfil. |
+| SCRUM-265 | En el iPhone, con dos entrenamientos del mismo ejercicio: el detalle marca el récord y la lista de "Récords del bloque" coincide con la KPI, con letra grande y VoiceOver. |
+| SCRUM-266 | En el iPhone: la tarjeta "Tu bloque" con letra grande, en claro y oscuro y con Reduce Transparency; "Cambiar objetivo o fase" con una mano. |
+| SCRUM-267 | En el iPhone: elegir Avanzado y entrenar (sin tarjetas de calentamiento ni de descanso; el aviso por molestia sí sale); Perfil › Explicaciones con letra grande y VoiceOver. |
+| SCRUM-268 | En el iPhone, con una semana real: que las series por músculo se vean razonables frente a lo entrenado, con letra grande y VoiceOver. |
 
 ## 3. Lo que sigue
 
@@ -91,15 +95,22 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
 - **SCRUM-258:** c3, c4 y c9 ya pasan sus pruebas: el iPhone respeta a `healthRecording.watchOwnsHealthWorkout`, los dos usan el mismo identificador y un fallo tardío del reloj se escribe al reintentar. Finalizada en Jira; sus pruebas 👤 van en SCRUM-261.
 - **Gate:** SCRUM-261, 👤 en iPhone y reloj. `watch.health_session.enabled` sigue apagada hasta pasarlo.
 
+**Fase H · pestañas Progreso, Plan y Perfil (SCRUM-13, Could): en revisión por el PR #48 desde el 2026-11-07.**
+- **Revisión del alcance contra `main`:** casi todo ya estaba (SCRUM-197, 198, 208, 213, 218, 235, 236, 238 y 248). Faltaban cuatro historias, SCRUM-264 a SCRUM-267, y por DH-2 entró SCRUM-268. RF-035, que citaba la épica, no existe en `promptMaster.md`.
+- **Excepción de Jesús (2026-11-07):** "ahora sigue hacer la fase H completa en otra sesión". Toda la fase va en una rama y un PR, un commit por historia, aunque la cola 👤 pasa de 5 y el runbook se detiene en el paso 0, como en las Fases E, F y G.
+- **Carril:** 🟡 amarillo, por la colección nueva de SCRUM-267 (`LocalPersistence.swift`, `PersistenceSchemas.swift` y una muestra nueva en `Fixtures/Persistence/v1/`). Se fusiona con merge commit.
+- **Decisiones DH-1 y DH-2 (SCRUM-263):** decididas por Jesús el 2026-11-07 ("Sí, apruébalas").
+  - DH-1 = A: "accesibilidad" en Perfil no lleva pantalla propia; la app respeta los ajustes de iOS.
+  - DH-2 = A: SCRUM-229 se aprueba y se parte. Su primera parte, SCRUM-268 (series por músculo en texto), va en el PR #48.
+
 - **Antes de TestFlight:** mover la llave de la IA a un backend. La historia está por crear (SCRUM-201, SCRUM-204).
 - **Fases de 1.0, sin historias escritas todavía** (prioridad MoSCoW del 2026-10-25, `docs/product/estado-y-prioridades-2026-10-25.md`):
-  - Fase H, pestañas (SCRUM-13, Could): casi cubierta por SCRUM-197, 208 y 213, así que hay que revisar su alcance o cerrarla;
   - Fase I, coach conversacional (SCRUM-14, Could);
   - Fase J, release 1.0 (SCRUM-15, Must), que es el gate final.
 
   Para que el agente las tome, cada historia necesita la Definition of Ready (plan de aceleración §6) y un epic que Jesús autorizó.
 - **Borradores, todavía no READY** (ideas de openGym; su código es AGPL-3.0 y no se copia):
-  - **SCRUM-229 · PR-H001 Mapa muscular** (Should propuesto, Fase H): un mapa del cuerpo con MuscleMap (MIT) en Hoy, el detalle del día y Progreso. El conteo va en PRDomain, el mapa siempre lleva lista en texto y no entra en el entrenamiento activo.
+  - **SCRUM-229 · PR-H001 Mapa muscular** (Should propuesto, Fase H): un mapa del cuerpo con MuscleMap (MIT) en Hoy, el detalle del día y Progreso. El conteo va en PRDomain, el mapa siempre lleva lista en texto y no entra en el entrenamiento activo. Aprobada y partida el 2026-11-07 (DH-2 = A): el conteo por músculo ya es SCRUM-268. Lo que queda, el mapa, sigue sin READY: falta confirmar la dependencia MuscleMap (🟡), el modelo por defecto con "Prefiero no decirlo" y la tabla de equivalencias de los 12 grupos.
   - **SCRUM-230 · PR-K001 Importar historial de Strong, Hevy y FitNotes** (Could propuesto, Fase K, después de 1.0):
     - importa el CSV con vista previa, sin duplicar, todo o nada y deshacible;
     - tiene 3 decisiones de Jesús pendientes;
@@ -137,6 +148,11 @@ Una línea por historia terminada después del 2026-11-02: `SCRUM-XX · título 
 - SCRUM-248 · PR-F005 Pedir permiso en el momento correcto · PR #42 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-f-en-un-solo-pr-pr-42))
 - SCRUM-249 · PR-F006 Leer entrenamientos externos · PR #42 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-f-en-un-solo-pr-pr-42))
 - SCRUM-250 · PR-F007 Ver la energía una sola vez · PR #42 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-f-en-un-solo-pr-pr-42))
+- SCRUM-264 · PR-H002 Los récords se cuentan igual en Progreso que en el resumen · PR #48 · 2026-11-07 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-h-en-un-solo-pr-pr-48))
+- SCRUM-265 · PR-H003 Ver cuáles son mis récords · PR #48 · 2026-11-07 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-h-en-un-solo-pr-pr-48))
+- SCRUM-266 · PR-H004 Tu bloque en Plan: objetivo, fase y semana · PR #48 · 2026-11-07 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-h-en-un-solo-pr-pr-48))
+- SCRUM-267 · PR-H005 Elegir cuánto me explica la app · PR #48 · 2026-11-07 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-h-en-un-solo-pr-pr-48))
+- SCRUM-268 · PR-H006 Series por músculo de la semana contra su rango · PR #48 · 2026-11-07 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-h-en-un-solo-pr-pr-48))
 
 ---
 

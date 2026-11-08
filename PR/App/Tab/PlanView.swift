@@ -4,8 +4,8 @@
 //
 //  Created by PR.
 //
-//  Pestaña "Plan" (SCRUM-197, U4): "Tu semana" completa, de lunes a domingo, con la sesión
-//  de cada día de entrenamiento y el descanso intercalado. Estados:
+//  Pestaña "Plan" (SCRUM-197, U4): "Tu bloque" (SCRUM-266) y "Tu semana" completa, de lunes
+//  a domingo, con la sesión de cada día de entrenamiento y el descanso intercalado. Estados:
 //  - cargando: skeleton de 3 tarjetas;
 //  - fallido: se reutiliza `PlanUnreadableView` (rehacer el cuestionario, sin tocar el
 //    historial);
@@ -30,6 +30,10 @@ struct PlanView: View {
     var rationale: PlanPersonalizationRecord?
     /// Lo que el gimnasio activo cambió esta semana (SCRUM-236).
     var gymNotes: [String] = []
+    /// "Tu bloque": objetivo, fase y semana (SCRUM-266).
+    var block: BlockOverview?
+
+    @State private var confirmingChange = false
 
     var body: some View {
         NavigationStack {
@@ -46,7 +50,9 @@ struct PlanView: View {
                             lastPerformance: lastPerformance,
                             isStartingWorkout: isStartingWorkout,
                             onStart: onStart,
-                            rationale: rationale
+                            rationale: rationale,
+                            block: block,
+                            onChangeGoal: { confirmingChange = true }
                         )
                         .safeAreaInset(edge: .top) {
                             if !gymNotes.isEmpty {
@@ -68,6 +74,8 @@ struct PlanView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .screenBackground()
             .navigationTitle(AppTab.plan.title)
+            // SCRUM-266: la misma confirmación que Perfil › Rehacer cuestionario.
+            .redoQuestionnaireConfirmation(isPresented: $confirmingChange, onConfirm: onRedoQuestionnaire)
         }
     }
 
