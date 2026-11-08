@@ -1,7 +1,7 @@
 # mvp-plan.md — Tablero activo de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica del POC: SCRUM-180).
-> **Actualizado:** 2026-11-07 (Fase H en revisión por el PR #FASEH; Fases F y G en `main` por los PR #42 y #41, con los gates en dispositivo pendientes, SCRUM-251 y SCRUM-261).
+> **Actualizado:** 2026-11-07 (Fase H en revisión por el PR #48; Fases F y G en `main` por los PR #42 y #41, con los gates en dispositivo pendientes, SCRUM-251 y SCRUM-261).
 > **Lo terminado** hasta el 2026-11-02 está congelado en [`docs/archivo/mvp-plan-2026-10.md`](docs/archivo/mvp-plan-2026-10.md): el POC (F-01 a F-07, bloques 0 a 13), UX, IA, feedback y las Fases B, C y D, más la deuda. Ahí siguen la evidencia y los criterios de cada historia. No se edita: se cita.
 > **Regla:** mientras quede un `[ ]` en la sección 1, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
 
@@ -94,7 +94,7 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
 - **SCRUM-258:** c3, c4 y c9 ya pasan sus pruebas: el iPhone respeta a `healthRecording.watchOwnsHealthWorkout`, los dos usan el mismo identificador y un fallo tardío del reloj se escribe al reintentar. Finalizada en Jira; sus pruebas 👤 van en SCRUM-261.
 - **Gate:** SCRUM-261, 👤 en iPhone y reloj. `watch.health_session.enabled` sigue apagada hasta pasarlo.
 
-**Fase H · pestañas Progreso, Plan y Perfil (SCRUM-13, Could): en revisión por el PR #FASEH desde el 2026-11-07.**
+**Fase H · pestañas Progreso, Plan y Perfil (SCRUM-13, Could): en revisión por el PR #48 desde el 2026-11-07.**
 - **Revisión del alcance contra `main`:** casi todo ya estaba (SCRUM-197, 198, 208, 213, 218, 235, 236, 238 y 248). Faltaban cuatro historias: SCRUM-264 a SCRUM-267. RF-035, que citaba la épica, no existe en `promptMaster.md`.
 - **Excepción de Jesús (2026-11-07):** "ahora sigue hacer la fase H completa en otra sesión". Toda la fase va en una rama y un PR, un commit por historia, aunque la cola 👤 pasa de 5 y el runbook se detiene en el paso 0, como en las Fases E, F y G.
 - **Carril:** 🟡 amarillo, por la colección nueva de SCRUM-267 (`LocalPersistence.swift`, `PersistenceSchemas.swift` y una muestra nueva en `Fixtures/Persistence/v1/`). Se fusiona con merge commit.
@@ -145,10 +145,10 @@ Una línea por historia terminada después del 2026-11-02: `SCRUM-XX · título 
 - SCRUM-248 · PR-F005 Pedir permiso en el momento correcto · PR #42 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-f-en-un-solo-pr-pr-42))
 - SCRUM-249 · PR-F006 Leer entrenamientos externos · PR #42 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-f-en-un-solo-pr-pr-42))
 - SCRUM-250 · PR-F007 Ver la energía una sola vez · PR #42 · 2026-11-06 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-f-en-un-solo-pr-pr-42))
-- SCRUM-264 · PR-H002 Los récords se cuentan igual en Progreso que en el resumen · PR #FASEH · 2026-11-07 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-h-en-un-solo-pr-pr-FASEH))
-- SCRUM-265 · PR-H003 Ver cuáles son mis récords · PR #FASEH · 2026-11-07 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-h-en-un-solo-pr-pr-FASEH))
-- SCRUM-266 · PR-H004 Tu bloque en Plan: objetivo, fase y semana · PR #FASEH · 2026-11-07 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-h-en-un-solo-pr-pr-FASEH))
-- SCRUM-267 · PR-H005 Elegir cuánto me explica la app · PR #FASEH · 2026-11-07 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-h-en-un-solo-pr-pr-FASEH))
+- SCRUM-264 · PR-H002 Los récords se cuentan igual en Progreso que en el resumen · PR #48 · 2026-11-07 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-h-en-un-solo-pr-pr-48))
+- SCRUM-265 · PR-H003 Ver cuáles son mis récords · PR #48 · 2026-11-07 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-h-en-un-solo-pr-pr-48))
+- SCRUM-266 · PR-H004 Tu bloque en Plan: objetivo, fase y semana · PR #48 · 2026-11-07 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-h-en-un-solo-pr-pr-48))
+- SCRUM-267 · PR-H005 Elegir cuánto me explica la app · PR #48 · 2026-11-07 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-h-en-un-solo-pr-pr-48))
 
 ---
 
