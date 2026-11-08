@@ -6,7 +6,7 @@
 //
 //  Pestaña "Progreso" (SKILL §6). SCRUM-186: registro de entrenamientos desde el primero
 //  completado, con un resumen corto (total, esta semana frente a lo planeado, récords) y
-//  el detalle de cada sesión (ejercicios y series). Estados:
+//  el detalle de cada sesión (ejercicios y series, con su récord: SCRUM-265). Estados:
 //  - cargando: skeleton;
 //  - vacío: todavía no hay entrenamientos completados;
 //  - con registro;
@@ -160,6 +160,12 @@ private struct ProgressLogView: View {
                 WorkoutLogDetailView(entry: entry)
             }
         }
+        .navigationDestination(for: ProgressRoute.self) { route in
+            switch route {
+            case .blockRecords:
+                BlockRecordsView(records: overview.insights.blockRecords)
+            }
+        }
     }
 
     private func row(_ entry: WorkoutLogEntry) -> some View {
@@ -281,6 +287,18 @@ struct WorkoutLogDetailView: View {
                             Image(systemName: "dumbbell.fill").foregroundStyle(Color.primaryAction)
                         }
                         .font(.headline)
+                        // SCRUM-265: qué serie fue récord, con trofeo y texto.
+                        if let record = entry.record(for: exercise.exerciseID) {
+                            Label {
+                                Text("Récord: \(vocabulary.setText(weight: record.weight, unit: record.unit, reps: record.reps))")
+                                    .numericStyle()
+                            } icon: {
+                                Image(systemName: "trophy.fill")
+                            }
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.accentSecondary)
+                            .accessibilityIdentifier("progress.detail.record")
+                        }
                         ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, set in
                             HStack {
                                 Label {
@@ -369,6 +387,14 @@ enum WorkoutLogText {
     ProgressTabView(screen: previewScreen())
         .dynamicTypeSize(.accessibility3)
         .ironEnergyTheme()
+}
+
+#Preview("Detalle con récord · claro") {
+    if case .loaded(let overview, _) = previewScreen(), let entry = overview.entries.first {
+        NavigationStack { WorkoutLogDetailView(entry: entry) }
+            .ironEnergyTheme()
+            .preferredColorScheme(.light)
+    }
 }
 
 /// Registro calculado por el dominio a partir de dos entrenamientos de ejemplo.

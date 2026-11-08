@@ -5,6 +5,8 @@
 //  Fase H (SCRUM-13).
 //  - SCRUM-264 (PR-H002): Progreso cuenta los récords igual que el resumen al terminar:
 //    uno por ejercicio por entrenamiento, aunque varias series superen la marca anterior.
+//  - SCRUM-265 (PR-H003): cuáles son: cada entrenamiento sabe su récord y la lista del
+//    bloque tiene tantas filas como dice la KPI.
 //
 
 import Foundation
@@ -146,5 +148,106 @@ struct ProgressRecordCountTests {
         }
         #expect(progress.entries.first?.recordCount == 1)
         #expect(progress.totalRecords == 1)
+    }
+}
+
+// MARK: - SCRUM-265 (PR-H003): cuáles son mis récords
+
+@Suite("Fase H · Ver cuáles son mis récords (SCRUM-265)")
+struct ProgressRecordListTests {
+
+    @Test("El detalle del entrenamiento sabe qué ejercicio tuvo récord y con qué serie")
+    func entryKnowsItsRecords() throws {
+        let entry = try #require(overview(try benchWeek(), on: try day(2)).entries.first)
+        let record = try #require(entry.records.first)
+        #expect(entry.records.count == entry.recordCount)
+        #expect(record.exerciseID == bench)
+        #expect(record.name == "Press banca")
+        #expect(record.weight == 85)
+        #expect(record.reps == 6)
+        #expect(record.unit == .kilograms)
+        #expect(record.workoutID == entry.id)
+    }
+
+    @Test("Récords del bloque: tantas filas como dice la KPI, del más reciente al más antiguo")
+    func blockListMatchesTheKPI() throws {
+        let monday = try day(0)
+        let wednesday = try day(2)
+        let friday = try day(4)
+        let history = [
+            workout(on: monday, sets: [try set(bench, 80, 8, at: monday), try set(row, 60, 10, at: monday)]),
+            workout(on: wednesday, sets: [try set(bench, 82.5, 8, at: wednesday)]),
+            workout(on: friday, sets: [try set(bench, 85, 6, at: friday), try set(row, 62.5, 10, at: friday.addingTimeInterval(300))]),
+        ]
+        let insights = overview(history, on: friday, blockStart: monday).insights
+        #expect(insights.blockRecords.count == insights.recordsInBlock)
+        #expect(insights.recordsInBlock == 3)
+        #expect(insights.blockRecords.map(\.achievedAt) == insights.blockRecords.map(\.achievedAt).sorted(by: >))
+        #expect(insights.blockRecords.last?.weight == 82.5, "El más antiguo va al final")
+    }
+
+    @Test("Los récords de antes del bloque no entran en la lista del bloque")
+    func onlyRecordsInTheBlock() throws {
+        let insights = overview(try benchWeek(), on: try day(2), blockStart: try day(3)).insights
+        #expect(insights.blockRecords.isEmpty)
+        #expect(insights.recordsInBlock == 0)
+    }
+
+    @Test("Sin bloque, la lista toma todo el historial, igual que la KPI")
+    func noBlockUsesAllHistory() throws {
+        let insights = overview(try benchWeek(), on: try day(2), blockStart: nil).insights
+        #expect(insights.blockRecords.count == 1)
+        #expect(insights.recordsInBlock == 1)
+    }
+
+    @Test("Un ejercicio que ya no está en el catálogo no tiene nombre inventado")
+    func unknownExerciseHasNoName() throws {
+        let unknown = ExerciseID()
+        let monday = try day(0)
+        let wednesday = try day(2)
+        let history = [
+            workout(on: monday, sets: [try set(unknown, 40, 10, at: monday)]),
+            workout(on: wednesday, sets: [try set(unknown, 45, 10, at: wednesday)]),
+        ]
+        let record = try #require(overview(history, on: wednesday).insights.blockRecords.first)
+        #expect(record.name == nil)
+    }
+
+    @Test("Cada récord va en su unidad, sin convertir")
+    func recordsKeepTheirUnit() throws {
+        let monday = try day(0)
+        let wednesday = try day(2)
+        let history = [
+            workout(on: monday, sets: [try set(row, 100, 10, at: monday, unit: .pounds)]),
+            workout(on: wednesday, sets: [try set(row, 110, 8, at: wednesday, unit: .pounds)]),
+        ]
+        let record = try #require(overview(history, on: wednesday).insights.blockRecords.first)
+        #expect(record.unit == .pounds)
+        #expect(record.weight == 110)
+    }
+
+    @MainActor
+    @Test("Integración: dos entrenamientos guardados de verdad → un récord en la lista con su ejercicio")
+    func integrationListWithRealPersistence() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr-record-list-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let catalog = try ExerciseCatalogLoader.loadBundled()
+        let exercise = try #require(catalog.exercises.first)
+        let monday = try day(0)
+        let wednesday = try day(2)
+        let persistence = try LocalPersistence(rootURL: root, log: PersistenceLog { _ in }).scoped(toUser: "ana")
+        try await persistence.workoutRepository().save(workout(on: monday, sets: [try set(exercise.id, 50, 10, at: monday)]))
+        try await persistence.workoutRepository().save(workout(on: wednesday, sets: [try set(exercise.id, 55, 8, at: wednesday)]))
+
+        let coordinator = TodayPlanCoordinator(catalog: catalog, clock: { wednesday }, timeZone: { utc })
+        coordinator.updateHistory(try await persistence.workoutRepository().loadAllSessions().items, knownTemplates: [pushTemplate])
+        guard case .loaded(let progress, _) = coordinator.progress else {
+            Issue.record("Debía haber registro, estado \(coordinator.progress)"); return
+        }
+        let record = try #require(progress.insights.blockRecords.first)
+        #expect(progress.insights.blockRecords.count == 1)
+        #expect(record.name == exercise.canonicalName)
+        #expect(record.weight == 55)
     }
 }

@@ -4,9 +4,10 @@
 //
 //  Recorrido 5 · Primer entrenamiento → Progreso → Exportar (smoke, SCRUM-228). Arranca con el
 //  perfil ya contestado. Antes de entrenar, Exportar y Progreso están vacíos; el primer
-//  entrenamiento queda en Progreso con sus KPIs, la gráfica y el detalle (SCRUM-186, 213); y
-//  Exportar lo cuenta una sola vez y ofrece JSON y CSV (SCRUM-190, flujo 4). Los datos viven
-//  en un directorio propio: al relanzar siguen ahí y Perfil vuelve a su pantalla principal.
+//  entrenamiento queda en Progreso con sus KPIs, la gráfica, los récords y el detalle
+//  (SCRUM-186, 213 y 265); y Exportar lo cuenta una sola vez y ofrece JSON y CSV (SCRUM-190,
+//  flujo 4). Los datos viven en un directorio propio: al relanzar siguen ahí y Perfil vuelve a
+//  su pantalla principal.
 //
 
 import XCTest
@@ -47,8 +48,13 @@ final class FirstWorkoutJourney: PRUITestCase {
                 XCTAssertTrue(element(app, "progress.kpi.\(kpi)").exists, "Falta el KPI \(kpi)")
             }
             XCTAssertTrue(element(app, "progress.chart").exists, "Debe verse la gráfica de progreso")
+            // SCRUM-265: "Récords del bloque" abre cuáles son; tras el primero no hay ninguno.
+            tap(app, "progress.kpi.3")
+            XCTAssertTrue(element(app, "progress.records.empty").appears(within: 10), "Sin récords todavía: estado vacío")
+            app.navigationBars.buttons.element(boundBy: 0).tap()
             tap(app, "progress.entry.0")
             XCTAssertTrue(element(app, "progress.detail").appears(within: 10))
+            XCTAssertFalse(element(app, "progress.detail.record").exists, "El primer entrenamiento no tiene récord")
         }
 
         // SCRUM-190 (flujo 4): tras el primer entrenamiento, Exportar cuenta exactamente esa

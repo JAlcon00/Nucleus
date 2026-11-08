@@ -45,10 +45,35 @@ public struct WorkoutLogEntry: Equatable, Sendable, Identifiable {
     public let volume: Double?
     public let volumeUnit: LoadUnit?
     /// Récords logrados en este entrenamiento (frente a los anteriores): uno por ejercicio,
-    /// con la misma regla que el resumen (`PersonalRecordRanking`, SCRUM-264).
-    public let recordCount: Int
+    /// con la misma regla que el resumen (`PersonalRecordRanking`, SCRUM-264), en el orden en
+    /// que se lograron (SCRUM-265).
+    public let records: [WorkoutLogRecord]
     /// Energía de una sola fuente; `nil` si no hay: ni cero ni estimación (SCRUM-250).
     public let energy: CanonicalWorkoutEnergy?
+
+    /// Cuántos récords hubo: los mismos que celebró el resumen.
+    public var recordCount: Int { records.count }
+
+    /// El récord de un ejercicio en este entrenamiento, si lo hubo.
+    public func record(for exerciseID: ExerciseID) -> WorkoutLogRecord? {
+        records.first { $0.exerciseID == exerciseID }
+    }
+}
+
+/// Un récord: el ejercicio y su mejor serie de ese entrenamiento (SCRUM-265). Cada uno en su
+/// unidad, sin convertir.
+public struct WorkoutLogRecord: Equatable, Sendable, Identifiable {
+    public let workoutID: WorkoutID
+    public let exerciseID: ExerciseID
+    /// Nombre del catálogo; `nil` si el catálogo ya no lo tiene (nunca se inventa).
+    public let name: String?
+    public let weight: Double
+    public let unit: LoadUnit
+    public let reps: Int
+    public let achievedAt: Date
+
+    /// Único: un récord por ejercicio en cada entrenamiento.
+    public var id: String { "\(workoutID.rawValue.uuidString)/\(exerciseID.rawValue.uuidString)" }
 }
 
 /// Lo que muestra Progreso.
@@ -104,7 +129,12 @@ public struct ProgressOverviewBuilder: Sendable {
                 volume: units.count == 1 ? summary.volume : nil,
                 volumeUnit: units.count == 1 ? units.first : nil,
                 // Uno por ejercicio, como celebra el resumen (SCRUM-264).
-                recordCount: PersonalRecordRanking.bestPerExercise(summary.records).count,
+                records: PersonalRecordRanking.bestPerExercise(summary.records).map { record in
+                    WorkoutLogRecord(
+                        workoutID: session.id, exerciseID: record.exerciseID, name: exerciseNames[record.exerciseID],
+                        weight: record.weight, unit: record.unit, reps: record.reps, achievedAt: record.achievedAt
+                    )
+                },
                 energy: session.energy
             ))
             earlier.append(session)
