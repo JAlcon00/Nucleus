@@ -53,7 +53,7 @@ public struct PRCelebrationBuilder: Sendable {
         exerciseNames: [ExerciseID: String] = [:],
         level: CoachingDetailLevel
     ) -> PRCelebration? {
-        let best = bestPerExercise(records)
+        let best = PersonalRecordRanking.bestPerExercise(records)
         guard !best.isEmpty else { return nil }
         let items = best.map { record in
             PRCelebrationItem(
@@ -69,10 +69,24 @@ public struct PRCelebrationBuilder: Sendable {
 
     // MARK: - Reglas
 
+    /// Educación contextual (§17.2): explicar el concepto cuando sucede, menos en avanzado.
+    private func detail(for level: CoachingDetailLevel) -> PRCelebrationDetail? {
+        switch level {
+        case .guided: return .progressiveOverloadExplained
+        case .balanced: return .bestLoadSurpassed
+        case .advanced: return nil
+        }
+    }
+}
+
+/// Un récord por ejercicio (SCRUM-264): la regla con la que el resumen celebra y Progreso
+/// cuenta. El detector marca cada serie que supera la marca anterior; aquí se queda la
+/// mejor de cada ejercicio. Puro y determinista.
+public enum PersonalRecordRanking {
     /// Una entrada por ejercicio: mayor peso; empate → más reps; empate → más reciente.
     /// Orden de salida: por momento del récord y, en empate, por id (estable).
     /// Récords con peso no finito/negativo o reps < 1 se descartan (RC-003).
-    private func bestPerExercise(_ records: [PersonalRecord]) -> [PersonalRecord] {
+    public static func bestPerExercise(_ records: [PersonalRecord]) -> [PersonalRecord] {
         var best: [ExerciseID: PersonalRecord] = [:]
         for record in records where record.weight.isFinite && record.weight >= 0 && record.reps >= 1 {
             guard let current = best[record.exerciseID] else {
@@ -86,15 +100,6 @@ public struct PRCelebrationBuilder: Sendable {
         return best.values.sorted {
             if $0.achievedAt != $1.achievedAt { return $0.achievedAt < $1.achievedAt }
             return $0.exerciseID.rawValue.uuidString < $1.exerciseID.rawValue.uuidString
-        }
-    }
-
-    /// Educación contextual (§17.2): explicar el concepto cuando sucede, menos en avanzado.
-    private func detail(for level: CoachingDetailLevel) -> PRCelebrationDetail? {
-        switch level {
-        case .guided: return .progressiveOverloadExplained
-        case .balanced: return .bestLoadSurpassed
-        case .advanced: return nil
         }
     }
 }

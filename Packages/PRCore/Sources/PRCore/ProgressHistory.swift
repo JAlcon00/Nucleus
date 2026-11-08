@@ -44,7 +44,8 @@ public struct WorkoutLogEntry: Equatable, Sendable, Identifiable {
     /// kilos con libras.
     public let volume: Double?
     public let volumeUnit: LoadUnit?
-    /// Récords logrados en este entrenamiento (frente a los anteriores).
+    /// Récords logrados en este entrenamiento (frente a los anteriores): uno por ejercicio,
+    /// con la misma regla que el resumen (`PersonalRecordRanking`, SCRUM-264).
     public let recordCount: Int
     /// Energía de una sola fuente; `nil` si no hay: ni cero ni estimación (SCRUM-250).
     public let energy: CanonicalWorkoutEnergy?
@@ -102,7 +103,8 @@ public struct ProgressOverviewBuilder: Sendable {
                 exercises: exercises(of: done, names: exerciseNames),
                 volume: units.count == 1 ? summary.volume : nil,
                 volumeUnit: units.count == 1 ? units.first : nil,
-                recordCount: summary.records.count,
+                // Uno por ejercicio, como celebra el resumen (SCRUM-264).
+                recordCount: PersonalRecordRanking.bestPerExercise(summary.records).count,
                 energy: session.energy
             ))
             earlier.append(session)
