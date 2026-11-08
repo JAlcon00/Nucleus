@@ -4,10 +4,10 @@
 //
 //  Recorrido 5 · Primer entrenamiento → Progreso → Exportar (smoke, SCRUM-228). Arranca con el
 //  perfil ya contestado. Antes de entrenar, Exportar y Progreso están vacíos; el primer
-//  entrenamiento queda en Progreso con sus KPIs, la gráfica, los récords y el detalle
-//  (SCRUM-186, 213 y 265); y Exportar lo cuenta una sola vez y ofrece JSON y CSV (SCRUM-190,
-//  flujo 4). Los datos viven en un directorio propio: al relanzar siguen ahí y Perfil vuelve a
-//  su pantalla principal.
+//  entrenamiento queda en Progreso con sus KPIs, la gráfica, las series por músculo, los
+//  récords y el detalle (SCRUM-186, 213, 265 y 268); y Exportar lo cuenta una sola vez y
+//  ofrece JSON y CSV (SCRUM-190, flujo 4). Los datos viven en un directorio propio: al
+//  relanzar siguen ahí y Perfil vuelve a su pantalla principal.
 //
 
 import XCTest
@@ -48,6 +48,14 @@ final class FirstWorkoutJourney: PRUITestCase {
                 XCTAssertTrue(element(app, "progress.kpi.\(kpi)").exists, "Falta el KPI \(kpi)")
             }
             XCTAssertTrue(element(app, "progress.chart").exists, "Debe verse la gráfica de progreso")
+            // SCRUM-268: "Series esta semana" abre las series por músculo del plan.
+            tap(app, "progress.kpi.1")
+            XCTAssertTrue(element(app, "progress.muscles").appears(within: 10), "Abre las series por músculo")
+            let muscles = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "identifier BEGINSWITH 'progress.muscles.row.'"))
+            XCTAssertGreaterThan(muscles.count, 0, "Lista los músculos del plan")
+            XCTAssertFalse(element(app, "progress.muscles.empty").exists, "Ya entrenó esta semana")
+            app.navigationBars.buttons.element(boundBy: 0).tap()
             // SCRUM-265: "Récords del bloque" abre cuáles son; tras el primero no hay ninguno.
             tap(app, "progress.kpi.3")
             XCTAssertTrue(element(app, "progress.records.empty").appears(within: 10), "Sin récords todavía: estado vacío")

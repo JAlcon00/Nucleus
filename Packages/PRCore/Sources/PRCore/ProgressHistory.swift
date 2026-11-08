@@ -103,7 +103,8 @@ public struct ProgressOverviewBuilder: Sendable {
         plannedPerWeek: Int?,
         blockStart: Date? = nil,
         date: Date,
-        timeZone: TimeZone
+        timeZone: TimeZone,
+        musclePlan: MuscleVolumePlan? = nil
     ) -> ProgressOverview {
         let completed = history
             .filter { $0.lifecycle == .completed }
@@ -145,7 +146,8 @@ public struct ProgressOverviewBuilder: Sendable {
             plannedPerWeek: plannedPerWeek,
             totalRecords: entries.reduce(0) { $0 + $1.recordCount },
             insights: ProgressInsightsBuilder().insights(
-                entries: entries, plannedPerWeek: plannedPerWeek, blockStart: blockStart, date: date, timeZone: timeZone
+                entries: entries, plannedPerWeek: plannedPerWeek, blockStart: blockStart, date: date, timeZone: timeZone,
+                musclePlan: musclePlan
             )
         )
     }

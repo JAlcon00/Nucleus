@@ -164,6 +164,11 @@ private struct ProgressLogView: View {
             switch route {
             case .blockRecords:
                 BlockRecordsView(records: overview.insights.blockRecords)
+            case .muscleVolume:
+                MuscleVolumeView(
+                    volume: overview.insights.muscleVolume ?? [],
+                    trainedThisWeek: overview.insights.completedThisWeek > 0
+                )
             }
         }
     }

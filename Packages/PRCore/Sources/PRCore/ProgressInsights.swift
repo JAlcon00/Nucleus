@@ -14,6 +14,9 @@
 //  4. Récords personales desde el inicio del bloque (o de todo el historial sin bloque):
 //     uno por ejercicio por entrenamiento, y la lista de cuáles son (SCRUM-264, SCRUM-265).
 //
+//  Series por músculo de esta semana contra su rango, con la regla del dominio
+//  (`WeeklyMuscleVolumeRule`, SCRUM-268).
+//
 //  Gráficas: series por semana de las últimas `weeks` semanas (las vacías en 0) y la
 //  carga máxima por sesión de cada ejercicio con al menos 2 sesiones (sólo una unidad:
 //  nunca se mezclan kilos con libras).
@@ -46,6 +49,20 @@ public struct ExerciseLoadTrend: Equatable, Sendable, Identifiable {
     public var id: ExerciseID { exerciseID }
 }
 
+/// Lo que hace falta para contar las series por músculo (SCRUM-268): la regla y lo que pide
+/// el bloque activo.
+public struct MuscleVolumePlan: Sendable {
+    public let rule: WeeklyMuscleVolumeRule
+    public let targets: [MuscleVolumeTarget]
+    public let priorities: [MusclePriority]
+
+    public init(rule: WeeklyMuscleVolumeRule, targets: [MuscleVolumeTarget], priorities: [MusclePriority]) {
+        self.rule = rule
+        self.targets = targets
+        self.priorities = priorities
+    }
+}
+
 /// KPIs y gráficas de Progreso.
 public struct ProgressInsights: Equatable, Sendable {
     public let completedThisWeek: Int
@@ -58,6 +75,8 @@ public struct ProgressInsights: Equatable, Sendable {
     public let blockRecords: [WorkoutLogRecord]
     public let weeklySets: [WeeklySetsPoint]
     public let loadTrends: [ExerciseLoadTrend]
+    /// Series por músculo de esta semana contra su rango (SCRUM-268); `nil` sin plan.
+    public let muscleVolume: [MuscleWeekVolume]?
 
     /// ¿Hay algo que graficar? (al menos una semana con series).
     public var hasWeeklyData: Bool { weeklySets.contains { $0.sets > 0 } }
@@ -80,7 +99,8 @@ public struct ProgressInsightsBuilder: Sendable {
         blockStart: Date?,
         date: Date,
         timeZone: TimeZone,
-        weeks: Int = ProgressInsightsBuilder.chartWeeks
+        weeks: Int = ProgressInsightsBuilder.chartWeeks,
+        musclePlan: MuscleVolumePlan? = nil
     ) -> ProgressInsights {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
@@ -104,8 +124,22 @@ public struct ProgressInsightsBuilder: Sendable {
             weekStreak: streak(byWeek: byWeek, from: thisMonday, goal: plannedPerWeek ?? 1, calendar: calendar),
             blockRecords: blockRecords(entries, since: blockStart),
             weeklySets: weeklySets,
-            loadTrends: loadTrends(entries)
+            loadTrends: loadTrends(entries),
+            muscleVolume: musclePlan.map { plan in
+                plan.rule.volume(completedSets: completedSets(thisWeek), targets: plan.targets, priorities: plan.priorities)
+            }
         )
+    }
+
+    /// Series completadas de la semana, por ejercicio (las mismas que "Series esta semana").
+    private func completedSets(_ entries: [WorkoutLogEntry]) -> [ExerciseID: Int] {
+        var counts: [ExerciseID: Int] = [:]
+        for entry in entries {
+            for exercise in entry.exercises {
+                counts[exercise.exerciseID, default: 0] += exercise.sets.count
+            }
+        }
+        return counts
     }
 
     // MARK: - Privado
