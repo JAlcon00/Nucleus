@@ -466,7 +466,7 @@ Evidencia: rama `SCRUM-11-fase-f`, PR #42, sobre `main` @ `c011a98`.
 ## Fase H en un solo PR (PR #48)
 
 - **Épica:** Fase H (SCRUM-13) · hito 1.0 · carril 🟡 amarillo por la colección nueva de SCRUM-267 (`LocalPersistence.swift`, `PersistenceSchemas.swift` y la muestra `Fixtures/Persistence/v1/coaching-preference.json`, que se agrega sin cambiar ninguna).
-- **Estado:** PR #48, rama `SCRUM-13-fase-h`, 2026-11-07. Un commit por historia; lo fusiona Jesús con merge commit.
+- **Estado:** PR #48, rama `SCRUM-13-fase-h`, en `main` el 2026-11-08 con merge commit (`f68e976`); el CI de `main` pasó en ese commit. Un commit por historia.
 - **Por qué en un PR:** Jesús lo pidió en el chat el 2026-11-07 ("ahora sigue hacer la fase H completa en otra sesión"), con la cola 👤 sobre el límite, como las Fases E, F y G.
 - **Revisión del alcance contra `main` `216f698`:** evolución (SCRUM-213), constancia semanal (SCRUM-213), cambiar objetivo o fase (Perfil › Rehacer cuestionario, SCRUM-218), datos y preferencias (SCRUM-198, 202, 208 y 248) y gimnasios (SCRUM-235, 236 y 238) ya estaban. Faltaban las cuatro historias de abajo. RF-035, citado en la épica, no existe en `promptMaster.md` ni en la trazabilidad.
 - **Decisiones:** DH-1 y DH-2 en SCRUM-263, decididas por Jesús el 2026-11-07 ("Sí, apruébalas"). DH-1 = A: "accesibilidad" en Perfil no lleva pantalla; la app respeta los ajustes de iOS. DH-2 = A: SCRUM-229 se parte; su primera parte es SCRUM-268 y el mapa espera la dependencia y dos decisiones.
@@ -537,7 +537,7 @@ Evidencia: rama `SCRUM-11-fase-f`, PR #42, sobre `main` @ `c011a98`.
 
 **Verificación pendiente 👤:** las filas de SCRUM-265, SCRUM-266, SCRUM-267 y SCRUM-268 en `mvp-plan.md` §2.
 
-Evidencia: rama `SCRUM-13-fase-h`, PR #48, sobre `main` @ `216f698`. Finalizadas el 2026-11-07 (en revisión).
+Evidencia: rama `SCRUM-13-fase-h`, PR #48, sobre `main` @ `216f698`. Terminadas el 2026-11-07 y 2026-11-08; finalizadas el 2026-11-08, al entrar a `main`.
 - **Línea base:** `make test` → `✔ Test run with 961 tests in 133 suites passed` + `✔ Test run with 648 tests in 91 suites passed` + `Executed 151 tests, with 0 failures`.
 - **SCRUM-264, al cerrarla (commit `888fe35`):** la prueba nueva falló primero con `Expectation failed: entry.recordCount == 1` (Progreso contaba 3). Después, `make ci` → `✔ Test run with 966 tests in 134 suites passed` + 648 + 151; guard `1775 → 1780 pruebas`; builds de iOS y watchOS OK. `make test-ui-smoke` → 8 de 8 OK (`FirstWorkoutJourney`, `IntermediateQuestionnaireJourney` y `WorkoutRecoveryJourney`); el script apagó el simulador.
 - **Cada commit por su cuenta:** `make ci` en un worktree temporal sobre `6a16618` (SCRUM-265) → 973 + 648 + 151 pruebas, guard `1775 → 1787`; sobre `3db18aa` (SCRUM-266) → 980 + 648 + 151, guard `1775 → 1794`. Builds de iOS y watchOS OK en los dos.
