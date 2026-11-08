@@ -462,3 +462,73 @@ Evidencia: rama `SCRUM-11-fase-f`, PR #42, sobre `main` @ `c011a98`.
 - **Firma real:** `xcodebuild` con cuenta gratuita sobre `main` @ `e86b7ec`, con las opciones de `make install-iphone` y destino `generic/platform=iOS`: `BUILD SUCCEEDED`, sin instalar. `codesign` muestra HealthKit y no `applesignin` en `PR.app` ni en el `PRWatch.app` embebido.
 - **iPhone fuera de alcance, caso real:** `devicectl` reporta `connection.state` = `unavailable`, y `make install-iphone` responde `no hay ningún iPhone conectado` con código distinto de 0.
 
+
+## Fase H en un solo PR (PR #FASEH)
+
+- **Épica:** Fase H (SCRUM-13) · hito 1.0 · carril 🟡 amarillo por la colección nueva de SCRUM-267 (`LocalPersistence.swift`, `PersistenceSchemas.swift` y la muestra `Fixtures/Persistence/v1/coaching-preference.json`, que se agrega sin cambiar ninguna).
+- **Estado:** PR #FASEH, rama `SCRUM-13-fase-h`, 2026-11-07. Un commit por historia; lo fusiona Jesús con merge commit.
+- **Por qué en un PR:** Jesús lo pidió en el chat el 2026-11-07 ("ahora sigue hacer la fase H completa en otra sesión"), con la cola 👤 sobre el límite, como las Fases E, F y G.
+- **Revisión del alcance contra `main` `216f698`:** evolución (SCRUM-213), constancia semanal (SCRUM-213), cambiar objetivo o fase (Perfil › Rehacer cuestionario, SCRUM-218), datos y preferencias (SCRUM-198, 202, 208 y 248) y gimnasios (SCRUM-235, 236 y 238) ya estaban. Faltaban las cuatro historias de abajo. RF-035, citado en la épica, no existe en `promptMaster.md` ni en la trazabilidad.
+- **Decisiones abiertas:** DH-1 (accesibilidad en Perfil) y DH-2 (SCRUM-229, el mapa muscular) en SCRUM-263. No bloquean este PR.
+
+### SCRUM-264 · PR-H002 Los récords se cuentan igual en Progreso que en el resumen
+
+**Qué cambió:** la regla "un récord por ejercicio, el mejor" pasa a `PersonalRecordRanking.bestPerExercise` (PRDomain); la usan `PRCelebrationBuilder` y `ProgressOverviewBuilder`. Antes Progreso contaba cada serie sobre la marca: tres series de press banca eran "1 récord" en el resumen y "3 récords" en Progreso.
+
+**Criterios:**
+- [x] Tres series sobre la marca anterior cuentan 1 récord, igual que la celebración del resumen.
+- [x] Récord en dos ejercicios del mismo entrenamiento cuenta 2.
+- [x] "Récords del bloque" suma las entradas del bloque con la misma regla.
+- [x] La regla vive una vez en PRDomain y la usan el resumen y Progreso.
+- [x] Integración con `LocalPersistence` real: dos entrenamientos guardados dan 1 récord.
+
+### SCRUM-265 · PR-H003 Ver cuáles son mis récords
+
+**Qué cambió:** `WorkoutLogEntry.records` (uno por ejercicio) y `ProgressInsights.blockRecords` (del más reciente al más antiguo; la KPI cuenta esas filas). La KPI "Récords del bloque" abre `BlockRecordsView`; el detalle de un entrenamiento marca "Récord: 85 kg × 6".
+
+**Criterios:**
+- [x] El detalle del entrenamiento sabe qué ejercicio tuvo récord y con qué serie.
+- [x] La lista del bloque tiene tantas filas como la KPI, de la más reciente a la más antigua.
+- [x] Sin récords en el bloque, la lista vacía dice cómo se logran (paso E2E en `FirstWorkoutJourney`).
+- [x] Un ejercicio que ya no está en el catálogo no tiene nombre inventado.
+- [x] Cada récord va en su unidad, sin convertir.
+- [x] La lista y el número salen de PRCore.
+
+### SCRUM-266 · PR-H004 Tu bloque en Plan: objetivo, fase y semana
+
+**Qué cambió:** `BlockOverviewBuilder` (PRCore, puro) y `TodayPlanCoordinator.blockOverview`; tarjeta `BlockCard` arriba de "Tu semana" con "Cambiar objetivo o fase", que abre el mismo cuestionario prellenado que Perfil. La confirmación es una sola para Plan y Perfil (`redoQuestionnaireConfirmation`).
+
+**Criterios:**
+- [x] Un bloque de 6 semanas que empezó el lunes 19 de octubre va en la semana 2 el miércoles 28, con su objetivo y su fase.
+- [x] Semanas de lunes a domingo: si empezó un jueves, el lunes siguiente ya es la semana 2.
+- [x] Pasada la última semana se lee que terminó, nunca "semana 7 de 6".
+- [x] "Cambiar objetivo o fase" pide la misma confirmación que Perfil y abre el cuestionario (paso E2E en `ProfileJourney`).
+- [x] Cambiar el objetivo abre un bloque nuevo en la semana 1 y el anterior queda cerrado con su historial (integración con `LocalPersistence` real).
+- [x] Fecha y zona inyectadas; el cambio de horario no mueve la semana.
+
+### SCRUM-267 · PR-H005 Elegir cuánto me explica la app
+
+**Qué cambió:** `CoachingPreferenceCoordinator` y `CoachingPreferenceStore` (PRCore), colección nueva `coaching-preference` por usuario, versión 1 con su muestra. Perfil › Explicaciones (`CoachingLevelView`, debajo de Restricciones): Guiado, Equilibrado o Avanzado, y "Usar el de mi experiencia". El entrenamiento y el resumen usan el nivel efectivo (`AppEnvironment.coachingPrefs`) en lugar de calcularlo siempre de la experiencia.
+
+**Criterios:**
+- [x] Sin elección, el nivel es el de la experiencia y Perfil lo dice.
+- [x] Elegir un nivel manda sobre el de la experiencia y queda como elegido (paso E2E en `ProfileJourney`).
+- [x] Ningún nivel quita el aviso por molestia.
+- [x] La elección se guarda por usuario en su colección, sobrevive a reabrir y no reescribe el plan.
+- [x] Rehacer el cuestionario con otra experiencia no la pisa; "Usar el de mi experiencia" la quita.
+- [x] Un error al guardar se avisa y sigue lo guardado; no hay `try?` sobre la escritura.
+- [x] Dos cuentas en el mismo iPhone tienen cada una el suyo.
+- [x] Sin registro (datos de antes) o con uno ilegible: según la experiencia, sin borrar nada ni migrar.
+
+**Verificación pendiente 👤:** las filas de SCRUM-265, SCRUM-266 y SCRUM-267 en `mvp-plan.md` §2.
+
+Evidencia: rama `SCRUM-13-fase-h`, PR #FASEH, sobre `main` @ `216f698`. Finalizadas el 2026-11-07 (en revisión).
+- **Línea base:** `make test` → `✔ Test run with 961 tests in 133 suites passed` + `✔ Test run with 648 tests in 91 suites passed` + `Executed 151 tests, with 0 failures`.
+- **SCRUM-264, al cerrarla (commit `888fe35`):** la prueba nueva falló primero con `Expectation failed: entry.recordCount == 1` (Progreso contaba 3). Después, `make ci` → `✔ Test run with 966 tests in 134 suites passed` + 648 + 151; guard `1775 → 1780 pruebas`; builds de iOS y watchOS OK. `make test-ui-smoke` → 8 de 8 OK (`FirstWorkoutJourney`, `IntermediateQuestionnaireJourney` y `WorkoutRecoveryJourney`); el script apagó el simulador.
+- **Cada commit por su cuenta:** `make ci` en un worktree temporal sobre `6a16618` (SCRUM-265) → 973 + 648 + 151 pruebas, guard `1775 → 1787`; sobre `3db18aa` (SCRUM-266) → 980 + 648 + 151, guard `1775 → 1794`. Builds de iOS y watchOS OK en los dos.
+- **Final (`387e963`):** `make ci` → `✔ Test run with 991 tests in 137 suites passed` + `✔ Test run with 648 tests in 91 suites passed` + `Executed 151 tests, with 0 failures`; builds de iOS y watchOS OK.
+- **Guard del agente:** `OK: ninguna prueba se borra, desactiva ni reduce (base 216f698, 1775 → 1805 pruebas).`
+- **E2E:** `make test-ui-smoke` → 8 de 8 OK, con el paso nuevo de "Récords del bloque" en `FirstWorkoutJourney`. `make test-ui` completa → 15 de 15 OK, entre ellas `testProfileRestrictionsSignOutAndRedo` (con los pasos de SCRUM-266 y SCRUM-267) y `testTodayFromSleepCheckInToTheWeek`.
+- **Falla que encontró la E2E, ya arreglada:** `make test-ui-journey RECORRIDO="ProfileJourney TodayJourney"` falló con `No aparece 'profile.restrictions'`: la fila "Explicaciones" había quedado arriba de "Restricciones" y la empujó fuera de la pantalla. Ahora va debajo; la prueba no se tocó.
+- **Contraste** (`contrast_check.py`, sobre `surface`): récord 5.76:1 claro y 6.51:1 oscuro; aviso 6.40:1 y 10.75:1; marca de selección 5.56:1 y 4.82:1. Todo pasa AA.
+- **Warnings nuevos:** ninguno. Sigue el de `ProfileView.swift` (Toggle con `Binding(get:set:)`), que ya estaba en `main`.
