@@ -542,6 +542,11 @@ public final class TodayPlanCoordinator {
         }
     }
 
+    /// "Tu bloque" del plan activo: objetivo, fase y semana (SCRUM-266); `nil` sin plan.
+    public var blockOverview: BlockOverview? {
+        plan.map { BlockOverviewBuilder().overview(block: $0.block, date: clock(), timeZone: timeZone()) }
+    }
+
     /// "Tu semana" del plan activo (lunes a domingo); `nil` sin plan.
     public var week: WeekOverview? {
         guard let plan, let activeProfile else { return nil }

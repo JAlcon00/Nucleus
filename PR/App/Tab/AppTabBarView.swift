@@ -54,7 +54,8 @@ struct AppTabBarView: View {
                 onStart: canStartToday ? onStart : nil,
                 onRedoQuestionnaire: onRedoQuestionnaire,
                 rationale: environment.todayPlan.personalization,
-                gymNotes: environment.gymWeekNotes
+                gymNotes: environment.gymWeekNotes,
+                block: environment.todayPlan.blockOverview
             )
                 .tabItem { tabLabel(.plan) }
                 .tag(AppTab.plan)

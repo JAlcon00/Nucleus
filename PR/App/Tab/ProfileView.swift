@@ -131,16 +131,7 @@ struct ProfileView: View {
             .scrollContentBackground(.hidden)
             .screenBackground()
             .navigationTitle("Perfil")
-            .confirmationDialog(
-                "¿Rehacer el cuestionario?",
-                isPresented: $confirmingRedo,
-                titleVisibility: .visible
-            ) {
-                Button("Sí, rehacer") { onRedoQuestionnaire() }
-                Button("Cancelar", role: .cancel) {}
-            } message: {
-                Text("Si cambias objetivo, fase o días se crea un bloque nuevo. El anterior y su historial se conservan.")
-            }
+            .redoQuestionnaireConfirmation(isPresented: $confirmingRedo, onConfirm: onRedoQuestionnaire)
             .confirmationDialog(
                 "¿Cerrar sesión?",
                 isPresented: $confirmingSignOut,
