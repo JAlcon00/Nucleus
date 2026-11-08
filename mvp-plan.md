@@ -77,6 +77,7 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
 | SCRUM-265 | En el iPhone, con dos entrenamientos del mismo ejercicio: el detalle marca el récord y la lista de "Récords del bloque" coincide con la KPI, con letra grande y VoiceOver. |
 | SCRUM-266 | En el iPhone: la tarjeta "Tu bloque" con letra grande, en claro y oscuro y con Reduce Transparency; "Cambiar objetivo o fase" con una mano. |
 | SCRUM-267 | En el iPhone: elegir Avanzado y entrenar (sin tarjetas de calentamiento ni de descanso; el aviso por molestia sí sale); Perfil › Explicaciones con letra grande y VoiceOver. |
+| SCRUM-268 | En el iPhone, con una semana real: que las series por músculo se vean razonables frente a lo entrenado, con letra grande y VoiceOver. |
 
 ## 3. Lo que sigue
 
@@ -95,10 +96,12 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
 - **Gate:** SCRUM-261, 👤 en iPhone y reloj. `watch.health_session.enabled` sigue apagada hasta pasarlo.
 
 **Fase H · pestañas Progreso, Plan y Perfil (SCRUM-13, Could): en revisión por el PR #48 desde el 2026-11-07.**
-- **Revisión del alcance contra `main`:** casi todo ya estaba (SCRUM-197, 198, 208, 213, 218, 235, 236, 238 y 248). Faltaban cuatro historias: SCRUM-264 a SCRUM-267. RF-035, que citaba la épica, no existe en `promptMaster.md`.
+- **Revisión del alcance contra `main`:** casi todo ya estaba (SCRUM-197, 198, 208, 213, 218, 235, 236, 238 y 248). Faltaban cuatro historias, SCRUM-264 a SCRUM-267, y por DH-2 entró SCRUM-268. RF-035, que citaba la épica, no existe en `promptMaster.md`.
 - **Excepción de Jesús (2026-11-07):** "ahora sigue hacer la fase H completa en otra sesión". Toda la fase va en una rama y un PR, un commit por historia, aunque la cola 👤 pasa de 5 y el runbook se detiene en el paso 0, como en las Fases E, F y G.
 - **Carril:** 🟡 amarillo, por la colección nueva de SCRUM-267 (`LocalPersistence.swift`, `PersistenceSchemas.swift` y una muestra nueva en `Fixtures/Persistence/v1/`). Se fusiona con merge commit.
-- **Decisiones DH-1 y DH-2:** en SCRUM-263, esperan a Jesús. DH-1: qué es "accesibilidad" en Perfil. DH-2: qué hacer con SCRUM-229, el mapa muscular. Ninguna bloquea el PR.
+- **Decisiones DH-1 y DH-2 (SCRUM-263):** decididas por Jesús el 2026-11-07 ("Sí, apruébalas").
+  - DH-1 = A: "accesibilidad" en Perfil no lleva pantalla propia; la app respeta los ajustes de iOS.
+  - DH-2 = A: SCRUM-229 se aprueba y se parte. Su primera parte, SCRUM-268 (series por músculo en texto), va en el PR #48.
 
 - **Antes de TestFlight:** mover la llave de la IA a un backend. La historia está por crear (SCRUM-201, SCRUM-204).
 - **Fases de 1.0, sin historias escritas todavía** (prioridad MoSCoW del 2026-10-25, `docs/product/estado-y-prioridades-2026-10-25.md`):
@@ -107,7 +110,7 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
 
   Para que el agente las tome, cada historia necesita la Definition of Ready (plan de aceleración §6) y un epic que Jesús autorizó.
 - **Borradores, todavía no READY** (ideas de openGym; su código es AGPL-3.0 y no se copia):
-  - **SCRUM-229 · PR-H001 Mapa muscular** (Should propuesto, Fase H): un mapa del cuerpo con MuscleMap (MIT) en Hoy, el detalle del día y Progreso. El conteo va en PRDomain, el mapa siempre lleva lista en texto y no entra en el entrenamiento activo. Revisada el 2026-11-07: no es READY (criterios sin aprobar, dependencia 🟡 sin confirmar, pasa de 1 día y dos decisiones abiertas); espera DH-2 en SCRUM-263.
+  - **SCRUM-229 · PR-H001 Mapa muscular** (Should propuesto, Fase H): un mapa del cuerpo con MuscleMap (MIT) en Hoy, el detalle del día y Progreso. El conteo va en PRDomain, el mapa siempre lleva lista en texto y no entra en el entrenamiento activo. Aprobada y partida el 2026-11-07 (DH-2 = A): el conteo por músculo ya es SCRUM-268. Lo que queda, el mapa, sigue sin READY: falta confirmar la dependencia MuscleMap (🟡), el modelo por defecto con "Prefiero no decirlo" y la tabla de equivalencias de los 12 grupos.
   - **SCRUM-230 · PR-K001 Importar historial de Strong, Hevy y FitNotes** (Could propuesto, Fase K, después de 1.0):
     - importa el CSV con vista previa, sin duplicar, todo o nada y deshacible;
     - tiene 3 decisiones de Jesús pendientes;
@@ -149,6 +152,7 @@ Una línea por historia terminada después del 2026-11-02: `SCRUM-XX · título 
 - SCRUM-265 · PR-H003 Ver cuáles son mis récords · PR #48 · 2026-11-07 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-h-en-un-solo-pr-pr-48))
 - SCRUM-266 · PR-H004 Tu bloque en Plan: objetivo, fase y semana · PR #48 · 2026-11-07 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-h-en-un-solo-pr-pr-48))
 - SCRUM-267 · PR-H005 Elegir cuánto me explica la app · PR #48 · 2026-11-07 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-h-en-un-solo-pr-pr-48))
+- SCRUM-268 · PR-H006 Series por músculo de la semana contra su rango · PR #48 · 2026-11-07 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-h-en-un-solo-pr-pr-48))
 
 ---
 

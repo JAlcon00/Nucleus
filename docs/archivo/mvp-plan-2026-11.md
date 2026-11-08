@@ -469,7 +469,7 @@ Evidencia: rama `SCRUM-11-fase-f`, PR #42, sobre `main` @ `c011a98`.
 - **Estado:** PR #48, rama `SCRUM-13-fase-h`, 2026-11-07. Un commit por historia; lo fusiona Jesús con merge commit.
 - **Por qué en un PR:** Jesús lo pidió en el chat el 2026-11-07 ("ahora sigue hacer la fase H completa en otra sesión"), con la cola 👤 sobre el límite, como las Fases E, F y G.
 - **Revisión del alcance contra `main` `216f698`:** evolución (SCRUM-213), constancia semanal (SCRUM-213), cambiar objetivo o fase (Perfil › Rehacer cuestionario, SCRUM-218), datos y preferencias (SCRUM-198, 202, 208 y 248) y gimnasios (SCRUM-235, 236 y 238) ya estaban. Faltaban las cuatro historias de abajo. RF-035, citado en la épica, no existe en `promptMaster.md` ni en la trazabilidad.
-- **Decisiones abiertas:** DH-1 (accesibilidad en Perfil) y DH-2 (SCRUM-229, el mapa muscular) en SCRUM-263. No bloquean este PR.
+- **Decisiones:** DH-1 y DH-2 en SCRUM-263, decididas por Jesús el 2026-11-07 ("Sí, apruébalas"). DH-1 = A: "accesibilidad" en Perfil no lleva pantalla; la app respeta los ajustes de iOS. DH-2 = A: SCRUM-229 se parte; su primera parte es SCRUM-268 y el mapa espera la dependencia y dos decisiones.
 
 ### SCRUM-264 · PR-H002 Los récords se cuentan igual en Progreso que en el resumen
 
@@ -520,7 +520,22 @@ Evidencia: rama `SCRUM-11-fase-f`, PR #42, sobre `main` @ `c011a98`.
 - [x] Dos cuentas en el mismo iPhone tienen cada una el suyo.
 - [x] Sin registro (datos de antes) o con uno ilegible: según la experiencia, sin borrar nada ni migrar.
 
-**Verificación pendiente 👤:** las filas de SCRUM-265, SCRUM-266 y SCRUM-267 en `mvp-plan.md` §2.
+### SCRUM-268 · PR-H006 Series por músculo de la semana contra su rango
+
+**Qué cambió:** `WeeklyMuscleVolumeRule` (PRDomain, pura): cada serie completada cuenta una vez para el músculo principal de su ejercicio (`CatalogExercisePrimaryResolver`, como reparte el motor), y el rango sale de `volume.weeklySetsPerMuscle` según la prioridad del músculo en el bloque. `ProgressInsights.muscleVolume` (PRCore) y `MuscleVolumeView`, que se abre desde la KPI "Series esta semana".
+
+**Ajuste al criterio 1:** la lista no va suelta en Progreso, se abre desde la KPI, como los récords. Una tarjeta más arriba del registro lo sacaba de la pantalla del iPhone de las pruebas (comentario en SCRUM-268).
+
+**Criterios:**
+- [x] Al tocar "Series esta semana", cada músculo del plan con sus series, su objetivo y su rango (paso E2E en `FirstWorkoutJourney`).
+- [x] Cada serie cuenta una vez, para el músculo principal; los secundarios no suman; la suma es igual a "Series esta semana".
+- [x] Tres niveles con texto e icono: faltan N para el mínimo, en rango, sobre el máximo; los bordes del rango están dentro.
+- [x] Semana de lunes a domingo.
+- [x] Sin entrenamientos esta semana, los músculos del plan en 0 y "Aún no entrenas esta semana".
+- [x] Fuera del plan se dice, sin nivel; un ejercicio desconocido no suma.
+- [x] La regla vive en PRDomain y es pura; integración con `LocalPersistence` y el catálogo reales.
+
+**Verificación pendiente 👤:** las filas de SCRUM-265, SCRUM-266, SCRUM-267 y SCRUM-268 en `mvp-plan.md` §2.
 
 Evidencia: rama `SCRUM-13-fase-h`, PR #48, sobre `main` @ `216f698`. Finalizadas el 2026-11-07 (en revisión).
 - **Línea base:** `make test` → `✔ Test run with 961 tests in 133 suites passed` + `✔ Test run with 648 tests in 91 suites passed` + `Executed 151 tests, with 0 failures`.
@@ -532,3 +547,4 @@ Evidencia: rama `SCRUM-13-fase-h`, PR #48, sobre `main` @ `216f698`. Finalizadas
 - **Falla que encontró la E2E, ya arreglada:** `make test-ui-journey RECORRIDO="ProfileJourney TodayJourney"` falló con `No aparece 'profile.restrictions'`: la fila "Explicaciones" había quedado arriba de "Restricciones" y la empujó fuera de la pantalla. Ahora va debajo; la prueba no se tocó.
 - **Contraste** (`contrast_check.py`, sobre `surface`): récord 5.76:1 claro y 6.51:1 oscuro; aviso 6.40:1 y 10.75:1; marca de selección 5.56:1 y 4.82:1. Todo pasa AA.
 - **Warnings nuevos:** ninguno. Sigue el de `ProfileView.swift` (Toggle con `Binding(get:set:)`), que ya estaba en `main`.
+- **SCRUM-268, al cerrarla (commit `b761b11`, 2026-11-08):** `make ci` → `✔ Test run with 1002 tests in 138 suites passed` + `✔ Test run with 648 tests in 91 suites passed` + `Executed 151 tests, with 0 failures`; guard `OK: ninguna prueba se borra, desactiva ni reduce (base 216f698, 1775 → 1816 pruebas).`; builds de iOS y watchOS OK, sin warnings nuevos. `make test-ui` completa → **15 de 15 OK**, con el paso de series por músculo en `testFirstWorkoutReachesProgressAndExport`; incluye los 3 recorridos del smoke, así que el smoke no se corrió aparte. Contraste de "En rango" (`success` sobre `surface`): 6.19:1 claro y 8.39:1 oscuro. La regla se escribió antes que sus pruebas; las 11 pasaron a la primera.
