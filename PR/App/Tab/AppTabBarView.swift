@@ -70,6 +70,8 @@ struct AppTabBarView: View {
                 onRemoveMissing: { exercise in Task { await environment.removeMissing(exercise) } },
                 canSelectGym: environment.canChangeGym,
                 onSelectGym: { id in Task { await environment.selectGym(id) } },
+                coaching: environment.coachingPreference,
+                experience: environment.completedProfile?.experience,
                 showsAI: environment.aiConsent.isOffered,
                 aiConsentGranted: environment.aiConsent.consent.allowsSharing,
                 onSetAIConsent: { granted in

@@ -6,8 +6,8 @@
 //
 //  Pestaña "Perfil" (SKILL §6). SCRUM-195: aquí viven las acciones terciarias que antes
 //  estaban en Hoy (restricciones, rehacer cuestionario, exportar), para que Hoy tenga una
-//  sola acción. SCRUM-198: "Sobre ti" se consulta y se edita aquí. Vista de composición:
-//  no contiene reglas de negocio.
+//  sola acción. SCRUM-198: "Sobre ti" se consulta y se edita aquí. SCRUM-267: cuánto explica
+//  la app (Explicaciones). Vista de composición: no contiene reglas de negocio.
 //
 
 import SwiftUI
@@ -35,6 +35,10 @@ struct ProfileView: View {
     var canSelectGym = true
     /// Intento: elegir el gimnasio activo.
     var onSelectGym: (GymID) -> Void = { _ in }
+    /// Perfil › Explicaciones (SCRUM-267). `nil` en previews o sin perfil.
+    var coaching: CoachingPreferenceCoordinator?
+    /// Experiencia del perfil: de ella sale el nivel si no se eligió otro.
+    var experience: ExperienceLevel?
     /// ¿La app ofrece la IA? Con la flag apagada no hay sección de la IA (SCRUM-39).
     var showsAI = true
     /// ¿La IA puede usar los datos del perfil? (SCRUM-202)
@@ -95,6 +99,22 @@ struct ProfileView: View {
                             Label("Restricciones", systemImage: "list.bullet.clipboard")
                         }
                         .accessibilityIdentifier("profile.restrictions")
+                    }
+
+                    if let coaching, let experience {
+                        NavigationLink {
+                            CoachingLevelView(coaching: coaching, experience: experience)
+                        } label: {
+                            Label {
+                                LabeledContent(
+                                    "Explicaciones",
+                                    value: CoachingLevelText.name(coaching.prefs(for: experience).level)
+                                )
+                            } icon: {
+                                Image(systemName: "text.bubble")
+                            }
+                        }
+                        .accessibilityIdentifier("profile.coaching")
                     }
 
                     Button {

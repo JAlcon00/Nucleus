@@ -192,6 +192,7 @@ struct LegacyPersistenceMigrationTests {
             (.aiConsent, try Fixture.encoded(StoredAIConsent(consent: .granted(at: Date(timeIntervalSince1970: 0)), updatedAt: Date(timeIntervalSince1970: 0)))),
             (.checkIns, try Fixture.encoded(SleepCheckIn(day: "2026-10-22", hours: 7, quality: .good))),
             (.healthPreference, try Fixture.encoded(StoredHealthPreference(preference: .enabled, updatedAt: Date(timeIntervalSince1970: 0)))),
+            (.coachingPreference, try Fixture.encoded(StoredCoachingPreference(choice: .manual(level: .guided), updatedAt: Date(timeIntervalSince1970: 0)))),
         ]
         #expect(samples.map(\.0).sorted { $0.rawValue < $1.rawValue }
             == PersistenceCollection.allCases.sorted { $0.rawValue < $1.rawValue })

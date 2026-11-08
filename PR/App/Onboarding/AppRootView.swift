@@ -84,6 +84,8 @@ struct AppRootView: View {
                         await environment.loadGym()
                         // Retoma el entrenamiento que quedó abierto, si lo hay (SCRUM-24).
                         await environment.recoverWorkout()
+                        // Cuánto le explica la app a esta cuenta (SCRUM-267).
+                        environment.loadCoachingPreference()
                         // Lo que decidió esta cuenta sobre Salud (SCRUM-248).
                         await environment.loadHealthPreference()
                         // Lo que quedó pendiente de llegar a Salud (SCRUM-246).
@@ -211,13 +213,10 @@ struct AppRootView: View {
         }
     }
 
-    /// Nivel de detalle de coaching derivado (determinista, PR-0403) del perfil de
-    /// onboarding completado. Default `guided` si aún no hay perfil (nunca inventa).
+    /// Nivel de detalle de coaching (PR-0403): el elegido en Perfil o, si no, el de la
+    /// experiencia (SCRUM-267). `guided` si aún no hay perfil (nunca inventa).
     private var coachingLevel: CoachingDetailLevel {
-        guard case .completed(let profile) = environment.onboarding.phase else {
-            return .guided
-        }
-        return CoachingDetailMapper().initialDefault(for: profile.experience)
+        environment.coachingPrefs.level
     }
 
     /// "Terminar" del cuestionario: si el perfil es válido, se arma la semana con loader.

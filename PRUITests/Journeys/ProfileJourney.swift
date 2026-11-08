@@ -148,6 +148,25 @@ final class ProfileJourney: PRUITestCase {
                           "Cambiar objetivo o fase abre el cuestionario")
         }
 
+        // SCRUM-267: Perfil › Explicaciones arranca en el nivel de la experiencia (intermedio →
+        // Equilibrado) y se puede elegir otro, con la opción de volver al de la experiencia.
+        step("Elegir cuánto explica la app (SCRUM-267)") {
+            let app = launchWithPlan()
+            XCTAssertTrue(element(app, "today.start").appears(within: 15))
+            openTab(app, "Perfil")
+            let row = scrollTo(app, "profile.coaching")
+            XCTAssertTrue(row.appears(within: 10), "Perfil ofrece Explicaciones")
+            XCTAssertTrue(row.label.contains("Equilibrado"), "Intermedio: Equilibrado por defecto: \(row.label)")
+            row.tap()
+            XCTAssertFalse(element(app, "coaching.byExperience").exists, "Sin elección no hay nada que quitar")
+            tap(app, "coaching.option.advanced")
+            XCTAssertTrue(element(app, "coaching.byExperience").appears(within: 5), "Ofrece volver al de la experiencia")
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+            let chosen = element(app, "profile.coaching")
+            XCTAssertTrue(chosen.appears(within: 5))
+            XCTAssertTrue(chosen.label.contains("Avanzado"), "Perfil muestra el elegido: \(chosen.label)")
+        }
+
         // SCRUM-39: con la flag de la IA apagada, la IA no aparece: no se pide el consentimiento
         // tras el cuestionario, el plan se arma con el motor local y Perfil no tiene la sección.
         step("Con la IA apagada por flag no se pide el consentimiento ni hay Perfil › IA (SCRUM-39)") {

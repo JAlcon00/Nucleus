@@ -96,6 +96,8 @@ public final class AppEnvironment {
     public let aiConsent: AIConsentCoordinator
     /// Si la persona quiere guardar en Salud (SCRUM-248).
     public let healthPreference: HealthPreferenceCoordinator
+    /// Cuánto le explica la app, si lo eligió en Perfil (SCRUM-267).
+    public let coachingPreference: CoachingPreferenceCoordinator
 
     /// El gimnasio del usuario (SCRUM-235). Sin pasos nuevos: se crea solo al entrar.
     public let gym: GymCoordinator
@@ -319,6 +321,20 @@ public final class AppEnvironment {
             sessionGoesToHealth: goesToHealth
         )
         await refreshHealthEnergy()
+    }
+
+    /// Cuánto le explica la app a la cuenta activa, al entrar (SCRUM-267).
+    public func loadCoachingPreference() {
+        coachingPreference.load(userID: onboarding.auth.profile?.userIdentifier)
+    }
+
+    /// Nivel de explicación efectivo y su origen para el perfil completado (SCRUM-267).
+    /// Sin perfil todavía: guiado, sin inventar una elección.
+    public var coachingPrefs: CoachingDetailPrefs {
+        guard case .completed(let profile) = onboarding.phase else {
+            return CoachingDetailPrefs(level: .guided)
+        }
+        return coachingPreference.prefs(for: profile.experience)
     }
 
     /// Lee la decisión de la cuenta activa, al entrar (SCRUM-248).
@@ -817,6 +833,16 @@ public final class AppEnvironment {
         self.healthPreference = HealthPreferenceCoordinator(
             store: healthPreferenceStore, clock: { fixedDate ?? Date() }
         )
+        var coachingStore: CoachingPreferenceStore?
+        if let persistence = self.basePersistence {
+            do {
+                coachingStore = try persistence.coachingPreferenceStore()
+            } catch {
+                // Sin almacén se usa el nivel de la experiencia y elegir otro avisa que no se guardó.
+                persistence.log.saveFailed(.coachingPreference)
+            }
+        }
+        self.coachingPreference = CoachingPreferenceCoordinator(store: coachingStore, clock: { fixedDate ?? Date() })
         self.gym = GymCoordinator(defaultName: String(localized: "Mi gimnasio"), clock: { fixedDate ?? Date() })
         var checkInStore: SleepCheckInStore?
         if let persistence = self.basePersistence {
