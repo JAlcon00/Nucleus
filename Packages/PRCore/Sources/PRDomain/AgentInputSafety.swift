@@ -88,6 +88,8 @@ public enum MedicalBoundary {
     private static let diagnosisAsks = [
         "que tengo", "que me pasa", "que me paso", "es grave", "sera grave", "que sera",
         "sera una lesion", "es una lesion", "me lesione", "diagnost", "que lesion",
+        // SCRUM-271: preguntar la causa del dolor también es pedir un diagnóstico.
+        "por que me duele", "por que duele", "por que me molesta", "por que tengo dolor",
     ]
 
     /// ¿Pide un diagnóstico? Sólo si habla de dolor y además pregunta qué tiene: "lo que

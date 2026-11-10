@@ -22,7 +22,7 @@ import PRDomain
 /// Colecciones que la app escribe hoy (las demás existen en el enum pero nadie las abre).
 private let writtenCollections: [PersistenceCollection] = [
     .workouts, .pendingOperations, .plans, .blocks, .session, .aiConsent, .checkIns, .healthPreference,
-    .coachingPreference,
+    .coachingPreference, .agentUsage,
 ]
 
 private func fixture(_ collection: PersistenceCollection, version: SchemaVersion) -> Data? {
@@ -52,6 +52,7 @@ private func reencode(_ data: Data, as collection: PersistenceCollection) throws
     case .checkIns: return try roundTrip(SleepCheckIn.self)
     case .healthPreference: return try roundTrip(StoredHealthPreference.self)
     case .coachingPreference: return try roundTrip(StoredCoachingPreference.self)
+    case .agentUsage: return try roundTrip(AgentUsageRecord.self)
     }
 }
 

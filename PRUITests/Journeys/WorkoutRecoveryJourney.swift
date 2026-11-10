@@ -140,6 +140,14 @@ final class WorkoutRecoveryJourney: PRUITestCase {
             let skip = app.buttons["Saltar"].firstMatch
             if skip.appears(within: 5) { skip.tap() }
             XCTAssertTrue(element(app, "workout.lastWeight").appears(within: 5), "Precarga el peso de la serie anterior")
+
+            // SCRUM-274: "¿Por qué este peso?" explica de dónde salió y se cierra; la serie
+            // sigue lista para completarse.
+            tap(app, "workout.weight.why")
+            XCTAssertTrue(element(app, "why.sheet").appears(within: 5), "Abre la explicación del peso")
+            XCTAssertTrue(element(app, "why.reason.0").appears(within: 5), "Dice de dónde salió el peso")
+            tap(app, "why.done")
+            XCTAssertTrue(element(app, "workout.completeSet").appears(within: 5), "\"Completar serie\" sigue a la mano")
         }
 
         // SCRUM-234: con todo ocupado se ofrece un sustituto; al elegirlo se sigue con él.
@@ -185,6 +193,26 @@ final class WorkoutRecoveryJourney: PRUITestCase {
             tap(reopened, "profile.gym")
             tap(reopened, "gym.missing.remove.0")
             XCTAssertFalse(element(reopened, "gym.missing.0").waitForExistence(timeout: 3), "La marca se quitó")
+        }
+
+        // SCRUM-276: el entrenador del entrenamiento, junto a "Terminar": "Está ocupada" hace
+        // lo mismo que el botón "Máquina ocupada", sin IA, y la serie sigue a la mano.
+        step("El entrenador marca la máquina ocupada desde el entrenamiento (SCRUM-276)") {
+            let app = launchWithPlan()
+            tap(app, "today.start")
+            XCTAssertTrue(element(app, "workout.completeSet").appears(within: 10))
+            tap(app, "workout.coach")
+            XCTAssertTrue(element(app, "coach.intro").appears(within: 5), "Abre el entrenador")
+            tap(app, "coach.suggestion.0")   // "Está ocupada"
+            // Si nada se puede adelantar, la hoja se cierra y se abren las opciones de siempre.
+            if element(app, "occupied.wait").appears(within: 5) {
+                tap(app, "occupied.wait")
+            } else {
+                XCTAssertTrue(element(app, "coach.message.1").appears(within: 10), "El entrenador responde")
+                tap(app, "coach.done")
+            }
+            XCTAssertTrue(element(app, "workout.occupied.notice").appears(within: 5), "Dice dónde quedó el ejercicio, como el botón")
+            XCTAssertTrue(element(app, "workout.completeSet").appears(within: 5), "\"Completar serie\" sigue a la mano")
         }
 
         // SCRUM-212 y SCRUM-233: "Máquina ocupada" dice qué sigue, se salta (con confirmación),

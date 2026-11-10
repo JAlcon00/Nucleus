@@ -41,6 +41,8 @@ public enum PersistenceCollection: String, CaseIterable, Sendable, Hashable {
     case healthPreference = "health-preference"
     /// Cuánto le explica la app, si lo eligió en Perfil, por usuario. SCRUM-267.
     case coachingPreference = "coaching-preference"
+    /// Tokens y milisegundos de cada llamada a la IA, sin texto (en la raíz). SCRUM-273.
+    case agentUsage = "agent-usage"
 }
 
 /// Registro de eventos de persistencia SIN datos personales: sólo colección y

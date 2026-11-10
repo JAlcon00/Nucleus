@@ -1182,6 +1182,696 @@
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Today %@ go as a superset: one set of each, then rest, so your session fits your time." } }
       }
+    },
+    "Por qué este orden" : {
+      "comment" : "¿Por qué?: título del orden de la sesión",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Why this order" } }
+      }
+    },
+    "Por qué hoy es más ligero" : {
+      "comment" : "¿Por qué?: título del día aligerado por el sueño",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Why today is lighter" } }
+      }
+    },
+    "Por qué cambió este ejercicio" : {
+      "comment" : "¿Por qué?: título del cambio por el gimnasio",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Why this exercise changed" } }
+      }
+    },
+    "Por qué este peso" : {
+      "comment" : "¿Por qué?: título del peso precargado",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Why this weight" } }
+      }
+    },
+    "Por qué esta recomendación" : {
+      "comment" : "¿Por qué?: título de la recomendación por dolor",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Why this recommendation" } }
+      }
+    },
+    "No hay datos para explicar esta decisión." : {
+      "comment" : "¿Por qué?: el registro no trae hechos que se puedan explicar",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "There is no data to explain this decision." } }
+      }
+    },
+    "Este orden lo elegiste tú; el motor recomienda el de abajo." : {
+      "comment" : "¿Por qué?: el orden de la sesión lo eligió la persona",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You chose this order; the engine recommends the one below." } }
+      }
+    },
+    "%@. %@: %@" : {
+      "comment" : "¿Por qué?: posición del ejercicio y su motivo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%1$@. %2$@: %3$@" } }
+      }
+    },
+    "La fatiga acumulada cambió el orden para proteger los músculos prioritarios." : {
+      "comment" : "¿Por qué?: la fatiga reordenó la sesión",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Accumulated fatigue changed the order to protect your priority muscles." } }
+      }
+    },
+    "es compuesto y va con los músculos frescos." : {
+      "comment" : "¿Por qué?: motivo del orden, rol funcional",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "it is a compound lift and goes while your muscles are fresh." } }
+      }
+    },
+    "trabaja un músculo que priorizas." : {
+      "comment" : "¿Por qué?: motivo del orden, prioridad muscular",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "it trains a muscle you prioritize." } }
+      }
+    },
+    "es técnicamente exigente y conviene sin fatiga." : {
+      "comment" : "¿Por qué?: motivo del orden, demanda técnica",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "it is technically demanding and best done without fatigue." } }
+      }
+    },
+    "Por qué no agregamos series" : {
+      "comment" : "¿Por qué?: título cuando la sesión ya cabía en el tiempo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Why we don't add sets" } }
+      }
+    },
+    "Por qué tu sesión no cabe" : {
+      "comment" : "¿Por qué?: título cuando la sesión no cabe ni recortada",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Why your session doesn't fit" } }
+      }
+    },
+    "Por qué tu sesión es más corta" : {
+      "comment" : "¿Por qué?: título de la sesión recortada por tiempo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Why your session is shorter" } }
+      }
+    },
+    "Tu sesión dura unos %@ min y cabe en los %@ que tienes." : {
+      "comment" : "¿Por qué?: la sesión ya cabía",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your session takes about %1$@ min and fits in the %2$@ you have." } }
+      }
+    },
+    "Más tiempo no suma series: el volumen lo marca tu plan." : {
+      "comment" : "¿Por qué?: el tiempo nunca agrega series (RN-002)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "More time doesn't add sets: your plan sets the volume." } }
+      }
+    },
+    "Con lo que sobra puedes sumar %@." : {
+      "comment" : "¿Por qué?: qué hacer con el tiempo que sobra",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "With the time left over you can add %@." } }
+      }
+    },
+    "Aun recortada necesita unos %@ min y tienes %@." : {
+      "comment" : "¿Por qué?: la sesión no cabe ni recortada",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Even trimmed it needs about %1$@ min and you have %2$@." } }
+      }
+    },
+    "Elegiste %@ min y la sesión duraba unos %@." : {
+      "comment" : "¿Por qué?: minutos elegidos contra la duración original",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You chose %1$@ min and the session took about %2$@." } }
+      }
+    },
+    "Quitamos %@." : {
+      "comment" : "¿Por qué?: ejercicios quitados por tiempo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "We removed %@." } }
+      }
+    },
+    "Dejamos menos series de %@." : {
+      "comment" : "¿Por qué?: ejercicios con menos series por tiempo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "We left fewer sets of %@." } }
+      }
+    },
+    "Haces %@ en superset para ahorrar tiempo." : {
+      "comment" : "¿Por qué?: pares juntados en superset por tiempo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You do %@ as a superset to save time." } }
+      }
+    },
+    "Los ejercicios principales se quedan." : {
+      "comment" : "¿Por qué?: el recorte por tiempo conserva los principales",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your main exercises stay." } }
+      }
+    },
+    "Dormiste poco." : {
+      "comment" : "¿Por qué?: motivo del día aligerado, sueño corto",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You slept little." } }
+      }
+    },
+    "Dormiste mal." : {
+      "comment" : "¿Por qué?: motivo del día aligerado, sueño malo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You slept poorly." } }
+      }
+    },
+    "Dormiste poco y mal." : {
+      "comment" : "¿Por qué?: motivo del día aligerado, sueño corto y malo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You slept little and poorly." } }
+      }
+    },
+    "Cada serie termina %lld repeticiones más lejos del fallo." : {
+      "comment" : "¿Por qué?: el día aligerado sube el RIR",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "Each set ends %lld rep further from failure." } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "Each set ends %lld reps further from failure." } }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "Cada serie termina %lld repetición más lejos del fallo." } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "Cada serie termina %lld repeticiones más lejos del fallo." } }
+            }
+          }
+        }
+      }
+    },
+    "Los ejercicios aislados tienen %lld series menos." : {
+      "comment" : "¿Por qué?: el día aligerado quita series de aislados",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "Isolation exercises have %lld fewer set." } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "Isolation exercises have %lld fewer sets." } }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "Los ejercicios aislados tienen %lld serie menos." } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "Los ejercicios aislados tienen %lld series menos." } }
+            }
+          }
+        }
+      }
+    },
+    "El peso y las repeticiones no cambian." : {
+      "comment" : "¿Por qué?: el día aligerado no toca carga ni repeticiones",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Weight and reps don't change." } }
+      }
+    },
+    "Marcaste que en este gimnasio no hay %@." : {
+      "comment" : "¿Por qué?: el gimnasio no tiene el ejercicio",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You marked that this gym doesn't have %@." } }
+      }
+    },
+    "Lo cambiamos por %@, que hace el mismo movimiento." : {
+      "comment" : "¿Por qué?: sustituto equivalente por el gimnasio",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "We swapped it for %@, which does the same movement." } }
+      }
+    },
+    "No hay un sustituto equivalente y seguro, así que no se programa." : {
+      "comment" : "¿Por qué?: sin sustituto equivalente por el gimnasio",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "There is no equivalent, safe substitute, so it isn't scheduled." } }
+      }
+    },
+    "Es una serie de calentamiento: va más ligera que las de trabajo." : {
+      "comment" : "¿Por qué?: el peso es de calentamiento",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "It's a warm-up set: it goes lighter than your working sets." } }
+      }
+    },
+    "%@ es lo que levantaste la última vez en %@ en esta máquina." : {
+      "comment" : "¿Por qué?: peso de la última vez en esta máquina",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ is what you lifted last time on %2$@ on this machine." } }
+      }
+    },
+    "%@ es lo que levantaste la última vez en %@." : {
+      "comment" : "¿Por qué?: peso de la última vez",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ is what you lifted last time on %2$@." } }
+      }
+    },
+    "%@ es el peso que marca tu plan para %@." : {
+      "comment" : "¿Por qué?: peso de la prescripción",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ is the weight your plan sets for %2$@." } }
+      }
+    },
+    "No hay un peso anterior en esta máquina: escribe el que vayas a usar." : {
+      "comment" : "¿Por qué?: sin peso anterior en esta máquina",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "There's no previous weight on this machine: enter the one you'll use." } }
+      }
+    },
+    "No hay un peso anterior: escribe el que vayas a usar." : {
+      "comment" : "¿Por qué?: sin peso anterior",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "There's no previous weight: enter the one you'll use." } }
+      }
+    },
+    "La app no sube el peso por su cuenta: tú lo cambias si hoy puedes más." : {
+      "comment" : "¿Por qué?: el peso precargado no aplica progresión",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The app doesn't raise the weight on its own: change it if you can do more today." } }
+      }
+    },
+    "kg" : {
+      "comment" : "Unidad de peso: kilogramos",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "kg" } }
+      }
+    },
+    "lb" : {
+      "comment" : "Unidad de peso: libras",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "lb" } }
+      }
+    },
+    "Reportaste dolor %@." : {
+      "comment" : "¿Por qué?: nivel de dolor reportado",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You reported %@ pain." } }
+      }
+    },
+    "Con ese nivel puedes seguir con normalidad." : {
+      "comment" : "¿Por qué?: el dolor leve no cambia la sesión",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "At that level you can carry on as usual." } }
+      }
+    },
+    "No se sube la carga de este ejercicio mientras haya dolor moderado o alto." : {
+      "comment" : "¿Por qué?: el dolor suspende la progresión de carga",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The load on this exercise isn't raised while pain is moderate or high." } }
+      }
+    },
+    "Está ocupada" : {
+      "comment" : "Entrenador: frase sugerida, la máquina del ejercicio actual está ocupada",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "It's taken" } }
+      }
+    },
+    "Cámbiame este ejercicio" : {
+      "comment" : "Entrenador: frase sugerida, pedir un sustituto",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Swap this exercise" } }
+      }
+    },
+    "Me duele" : {
+      "comment" : "Entrenador: frase sugerida, reportar dolor",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "It hurts" } }
+      }
+    },
+    "¿Por qué este peso?" : {
+      "comment" : "Entrenador: frase sugerida, explicar el peso precargado",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Why this weight?" } }
+      }
+    },
+    "Tengo 30 minutos" : {
+      "comment" : "Entrenador: frase sugerida, ajustar la sesión al tiempo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I have 30 minutes" } }
+      }
+    },
+    "¿Por qué este orden?" : {
+      "comment" : "Entrenador: frase sugerida, explicar el orden",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Why this order?" } }
+      }
+    },
+    "¿Por qué tan corta?" : {
+      "comment" : "Entrenador: frase sugerida, explicar el ajuste al tiempo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Why so short?" } }
+      }
+    },
+    "¿Por qué más ligero?" : {
+      "comment" : "Entrenador: frase sugerida, explicar el día aligerado",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Why lighter?" } }
+      }
+    },
+    "¿Por qué cambió?" : {
+      "comment" : "Entrenador: frase sugerida, explicar el cambio por el gimnasio",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Why did it change?" } }
+      }
+    },
+    "¿Por qué esta recomendación?" : {
+      "comment" : "Entrenador: frase sugerida, explicar la recomendación por dolor",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Why this recommendation?" } }
+      }
+    },
+    "No te entendí. Prueba con una frase corta, como estas:" : {
+      "comment" : "Entrenador: no entendió el mensaje",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I didn't understand. Try a short phrase, like these:" } }
+      }
+    },
+    "¿Cuántos minutos tienes hoy?" : {
+      "comment" : "Entrenador: pide los minutos disponibles",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "How many minutes do you have today?" } }
+      }
+    },
+    "Tengo %lld minutos" : {
+      "comment" : "Entrenador: frase sugerida con minutos",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I have %lld minutes" } }
+      }
+    },
+    "¿Cuál máquina? Dímelo durante el entrenamiento y adelanto otro ejercicio." : {
+      "comment" : "Entrenador: máquina ocupada sin decir cuál, fuera del entrenamiento",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Which machine? Tell me during your workout and I'll move another exercise up." } }
+      }
+    },
+    "¿Cuánto te duele: un poco, bastante o mucho?" : {
+      "comment" : "Entrenador: pide el nivel de dolor",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "How much does it hurt: a little, quite a bit or a lot?" } }
+      }
+    },
+    "Me duele un poco" : {
+      "comment" : "Entrenador: frase sugerida, dolor leve",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "It hurts a little" } }
+      }
+    },
+    "Me duele bastante" : {
+      "comment" : "Entrenador: frase sugerida, dolor moderado",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "It hurts quite a bit" } }
+      }
+    },
+    "Me duele mucho" : {
+      "comment" : "Entrenador: frase sugerida, dolor alto",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "It hurts a lot" } }
+      }
+    },
+    "¿Cuál quieres que te explique?" : {
+      "comment" : "Entrenador: pide cuál decisión explicar",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Which one should I explain?" } }
+      }
+    },
+    "Primero agrega el gimnasio en Perfil › Mi gimnasio." : {
+      "comment" : "Entrenador: no hay gimnasios con nombre para elegir",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "First add the gym in Profile › My gym." } }
+      }
+    },
+    "¿A cuál gimnasio?" : {
+      "comment" : "Entrenador: pide a cuál gimnasio cambiar",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Which gym?" } }
+      }
+    },
+    "Estoy en %@" : {
+      "comment" : "Entrenador: frase sugerida para cambiar de gimnasio",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I'm at %@" } }
+      }
+    },
+    "Una cosa a la vez: dime primero lo más urgente." : {
+      "comment" : "Entrenador: el mensaje pide dos cosas",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "One thing at a time: tell me the most urgent first." } }
+      }
+    },
+    "Ahora no hay una decisión de ese tema que explicar." : {
+      "comment" : "Entrenador: no hay registro que explicar",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "There's no decision on that to explain right now." } }
+      }
+    },
+    "Por qué cambió %@" : {
+      "comment" : "Entrenador: botón para explicar el cambio de un ejercicio por el gimnasio",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Why %@ changed" } }
+      }
+    },
+    "¿Cambiar tu objetivo a %@? Abro el cuestionario para que lo revises; tu historial no se borra." : {
+      "comment" : "Entrenador: confirmar cambio de objetivo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Change your goal to %@? I'll open the questionnaire so you can review it; your history isn't deleted." } }
+      }
+    },
+    "¿Cambiar tu fase a %@? Abro el cuestionario para que lo revises; tu historial no se borra." : {
+      "comment" : "Entrenador: confirmar cambio de fase",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Change your phase to %@? I'll open the questionnaire so you can review it; your history isn't deleted." } }
+      }
+    },
+    "¿Agregar una restricción? Abro Restricciones para que la revises." : {
+      "comment" : "Entrenador: confirmar una restricción",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Add a restriction? I'll open Restrictions so you can review it." } }
+      }
+    },
+    "¿Cambiar tu plan? Abro \"Cambiar objetivo o fase\" para que lo revises." : {
+      "comment" : "Entrenador: confirmar un cambio del plan",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Change your plan? I'll open \"Change goal or phase\" so you can review it." } }
+      }
+    },
+    "¿Confirmas este cambio?" : {
+      "comment" : "Entrenador: confirmar un cambio",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Do you confirm this change?" } }
+      }
+    },
+    "Con dolor moderado o alto en esta sesión no subo carga ni volumen, ni cambio lo que podría subirlos." : {
+      "comment" : "Entrenador: la política rechazó por dolor",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "With moderate or high pain this session I won't raise load or volume, or change anything that could raise them." } }
+      }
+    },
+    "Ese cambio saltaría una restricción activa, así que no lo hago." : {
+      "comment" : "Entrenador: la política rechazó por restricción",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "That change would bypass an active restriction, so I won't do it." } }
+      }
+    },
+    "Las reglas de seguridad no permiten ese cambio." : {
+      "comment" : "Entrenador: la política rechazó el cambio",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The safety rules don't allow that change." } }
+      }
+    },
+    "No pude revisar ese cambio con las reglas de seguridad, así que no hice nada." : {
+      "comment" : "Entrenador: la política no se pudo leer",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I couldn't check that change against the safety rules, so I didn't do anything." } }
+      }
+    },
+    "Listo, no cambié nada." : {
+      "comment" : "Entrenador: la persona canceló",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Done, I didn't change anything." } }
+      }
+    },
+    "Tu mensaje era muy largo: leí los primeros %lld caracteres." : {
+      "comment" : "Entrenador: el mensaje se cortó",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your message was too long: I read the first %lld characters." } }
+      }
+    },
+    "Quité el ajuste de tiempo de hoy." : {
+      "comment" : "Entrenador: se quitó el ajuste de tiempo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I removed today's time adjustment." } }
+      }
+    },
+    "Ajusté tu sesión de hoy a %lld min." : {
+      "comment" : "Entrenador: sesión ajustada al tiempo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I fitted today's session to %lld min." } }
+      }
+    },
+    "Puedo ajustar la sesión entre %lld y %lld minutos." : {
+      "comment" : "Entrenador: minutos fuera de rango",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I can fit the session between %1$lld and %2$lld minutes." } }
+      }
+    },
+    "No se pudo guardar el ajuste; tu sesión sigue igual." : {
+      "comment" : "Entrenador: no se guardó el ajuste de tiempo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The adjustment couldn't be saved; your session stays the same." } }
+      }
+    },
+    "Tu entrenamiento ya empezó y esa sesión no cambia. El tiempo se elige en Hoy antes de empezar." : {
+      "comment" : "Entrenador: no se ajusta el tiempo con el entrenamiento en curso",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your workout already started and that session doesn't change. Time is chosen in Today before you start." } }
+      }
+    },
+    "Cuando estés entrenando, dime que está ocupada y adelanto otro ejercicio." : {
+      "comment" : "Entrenador: máquina ocupada fuera del entrenamiento",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "When you're training, tell me it's taken and I'll move another exercise up." } }
+      }
+    },
+    "Márcalo durante el entrenamiento con \"No hay esta máquina aquí\" y lo recuerdo en este gimnasio." : {
+      "comment" : "Entrenador: máquina que no hay, fuera del entrenamiento",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Mark it during your workout with \"This machine isn't here\" and I'll remember it for this gym." } }
+      }
+    },
+    "Sólo puedo marcar la máquina del ejercicio actual. ¿Es esa?" : {
+      "comment" : "Entrenador: la máquina no es la del ejercicio actual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I can only mark the machine for the current exercise. Is it that one?" } }
+      }
+    },
+    "Sólo puedo marcar la máquina del ejercicio actual, %@. ¿Es esa?" : {
+      "comment" : "Entrenador: la máquina no es la del ejercicio actual (con nombre)",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I can only mark the machine for the current exercise, %@. Is it that one?" } }
+      }
+    },
+    "Listo: haces %@ ahora y %@ va justo después." : {
+      "comment" : "Entrenador: máquina ocupada, se adelantó otro ejercicio",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Done: you do %1$@ now and %2$@ comes right after." } }
+      }
+    },
+    "No hay otro ejercicio que adelantar sin cansarte de más: elige qué hacer." : {
+      "comment" : "Entrenador: máquina ocupada, hay que elegir",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "There's no other exercise to move up without tiring you too much: choose what to do." } }
+      }
+    },
+    "%@ va al final." : {
+      "comment" : "Entrenador: el ejercicio ocupado va al final",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ goes last." } }
+      }
+    },
+    "Abro las opciones: ahí está \"No hay esta máquina aquí\"." : {
+      "comment" : "Entrenador: abre la hoja con la máquina que no hay",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I'll open the options: \"This machine isn't here\" is there." } }
+      }
+    },
+    "Abro los sustitutos equivalentes; lo que prohíben tus restricciones no aparece." : {
+      "comment" : "Entrenador: abre la hoja de sustitutos",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I'll open the equivalent substitutes; what your restrictions forbid doesn't show up." } }
+      }
+    },
+    "Cambiar un ejercicio se hace durante el entrenamiento." : {
+      "comment" : "Entrenador: sustituir fuera del entrenamiento",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Swapping an exercise is done during your workout." } }
+      }
+    },
+    "Abro \"¿Te dolió?\" para que registres cuánto." : {
+      "comment" : "Entrenador: abre el reporte de dolor",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I'll open \"Did it hurt?\" so you can record how much." } }
+      }
+    },
+    "El dolor se registra sobre la última serie hecha y todavía no hay ninguna." : {
+      "comment" : "Entrenador: dolor antes de la primera serie",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pain is recorded on your last completed set and there isn't one yet." } }
+      }
+    },
+    "Si algo te duele, agrégalo como restricción y el plan lo evita." : {
+      "comment" : "Entrenador: dolor fuera del entrenamiento",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "If something hurts, add it as a restriction and your plan avoids it." } }
+      }
+    },
+    "No puedo decirte qué tienes: eso lo valora un profesional de la salud. Sí puedo registrar el dolor o evitar ese movimiento." : {
+      "comment" : "Entrenador: no responde preguntas de diagnóstico",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I can't tell you what's wrong: a health professional assesses that. I can record the pain or avoid that movement." } }
+      }
+    },
+    "Desde aquí no cambio la sesión por cansancio. Si dormiste mal, contesta \"¿Cómo dormiste?\" en Hoy y aligero el día." : {
+      "comment" : "Entrenador: fatiga en Hoy",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I don't change the session for tiredness from here. If you slept poorly, answer \"How did you sleep?\" in Today and I'll lighten the day." } }
+      }
+    },
+    "Desde aquí no cambio la sesión por cansancio. Si algo te duele, dímelo y lo registramos." : {
+      "comment" : "Entrenador: fatiga en el entrenamiento",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I don't change the session for tiredness from here. If something hurts, tell me and we'll record it." } }
+      }
+    },
+    "Abro \"Cambiar objetivo o fase\" para que lo revises." : {
+      "comment" : "Entrenador: abre el cambio de objetivo o fase",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I'll open \"Change goal or phase\" so you can review it." } }
+      }
+    },
+    "Abro Restricciones para que la revises." : {
+      "comment" : "Entrenador: abre Restricciones",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I'll open Restrictions so you can review it." } }
+      }
+    },
+    "Ya estás en %@." : {
+      "comment" : "Entrenador: ya está en ese gimnasio",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You're already at %@." } }
+      }
+    },
+    "Listo, ahora entrenas en %@." : {
+      "comment" : "Entrenador: cambió de gimnasio",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Done, you now train at %@." } }
+      }
+    },
+    "No se pudo cambiar de gimnasio; sigues en el mismo." : {
+      "comment" : "Entrenador: no se guardó el cambio de gimnasio",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The gym couldn't be changed; you're still at the same one." } }
+      }
+    },
+    "Eso todavía no lo hago desde aquí." : {
+      "comment" : "Entrenador: acción que el chat no hace",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I can't do that from here yet." } }
+      }
+    },
+    "Sin conexión a la IA: entiendo frases cortas." : {
+      "comment" : "Entrenador: respondió el intérprete local, sin IA",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No AI connection: I understand short phrases." } }
+      }
+    },
+    "La IA no respondió: contesté con el intérprete local." : {
+      "comment" : "Entrenador: la IA no respondió a tiempo",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The AI didn't respond: I answered with the on-device interpreter." } }
+      }
     }
   },
   "version" : "1.0"

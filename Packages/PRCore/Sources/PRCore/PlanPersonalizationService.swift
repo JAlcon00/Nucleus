@@ -150,11 +150,20 @@ public protocol PlanPersonalizing: Sendable {
 /// o su JSON no se entiende lo deja en el log de diagnóstico, sin contenido.
 public struct AIPlanPersonalizer: PlanPersonalizing {
     public let coach: AICoach
+    /// Con quién se pide "Por qué tu plan es así"; sin él, `coach`. SCRUM-273: así cada
+    /// operación se mide aparte.
+    public let explainCoach: AICoach
     public let config: PlanPersonalizationPolicyConfig
     private let logger: PRLogger
 
-    public init(coach: AICoach, config: PlanPersonalizationPolicyConfig = .standard, logger: PRLogger = PRLogger(category: .agent)) {
+    public init(
+        coach: AICoach,
+        explainCoach: AICoach? = nil,
+        config: PlanPersonalizationPolicyConfig = .standard,
+        logger: PRLogger = PRLogger(category: .agent)
+    ) {
         self.coach = coach
+        self.explainCoach = explainCoach ?? coach
         self.config = config
         self.logger = logger
     }
@@ -192,7 +201,7 @@ public struct AIPlanPersonalizer: PlanPersonalizing {
                 AgentMessage(role: "user", content: lines),
             ]
         )
-        switch await coach.ask(request) {
+        switch await explainCoach.ask(request) {
         case .unavailable(let error):
             logger.diagnostic("plan.rationale IA no disponible", error.diagnosticCode)
             return nil

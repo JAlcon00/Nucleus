@@ -40,6 +40,9 @@ public enum PersistenceSchemas {
         case .coachingPreference:
             // Nueva en SCRUM-267: versión 1.
             return CollectionSchema(current: .initial, steps: [], isReadable: { collection.decodes($0) })
+        case .agentUsage:
+            // Nueva en SCRUM-273: versión 1.
+            return CollectionSchema(current: .initial, steps: [], isReadable: { collection.decodes($0) })
         }
     }
 }
@@ -90,6 +93,7 @@ extension PersistenceCollection {
         case .checkIns: return (try? decoder.decode(SleepCheckIn.self, from: data)) != nil
         case .healthPreference: return (try? decoder.decode(StoredHealthPreference.self, from: data)) != nil
         case .coachingPreference: return (try? decoder.decode(StoredCoachingPreference.self, from: data)) != nil
+        case .agentUsage: return (try? decoder.decode(AgentUsageRecord.self, from: data)) != nil
         }
     }
 }

@@ -31,6 +31,8 @@ struct WorkoutModeView: View {
     var showsHealthOffer = false
     var onAcceptHealthOffer: () -> Void = {}
     var onDeclineHealthOffer: () -> Void = {}
+    /// SCRUM-276 (DI-2 A): el entrenador del entrenamiento; `nil` = sin botón.
+    var coach: CoachConversationCoordinator?
 
     @State private var weight: Double = 0
     @State private var reps: Int = 0
@@ -93,6 +95,15 @@ struct WorkoutModeView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
+                // SCRUM-276: secundario, junto a "Terminar"; en pausa no está.
+                if coach != nil, canTalkToCoach {
+                    Button {
+                        talkingToCoach = true
+                    } label: {
+                        Label("Entrenador", systemImage: "bubble.left.and.text.bubble.right")
+                    }
+                    .accessibilityIdentifier("workout.coach")
+                }
                 if isLive {
                     Button("Terminar", role: .destructive) { finishTapped = true }
                 }
@@ -108,6 +119,16 @@ struct WorkoutModeView: View {
             Button("Seguir entrenando", role: .cancel) {}
         }
         .sheet(isPresented: $reportingPain) { painSheet }
+        .sheet(item: $weightWhy) { item in
+            DecisionExplanationSheet(explanation: item.explanation)
+        }
+        .sheet(isPresented: $talkingToCoach) {
+            if let coach {
+                CoachChatView(coach: coach, onRoute: openFromCoach)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
+        }
         .sheet(item: $occupiedChoice) { choice in
             OccupiedChoiceSheet(
                 choice: choice,
@@ -145,10 +166,40 @@ struct WorkoutModeView: View {
     /// SCRUM-226: hoja "¿Te dolió esta serie?". Abre a media altura (la escala queda al
     /// alcance del pulgar) y crece al reportar dolor, para que la recomendación se vea entera.
     @State private var reportingPain = false
+    /// SCRUM-274: "¿Por qué este peso?" abierto.
+    @State private var weightWhy: WhyItem?
+    /// SCRUM-276: la hoja del entrenador abierta (el descanso sigue: el tiempo lo lleva el
+    /// coordinador).
+    @State private var talkingToCoach = false
     /// SCRUM-234: la hoja de "Máquina ocupada" cuando no hay nada que adelantar.
     @State private var occupiedChoice: OccupiedChoice?
     @State private var painDetent: PresentationDetent = .medium
     private let painPresenter = PainRecommendationPresenter(locale: AppEnvironment.presentationLocale)
+
+    /// SCRUM-276: el entrenador sólo con la sesión corriendo (en pausa, no).
+    private var canTalkToCoach: Bool {
+        switch coordinator.phase {
+        case .active, .resting: return true
+        case .idle, .paused, .finished: return false
+        }
+    }
+
+    /// SCRUM-276: el entrenador pidió abrir un flujo de esta pantalla. La hoja ya se cerró;
+    /// se espera un instante para no apilar dos hojas a la vez.
+    private func openFromCoach(_ flow: CoachFlow) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            switch flow {
+            case .painReport:
+                if coordinator.painReport != nil { reportingPain = true }
+            case .substitutes:
+                occupiedChoice = coordinator.substitutionChoice()
+            case .goalOrPhaseChange, .restrictions:
+                // Fuera del entrenamiento: el entrenador de Hoy los abre.
+                break
+            }
+        }
+    }
 
     private var isLive: Bool {
         switch coordinator.phase {
@@ -297,6 +348,26 @@ struct WorkoutModeView: View {
         .accessibilityIdentifier("workout.pain")
     }
 
+    /// SCRUM-274: el registro del peso precargado, en palabras; `nil` si no hay dato (sin botón).
+    private var weightWhyItem: WhyItem? {
+        guard let decision = coordinator.suggestedLoadDecision, decision.hasSomethingToExplain else { return nil }
+        return WhyItem(
+            id: decision.id.rawValue.uuidString,
+            explanation: DecisionExplanationPresenter(locale: AppEnvironment.presentationLocale).explanation(for: decision)
+        )
+    }
+
+    /// SCRUM-274: las razones del registro del dolor reportado; `nil` sin reporte o si la regla
+    /// no se pudo leer (la recomendación sigue a la vista).
+    private var painWhy: DecisionExplanation? {
+        do {
+            guard let decision = try coordinator.painDecision() else { return nil }
+            return DecisionExplanationPresenter(locale: AppEnvironment.presentationLocale).explanation(for: decision)
+        } catch {
+            return nil
+        }
+    }
+
     /// Hoja del dolor. "Sin dolor" la cierra; saltar el ejercicio también. Un error aquí es
     /// de estado (la sesión ya terminó): el guardado fallido lo avisa `persistenceFailed`.
     @ViewBuilder
@@ -316,7 +387,8 @@ struct WorkoutModeView: View {
                     _ = try? coordinator.skipPainfulExercise()
                     reportingPain = false
                 },
-                onDone: { reportingPain = false }
+                onDone: { reportingPain = false },
+                why: painWhy
             )
             .presentationDetents([.medium, .large], selection: $painDetent)
             .presentationDragIndicator(.visible)
@@ -425,6 +497,10 @@ struct WorkoutModeView: View {
                     .font(.footnote)
                     .foregroundStyle(Color.textSecondary)
                     .accessibilityIdentifier("workout.lastWeight")
+            }
+            // SCRUM-274: secundario y pequeño; "Completar serie" sigue siendo la acción grande.
+            if let item = weightWhyItem {
+                WhyButton(accessibilityName: "Por qué este peso", identifier: "workout.weight.why") { weightWhy = item }
             }
 
             SetInputControl(

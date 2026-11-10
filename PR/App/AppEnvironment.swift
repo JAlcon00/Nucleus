@@ -113,6 +113,19 @@ public final class AppEnvironment {
     /// Check-in diario de sueño (SCRUM-203).
     public let sleepCheckIns: SleepCheckInCoordinator
 
+    /// SCRUM-273: mide cada llamada a la IA (tokens y milisegundos, sin texto). Sin IA no hay
+    /// llamadas que medir.
+    let usageRecorder: AgentUsageRecorder?
+    /// SCRUM-273: "Uso de la IA (pruebas)" en Perfil, sólo en Debug y nunca en pruebas de UI.
+    let showsAIUsage: Bool
+
+    /// SCRUM-275 y SCRUM-276: el entrenador de Hoy y el del entrenamiento, cada uno con su
+    /// conversación en memoria (DI-5 A). `nil` si la política no se pudo leer (sin botón).
+    public private(set) var todayCoach: CoachConversationCoordinator?
+    public private(set) var workoutCoach: CoachConversationCoordinator?
+    /// Lo que cada entrenador le pide a la app; el coordinador los guarda débiles.
+    @ObservationIgnored private var coachBridges: [CoachBridge] = []
+
     /// ¿Hoy pregunta "¿Cómo dormiste?"? Sólo en día de entrenamiento y sin entrenamiento vivo.
     public var asksSleepCheckIn: Bool {
         sleepCheckIns.needsCheckIn && activeWorkout == nil && todayPlan.plan?.todayTemplate != nil
@@ -159,6 +172,38 @@ public final class AppEnvironment {
     /// SCRUM-224: qué va hoy en superset y por qué, ya traducido; `nil` si nada.
     public var supersetNote: String? {
         SupersetPresenter(locale: Self.presentationLocale).todayNote(for: todayPlan.plan?.todayTemplate) { exerciseNames[$0] }
+    }
+
+    /// SCRUM-274: "¿Por qué?" de lo que el motor cambió hoy, en palabras. Sale del registro
+    /// de cada decisión (SCRUM-270), nunca de la IA. Con varios cambios del gimnasio, sus
+    /// razones van juntas (hasta 4).
+    var todayWhy: TodayWhy {
+        let presenter = DecisionExplanationPresenter(locale: Self.presentationLocale)
+        var why = TodayWhy()
+        var gym: [DecisionExplanation] = []
+        for decision in todayPlan.todayDecisions {
+            let item = WhyItem(id: decision.id.rawValue.uuidString, explanation: presenter.explanation(for: decision))
+            switch decision.topic {
+            case .timeFit: why.time = item
+            case .readiness: why.readiness = item
+            case .gymChange: gym.append(item.explanation)
+            case .sessionOrder, .suggestedLoad, .pain: break
+            }
+        }
+        if let first = gym.first {
+            why.gym = WhyItem(id: "gym", explanation: DecisionExplanation(
+                title: first.title,
+                reasons: Array(gym.flatMap(\.reasons).prefix(DecisionExplanationPresenter.maximumReasons))
+            ))
+        }
+        return why
+    }
+
+    /// SCRUM-273: lee el resumen del uso de la IA para Perfil (sólo Debug y fuera de las
+    /// pruebas de UI); `nil` = sin fila.
+    var aiUsageLoader: (() async throws -> [AgentUsageRow])? {
+        guard showsAIUsage, let usageRecorder else { return nil }
+        return { try await usageRecorder.summary() }
     }
 
     /// SCRUM-30: la frase del ajuste de hoy, ya traducida; `nil` sin tiempo elegido.
@@ -585,7 +630,7 @@ public final class AppEnvironment {
         refreshTodayState()
     }
 
-    private func refreshTodayState() {
+    func refreshTodayState() {
         var record: WorkoutSessionRecord?
         if let activeWorkout, case .finished = activeWorkout.phase {} else {
             record = try? activeWorkout?.snapshot().session
@@ -818,7 +863,7 @@ public final class AppEnvironment {
         }
         let aiConsent = AIConsentCoordinator(
             store: consentStore,
-            isOffered: featureFlags.isEnabled(.agentNvidiaEnabled),
+            isOffered: AIConsentCoordinator.isOffered(flags: featureFlags, connection: aiConnection.status),
             clock: { fixedDate ?? Date() }
         )
         self.aiConsent = aiConsent
@@ -853,6 +898,24 @@ public final class AppEnvironment {
             }
         }
         let sleepCheckIns = SleepCheckInCoordinator(store: checkInStore, clock: { fixedDate ?? Date() })
+        var usageStore: AgentUsageStore?
+        if let persistence = self.basePersistence {
+            do {
+                usageStore = try persistence.agentUsageStore()
+            } catch {
+                persistence.log.saveFailed(.agentUsage)
+            }
+        }
+        let usageLog = self.basePersistence?.log
+        let usageRecorder = aiConnection.status.isLive
+            ? AgentUsageRecorder(store: usageStore, onSaveFailure: { usageLog?.saveFailed(.agentUsage) })
+            : nil
+        self.usageRecorder = usageRecorder
+        #if DEBUG
+        self.showsAIUsage = !testOptions.isolatedPersistence
+        #else
+        self.showsAIUsage = false
+        #endif
         self.sleepCheckIns = sleepCheckIns
         self.todayPlan = TodayPlanCoordinator(
             catalog: resolvedCatalog,
@@ -860,7 +923,12 @@ public final class AppEnvironment {
             clock: { fixedDate ?? Date() },
             // SCRUM-205: la IA personaliza sólo con conexión; sin consentimiento el contexto
             // es `nil` y no se manda nada.
-            personalizer: aiConnection.status.isLive ? AIPlanPersonalizer(coach: AICoach(connection: aiConnection)) : nil,
+            personalizer: aiConnection.status.isLive
+                ? AIPlanPersonalizer(
+                    coach: AICoach(connection: aiConnection.metered(.planPersonalization, by: usageRecorder)),
+                    explainCoach: AICoach(connection: aiConnection.metered(.planRationale, by: usageRecorder))
+                )
+                : nil,
             profileContext: { profile in aiConsent.context(for: profile, sleep: sleepCheckIns.today) }
         )
         self.session = AppSessionCoordinator(
@@ -901,6 +969,38 @@ public final class AppEnvironment {
             }
             bridge.start()
             self.watchBridge = bridge
+        }
+        // SCRUM-275 y SCRUM-276: el entrenador, con la política real y la auditoría sin texto.
+        var auditRepository: FileAgentAuditRepository?
+        if let persistence = self.basePersistence {
+            do {
+                auditRepository = try persistence.agentAuditRepository()
+            } catch {
+                persistence.log.saveFailed(.agentAudit)
+            }
+        }
+        let auditLog = self.basePersistence?.log
+        do {
+            let writer = AgentActionWriter(validator: try ActionPolicyValidator(config: ActionPolicyConfig(rule: ActionPolicyDefaults.makeRule())))
+            let today = CoachBridge(environment: self, surface: .today)
+            let workout = CoachBridge(environment: self, surface: .workout)
+            coachBridges = [today, workout]
+            func makeCoach(_ bridge: CoachBridge) -> CoachConversationCoordinator {
+                CoachConversationCoordinator(
+                    handler: bridge,
+                    transport: { [weak self] in self?.coachTransport },
+                    writer: writer,
+                    audit: auditRepository,
+                    onAuditFailure: { auditLog?.saveFailed(.agentAudit) },
+                    presenter: CoachReplyPresenter(locale: Self.presentationLocale),
+                    clock: { fixedDate ?? Date() }
+                )
+            }
+            todayCoach = makeCoach(today)
+            workoutCoach = makeCoach(workout)
+        } catch {
+            todayCoach = nil
+            workoutCoach = nil
         }
     }
 

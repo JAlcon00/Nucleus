@@ -7,6 +7,8 @@
 //  SCRUM-202 (IA-1): tras el formulario, antes de armar el plan, la persona decide si la
 //  IA puede usar sus datos para personalizarlo. Dice qué datos, para qué y que se puede
 //  retirar en Perfil. "Ahora no" no bloquea nada: el motor arma el plan igual.
+//  SCRUM-277 (DI-3, Apple 5.1.2(i)): dice que los procesa un proveedor externo, cuál es hoy
+//  y que también va lo que se le escribe al entrenador.
 //  Vista pura: la decisión la guarda `AIConsentCoordinator`.
 //
 
@@ -26,6 +28,7 @@ struct AIConsentView: View {
         ("cross.case", "Lesiones y restricciones"),
         ("calendar", "Días, minutos y variedad"),
         ("bed.double", "Tu check-in diario de sueño"),
+        ("bubble.left", "Lo que le escribes al entrenador"),
     ]
 
     var body: some View {
@@ -53,6 +56,8 @@ struct AIConsentView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .cardSurface(cornerRadius: DRadius.medium)
                     VStack(alignment: .leading, spacing: DSpace.s) {
+                        OnboardingNote(text: "Estos datos se envían a un proveedor externo de IA (hoy NVIDIA, sólo en pruebas) para responderte.")
+                            .accessibilityIdentifier("aiConsent.thirdParty")
                         OnboardingNote(text: "La rutina la calcula siempre el motor de Nucleus; la IA propone y explica.")
                         OnboardingNote(text: "Nunca usamos tu nombre. No va a registros ni a publicidad.")
                         OnboardingNote(text: "Puedes retirarlo cuando quieras en Perfil.")
@@ -86,5 +91,11 @@ struct AIConsentView: View {
 #Preview("No se pudo guardar · accessibility3") {
     AIConsentView(saveFailed: true, onAccept: {}, onDecline: {})
         .dynamicTypeSize(.accessibility3)
+        .ironEnergyTheme()
+}
+
+#Preview("Consentimiento · oscuro") {
+    AIConsentView(onAccept: {}, onDecline: {})
+        .preferredColorScheme(.dark)
         .ironEnergyTheme()
 }

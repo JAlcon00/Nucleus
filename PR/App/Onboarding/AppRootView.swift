@@ -207,7 +207,8 @@ struct AppRootView: View {
                     reconciledEnergy: environment.lastFinishedEnergy,
                     showsHealthOffer: environment.healthOfferVisible,
                     onAcceptHealthOffer: { Task { await environment.acceptHealthOffer() } },
-                    onDeclineHealthOffer: { Task { await environment.declineHealthOffer() } }
+                    onDeclineHealthOffer: { Task { await environment.declineHealthOffer() } },
+                    coach: environment.workoutCoach
                 )
             }
         }

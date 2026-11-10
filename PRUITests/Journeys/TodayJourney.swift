@@ -6,7 +6,7 @@
 //  dormiste?" a la vista los ejercicios quedan a un deslizamiento (SCRUM-222); Hoy tiene una
 //  sola acción y pestañas en español (SCRUM-195), lista la sesión con volumen realista
 //  (SCRUM-28); se reordena y se restablece (SCRUM-211); la tira y Plan abren la semana
-//  (SCRUM-197); "Dormí mal" aligera el día (SCRUM-203). Los datos viven en un directorio
+//  (SCRUM-197); "Dormí mal" aligera el día y "¿Por qué?" lo explica (SCRUM-203, SCRUM-274). Los datos viven en un directorio
 //  propio; se relanza donde el paso anterior dejó la pantalla desplazada o en otra vista.
 //
 
@@ -150,6 +150,31 @@ final class TodayJourney: PRUITestCase {
             XCTAssertTrue(element(app, "today.readiness").appears(within: 5), "Debe explicar el ajuste del día")
             XCTAssertFalse(element(app, "today.sleep").exists, "No vuelve a preguntar hoy")
             XCTAssertTrue(element(app, "today.start").exists, "Se puede entrenar igual")
+
+            // SCRUM-274: "¿Por qué?" dentro de la tarjeta abre las razones del registro y se
+            // cierra con un toque; Hoy sigue igual.
+            tap(app, "today.readiness.why")
+            XCTAssertTrue(element(app, "why.sheet").appears(within: 5), "Abre la explicación")
+            XCTAssertTrue(element(app, "why.reason.0").appears(within: 5), "Trae al menos una razón")
+            tap(app, "why.done")
+            XCTAssertTrue(element(app, "today.start").appears(within: 5), "Al cerrar, Hoy sigue igual")
+        }
+
+        // SCRUM-275: el entrenador de Hoy entiende "Tengo 30 minutos" con el intérprete local
+        // (las pruebas de UI no usan la IA, como Release), lo dice y Hoy muestra el ajuste.
+        step("El entrenador ajusta la sesión a 30 min sin IA y Hoy lo muestra (SCRUM-275)") {
+            let app = launch(storeID: storeID)
+            XCTAssertTrue(element(app, "today.start").appears(within: 15))
+            tap(app, "today.coach")
+            XCTAssertTrue(element(app, "coach.intro").appears(within: 5), "Abre el entrenador")
+            tap(app, "coach.suggestion.0")
+            let reply = element(app, "coach.message.1")
+            XCTAssertTrue(reply.appears(within: 10), "El entrenador responde")
+            XCTAssertTrue(reply.label.contains("30 min"), "Dice el ajuste: \(reply.label)")
+            XCTAssertTrue(reply.label.contains("Sin conexión a la IA"), "Dice que respondió el intérprete local: \(reply.label)")
+            tap(app, "coach.done")
+            XCTAssertTrue(element(app, "today.timeNote").appears(within: 10), "Hoy muestra el ajuste de tiempo")
+            XCTAssertTrue(element(app, "today.start").exists, "Empezar sigue siendo la acción principal")
         }
 
         // SCRUM-238: con un solo gimnasio Hoy no dice nada; con dos dice en cuál estoy, antes

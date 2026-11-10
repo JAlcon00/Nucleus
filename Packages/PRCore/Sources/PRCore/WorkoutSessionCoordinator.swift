@@ -819,8 +819,55 @@ extension WorkoutSessionCoordinator {
     }
 
     private func painRecommendation(for level: PainLevel, exercise: ExerciseID) throws -> PainRecommendation {
+        try painEvaluation(for: level, exercise: exercise).recommendation
+    }
+
+    private func painEvaluation(for level: PainLevel, exercise: ExerciseID) throws -> PainEvaluation {
         let engine = try PainFeedbackEngine(config: PainFeedbackConfig(rule: PainFeedbackPolicyDefaults.makeRule()))
-        return try engine.evaluate(PainFeedbackInput(level: level, exerciseName: exerciseNames[exercise])).recommendation
+        return try engine.evaluate(PainFeedbackInput(level: level, exerciseName: exerciseNames[exercise]))
+    }
+
+    // MARK: - SCRUM-272: la hoja de sustitutos desde el entrenador
+
+    /// Las opciones de la hoja de sustitutos para el ejercicio actual, sin cambiar la cola
+    /// (para "cámbiame este ejercicio" o "no hay esta máquina"). Son las mismas que tras
+    /// "Máquina ocupada": excluyen lo que prohíben las restricciones y, con dolor moderado o
+    /// alto, no se ofrecen (SCRUM-231). `nil` sin serie por hacer o fuera de una sesión activa.
+    public func substitutionChoice() -> OccupiedChoice? {
+        switch phase {
+        case .active, .resting: break
+        case .idle, .paused, .finished: return nil
+        }
+        guard let session = controller.current?.session, let current = currentSet() else { return nil }
+        let exercise = template.plannedSets[current.index].exerciseID
+        let others = WorkoutQueue.pendingOthers(than: exercise, template: template, sets: session.sets, state: session.queue ?? .empty)
+        return occupiedChoice(for: exercise, isOnlyExercise: others.isEmpty, session: session)
+    }
+
+    // MARK: - SCRUM-270: "¿Por qué?" en el entrenamiento
+
+    /// El registro del peso precargado de la serie actual; `nil` sin serie por hacer.
+    public var suggestedLoadDecision: ExplainableDecision? {
+        guard let set = currentSet() else { return nil }
+        return ExplainableDecisionBuilder().suggestedLoad(
+            draft: set.draft,
+            exerciseName: set.exerciseName,
+            isWarmup: set.isWarmup,
+            loadIsPerMachine: set.loadIsPerMachine,
+            date: clock()
+        )
+    }
+
+    /// El registro de `PainFeedbackEngine` para el dolor reportado en la última serie, el
+    /// mismo que decidió la recomendación de "¿Te dolió?". `nil` sin reporte o "sin dolor".
+    /// Lanza si la regla del dolor no se puede leer.
+    public func painDecision() throws -> ExplainableDecision? {
+        guard let session = controller.current?.session,
+              session.lifecycle == .active,
+              let last = session.sets.last,
+              let reported = last.painFeedback else { return nil }
+        let evaluation = try painEvaluation(for: reported.level, exercise: last.exerciseID)
+        return ExplainableDecisionBuilder().pain(evaluation, date: last.performedAt)
     }
 
     // MARK: - SCRUM-212: dejar para después, saltar y retomar

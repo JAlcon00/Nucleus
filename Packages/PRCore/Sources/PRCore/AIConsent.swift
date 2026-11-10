@@ -84,6 +84,21 @@ public final class AIConsentCoordinator {
         self.timeZone = timeZone
     }
 
+    /// SCRUM-277 (DI-6): ¿se ofrece la IA? Con la flag `agent.nvidia.enabled` encendida y
+    /// sólo si la IA puede usarse en este build: en Release la conexión es `.releaseBuild`
+    /// (sin IA hasta ADR-0005) y no se pide consentimiento para algo que no ocurre. En Debug
+    /// sin llave sí se ofrece (se puede agregar), y en pruebas de UI también (los recorridos
+    /// pasan por el consentimiento).
+    nonisolated public static func isOffered(flags: FeatureFlags, connection: AIConnectionStatus) -> Bool {
+        guard flags.isEnabled(.agentNvidiaEnabled) else { return false }
+        switch connection {
+        case .offline(.releaseBuild), .offline(.disabledByFlag):
+            return false
+        case .live, .offline(.missingKey), .offline(.uiTesting):
+            return true
+        }
+    }
+
     /// ¿Hay que preguntarle a la persona? Sólo si la app ofrece la IA.
     public var needsDecision: Bool { isOffered && consent.needsDecision }
 
@@ -133,5 +148,16 @@ public final class AIConsentCoordinator {
             if !newValue.allowsSharing { consent = newValue }
             return false
         }
+    }
+}
+
+extension AIConnection {
+    /// SCRUM-277: el transporte del entrenador (SCRUM-272). Sin conexión con la IA o sin
+    /// consentimiento no hay ninguno, aunque haya llave: responde el intérprete local. Se
+    /// pide en cada mensaje, así que retirar el consentimiento en Perfil apaga la IA en el
+    /// siguiente. Cuando ADR-0005 decida el backend, sólo cambia el transporte que se arma aquí.
+    public func coachTransport(consent: AIDataConsent) -> (any AgentBackendTransport)? {
+        guard status.isLive, consent.allowsSharing else { return nil }
+        return LLMBackendTransport(provider: provider)
     }
 }

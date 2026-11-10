@@ -23,6 +23,10 @@ struct AppTabBarView: View {
     /// El aviso "Completa tu perfil" se muestra una sola vez (SCRUM-198).
     @AppStorage("profile.aboutYouPromptShown") private var aboutYouPromptShown = false
     @State private var editingAboutYou = false
+    /// SCRUM-275: la hoja del entrenador de Hoy y lo que pide abrir.
+    @State private var talkingToCoach = false
+    @State private var confirmingCoachGoalChange = false
+    @State private var showingCoachRestrictions = false
     /// Intento: empezar la sesión planeada hoy (envía al composition root).
     var onStart: () -> Void
     /// Intento: continuar la sesión en curso (idem).
@@ -78,6 +82,7 @@ struct AppTabBarView: View {
                     if granted { environment.aiConsent.grant() } else { environment.aiConsent.decline() }
                 },
                 aiStatus: environment.aiConnection.status,
+                loadAIUsage: environment.aiUsageLoader,
                 showsHealth: environment.offersHealthWrites,
                 healthSetting: environment.healthWriteSetting,
                 onSetHealth: { enabled in
@@ -144,9 +149,53 @@ struct AppTabBarView: View {
                 supersetNote: environment.supersetNote,
                 gymNote: environment.gymNote,
                 activeGymLabel: environment.activeGymLabel,
-                onChooseTime: { minutes in Task { await environment.setTimeBudget(minutes) } }
+                onChooseTime: { minutes in Task { await environment.setTimeBudget(minutes) } },
+                why: environment.todayWhy
             )
             .navigationTitle(AppTab.today.title)
+            .toolbar {
+                // SCRUM-275: secundario; "Empezar" sigue siendo la acción principal de Hoy.
+                ToolbarItem(placement: .topBarTrailing) {
+                    if environment.todayCoach != nil {
+                        Button {
+                            talkingToCoach = true
+                        } label: {
+                            Label("Entrenador", systemImage: "bubble.left.and.text.bubble.right")
+                        }
+                        .accessibilityIdentifier("today.coach")
+                    }
+                }
+            }
+            .sheet(isPresented: $talkingToCoach) {
+                if let coach = environment.todayCoach {
+                    CoachChatView(coach: coach, onRoute: openFromCoach)
+                }
+            }
+            .sheet(isPresented: $showingCoachRestrictions) {
+                NavigationStack {
+                    RestrictionManagementView(model: environment.restrictionScreen)
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Listo") { showingCoachRestrictions = false }
+                            }
+                        }
+                }
+            }
+            .redoQuestionnaireConfirmation(isPresented: $confirmingCoachGoalChange, onConfirm: onRedoQuestionnaire)
+        }
+    }
+
+    /// SCRUM-275: el entrenador pidió abrir un flujo que ya existe. Su hoja ya se cerró; se
+    /// espera un instante para no apilar dos hojas. El cambio de objetivo pide la misma
+    /// confirmación que Plan y Perfil (SCRUM-266).
+    private func openFromCoach(_ flow: CoachFlow) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            switch flow {
+            case .goalOrPhaseChange: confirmingCoachGoalChange = true
+            case .restrictions: showingCoachRestrictions = true
+            case .painReport, .substitutes: break   // sólo dentro del entrenamiento
+            }
         }
     }
 

@@ -67,18 +67,31 @@ public struct AgentContext: Sendable, Hashable {
     public var text: String
     public var activeRestrictionCount: Int
     public var painGateActive: Bool
+    /// El entrenamiento de hoy está en curso.
     public var todaySessionStarted: Bool
+    /// SCRUM-271: el ejercicio de la serie actual, dentro del entrenamiento.
+    public var currentExercise: AgentExerciseContext?
+    /// SCRUM-271: los gimnasios de la persona, para "estoy en Oficina".
+    public var gyms: [AgentGymContext]
+    /// SCRUM-271: las decisiones que se pueden explicar ahora ("¿Por qué?").
+    public var explainableDecisions: [AgentDecisionContext]
 
     public init(
         text: String = "",
         activeRestrictionCount: Int = 0,
         painGateActive: Bool = false,
-        todaySessionStarted: Bool = false
+        todaySessionStarted: Bool = false,
+        currentExercise: AgentExerciseContext? = nil,
+        gyms: [AgentGymContext] = [],
+        explainableDecisions: [AgentDecisionContext] = []
     ) {
         self.text = text
         self.activeRestrictionCount = activeRestrictionCount
         self.painGateActive = painGateActive
         self.todaySessionStarted = todaySessionStarted
+        self.currentExercise = currentExercise
+        self.gyms = gyms
+        self.explainableDecisions = explainableDecisions
     }
 }
 
@@ -182,110 +195,15 @@ public protocol AgentBackendTransport: Sendable {
 
 // MARK: - Fallback local determinista
 
-/// Interpretador local determinista para el flujo offline (PR-1603).
-/// Reconoce SÓLO formas cortas y deterministas (sin NLU inventada); ante cualquier
-/// duda devuelve `needsClarification` (seguro, §20.1 "unknown intent pide reformulación
-/// o falla seguro").
+/// Interpretador local determinista para el flujo offline (PR-1603). Ante cualquier duda
+/// devuelve `needsClarification` (seguro, §20.1 "unknown intent pide reformulación o falla
+/// seguro"). Lo que entiende vive en `LocalPhraseVocabulary` (SCRUM-271); `analyze` dice
+/// además sobre qué pide aclarar.
 public struct LocalFallbackInterpreter: Sendable {
     public init() {}
 
     public func interpret(text: String, context: AgentContext) -> AgentInterpretation {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-
-        // Restricción de tiempo: "solo 30 min", "tengo 30 minutos". Dos cantidades distintas
-        // ("30 o 45 minutos") no se adivinan (SCRUM-33).
-        switch minutesMention(in: trimmed) {
-        case .one(let minutes):
-            return .intent(.setTimeConstraint(.hard(minutes: minutes)))
-        case .ambiguous:
-            return .needsClarification
-        case .none:
-            break
-        }
-
-        // Equipo ocupado: "el bench está ocupado" / "la maquina esta ocupada".
-        if let equipment = extractUnavailableEquipment(from: trimmed, pattern: Self.occupiedPattern) {
-            return .intent(.equipmentUnavailable(
-                EquipmentReference(equipmentType: equipment),
-                .occupied
-            ))
-        }
-
-        // Equipo inexistente en el gym: "no tienen hack squat" / "no hay cable".
-        if let equipment = extractUnavailableEquipment(from: trimmed, pattern: Self.missingPattern) {
-            return .intent(.equipmentUnavailable(
-                EquipmentReference(equipmentType: equipment),
-                .doesNotExist
-            ))
-        }
-
-        // Objetivo / fase deterministas. "Cambiar de gym" sin decir a cuál pide aclarar:
-        // antes inventaba un `GymID()` nuevo (SCRUM-33).
-        switch trimmed {
-        case "cambiar objetivo a hipertrofia", "objetivo hipertrofia":
-            return .intent(.changeGoal(.hypertrophy))
-        case "objetivo fuerza", "cambiar objetivo a fuerza":
-            return .intent(.changeGoal(.strength))
-        case "fase de definición", "deficit":
-            return .intent(.changePhase(.deficit))
-        default:
-            return .needsClarification
-        }
-    }
-
-    /// Cuántas cantidades de minutos distintas menciona el texto.
-    private enum MinutesMention {
-        case none
-        case one(Int)
-        case ambiguous
-    }
-
-    // MARK: - Equipamiento (PR-1605)
-
-    private static let occupiedPattern = #"\b(est[áa]|se encuentra)?\s*(ocupad[oa]|en uso|pillad[oa])"#
-    private static let missingPattern = #"no (tienen|hay|ten[cg]amos|cuentan)"#
-
-    /// Intenta detectar + mapear un equipo al que se refiere el texto. Devuelve
-    /// `nil` si no hay ninguna palabra de equipo conocida (⇒ `needsClarification`).
-    private func extractUnavailableEquipment(from text: String, pattern: String) -> EquipmentType? {
-        // Mapeo determinista nombre → tipo. El dominio NO inventa instancias de
-        // máquina: devuelve el tipo para que el caller resuelva la instancia.
-        let keywords: [(EquipmentType, [String])] = [
-            (.barbell, ["barra", "barbell", "barra olimpica"]),
-            (.dumbbell, ["mancuerna", "dumbbell", "mancuernas"]),
-            (.smithMachine, ["smith", "smitch"]),
-            (.cable, ["cable", "polea", "crossover"]),
-            (.machine, ["maquina", "prensa", "hack squat", "hack", "ackly", "press machine", "leg press", "bench", "banco", "press de banca", "banca"]),
-            (.kettlebell, ["kettlebell", "pesa rusa"]),
-            (.bands, ["bandas", "goma", "resistencia"]),
-            (.sled, ["trineo", "sled"]),
-            (.plateLoaded, ["lastre", "discos"]),
-        ]
-
-        // Debe haber patrón de ocupado/inexistente Y una palabra de equipo.
-        guard text.range(of: pattern, options: .regularExpression) != nil else { return nil }
-
-        for (type, words) in keywords {
-            for word in words where text.contains(word) {
-                return type
-            }
-        }
-        return nil
-    }
-
-    private func minutesMention(in text: String) -> MinutesMention {
-        // "solo X min", "X minutos", "tengo X minutos"; "30 o 45 minutos" cuenta las dos.
-        let pattern = #"(\d+)\s*(o|y|a|-)?\s*(\d+)?\s*(min|minutos|minuto)"#
-        guard let range = text.range(of: pattern, options: .regularExpression) else { return .none }
-        let values = Set(
-            String(text[range])
-                .split(whereSeparator: { !$0.isNumber })
-                .compactMap { Int($0) }
-        )
-        guard values.count == 1, let value = values.first else {
-            return values.isEmpty ? .none : .ambiguous
-        }
-        return value > 0 ? .one(value) : .none
+        analyze(text: text, context: context).interpretation
     }
 }
 
