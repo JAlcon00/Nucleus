@@ -119,6 +119,13 @@ public final class AppEnvironment {
     /// SCRUM-273: "Uso de la IA (pruebas)" en Perfil, sólo en Debug y nunca en pruebas de UI.
     let showsAIUsage: Bool
 
+    /// SCRUM-275 y SCRUM-276: el entrenador de Hoy y el del entrenamiento, cada uno con su
+    /// conversación en memoria (DI-5 A). `nil` si la política no se pudo leer (sin botón).
+    public private(set) var todayCoach: CoachConversationCoordinator?
+    public private(set) var workoutCoach: CoachConversationCoordinator?
+    /// Lo que cada entrenador le pide a la app; el coordinador los guarda débiles.
+    @ObservationIgnored private var coachBridges: [CoachBridge] = []
+
     /// ¿Hoy pregunta "¿Cómo dormiste?"? Sólo en día de entrenamiento y sin entrenamiento vivo.
     public var asksSleepCheckIn: Bool {
         sleepCheckIns.needsCheckIn && activeWorkout == nil && todayPlan.plan?.todayTemplate != nil
@@ -623,7 +630,7 @@ public final class AppEnvironment {
         refreshTodayState()
     }
 
-    private func refreshTodayState() {
+    func refreshTodayState() {
         var record: WorkoutSessionRecord?
         if let activeWorkout, case .finished = activeWorkout.phase {} else {
             record = try? activeWorkout?.snapshot().session
@@ -962,6 +969,38 @@ public final class AppEnvironment {
             }
             bridge.start()
             self.watchBridge = bridge
+        }
+        // SCRUM-275 y SCRUM-276: el entrenador, con la política real y la auditoría sin texto.
+        var auditRepository: FileAgentAuditRepository?
+        if let persistence = self.basePersistence {
+            do {
+                auditRepository = try persistence.agentAuditRepository()
+            } catch {
+                persistence.log.saveFailed(.agentAudit)
+            }
+        }
+        let auditLog = self.basePersistence?.log
+        do {
+            let writer = AgentActionWriter(validator: try ActionPolicyValidator(config: ActionPolicyConfig(rule: ActionPolicyDefaults.makeRule())))
+            let today = CoachBridge(environment: self, surface: .today)
+            let workout = CoachBridge(environment: self, surface: .workout)
+            coachBridges = [today, workout]
+            func makeCoach(_ bridge: CoachBridge) -> CoachConversationCoordinator {
+                CoachConversationCoordinator(
+                    handler: bridge,
+                    transport: { [weak self] in self?.coachTransport },
+                    writer: writer,
+                    audit: auditRepository,
+                    onAuditFailure: { auditLog?.saveFailed(.agentAudit) },
+                    presenter: CoachReplyPresenter(locale: Self.presentationLocale),
+                    clock: { fixedDate ?? Date() }
+                )
+            }
+            todayCoach = makeCoach(today)
+            workoutCoach = makeCoach(workout)
+        } catch {
+            todayCoach = nil
+            workoutCoach = nil
         }
     }
 
