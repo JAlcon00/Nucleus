@@ -268,7 +268,7 @@ struct ProfileView: View {
             Text("Inteligencia artificial")
         } footer: {
             Text(aiConsentGranted
-                 ? "La IA usa tu perfil y tu check-in para adaptar tu rutina. Nunca tu nombre."
+                 ? "Tu perfil, tu check-in y lo que le escribes al entrenador van a un proveedor externo de IA (hoy NVIDIA, sólo en pruebas). Nunca tu nombre."
                  : "La IA no recibe tus datos. Tu plan lo arma el motor de Nucleus en este iPhone.")
                 .foregroundStyle(Color.textSecondary)
         }

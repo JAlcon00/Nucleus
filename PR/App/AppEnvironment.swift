@@ -843,7 +843,7 @@ public final class AppEnvironment {
         }
         let aiConsent = AIConsentCoordinator(
             store: consentStore,
-            isOffered: featureFlags.isEnabled(.agentNvidiaEnabled),
+            isOffered: AIConsentCoordinator.isOffered(flags: featureFlags, connection: aiConnection.status),
             clock: { fixedDate ?? Date() }
         )
         self.aiConsent = aiConsent
