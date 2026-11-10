@@ -560,6 +560,50 @@ public final class TodayPlanCoordinator {
         plan.map { BlockOverviewBuilder().overview(block: $0.block, date: clock(), timeZone: timeZone()) }
     }
 
+    /// SCRUM-270: el registro de cada decisión visible de hoy (orden, tiempo, sueño y
+    /// gimnasio), para "¿Por qué?". Vacío en descanso o sin plan. Mismo plan, mismos
+    /// registros: la fecha es el inicio del día y el ID sale de los hechos.
+    public var todayDecisions: [ExplainableDecision] {
+        guard let plan, let template = plan.todayTemplate else { return [] }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone()
+        let day = calendar.startOfDay(for: clock())
+        let names = Dictionary(catalog.exercises.map { ($0.id, $0.canonicalName) }, uniquingKeysWith: { first, _ in first })
+        let name: (ExerciseID) -> String? = { names[$0] }
+        let builder = ExplainableDecisionBuilder()
+        var decisions: [ExplainableDecision] = []
+        let orderExplanation = plan.explanation?.sessionOrder.first { $0.sessionTitle == template.title }
+        if let order = builder.sessionOrder(
+            orderExplanation,
+            isCustom: plan.todayOrderIsCustom,
+            name: name,
+            ruleReferences: plan.explanation?.ruleReferences ?? [],
+            date: day
+        ) {
+            decisions.append(order)
+        }
+        if let time = builder.timeFit(plan.timeAdjustment, name: name, date: day) {
+            decisions.append(time)
+        }
+        if let readiness = builder.readiness(plan.readiness, date: day) {
+            decisions.append(readiness)
+        }
+        decisions.append(contentsOf: builder.gymChanges(
+            plan.gymNotes[template.id] ?? [],
+            name: name,
+            ruleReferences: Self.substitutionRuleReferences,
+            date: day
+        ))
+        return decisions
+    }
+
+    /// La regla con la que el gimnasio elige un sustituto equivalente (SCRUM-236).
+    private static let substitutionRuleReferences: [EvidenceRuleReference] = {
+        guard let rule = try? SubstitutionScoringDefaults.makeRule(),
+              let reference = try? EvidenceRuleReference(rule) else { return [] }
+        return [reference]
+    }()
+
     /// "Tu semana" del plan activo (lunes a domingo); `nil` sin plan.
     public var week: WeekOverview? {
         guard let plan, let activeProfile else { return nil }
