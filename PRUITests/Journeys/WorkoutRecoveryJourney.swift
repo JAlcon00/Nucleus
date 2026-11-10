@@ -195,6 +195,26 @@ final class WorkoutRecoveryJourney: PRUITestCase {
             XCTAssertFalse(element(reopened, "gym.missing.0").waitForExistence(timeout: 3), "La marca se quitó")
         }
 
+        // SCRUM-276: el entrenador del entrenamiento, junto a "Terminar": "Está ocupada" hace
+        // lo mismo que el botón "Máquina ocupada", sin IA, y la serie sigue a la mano.
+        step("El entrenador marca la máquina ocupada desde el entrenamiento (SCRUM-276)") {
+            let app = launchWithPlan()
+            tap(app, "today.start")
+            XCTAssertTrue(element(app, "workout.completeSet").appears(within: 10))
+            tap(app, "workout.coach")
+            XCTAssertTrue(element(app, "coach.intro").appears(within: 5), "Abre el entrenador")
+            tap(app, "coach.suggestion.0")   // "Está ocupada"
+            // Si nada se puede adelantar, la hoja se cierra y se abren las opciones de siempre.
+            if element(app, "occupied.wait").appears(within: 5) {
+                tap(app, "occupied.wait")
+            } else {
+                XCTAssertTrue(element(app, "coach.message.1").appears(within: 10), "El entrenador responde")
+                tap(app, "coach.done")
+            }
+            XCTAssertTrue(element(app, "workout.occupied.notice").appears(within: 5), "Dice dónde quedó el ejercicio, como el botón")
+            XCTAssertTrue(element(app, "workout.completeSet").appears(within: 5), "\"Completar serie\" sigue a la mano")
+        }
+
         // SCRUM-212 y SCRUM-233: "Máquina ocupada" dice qué sigue, se salta (con confirmación),
         // se retoma, y al terminar el resumen dice qué se saltó.
         step("Dejar para después, saltar y retomar; el resumen dice qué se saltó (testDeferSkipAndResumeInWorkout)") {
