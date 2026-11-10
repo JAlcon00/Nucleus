@@ -113,6 +113,12 @@ public final class AppEnvironment {
     /// Check-in diario de sueño (SCRUM-203).
     public let sleepCheckIns: SleepCheckInCoordinator
 
+    /// SCRUM-273: mide cada llamada a la IA (tokens y milisegundos, sin texto). Sin IA no hay
+    /// llamadas que medir.
+    let usageRecorder: AgentUsageRecorder?
+    /// SCRUM-273: "Uso de la IA (pruebas)" en Perfil, sólo en Debug y nunca en pruebas de UI.
+    let showsAIUsage: Bool
+
     /// ¿Hoy pregunta "¿Cómo dormiste?"? Sólo en día de entrenamiento y sin entrenamiento vivo.
     public var asksSleepCheckIn: Bool {
         sleepCheckIns.needsCheckIn && activeWorkout == nil && todayPlan.plan?.todayTemplate != nil
@@ -184,6 +190,13 @@ public final class AppEnvironment {
             ))
         }
         return why
+    }
+
+    /// SCRUM-273: lee el resumen del uso de la IA para Perfil (sólo Debug y fuera de las
+    /// pruebas de UI); `nil` = sin fila.
+    var aiUsageLoader: (() async throws -> [AgentUsageRow])? {
+        guard showsAIUsage, let usageRecorder else { return nil }
+        return { try await usageRecorder.summary() }
     }
 
     /// SCRUM-30: la frase del ajuste de hoy, ya traducida; `nil` sin tiempo elegido.
@@ -878,6 +891,24 @@ public final class AppEnvironment {
             }
         }
         let sleepCheckIns = SleepCheckInCoordinator(store: checkInStore, clock: { fixedDate ?? Date() })
+        var usageStore: AgentUsageStore?
+        if let persistence = self.basePersistence {
+            do {
+                usageStore = try persistence.agentUsageStore()
+            } catch {
+                persistence.log.saveFailed(.agentUsage)
+            }
+        }
+        let usageLog = self.basePersistence?.log
+        let usageRecorder = aiConnection.status.isLive
+            ? AgentUsageRecorder(store: usageStore, onSaveFailure: { usageLog?.saveFailed(.agentUsage) })
+            : nil
+        self.usageRecorder = usageRecorder
+        #if DEBUG
+        self.showsAIUsage = !testOptions.isolatedPersistence
+        #else
+        self.showsAIUsage = false
+        #endif
         self.sleepCheckIns = sleepCheckIns
         self.todayPlan = TodayPlanCoordinator(
             catalog: resolvedCatalog,
@@ -885,7 +916,12 @@ public final class AppEnvironment {
             clock: { fixedDate ?? Date() },
             // SCRUM-205: la IA personaliza sólo con conexión; sin consentimiento el contexto
             // es `nil` y no se manda nada.
-            personalizer: aiConnection.status.isLive ? AIPlanPersonalizer(coach: AICoach(connection: aiConnection)) : nil,
+            personalizer: aiConnection.status.isLive
+                ? AIPlanPersonalizer(
+                    coach: AICoach(connection: aiConnection.metered(.planPersonalization, by: usageRecorder)),
+                    explainCoach: AICoach(connection: aiConnection.metered(.planRationale, by: usageRecorder))
+                )
+                : nil,
             profileContext: { profile in aiConsent.context(for: profile, sleep: sleepCheckIns.today) }
         )
         self.session = AppSessionCoordinator(

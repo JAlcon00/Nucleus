@@ -193,6 +193,10 @@ struct LegacyPersistenceMigrationTests {
             (.checkIns, try Fixture.encoded(SleepCheckIn(day: "2026-10-22", hours: 7, quality: .good))),
             (.healthPreference, try Fixture.encoded(StoredHealthPreference(preference: .enabled, updatedAt: Date(timeIntervalSince1970: 0)))),
             (.coachingPreference, try Fixture.encoded(StoredCoachingPreference(choice: .manual(level: .guided), updatedAt: Date(timeIntervalSince1970: 0)))),
+            (.agentUsage, try Fixture.encoded(AgentUsageRecord(
+                id: UUID(), date: Date(timeIntervalSince1970: 0), operation: .coachInterpret,
+                promptTokens: 1, completionTokens: 1, reasoningTokens: nil, durationMilliseconds: 10, outcome: .answered
+            ))),
         ]
         #expect(samples.map(\.0).sorted { $0.rawValue < $1.rawValue }
             == PersistenceCollection.allCases.sorted { $0.rawValue < $1.rawValue })

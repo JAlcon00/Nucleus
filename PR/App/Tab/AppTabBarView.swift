@@ -78,6 +78,7 @@ struct AppTabBarView: View {
                     if granted { environment.aiConsent.grant() } else { environment.aiConsent.decline() }
                 },
                 aiStatus: environment.aiConnection.status,
+                loadAIUsage: environment.aiUsageLoader,
                 showsHealth: environment.offersHealthWrites,
                 healthSetting: environment.healthWriteSetting,
                 onSetHealth: { enabled in

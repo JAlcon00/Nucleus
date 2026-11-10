@@ -47,6 +47,8 @@ struct ProfileView: View {
     var onSetAIConsent: (Bool) -> Void = { _ in }
     /// Estado de la conexión con la IA (SCRUM-204): sólo se informa, no se decide aquí.
     var aiStatus: AIConnectionStatus = .offline(.releaseBuild)
+    /// SCRUM-273: "Uso de la IA (pruebas)", sólo en Debug; `nil` = sin fila.
+    var loadAIUsage: (() async throws -> [AgentUsageRow])?
     /// ¿La app ofrece guardar en Salud? Con el flag apagado no hay sección (SCRUM-248).
     var showsHealth = false
     /// Estado del interruptor, ya decidido en PRCore.
@@ -264,6 +266,18 @@ struct ProfileView: View {
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("profile.aiStatus")
+            if let loadAIUsage {
+                NavigationLink {
+                    AIUsageView(load: loadAIUsage)
+                } label: {
+                    Label {
+                        Text("Uso de la IA (pruebas)")
+                    } icon: {
+                        Image(systemName: "gauge.with.dots.needle.33percent").foregroundStyle(Color.textSecondary)
+                    }
+                }
+                .accessibilityIdentifier("profile.aiUsage")
+            }
         } header: {
             Text("Inteligencia artificial")
         } footer: {
