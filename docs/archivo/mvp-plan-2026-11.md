@@ -549,10 +549,10 @@ Evidencia: rama `SCRUM-13-fase-h`, PR #48, sobre `main` @ `216f698`. Terminadas 
 - **Warnings nuevos:** ninguno. Sigue el de `ProfileView.swift` (Toggle con `Binding(get:set:)`), que ya estaba en `main`.
 - **SCRUM-268, al cerrarla (commit `b761b11`, 2026-11-08):** `make ci` → `✔ Test run with 1002 tests in 138 suites passed` + `✔ Test run with 648 tests in 91 suites passed` + `Executed 151 tests, with 0 failures`; guard `OK: ninguna prueba se borra, desactiva ni reduce (base 216f698, 1775 → 1816 pruebas).`; builds de iOS y watchOS OK, sin warnings nuevos. `make test-ui` completa → **15 de 15 OK**, con el paso de series por músculo en `testFirstWorkoutReachesProgressAndExport`; incluye los 3 recorridos del smoke, así que el smoke no se corrió aparte. Contraste de "En rango" (`success` sobre `surface`): 6.19:1 claro y 8.39:1 oscuro. La regla se escribió antes que sus pruebas; las 11 pasaron a la primera.
 
-## Fase I en un solo PR
+## Fase I en un solo PR (PR #50)
 
 - **Épica:** Fase I (SCRUM-14) · Could · hito 1.0.
-- **Estado:** rama `SCRUM-14-fase-i`, sobre `main` @ `84d4b90`. Un commit por historia.
+- **Estado:** PR #50, rama `SCRUM-14-fase-i`, sobre `main` @ `84d4b90`. Un commit por historia. En revisión: el merge es de Jesús (carril 🟡).
 - **Por qué en un PR:** Jesús lo pidió el 2026-11-09 ("quiero que empecemos la fase I en una nueva sesión al igual que las fases anteriores"), con la cola 👤 sobre el límite, como las Fases E a H.
 - **Revisión del alcance contra `main` `84d4b90`:** el gateway del agente, el intérprete local, la política, el escritor de acciones, la auditoría, `LLMBackendTransport` y `AgentUsage` ya existían en PRDomain y PRCore, pero nada llegaba a la app. Ninguna decisión visible llegaba como `DecisionRecord` (el del dolor se armaba y se tiraba) y `FileDecisionRepository` y `FileAgentAuditRepository` no se usaban. RNF-020, RNF-021 y RNEG-010, citados en la épica, no existen en `promptMaster.md` ni en la trazabilidad; se cambiaron por RNEG-004 y RNF-012.
 - **La IA en producción no está decidida** (ADR-0005, Propuesto): en Release responde el intérprete local; la IA sólo en Debug con la llave local y consentimiento, detrás de `AgentBackendTransport`. Ni el backend ni ADR-0005 ni SCRUM-221 se tocaron.
@@ -682,4 +682,4 @@ Evidencia: rama `SCRUM-13-fase-h`, PR #48, sobre `main` @ `216f698`. Terminadas 
 - **Una corrección durante la fase:** al cancelar un mensaje y mandar otro, la tarea vieja apagaba "pensando" de la nueva; quedó dentro del commit de SCRUM-272, con su prueba (`lateCancelledTaskKeepsNewOneThinking`). La prueba de "sin red" mide con `SuspendingClock`: la Mac se dormía a ratos y el reloj normal contaba ese tiempo.
 - **No verificado en dispositivo:** todo lo 👤 de la sección 2 de `mvp-plan.md` (SCRUM-273 a 277); la IA real (Debug con llave) no se probó en esta sesión.
 
-Evidencia: rama `SCRUM-14-fase-i`, sobre `main` @ `84d4b90`. Terminadas el 2026-11-09 y 2026-11-10.
+Evidencia: rama `SCRUM-14-fase-i`, PR #50, sobre `main` @ `84d4b90`. Terminadas el 2026-11-09 y 2026-11-10.

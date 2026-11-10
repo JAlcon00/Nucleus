@@ -1,7 +1,7 @@
 # mvp-plan.md — Tablero activo de Nucleus
 
 > **Fuente:** Jira `creadevs.atlassian.net`, proyecto **SCRUM** (épica del POC: SCRUM-180).
-> **Actualizado:** 2026-11-10 (Fase I en revisión, rama `SCRUM-14-fase-i`; Fase H en `main` por el PR #48, sin el mapa de SCRUM-229; Fases F y G en `main` por los PR #42 y #41, con los gates en dispositivo pendientes, SCRUM-251 y SCRUM-261).
+> **Actualizado:** 2026-11-10 (Fase I en revisión por el PR #50; Fase H en `main` por el PR #48, sin el mapa de SCRUM-229; Fases F y G en `main` por los PR #42 y #41, con los gates en dispositivo pendientes, SCRUM-251 y SCRUM-261).
 > **Lo terminado** hasta el 2026-11-02 está congelado en [`docs/archivo/mvp-plan-2026-10.md`](docs/archivo/mvp-plan-2026-10.md): el POC (F-01 a F-07, bloques 0 a 13), UX, IA, feedback y las Fases B, C y D, más la deuda. Ahí siguen la evidencia y los criterios de cada historia. No se edita: se cita.
 > **Regla:** mientras quede un `[ ]` en la sección 1, **no se trabaja ninguna historia P1/P2 de `backlog.md`**.
 
@@ -109,7 +109,7 @@ Son de historias ya finalizadas en Jira; casi todas se hacen en una sola sesión
   - DH-1 = A: "accesibilidad" en Perfil no lleva pantalla propia; la app respeta los ajustes de iOS.
   - DH-2 = A: SCRUM-229 se aprueba y se parte. Su primera parte, SCRUM-268 (series por músculo en texto), va en el PR #48.
 
-**Fase I · entrenador conversacional (SCRUM-14, Could): en revisión, rama `SCRUM-14-fase-i`, un commit por historia.**
+**Fase I · entrenador conversacional (SCRUM-14, Could): en revisión por el PR #50, rama `SCRUM-14-fase-i`, un commit por historia.**
 - **Excepción de Jesús (2026-11-09):** "quiero que empecemos la fase I en una nueva sesión al igual que las fases anteriores". Toda la fase va en una rama y un PR, un commit por historia y merge commit, aunque la cola 👤 pasa de 5 y el runbook se detiene en el paso 0, como en las Fases E a H.
 - **Revisión del alcance contra `main` `84d4b90`:** el gateway, el intérprete local, la política, el escritor de acciones, la auditoría, `LLMBackendTransport` y `AgentUsage` ya estaban en PRDomain y PRCore, pero nada llegaba a la app. Ninguna decisión visible llegaba como `DecisionRecord` (el del dolor se armaba y se tiraba). RNF-020, RNF-021 y RNEG-010, citados en la épica, no existen; se cambiaron por RNEG-004 y RNF-012.
 - **Historias:** SCRUM-270 a SCRUM-277 (PR-I001 a PR-I008), todas en el PR. La IA en producción no está decidida (ADR-0005): en Release responde el intérprete local; con IA, sólo en Debug con la llave local y consentimiento, detrás de `AgentBackendTransport`.
@@ -172,14 +172,14 @@ Una línea por historia terminada después del 2026-11-02: `SCRUM-XX · título 
 - SCRUM-266 · PR-H004 Tu bloque en Plan: objetivo, fase y semana · PR #48 · 2026-11-07 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-h-en-un-solo-pr-pr-48))
 - SCRUM-267 · PR-H005 Elegir cuánto me explica la app · PR #48 · 2026-11-07 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-h-en-un-solo-pr-pr-48))
 - SCRUM-268 · PR-H006 Series por músculo de la semana contra su rango · PR #48 · 2026-11-07 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-h-en-un-solo-pr-pr-48))
-- SCRUM-270 · PR-I001 "¿Por qué?" sale del registro de la decisión · PR de la Fase I · 2026-11-09 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-i-en-un-solo-pr))
-- SCRUM-271 · PR-I002 El intérprete local entiende las frases del gimnasio · PR de la Fase I · 2026-11-09 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-i-en-un-solo-pr))
-- SCRUM-272 · PR-I003 El entrenador en PRCore, siempre por la política · PR de la Fase I · 2026-11-09 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-i-en-un-solo-pr))
-- SCRUM-274 · PR-I005 "¿Por qué?" en Hoy y en el entrenamiento · PR de la Fase I · 2026-11-09 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-i-en-un-solo-pr))
-- SCRUM-277 · PR-I008 El consentimiento dice que un tercero procesa los datos · PR de la Fase I · 2026-11-09 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-i-en-un-solo-pr))
-- SCRUM-273 · PR-I004 Medir tokens y latencia de cada llamada a la IA · PR de la Fase I · 2026-11-09 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-i-en-un-solo-pr))
-- SCRUM-275 · PR-I006 Hablar con el entrenador desde Hoy · PR de la Fase I · 2026-11-09 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-i-en-un-solo-pr))
-- SCRUM-276 · PR-I007 El entrenador durante el entrenamiento · PR de la Fase I · 2026-11-09 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-i-en-un-solo-pr))
+- SCRUM-270 · PR-I001 "¿Por qué?" sale del registro de la decisión · PR #50 · 2026-11-09 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-i-en-un-solo-pr-pr-50))
+- SCRUM-271 · PR-I002 El intérprete local entiende las frases del gimnasio · PR #50 · 2026-11-09 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-i-en-un-solo-pr-pr-50))
+- SCRUM-272 · PR-I003 El entrenador en PRCore, siempre por la política · PR #50 · 2026-11-09 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-i-en-un-solo-pr-pr-50))
+- SCRUM-274 · PR-I005 "¿Por qué?" en Hoy y en el entrenamiento · PR #50 · 2026-11-09 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-i-en-un-solo-pr-pr-50))
+- SCRUM-277 · PR-I008 El consentimiento dice que un tercero procesa los datos · PR #50 · 2026-11-09 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-i-en-un-solo-pr-pr-50))
+- SCRUM-273 · PR-I004 Medir tokens y latencia de cada llamada a la IA · PR #50 · 2026-11-09 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-i-en-un-solo-pr-pr-50))
+- SCRUM-275 · PR-I006 Hablar con el entrenador desde Hoy · PR #50 · 2026-11-09 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-i-en-un-solo-pr-pr-50))
+- SCRUM-276 · PR-I007 El entrenador durante el entrenamiento · PR #50 · 2026-11-09 ([detalle](docs/archivo/mvp-plan-2026-11.md#fase-i-en-un-solo-pr-pr-50))
 
 ---
 
