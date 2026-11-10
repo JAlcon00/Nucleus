@@ -827,6 +827,23 @@ extension WorkoutSessionCoordinator {
         return try engine.evaluate(PainFeedbackInput(level: level, exerciseName: exerciseNames[exercise]))
     }
 
+    // MARK: - SCRUM-272: la hoja de sustitutos desde el entrenador
+
+    /// Las opciones de la hoja de sustitutos para el ejercicio actual, sin cambiar la cola
+    /// (para "cámbiame este ejercicio" o "no hay esta máquina"). Son las mismas que tras
+    /// "Máquina ocupada": excluyen lo que prohíben las restricciones y, con dolor moderado o
+    /// alto, no se ofrecen (SCRUM-231). `nil` sin serie por hacer o fuera de una sesión activa.
+    public func substitutionChoice() -> OccupiedChoice? {
+        switch phase {
+        case .active, .resting: break
+        case .idle, .paused, .finished: return nil
+        }
+        guard let session = controller.current?.session, let current = currentSet() else { return nil }
+        let exercise = template.plannedSets[current.index].exerciseID
+        let others = WorkoutQueue.pendingOthers(than: exercise, template: template, sets: session.sets, state: session.queue ?? .empty)
+        return occupiedChoice(for: exercise, isOnlyExercise: others.isEmpty, session: session)
+    }
+
     // MARK: - SCRUM-270: "¿Por qué?" en el entrenamiento
 
     /// El registro del peso precargado de la serie actual; `nil` sin serie por hacer.
