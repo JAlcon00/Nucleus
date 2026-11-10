@@ -548,3 +548,138 @@ Evidencia: rama `SCRUM-13-fase-h`, PR #48, sobre `main` @ `216f698`. Terminadas 
 - **Contraste** (`contrast_check.py`, sobre `surface`): récord 5.76:1 claro y 6.51:1 oscuro; aviso 6.40:1 y 10.75:1; marca de selección 5.56:1 y 4.82:1. Todo pasa AA.
 - **Warnings nuevos:** ninguno. Sigue el de `ProfileView.swift` (Toggle con `Binding(get:set:)`), que ya estaba en `main`.
 - **SCRUM-268, al cerrarla (commit `b761b11`, 2026-11-08):** `make ci` → `✔ Test run with 1002 tests in 138 suites passed` + `✔ Test run with 648 tests in 91 suites passed` + `Executed 151 tests, with 0 failures`; guard `OK: ninguna prueba se borra, desactiva ni reduce (base 216f698, 1775 → 1816 pruebas).`; builds de iOS y watchOS OK, sin warnings nuevos. `make test-ui` completa → **15 de 15 OK**, con el paso de series por músculo en `testFirstWorkoutReachesProgressAndExport`; incluye los 3 recorridos del smoke, así que el smoke no se corrió aparte. Contraste de "En rango" (`success` sobre `surface`): 6.19:1 claro y 8.39:1 oscuro. La regla se escribió antes que sus pruebas; las 11 pasaron a la primera.
+
+## Fase I en un solo PR
+
+- **Épica:** Fase I (SCRUM-14) · Could · hito 1.0.
+- **Estado:** rama `SCRUM-14-fase-i`, sobre `main` @ `84d4b90`. Un commit por historia.
+- **Por qué en un PR:** Jesús lo pidió el 2026-11-09 ("quiero que empecemos la fase I en una nueva sesión al igual que las fases anteriores"), con la cola 👤 sobre el límite, como las Fases E a H.
+- **Revisión del alcance contra `main` `84d4b90`:** el gateway del agente, el intérprete local, la política, el escritor de acciones, la auditoría, `LLMBackendTransport` y `AgentUsage` ya existían en PRDomain y PRCore, pero nada llegaba a la app. Ninguna decisión visible llegaba como `DecisionRecord` (el del dolor se armaba y se tiraba) y `FileDecisionRepository` y `FileAgentAuditRepository` no se usaban. RNF-020, RNF-021 y RNEG-010, citados en la épica, no existen en `promptMaster.md` ni en la trazabilidad; se cambiaron por RNEG-004 y RNF-012.
+- **La IA en producción no está decidida** (ADR-0005, Propuesto): en Release responde el intérprete local; la IA sólo en Debug con la llave local y consentimiento, detrás de `AgentBackendTransport`. Ni el backend ni ADR-0005 ni SCRUM-221 se tocaron.
+- **Decisiones DI-1 a DI-6 (SCRUM-269):** decididas por Jesús el 2026-11-09 en el chat, A en las seis. SCRUM-8 (Fase D) pasó a Finalizada con su sí.
+
+### SCRUM-270 · PR-I001 "¿Por qué?" sale del registro de la decisión
+
+**Qué cambió:** `ExplainableDecisionBuilder` (PRDomain, puro) arma un `DecisionRecord` por decisión visible: orden de hoy, ajuste al tiempo, día aligerado por el sueño, cada cambio del gimnasio, peso precargado y dolor. Lleva los hechos que usó el motor y su regla cuando existe (bloque y `safety.substitutionScoring`); el ID sale del tema y los hechos (`StableDecisionID`, FNV-1a). `DecisionExplanationPresenter` (PRCore) da de 1 a 4 razones sólo con esos hechos. `TodayPlanCoordinator.todayDecisions`, `WorkoutSessionCoordinator.suggestedLoadDecision` y `painDecision()`: el registro de `PainFeedbackEngine` ya no se tira. Nada nuevo se guarda: los registros salen de lo que ya está guardado.
+
+**Criterios:**
+- [x] Un registro por decisión visible del día; en descanso, ninguno (`DecisionExplanationTests.restDayHasNone`).
+- [x] Cada registro lleva los hechos del motor y la referencia de su regla cuando existe (`ExplainableDecisionsTests`).
+- [x] El peso precargado dice si viene de la última vez (en esta máquina), de la prescripción o no hay dato (integración `workoutDecisions`).
+- [x] El dolor conserva el registro del motor y su explicación dice lo mismo que "¿Te dolió?" (`painMatchesRecommendation`).
+- [x] De 1 a 4 razones sólo con los hechos; ningún número inventado; un hecho desconocido se omite; sin hechos lo dice (`noInventedNumbers`, `unknownAndEmpty`).
+- [x] Un orden elegido por la persona lo dice.
+- [x] Mismo estado, mismos registros e IDs: integración con `LocalPersistence` real, reabrir con el tiempo elegido y el sueño corto.
+
+### SCRUM-271 · PR-I002 El intérprete local entiende las frases del gimnasio
+
+**Qué cambió:** `LocalPhraseVocabulary` (PRDomain, versión 1) y `LocalFallbackInterpreter.analyze`, que además dice sobre qué pide aclarar (`AgentClarification`). `AgentContext` trae el ejercicio actual, los gimnasios y las decisiones que se pueden explicar (campos opcionales). `MedicalBoundary`: "¿por qué me duele?" también es pedir un diagnóstico.
+
+**Criterios:**
+- [x] "Media hora", "una hora", "hora y media", "40 min", "2 horas"; "poco tiempo", dos cantidades o fuera de rango piden minutos.
+- [x] "Está ocupada" sin nombrar la máquina: dentro del entrenamiento, la del ejercicio actual; fuera, pide cuál. "Estoy ocupado" no es una máquina.
+- [x] "¿Por qué…?" con tema pide el registro de ese tema; a secas, el único o pregunta cuál; sin ninguno lo dice.
+- [x] "Cámbiame este ejercicio" en el entrenamiento; fuera pide entrar.
+- [x] Gimnasio por su nombre sin mayúsculas ni acentos; un nombre que no existe pide cuál; nunca se inventa.
+- [x] Dolor con nivel y zona ("no me duele mucho" es leve); sin nivel pregunta cuánto; el diagnóstico se declina.
+- [x] Fatiga con una tabla fija de 1 a 5.
+- [x] Sinónimos de objetivo y fase; siguen pidiendo confirmación.
+- [x] La suite de frases de SCRUM-33 da el mismo resultado (`AgentUnderstandsTests.phraseSuite` sin cambios).
+- [x] Integración sin transporte con el escritor y la política reales: "tengo media hora" → `recomputeSession(.hard(30))`.
+
+### SCRUM-272 · PR-I003 El entrenador en PRCore, siempre por la política
+
+**Qué cambió:** `CoachConversationCoordinator` (PRCore, `@MainActor @Observable`) y `CoachReplyPresenter`. Primero el intérprete local; sólo si no entiende y hay transporte (Debug con llave y consentimiento) pregunta al LLM por `AgentGateway`, que cae al local en el tiempo límite. Toda intención pasa por `AgentActionWriter` y `ActionPolicyValidator`; lo importante pide confirmar, se revalida con el estado de ese momento y abre el flujo que ya existe (`CoachFlow`). La app implementa `CoachActionHandling` con los comandos que ya tiene. `WorkoutSessionCoordinator.substitutionChoice()` da la hoja de sustitutos sin mover la cola. Auditoría sin texto en `agent-audit` (`LocalPersistence.agentAuditRepository()`); la conversación vive en memoria.
+
+**Criterios:**
+- [x] "Tengo 30 minutos" en Hoy usa `setTimeBudget` y dice qué cambió; con el entrenamiento en curso no cambia nada.
+- [x] Objetivo, fase, restricción y plan piden confirmar; confirmar abre el flujo que ya existe y cancelar no cambia nada.
+- [x] Con dolor moderado o alto se rechaza lo que podría subir carga o volumen, también si el dolor llega antes de confirmar.
+- [x] "¿Por qué…?" responde con el registro, nunca con el LLM (el transporte no se llama).
+- [x] Una pregunta de diagnóstico no se responde ni llega al modelo; ofrece registrar el dolor o una restricción.
+- [x] Lo ambiguo pregunta con opciones y no ejecuta nada.
+- [x] Sin IA responde el local y lo dice; con IA sin red cae al local en el tiempo límite sin congelarse.
+- [x] En el entrenamiento: ocupada, sustituto, "no hay esta máquina" y dolor usan lo que ya tiene la pantalla; otra máquina no se marca.
+- [x] Auditoría sin texto; si falla al guardar se avisa y la acción no se deshace.
+- [x] Un mensaje a la vez; cancelar corta la espera y no aplica nada.
+- [x] Fatiga y ajustar el plan: lo dice con honestidad y ofrece la pantalla que sí lo hace.
+- [x] Integración con `LocalPersistence` real: el ajuste queda guardado con el plan y la auditoría en `agent-audit` sin el texto.
+
+### SCRUM-274 · PR-I005 "¿Por qué?" en Hoy y en el entrenamiento
+
+**Qué cambió:** `DecisionExplanationSheet` y `WhyButton` (`PR/App/Coach/`). Hoy: "¿Por qué?" dentro de las tarjetas de sueño, tiempo y gimnasio (no como fila nueva), con `AppEnvironment.todayWhy`. Entrenamiento: "¿Por qué este peso?" debajo del peso (no aparece sin dato, `ExplainableDecision.hasSomethingToExplain`) y "¿Por qué?" en "¿Te dolió?", que abre las razones ahí mismo.
+
+**Criterios:**
+- [x] En Hoy, sueño, tiempo y gimnasio tienen "¿Por qué?" con las razones de su registro; "¿Por qué este orden?" sigue igual (paso E2E en `TodayJourney`, con "Dormí mal").
+- [x] En el entrenamiento, "¿Por qué este peso?" junto al peso precargado; "Completar serie" sigue a la mano al cerrar (paso E2E en `WorkoutRecoveryJourney`).
+- [x] En "¿Te dolió?", después de elegir el nivel, "¿Por qué?" muestra las razones del registro del dolor.
+- [x] La hoja no cambia la sesión ni el plan y se cierra con un toque.
+- [x] Sin dato de peso no hay botón (`ExplainableDecisionsTests.somethingToExplain`).
+- [x] Botón de 44 pt o más con etiqueta de VoiceOver que nombra la decisión; contraste AA (5.56:1 claro, 4.82:1 oscuro).
+- **👤 pendiente:** en el iPhone, VoiceOver, letra grande, Reduce Transparency e Increase Contrast.
+
+### SCRUM-277 · PR-I008 El consentimiento dice que un tercero procesa los datos
+
+**Qué cambió:** `AIConsentView` nombra al proveedor externo (hoy NVIDIA, sólo en pruebas) y suma "Lo que le escribes al entrenador"; la nota de Perfil dice lo mismo. `AIConsentCoordinator.isOffered(flags:connection:)` (DI-6): con la conexión en `.releaseBuild` no se pide ni sale el interruptor. `AIConnection.coachTransport(consent:)`: el entrenador sólo usa la IA con conexión y consentimiento, y se pide en cada mensaje.
+
+**Criterios:**
+- [x] El consentimiento dice que los datos y lo que se le escribe al entrenador van a un proveedor externo, cuál es hoy, y que nunca va el nombre.
+- [x] La lista incluye "Lo que le escribes al entrenador".
+- [x] Perfil › Inteligencia artificial dice lo mismo.
+- [x] En Release (`.releaseBuild`) no se pide ni se muestra el interruptor; en Debug y en pruebas de UI sí (`AIConsentOfferTests`).
+- [x] Sin consentimiento el entrenador no usa la IA aunque haya llave; retirarlo la apaga en el siguiente mensaje.
+- **👤 pendiente:** leer el texto en el iPhone (claro, oscuro y letra grande).
+
+### SCRUM-273 · PR-I004 Medir tokens y latencia de cada llamada a la IA
+
+**Qué cambió:** `MeteredLLMProvider` y `AgentUsageRecorder` (PRCore) dejan un `AgentUsageRecord` sin texto por llamada en la colección nueva `agent-usage` v1 (en la raíz, con su muestra `Fixtures/Persistence/v1/agent-usage.json`). `AgentUsageSummary` (PRDomain, puro) da por operación llamadas, mediana y p95 de la latencia (rango más cercano), tokens promedio y respaldos. La app mide `planPersonalization`, `planRationale` (con un `AICoach` aparte) y `coachInterpret`; Perfil muestra "Uso de la IA (pruebas)" sólo en Debug y nunca en pruebas de UI. "¿Por qué?" del entrenador no llama a la IA, así que no hay operación de explicar del chat.
+
+**Criterios:**
+- [x] Cada llamada deja su registro con operación, tokens, milisegundos y resultado (respondió o cayó al respaldo y por qué) (`AgentUsageTests.meteredProviderRecordsEveryOutcome`).
+- [x] El registro no lleva el texto de la persona ni el del modelo.
+- [x] La latencia se mide con reloj inyectado, también al fallar o cancelarse.
+- [x] Resumen por operación sin inventar números con 0 llamadas (`summaryRows`, `emptyAndWithoutTokens`).
+- [x] La fila de Perfil sólo existe en Debug y fuera de las pruebas de UI.
+- [x] Un error al guardar se avisa y no rompe la llamada (`saveFailureDoesNotBreakTheCall`).
+- [x] El costo en dinero no se calcula (falta el precio, ADR-0005).
+- [x] Integración con `LocalPersistence` real: reabrir da el mismo resumen; muestra v1 en `PersistenceFormatTests` y clasificación sin ambigüedad en `LegacyPersistenceMigrationTests`.
+- **👤 pendiente:** en el simulador con la llave, armar un plan y hacer 3 preguntas; revisar Perfil › Uso de la IA.
+
+### SCRUM-275 · PR-I006 Hablar con el entrenador desde Hoy
+
+**Qué cambió:** `CoachChatView` y `CoachBridge` (`PR/App/Coach/`). Botón secundario "Entrenador" en la barra de Hoy; mensajes con quién lo dijo, sus razones y la nota "Sin conexión a la IA: entiendo frases cortas" (DI-1 A); frases sugeridas; "Pensando…" con Cancelar; botones de confirmar, cancelar, abrir y explicar. Lo que abre es lo que ya existe ("Cambiar objetivo o fase" con la misma confirmación de Plan y Perfil, Restricciones). `AppEnvironment` arma un entrenador para Hoy y otro para el entrenamiento, con la política real y la auditoría en `agent-audit`.
+
+**Criterios:**
+- [x] "Entrenador" en la barra abre la hoja; "Empezar" sigue siendo la acción principal (paso E2E en `TodayJourney`).
+- [x] Frases sugeridas según el día.
+- [x] "Tengo 30 minutos" ajusta la sesión y Hoy muestra la tarjeta del tiempo al cerrar (paso E2E).
+- [x] Lo que pide confirmar trae "Confirmar" y "Cancelar" (lógica en SCRUM-272).
+- [x] Si respondió el intérprete local, lo dice (paso E2E).
+- [x] Mientras responde no se manda otro; cerrar la hoja cancela.
+- [x] VoiceOver lee quién lo dijo, el texto, las razones y la nota; áreas de toque de 44 pt.
+- **👤 pendiente:** en el iPhone sin IA y en el simulador con la llave, con letra grande y VoiceOver.
+
+### SCRUM-276 · PR-I007 El entrenador durante el entrenamiento
+
+**Qué cambió:** "Entrenador" junto a "Terminar" (sólo con la sesión corriendo) abre `CoachChatView` a media pantalla. "Está ocupada" hace lo mismo que "Máquina ocupada"; "Cámbiame este ejercicio" y "No hay esta máquina" cierran la hoja y abren la de sustitutos con `substitutionChoice()`; "Me duele" abre "¿Te dolió?". El descanso sigue corriendo.
+
+**Criterios:**
+- [x] El botón está junto a "Terminar"; "Completar serie" sigue siendo la acción grande (paso E2E en `WorkoutRecoveryJourney`).
+- [x] Frases del entrenamiento: "Está ocupada", "Cámbiame este ejercicio", "Me duele", "¿Por qué este peso?" (la primera dice "Está ocupada" en vez de "La máquina está ocupada": así se refiere siempre al ejercicio actual).
+- [x] "Está ocupada" deja el mismo aviso que el botón (paso E2E).
+- [x] Sustitutos y dolor abren las hojas que ya existen (lógica en SCRUM-272).
+- [x] El descanso no se detiene; nada queda a medio aplicar al cerrar la app (la conversación vive en memoria).
+- **👤 pendiente:** en el iPhone durante un entrenamiento real, con una mano entre series, letra grande y Reduce Transparency.
+
+### Evidencia de la Fase I
+
+- **Commits (uno por historia):** `d410d99` SCRUM-270, `d085f1d` SCRUM-271, `b51f925` SCRUM-272, `ef7cc1e` SCRUM-274, `0b16155` SCRUM-277, `ee4759f` SCRUM-273, `882257e` SCRUM-275, `084e147` SCRUM-276.
+- **Línea base** (`make test` sobre `84d4b90`): `✔ Test run with 648 tests in 91 suites passed` + `✔ Test run with 1002 tests in 138 suites passed` + `Executed 151 tests, with 0 failures`.
+- **`make ci` en cada historia, en verde.** Al final (SCRUM-276): `✔ Test run with 671 tests in 93 suites passed` + `✔ Test run with 1046 tests in 142 suites passed` + `Executed 151 tests, with 0 failures`; guard `OK: ninguna prueba se borra, desactiva ni reduce (base 84d4b90, 1816 → 1883 pruebas).`; builds de iOS y watchOS OK. Warnings nuevos: ninguno (siguen los dos de `ProfileView.swift`, Toggle con `Binding(get:set:)`, que ya estaban en `main`).
+- **E2E completa** (`make test-ui`, sobre `084e147`): **15 de 15 OK** en 576 s, con los pasos nuevos de "¿Por qué?" (sueño en `TodayJourney`, peso en `WorkoutRecoveryJourney`), el entrenador de Hoy (`TodayJourney`) y el del entrenamiento (`WorkoutRecoveryJourney`); `ProfileJourney` e `IntermediateQuestionnaireJourney` siguen pasando con el consentimiento nuevo. Incluye los 3 recorridos del smoke.
+- **Smokes por historia:** SCRUM-270 y 271, 8 de 8. SCRUM-272, 7 de 8: `testSummarySaysItWasSavedInHealth` no vio "summary.health" en 10 s; repetido sobre el mismo build, 5 de 5. SCRUM-274, 6 de 8 con la Mac a carga ~88 (la app tardó 92 s en abrir); los dos pasaron en la E2E completa. SCRUM-277: el simulador no inicializó ("Timed out while loading Accessibility"), con la carga en ~400 al despertar la Mac; cubierto por la E2E completa.
+- **Contraste** de "¿Por qué?" (`primaryAction` sobre `surface`): 5.56:1 claro y 4.82:1 oscuro (AA).
+- **Una corrección durante la fase:** al cancelar un mensaje y mandar otro, la tarea vieja apagaba "pensando" de la nueva; quedó dentro del commit de SCRUM-272, con su prueba (`lateCancelledTaskKeepsNewOneThinking`). La prueba de "sin red" mide con `SuspendingClock`: la Mac se dormía a ratos y el reloj normal contaba ese tiempo.
+- **No verificado en dispositivo:** todo lo 👤 de la sección 2 de `mvp-plan.md` (SCRUM-273 a 277); la IA real (Debug con llave) no se probó en esta sesión.
+
+Evidencia: rama `SCRUM-14-fase-i`, sobre `main` @ `84d4b90`. Terminadas el 2026-11-09 y 2026-11-10.
