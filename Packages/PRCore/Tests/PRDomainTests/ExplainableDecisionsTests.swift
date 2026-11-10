@@ -166,6 +166,21 @@ struct ExplainableDecisionsTests {
         #expect(builder.pain(none, date: date) == nil)
     }
 
+    @Test("SCRUM-274: sin dato de peso no hay nada que explicar (sin botón); con dato, sí")
+    func somethingToExplain() throws {
+        let prescription = try SetPrescription(targetRepRange: 8...12, loadUnit: .kilograms, restSeconds: 90...120)
+        let planned = PlannedSet(exerciseID: squat, prescription: prescription)
+        let withoutData = builder.suggestedLoad(
+            draft: SetCompleter().preload(for: planned), exerciseName: "Sentadilla", isWarmup: false, loadIsPerMachine: false, date: date
+        )
+        #expect(!withoutData.hasSomethingToExplain)
+        let fromLastTime = builder.suggestedLoad(
+            draft: SetCompleter().preload(for: planned, lastPerformedWeight: 60), exerciseName: "Sentadilla", isWarmup: false, loadIsPerMachine: false, date: date
+        )
+        #expect(fromLastTime.hasSomethingToExplain)
+        #expect(try #require(builder.readiness(.lighter(reason: .poorSleep, rirIncrease: 1, isolationSetReduction: 1), date: date)).hasSomethingToExplain)
+    }
+
     // MARK: - Determinismo
 
     @Test("Mismo estado, mismo registro con el mismo ID; otro estado, otro ID")

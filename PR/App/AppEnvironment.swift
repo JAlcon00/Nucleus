@@ -161,6 +161,31 @@ public final class AppEnvironment {
         SupersetPresenter(locale: Self.presentationLocale).todayNote(for: todayPlan.plan?.todayTemplate) { exerciseNames[$0] }
     }
 
+    /// SCRUM-274: "¿Por qué?" de lo que el motor cambió hoy, en palabras. Sale del registro
+    /// de cada decisión (SCRUM-270), nunca de la IA. Con varios cambios del gimnasio, sus
+    /// razones van juntas (hasta 4).
+    var todayWhy: TodayWhy {
+        let presenter = DecisionExplanationPresenter(locale: Self.presentationLocale)
+        var why = TodayWhy()
+        var gym: [DecisionExplanation] = []
+        for decision in todayPlan.todayDecisions {
+            let item = WhyItem(id: decision.id.rawValue.uuidString, explanation: presenter.explanation(for: decision))
+            switch decision.topic {
+            case .timeFit: why.time = item
+            case .readiness: why.readiness = item
+            case .gymChange: gym.append(item.explanation)
+            case .sessionOrder, .suggestedLoad, .pain: break
+            }
+        }
+        if let first = gym.first {
+            why.gym = WhyItem(id: "gym", explanation: DecisionExplanation(
+                title: first.title,
+                reasons: Array(gym.flatMap(\.reasons).prefix(DecisionExplanationPresenter.maximumReasons))
+            ))
+        }
+        return why
+    }
+
     /// SCRUM-30: la frase del ajuste de hoy, ya traducida; `nil` sin tiempo elegido.
     public var timeNote: String? {
         todayPlan.plan?.timeAdjustment.map { adjustment in

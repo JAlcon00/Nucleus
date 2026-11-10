@@ -19,6 +19,9 @@ struct PainReportSheet: View {
     /// Saltar el ejercicio que dolió.
     let onSkipExercise: () -> Void
     let onDone: () -> Void
+    /// SCRUM-274: las razones del registro de `PainFeedbackEngine` para lo reportado.
+    var why: DecisionExplanation?
+    @State private var showingWhy = false
 
     private let presenter = PainRecommendationPresenter(locale: AppEnvironment.presentationLocale)
     private let vocabulary = TrainingVocabularyPresenter(locale: AppEnvironment.presentationLocale)
@@ -54,11 +57,13 @@ struct PainReportSheet: View {
                     levels
                 case .noAdvice(let level):
                     levels
+                    whySection
                     muscles(level)
                     doneButton
                 case .advice(let level, let message, let canSkip, let tint):
                     // Lo primero que se lee después de reportar: qué hacer.
                     recommendation(message, tint: tint)
+                    whySection
                     levels
                     muscles(level)
                     if canSkip { skipButton }
@@ -134,6 +139,27 @@ struct PainReportSheet: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("pain.recommendation")
+    }
+
+    /// SCRUM-274: "¿Por qué?" abre las razones aquí mismo (sin otra hoja encima).
+    @ViewBuilder
+    private var whySection: some View {
+        if let why {
+            VStack(alignment: .leading, spacing: DSpace.xs) {
+                WhyButton(accessibilityName: "Por qué esta recomendación", identifier: "pain.why") {
+                    showingWhy.toggle()
+                }
+                if showingWhy {
+                    ForEach(Array(why.reasons.enumerated()), id: \.offset) { index, reason in
+                        Text(reason)
+                            .font(.callout)
+                            .foregroundStyle(Color.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("pain.why.reason.\(index)")
+                    }
+                }
+            }
+        }
     }
 
     /// Con dolor alto, la acción principal: saltar el ejercicio (se puede retomar).

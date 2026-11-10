@@ -140,6 +140,14 @@ final class WorkoutRecoveryJourney: PRUITestCase {
             let skip = app.buttons["Saltar"].firstMatch
             if skip.appears(within: 5) { skip.tap() }
             XCTAssertTrue(element(app, "workout.lastWeight").appears(within: 5), "Precarga el peso de la serie anterior")
+
+            // SCRUM-274: "¿Por qué este peso?" explica de dónde salió y se cierra; la serie
+            // sigue lista para completarse.
+            tap(app, "workout.weight.why")
+            XCTAssertTrue(element(app, "why.sheet").appears(within: 5), "Abre la explicación del peso")
+            XCTAssertTrue(element(app, "why.reason.0").appears(within: 5), "Dice de dónde salió el peso")
+            tap(app, "why.done")
+            XCTAssertTrue(element(app, "workout.completeSet").appears(within: 5), "\"Completar serie\" sigue a la mano")
         }
 
         // SCRUM-234: con todo ocupado se ofrece un sustituto; al elegirlo se sigue con él.

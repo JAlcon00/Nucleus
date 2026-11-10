@@ -144,7 +144,8 @@ struct AppTabBarView: View {
                 supersetNote: environment.supersetNote,
                 gymNote: environment.gymNote,
                 activeGymLabel: environment.activeGymLabel,
-                onChooseTime: { minutes in Task { await environment.setTimeBudget(minutes) } }
+                onChooseTime: { minutes in Task { await environment.setTimeBudget(minutes) } },
+                why: environment.todayWhy
             )
             .navigationTitle(AppTab.today.title)
         }

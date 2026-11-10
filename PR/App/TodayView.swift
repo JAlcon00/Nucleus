@@ -68,11 +68,15 @@ struct TodayView: View {
     var activeGymLabel: String?
     /// Intento: ajustar la sesión a esos minutos (`nil` = quitar el ajuste).
     var onChooseTime: (Int?) -> Void = { _ in }
+    /// SCRUM-274: "¿Por qué?" de lo que el motor cambió hoy (ya en palabras).
+    var why = TodayWhy()
     @Environment(\.sessionOrderActions) private var orderActions
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var reordering = false
 
     @State private var showingOrder = false
+    /// SCRUM-274: la explicación abierta.
+    @State private var whyShown: WhyItem?
     /// Día de la tira abierto en detalle.
     @State private var selectedDay: WeekDay?
     /// Nombres de sesión en español (Push, Pull, Pierna…): el planificador guarda claves estables.
@@ -308,6 +312,9 @@ struct TodayView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             readyActions(presentation)
         }
+        .sheet(item: $whyShown) { item in
+            DecisionExplanationSheet(explanation: item.explanation)
+        }
         .sheet(isPresented: $showingOrder) {
             OrderExplanationSheet(order: order, reorderedByFatigue: orderReorderedByFatigue, isCustom: orderIsCustom)
         }
@@ -346,16 +353,21 @@ struct TodayView: View {
             if asksSleepCheckIn {
                 SleepCheckInCard(onRecord: onSleepCheckIn, onSkip: onSkipSleepCheckIn)
             } else if let readinessNote {
-                Label {
-                    Text(readinessNote).fixedSize(horizontal: false, vertical: true)
-                } icon: {
-                    Image(systemName: "moon.zzz.fill").foregroundStyle(Color.warning)
+                VStack(alignment: .leading, spacing: DSpace.xs) {
+                    Label {
+                        Text(readinessNote).fixedSize(horizontal: false, vertical: true)
+                    } icon: {
+                        Image(systemName: "moon.zzz.fill").foregroundStyle(Color.warning)
+                    }
+                    .font(.callout)
+                    .accessibilityIdentifier("today.readiness")
+                    if let item = why.readiness {
+                        WhyButton(accessibilityName: "Por qué hoy es más ligero", identifier: "today.readiness.why") { whyShown = item }
+                    }
                 }
-                .font(.callout)
                 .padding(DSpace.m)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .cardSurface(cornerRadius: DRadius.medium)
-                .accessibilityIdentifier("today.readiness")
             }
             if let timeNote {
                 timeNoteCard(timeNote)
@@ -498,33 +510,44 @@ struct TodayView: View {
     /// Qué cambió por el tiempo elegido. Si no cabe ni recortada, el ícono y el color de
     /// advertencia acompañan al texto (el color nunca va solo).
     private func timeNoteCard(_ note: String) -> some View {
-        Label {
-            Text(note).fixedSize(horizontal: false, vertical: true)
-        } icon: {
-            Image(systemName: timeFits ? "timer" : "exclamationmark.triangle.fill")
-                .foregroundStyle(timeFits ? Color.primaryAction : Color.warning)
+        VStack(alignment: .leading, spacing: DSpace.xs) {
+            Label {
+                Text(note).fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: timeFits ? "timer" : "exclamationmark.triangle.fill")
+                    .foregroundStyle(timeFits ? Color.primaryAction : Color.warning)
+            }
+            .font(.callout)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("today.timeNote")
+            // SCRUM-274: dentro de la tarjeta, no como fila nueva (no saca contenido de la pantalla).
+            if let item = why.time {
+                WhyButton(accessibilityName: "Por qué cambió tu sesión por el tiempo", identifier: "today.timeNote.why") { whyShown = item }
+            }
         }
-        .font(.callout)
         .padding(DSpace.m)
         .frame(maxWidth: .infinity, alignment: .leading)
         .cardSurface(cornerRadius: DRadius.medium)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("today.timeNote")
     }
 
     /// SCRUM-224: qué ejercicios van hoy alternados (superset) y por qué. Informativa: el
     /// ícono acompaña al texto.
     private func gymNoteCard(_ note: String) -> some View {
-        Label {
-            Text(note)
-        } icon: {
-            Image(systemName: "dumbbell")
+        VStack(alignment: .leading, spacing: 0) {
+            Label {
+                Text(note)
+            } icon: {
+                Image(systemName: "dumbbell")
+            }
+            .font(.footnote)
+            .foregroundStyle(Color.textSecondary)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("today.gymNote")
+            if let item = why.gym {
+                WhyButton(accessibilityName: "Por qué cambió un ejercicio por el gimnasio", identifier: "today.gymNote.why") { whyShown = item }
+            }
         }
-        .font(.footnote)
-        .foregroundStyle(Color.textSecondary)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("today.gymNote")
     }
 
     private func supersetNoteCard(_ note: String) -> some View {

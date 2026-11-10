@@ -54,6 +54,17 @@ public struct ExplainableDecision: Sendable, Hashable, Identifiable {
     public func value(_ key: String) -> String? {
         record.inputFacts.first { $0.key == key }?.value
     }
+
+    /// SCRUM-274: ¿hay algo que explicar? El peso precargado sin dato no lo tiene, así que
+    /// no lleva botón "¿Por qué?".
+    public var hasSomethingToExplain: Bool {
+        switch topic {
+        case .suggestedLoad:
+            return value(ExplainableFactKey.loadSource).map { $0 != SuggestedLoadSource.none.rawValue } ?? false
+        case .sessionOrder, .timeFit, .readiness, .gymChange, .pain:
+            return !record.inputFacts.isEmpty
+        }
+    }
 }
 
 // MARK: - Claves de los hechos
